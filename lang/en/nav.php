@@ -1,0 +1,22 @@
+<?php
+
+return [
+    'directory' => 'Account Directory',
+    'analytics' => 'Analytics & Charts',
+    'presentation' => 'Presentation',
+    'about' => 'About',
+    'queue' => 'Queue',
+    'settings' => 'Settings',
+    'toggle_theme' => 'Toggle light/dark theme',
+    'open_menu' => 'Open menu',
+    'language' => 'Language',
+    'confirm_cancel' => 'Cancel',
+    'confirm_accept' => 'Continue',
+    'export_preview_title' => 'Export Preview',
+    'export_preview_close' => 'Close',
+    'export_preview_loading' => 'Loading preview…',
+    'export_preview_failed' => 'Failed to load preview.',
+    'footer_copyright' => 'All rights reserved.',
+    'footer_developer' => 'Developed by',
+    'footer_version' => 'v:version',
+];

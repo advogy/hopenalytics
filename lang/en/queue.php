@@ -1,0 +1,45 @@
+<?php
+
+return [
+    'title' => 'Queue Monitoring',
+    'subtitle' => 'Status of data refresh jobs currently running, pending, or failed.',
+    'stat_pending' => 'Pending jobs',
+    'stat_active_batches' => 'Active batches',
+    'stat_completed_batches' => 'Completed batches',
+    'stat_failed' => 'Failed jobs',
+
+    'pending_title' => 'Pending Jobs per Queue',
+    'pending_empty' => 'No jobs currently pending.',
+    'pending_queue_col' => 'Queue',
+    'pending_count_col' => 'Count',
+    'clear_all' => 'Clear All',
+    'clear_all_confirm' => 'Clear ALL pending jobs across every queue? Unprocessed data will be lost and cannot be recovered.',
+    'clear_queue' => 'Clear',
+    'clear_queue_confirm' => 'Clear all pending jobs in the ":queue" queue? Unprocessed data will be lost and cannot be recovered.',
+
+    'batches_title' => 'Active Batches',
+    'batches_empty' => 'No refresh batches currently running.',
+    'batches_progress' => ':processed of :total (:percent%)',
+    'batches_failed_note' => ':count failed job(s) in this batch',
+    'batches_started' => 'Started :date',
+    'batches_cancel' => 'Cancel',
+    'batches_cancel_confirm' => 'Cancel this batch? Jobs not yet processed will be skipped (skipped, not removed from history).',
+
+    'completed_title' => 'Completed Batches',
+    'completed_empty' => 'No refresh batches have completed yet.',
+    'completed_success' => 'Success',
+    'completed_partial' => 'Partially failed',
+    'completed_cancelled' => 'Cancelled',
+    'completed_summary' => ':processed of :total accounts processed, :failed failed.',
+    'clear_completed_confirm' => 'Clear the entire completed-batch history? This only deletes the history record.',
+    'delete_batch_confirm' => 'Delete this batch\'s history?',
+
+    'failed_title' => 'Recent Failed Jobs',
+    'failed_empty' => 'No failed jobs.',
+    'failed_queue_col' => 'Queue',
+    'failed_date_col' => 'Time',
+    'failed_error_col' => 'Error',
+    'clear_failed_confirm' => 'Clear the entire failed-job history? This only deletes the history record, it does not retry the failed jobs.',
+    'delete_failed_confirm' => 'Delete this failed-job record?',
+    'delete' => 'Delete',
+];

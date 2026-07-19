@@ -1,0 +1,100 @@
+@php
+    $valueHeader = match (true) {
+        $metric !== 'reach' => $metricLabels[$metric],
+        $platform === 'youtube' => 'Subscribers',
+        $platform === 'semua' => __('comparison.reach_label'),
+        default => 'Followers',
+    };
+@endphp
+
+@extends('layouts.app')
+
+@section('title', __('comparison.platform_detail_title', ['metric' => $valueHeader, 'platform' => $platformLabels[$platform], 'suffix' => $scope->titleSuffix()]) . ' — ' . config('app.name'))
+
+@php
+    $platformParam = $platform === 'semua' ? null : $platform;
+@endphp
+
+@section('content')
+    <a href="{{ $scope->platformComparisonUrl(array_filter(['platform' => $platformParam])) }}" class="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
+        &larr; {{ __('comparison.back_to_overview') }}
+    </a>
+
+    <div class="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <div>
+            <h1 class="mb-1 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{{ __('comparison.platform_comparison_title', ['suffix' => $scope->titleSuffix()]) }}</h1>
+            <p class="text-sm text-slate-500 dark:text-slate-400">
+                @if ($sort === 'delta')
+                    {{ __('comparison.platform_comparison_subtitle_delta', ['count' => $rows->count(), 'noun' => $scope->noun(), 'metric' => $valueHeader, 'platform' => $platformLabels[$platform]]) }}
+                @else
+                    {{ __('comparison.platform_comparison_subtitle_value', ['count' => $rows->count(), 'noun' => $scope->noun(), 'value' => $valueHeader, 'platform' => $platformLabels[$platform]]) }}
+                @endif
+            </p>
+        </div>
+        <x-export-button :url="$scope->exportPlatformComparisonUrl(array_filter(['platform' => $platform, 'metric' => $metric, 'sort' => $sort === 'value' ? 'value' : null]))" />
+    </div>
+
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+            @if ($platform !== 'semua')
+                <x-platform-icon :platform="$platform" class="h-4.5 w-4.5" />
+            @endif
+            <span class="font-medium text-slate-700 dark:text-slate-200">{{ $platformLabels[$platform] }}</span>
+            <span class="text-slate-300 dark:text-slate-600">&middot;</span>
+            <span>{{ $valueHeader }}</span>
+        </div>
+
+        <x-sort-toggle
+            :sort="$sort"
+            :delta-url="$scope->platformComparisonUrl(array_filter(['platform' => $platformParam, 'metric' => $metric]))"
+            :value-url="$scope->platformComparisonUrl(array_filter(['platform' => $platformParam, 'metric' => $metric, 'sort' => 'value']))"
+        />
+    </div>
+
+    <div class="mb-8 rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
+        <p class="mb-4 font-bold text-slate-900 dark:text-white">
+            {{ __('comparison.value_per_entity', ['value' => $valueHeader, 'platform' => $platformLabels[$platform], 'label' => $scope->labelCap()]) }}
+        </p>
+        <x-bar-chart :rows="$rows" />
+    </div>
+
+    @if ($rows->isNotEmpty())
+        <div class="overflow-x-auto rounded-2xl border border-black/5 dark:border-white/5">
+            <table class="w-full text-left text-sm">
+                <thead class="bg-slate-50 dark:bg-slate-800/60">
+                    <tr>
+                        <th class="px-4 py-3 font-medium text-slate-500 dark:text-slate-400">#</th>
+                        <th class="px-4 py-3 font-medium text-slate-500 dark:text-slate-400">{{ $scope->nameLabel() }}</th>
+                        <th class="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400">
+                            {{ $valueHeader }}
+                        </th>
+                        <th class="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400">{{ __('comparison.weekly_growth') }}</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-900">
+                    @foreach ($rows as $i => $row)
+                        <tr>
+                            <td class="px-4 py-2.5 text-slate-400 dark:text-slate-500">{{ $i + 1 }}</td>
+                            <td class="px-4 py-2.5">
+                                <a href="{{ $scope->showUrl($row['church'] ?? $row['person']) }}" class="font-medium hover:text-blue-600 dark:hover:text-blue-400">
+                                    {{ $row['label'] }}
+                                </a>
+                            </td>
+                            <td class="px-4 py-2.5 text-right font-medium tabular-nums">{{ number_format($row['value']) }}</td>
+                            <td class="px-4 py-2.5 text-right tabular-nums">
+                                @if ($row['delta'] === null)
+                                    <span class="text-slate-300 dark:text-slate-600">—</span>
+                                @else
+                                    <span class="inline-flex items-center gap-1 font-medium {{ $row['delta'] > 0 ? 'text-emerald-600 dark:text-emerald-400' : ($row['delta'] < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-400 dark:text-slate-500') }}">
+                                        <x-icon :name="$row['delta'] > 0 ? 'arrow-trending-up' : ($row['delta'] < 0 ? 'arrow-trending-down' : 'minus-small')" class="h-3.5 w-3.5" />
+                                        {{ $row['delta'] > 0 ? '+' : '' }}{{ number_format($row['delta']) }}
+                                    </span>
+                                @endif
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    @endif
+@endsection

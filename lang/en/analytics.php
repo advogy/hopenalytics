@@ -1,0 +1,49 @@
+<?php
+
+return [
+    'subtitle' => 'Weekly growth with church/personal and social media filters.',
+    'metric_comparison_church' => 'Church Metric Comparison',
+    'platform_comparison_church' => 'Church Platform Comparison',
+    'metric_comparison_personal' => 'Personal Metric Comparison',
+    'platform_comparison_personal' => 'Personal Platform Comparison',
+    'all_churches' => 'All Churches',
+    'all_personal' => 'All Personal Accounts',
+
+    'reach_subtitle_youtube' => 'YouTube Subscribers',
+    'reach_subtitle_platform' => ':platform Followers',
+    'reach_subtitle_combined' => 'Combined YouTube subscribers + Instagram/TikTok/Facebook followers',
+    'suffix_all_churches' => ', all churches',
+    'suffix_all_personal' => ', all personal accounts',
+    'suffix_entity' => ' — :name',
+    'views_subtitle' => 'Total YouTube video views',
+    'likes_subtitle' => 'Total TikTok likes',
+    'posts_subtitle' => 'YouTube videos + Instagram/TikTok posts',
+    'not_available_platform' => ' (not available for this platform)',
+    'per_week' => ', per week.',
+
+    'total_reach_current' => 'Current Total Reach',
+    'growth_reach_title' => 'Total Reach Growth',
+    'growth_views_title' => 'Total Views Growth',
+    'growth_likes_title' => 'Total Likes Growth',
+    'growth_posts_title' => 'Total Posts Growth',
+
+    'no_church_data' => 'No church data yet.',
+    'no_church_match_filter' => 'No churches match this filter.',
+    'no_personal_data' => 'No personal accounts yet.',
+    'no_personal_match_filter' => 'No personal accounts match this filter.',
+
+    'grand_total' => 'Grand Total',
+    'total_reach' => 'Total Reach',
+    'total_views' => 'Total Views',
+    'total_likes' => 'Total Likes',
+    'total_posts' => 'Total Posts',
+    'account_count' => 'Account count',
+    'total_followers_subscribers' => 'Total followers/subscribers',
+    'churches_count' => ':count churches',
+    'personal_count' => ':count personal',
+
+    'data_per_church' => 'Data Per Church',
+    'data_per_personal' => 'Data Per Personal',
+    'hide_empty_churches' => 'Hide churches with no data',
+    'hide_empty_personal' => 'Hide personal accounts with no data',
+];

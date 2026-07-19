@@ -1,0 +1,45 @@
+<?php
+
+return [
+    'title' => 'Monitoring Antrean',
+    'subtitle' => 'Status job refresh data yang sedang berjalan, tertunda, atau gagal.',
+    'stat_pending' => 'Job tertunda',
+    'stat_active_batches' => 'Batch aktif',
+    'stat_completed_batches' => 'Batch selesai',
+    'stat_failed' => 'Job gagal',
+
+    'pending_title' => 'Job Tertunda per Antrean',
+    'pending_empty' => 'Tidak ada job yang tertunda saat ini.',
+    'pending_queue_col' => 'Antrean',
+    'pending_count_col' => 'Jumlah',
+    'clear_all' => 'Bersihkan Semua',
+    'clear_all_confirm' => 'Bersihkan SEMUA job tertunda di semua antrean? Data yang belum diproses akan hilang dan tidak bisa dikembalikan.',
+    'clear_queue' => 'Bersihkan',
+    'clear_queue_confirm' => 'Bersihkan semua job tertunda pada antrean ":queue"? Data yang belum diproses akan hilang dan tidak bisa dikembalikan.',
+
+    'batches_title' => 'Batch Aktif',
+    'batches_empty' => 'Tidak ada batch refresh yang sedang berjalan.',
+    'batches_progress' => ':processed dari :total (:percent%)',
+    'batches_failed_note' => ':count job gagal dalam batch ini',
+    'batches_started' => 'Dimulai :date',
+    'batches_cancel' => 'Batalkan',
+    'batches_cancel_confirm' => 'Batalkan batch ini? Job yang belum diproses akan dilewati (dilewati, bukan dihapus dari riwayat).',
+
+    'completed_title' => 'Batch Selesai',
+    'completed_empty' => 'Belum ada batch refresh yang selesai.',
+    'completed_success' => 'Berhasil',
+    'completed_partial' => 'Sebagian gagal',
+    'completed_cancelled' => 'Dibatalkan',
+    'completed_summary' => ':processed dari :total akun diproses, :failed gagal.',
+    'clear_completed_confirm' => 'Bersihkan seluruh riwayat batch selesai? Ini hanya menghapus catatan riwayat.',
+    'delete_batch_confirm' => 'Hapus riwayat batch ini?',
+
+    'failed_title' => 'Job Gagal Terakhir',
+    'failed_empty' => 'Tidak ada job yang gagal.',
+    'failed_queue_col' => 'Antrean',
+    'failed_date_col' => 'Waktu',
+    'failed_error_col' => 'Error',
+    'clear_failed_confirm' => 'Bersihkan seluruh riwayat job gagal? Ini hanya menghapus catatan riwayat, tidak memproses ulang job yang gagal.',
+    'delete_failed_confirm' => 'Hapus riwayat job gagal ini?',
+    'delete' => 'Hapus',
+];

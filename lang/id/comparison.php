@@ -1,0 +1,43 @@
+<?php
+
+return [
+    'title_suffix_personal' => ' Personal',
+    'leaderboard_back_analytics' => 'Kembali ke analitik & grafik',
+    'leaderboard_back_metric' => 'Kembali ke perbandingan metrik',
+
+    'sort_all' => 'Semua',
+    'leaderboard_subtitle_value' => 'Seluruh akun:noun diurutkan berdasarkan nilai saat ini. :subtitle.',
+    'leaderboard_subtitle_delta' => 'Seluruh akun:noun diurutkan dari pertumbuhan tertinggi ke terendah, minggu ini. :subtitle.',
+    'noun_suffix_personal' => ' personal',
+    'accounts_count' => ':count akun',
+
+    'metric_comparison_title' => 'Perbandingan Metrik :label',
+    'metric_comparison_subtitle_value' => 'Peringkat akun media sosial berdasarkan nilai saat ini — subscriber/followers, views, likes, dan post, untuk :scope.',
+    'metric_comparison_subtitle_delta' => 'Peringkat akun media sosial berdasarkan pertumbuhan mingguan tertinggi — subscriber/followers, views, likes, dan post, untuk :scope.',
+    'metric_comparison_subtitle_score' => 'Skor pertumbuhan mingguan komposit untuk :scope — rata-rata persentase perubahan reach, views, likes, dan post dibanding minggu lalu.',
+    'growth_score_title' => 'Skor Pertumbuhan Mingguan',
+    'reach_label' => 'Jangkauan',
+    'platform_score_title' => 'Skor Performa Platform',
+    'noun_platform' => 'platform',
+    'for_all_churches' => 'semua gereja',
+    'for_all_personal' => 'semua akun personal',
+
+    'platform_comparison_title' => 'Perbandingan Platform:suffix',
+    'platform_detail_title' => 'Perbandingan :metric :platform:suffix',
+    'platform_comparison_subtitle_delta' => 'Peringkat :count :noun berdasarkan pertumbuhan mingguan :metric :platform.',
+    'platform_comparison_subtitle_value' => 'Peringkat :count :noun berdasarkan :value :platform saat ini, beserta pertumbuhan mingguan.',
+    'back_to_overview' => 'Kembali ke ringkasan perbandingan',
+    'value_per_entity' => ':value :platform per :label',
+    'weekly_growth' => 'Pertumbuhan Mingguan',
+
+    'platform_overview_subtitle' => 'Ringkasan performa :platform semua :scope — followers/subscribers, views, likes, dan post dalam satu halaman.',
+    'platform_overview_all' => 'seluruh platform',
+    'scope_church' => 'gereja',
+    'scope_personal' => 'akun personal',
+    'section_subtitle' => ':count :noun, diurutkan berdasarkan :basis.',
+    'sort_basis_delta' => 'pertumbuhan mingguan',
+    'sort_basis_value' => ':value saat ini',
+    'sort_basis_score' => 'skor pertumbuhan mingguan',
+    'no_data' => 'Belum ada data.',
+    'growth' => 'Pertumbuhan',
+];
