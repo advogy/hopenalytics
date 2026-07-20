@@ -2,9 +2,18 @@
 
 @section('title', ($person->exists ? __('entity.title_edit_person') : __('entity.title_add_person')) . ' — ' . config('app.name'))
 
+@php
+    // Self-registered members reach this form to edit their own Person (PersonPolicy's
+    // self-ownership carve-out) and can't see Kelola Personal — send them back to their own
+    // profile instead. Admins (who can see the management page) go back there.
+    $backRoute = auth()->user()->can('browse-directory-analytics')
+        ? route('admin.people.index')
+        : ($person->exists ? route('people.show', $person) : route('churches.directory', ['tab' => 'personal']));
+@endphp
+
 @section('content')
     <a
-        href="{{ $person->exists ? route('people.show', $person) : route('churches.directory', ['tab' => 'personal']) }}"
+        href="{{ $backRoute }}"
         class="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400"
     >
         &larr; {{ __('common.back') }}
@@ -34,24 +43,24 @@
             <button type="submit" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700">
                 {{ $person->exists ? __('common.save_changes') : __('entity.title_add_person') }}
             </button>
-            <a href="{{ $person->exists ? route('people.show', $person) : route('churches.directory', ['tab' => 'personal']) }}" class="text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
+            <a href="{{ $backRoute }}" class="text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
                 {{ __('common.cancel') }}
             </a>
         </div>
     </form>
 
-    @if ($person->exists)
+    @can('delete', $person)
         <form
             method="POST"
-            action="{{ route('people.destroy', $person) }}"
+            action="{{ route('people.toggle-active', $person) }}"
             class="mt-6 max-w-lg"
-            data-confirm="{{ __('entity.deactivate_person_confirm', ['name' => $person->name]) }}"
+            @if ($person->is_active) data-confirm="{{ __('entity.deactivate_person_confirm', ['name' => $person->name]) }}" @endif
         >
             @csrf
-            @method('DELETE')
+            @method('PATCH')
             <button type="submit" class="text-sm text-red-600 hover:underline dark:text-red-400">
-                {{ __('entity.deactivate_person') }}
+                {{ $person->is_active ? __('entity.deactivate_person') : __('entity.activate_person') }}
             </button>
         </form>
-    @endif
+    @endcan
 @endsection

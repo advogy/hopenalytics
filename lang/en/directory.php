@@ -3,8 +3,6 @@
 return [
     'subtitle' => 'Full list of social media handles for every church and personal account.',
     'search_placeholder' => 'Search name or city…',
-    'add_church' => '+ Add Church',
-    'add_personal' => '+ Add Personal',
     'add_account' => '+ Account',
     'no_churches' => 'No church data yet.',
     'no_people' => 'No personal accounts yet.',
@@ -14,4 +12,6 @@ return [
     'auto_fetch_auto' => 'Automatic',
     'auto_fetch_manual' => 'Manual',
     'manual_badge_title' => 'Weekly auto-fetch is off — data is entered manually',
+    'hide_empty_churches' => 'Hide churches without data',
+    'hide_empty_people' => 'Hide personal accounts without social media data',
 ];

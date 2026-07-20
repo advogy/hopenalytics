@@ -1,0 +1,61 @@
+<?php
+
+return [
+    'login_title' => 'Masuk',
+    'login_subtitle' => 'Masuk untuk mengelola akun media sosial Anda.',
+    'email' => 'Email',
+    'password' => 'Kata Sandi',
+    'login_button' => 'Masuk',
+    'login_failed' => 'Email atau kata sandi salah.',
+    'login_unverified' => 'Email Anda belum diverifikasi. Silakan cek kode OTP yang dikirim ke email Anda.',
+    'account_deactivated' => 'Akun Anda telah dinonaktifkan. Hubungi admin.',
+    'no_account_yet' => 'Belum punya akun?',
+    'register_link' => 'Daftar di sini',
+    'forgot_password_link' => 'Lupa kata sandi?',
+
+    'register_title' => 'Daftar Akun',
+    'register_subtitle' => 'Daftar untuk mulai mengelola akun media sosial personal Anda.',
+    'name' => 'Nama Lengkap',
+    'register_button' => 'Daftar',
+    'already_have_account' => 'Sudah punya akun?',
+    'login_link' => 'Masuk di sini',
+
+    'verify_otp_title' => 'Verifikasi Email',
+    'verify_otp_subtitle' => 'Kami telah mengirim kode verifikasi 6 digit ke :email.',
+    'otp_code' => 'Kode OTP',
+    'verify_otp_button' => 'Verifikasi',
+    'otp_invalid' => 'Kode OTP salah atau sudah kedaluwarsa.',
+    'otp_expired' => 'Kode OTP sudah kedaluwarsa. Silakan kirim ulang.',
+    'resend_otp' => 'Kirim ulang kode',
+    'otp_resent' => 'Kode OTP baru telah dikirim ke email Anda.',
+    'otp_verified' => 'Email berhasil diverifikasi. Selamat datang!',
+    'no_pending_registration' => 'Tidak ada pendaftaran yang menunggu verifikasi.',
+
+    'otp_mail_subject' => '[:app] Kode Verifikasi',
+    'otp_mail_greeting' => 'Halo :name,',
+    'otp_mail_body' => 'Gunakan kode berikut untuk memverifikasi email Anda:',
+    'otp_mail_expiry' => 'Kode ini berlaku selama 10 menit.',
+    'otp_mail_ignore' => 'Jika Anda tidak mendaftar, abaikan email ini.',
+
+    'forgot_password_title' => 'Lupa Kata Sandi',
+    'forgot_password_subtitle' => 'Masukkan email Anda, kami akan mengirim kode verifikasi untuk mengatur ulang kata sandi.',
+    'forgot_password_button' => 'Kirim Kode',
+    'back_to_login' => 'Kembali ke halaman masuk',
+    'no_pending_reset' => 'Tidak ada permintaan atur ulang kata sandi yang menunggu.',
+
+    'reset_password_title' => 'Atur Ulang Kata Sandi',
+    'reset_password_subtitle' => 'Kami telah mengirim kode verifikasi 6 digit ke :email.',
+    'new_password' => 'Kata Sandi Baru',
+    'new_password_confirmation' => 'Konfirmasi Kata Sandi Baru',
+    'reset_password_button' => 'Atur Ulang Kata Sandi',
+    'password_reset_success' => 'Kata sandi berhasil diubah. Silakan masuk dengan kata sandi baru Anda.',
+
+    'password_reset_mail_subject' => '[:app] Kode Atur Ulang Kata Sandi',
+    'password_reset_mail_greeting' => 'Halo :name,',
+    'password_reset_mail_body' => 'Gunakan kode berikut untuk mengatur ulang kata sandi Anda:',
+    'password_reset_mail_expiry' => 'Kode ini berlaku selama 10 menit.',
+    'password_reset_mail_ignore' => 'Jika Anda tidak meminta atur ulang kata sandi, abaikan email ini.',
+
+    'logout_button' => 'Keluar',
+    'my_account' => 'Akun Saya',
+];

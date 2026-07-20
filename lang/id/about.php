@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'subtitle' => ':name — Church + Analytics.',
+    'subtitle' => ':name — Hope + Analytics.',
     'description' => 'Dasbor untuk memantau dan menganalisis pergerakan media sosial gereja — pertumbuhan subscriber, followers, views, likes, dan post di YouTube, Instagram, TikTok, dan Facebook, dalam satu tempat.',
     'feature_monitoring_title' => 'Pemantauan Otomatis',
     'feature_monitoring_desc' => 'Data ditarik otomatis setiap minggu sesuai jadwal yang bisa diatur, atau kapan saja secara manual.',

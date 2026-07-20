@@ -3,8 +3,6 @@
 return [
     'subtitle' => 'Daftar lengkap handle media sosial semua gereja dan akun personal.',
     'search_placeholder' => 'Cari nama atau kota…',
-    'add_church' => '+ Tambah Gereja',
-    'add_personal' => '+ Tambah Personal',
     'add_account' => '+ Akun',
     'no_churches' => 'Belum ada data gereja.',
     'no_people' => 'Belum ada akun personal.',
@@ -14,4 +12,6 @@ return [
     'auto_fetch_auto' => 'Otomatis',
     'auto_fetch_manual' => 'Manual',
     'manual_badge_title' => 'Auto-fetch mingguan nonaktif — data diisi manual',
+    'hide_empty_churches' => 'Sembunyikan gereja tanpa data',
+    'hide_empty_people' => 'Sembunyikan personal tanpa data media sosial',
 ];

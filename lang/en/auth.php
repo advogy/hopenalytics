@@ -1,0 +1,61 @@
+<?php
+
+return [
+    'login_title' => 'Sign In',
+    'login_subtitle' => 'Sign in to manage your social media accounts.',
+    'email' => 'Email',
+    'password' => 'Password',
+    'login_button' => 'Sign In',
+    'login_failed' => 'Incorrect email or password.',
+    'login_unverified' => 'Your email hasn\'t been verified yet. Please check the OTP code sent to your email.',
+    'account_deactivated' => 'Your account has been deactivated. Contact an admin.',
+    'no_account_yet' => 'Don\'t have an account yet?',
+    'register_link' => 'Register here',
+    'forgot_password_link' => 'Forgot password?',
+
+    'register_title' => 'Create an Account',
+    'register_subtitle' => 'Register to start managing your personal social media accounts.',
+    'name' => 'Full Name',
+    'register_button' => 'Register',
+    'already_have_account' => 'Already have an account?',
+    'login_link' => 'Sign in here',
+
+    'verify_otp_title' => 'Verify Email',
+    'verify_otp_subtitle' => 'We sent a 6-digit verification code to :email.',
+    'otp_code' => 'OTP Code',
+    'verify_otp_button' => 'Verify',
+    'otp_invalid' => 'The OTP code is incorrect or has expired.',
+    'otp_expired' => 'The OTP code has expired. Please resend it.',
+    'resend_otp' => 'Resend code',
+    'otp_resent' => 'A new OTP code has been sent to your email.',
+    'otp_verified' => 'Email verified successfully. Welcome!',
+    'no_pending_registration' => 'There is no pending registration to verify.',
+
+    'otp_mail_subject' => '[:app] Verification Code',
+    'otp_mail_greeting' => 'Hi :name,',
+    'otp_mail_body' => 'Use the code below to verify your email:',
+    'otp_mail_expiry' => 'This code is valid for 10 minutes.',
+    'otp_mail_ignore' => 'If you did not register, you can ignore this email.',
+
+    'forgot_password_title' => 'Forgot Password',
+    'forgot_password_subtitle' => 'Enter your email and we\'ll send a verification code to reset your password.',
+    'forgot_password_button' => 'Send Code',
+    'back_to_login' => 'Back to sign in',
+    'no_pending_reset' => 'There is no pending password reset to verify.',
+
+    'reset_password_title' => 'Reset Password',
+    'reset_password_subtitle' => 'We sent a 6-digit verification code to :email.',
+    'new_password' => 'New Password',
+    'new_password_confirmation' => 'Confirm New Password',
+    'reset_password_button' => 'Reset Password',
+    'password_reset_success' => 'Password reset successfully. Please sign in with your new password.',
+
+    'password_reset_mail_subject' => '[:app] Password Reset Code',
+    'password_reset_mail_greeting' => 'Hi :name,',
+    'password_reset_mail_body' => 'Use the code below to reset your password:',
+    'password_reset_mail_expiry' => 'This code is valid for 10 minutes.',
+    'password_reset_mail_ignore' => 'If you did not request a password reset, you can ignore this email.',
+
+    'logout_button' => 'Sign Out',
+    'my_account' => 'My Account',
+];

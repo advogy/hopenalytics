@@ -33,21 +33,28 @@ trait BuildsLeaderboards
         ];
     }
 
-    protected function activeSocials(): Collection
+    /**
+     * $scoped = false is for the public presentation pages, which must show the same
+     * general data no matter who (if anyone) happens to be logged in while viewing them —
+     * never the viewer's own role/scope.
+     */
+    protected function activeSocials(bool $scoped = true): Collection
     {
         return ChurchSocial::query()
             ->with('church')
             ->where('is_active', true)
             ->whereHas('church', fn ($q) => $q->where('is_active', true))
+            ->when($scoped, fn ($q) => $q->visibleTo(auth()->user()))
             ->get();
     }
 
-    protected function activeSocialsPersonal(): Collection
+    protected function activeSocialsPersonal(bool $scoped = true): Collection
     {
         return ChurchSocial::query()
             ->with('person')
             ->where('is_active', true)
             ->whereHas('person', fn ($q) => $q->where('is_active', true))
+            ->when($scoped, fn ($q) => $q->visibleTo(auth()->user()))
             ->get();
     }
 
@@ -210,9 +217,9 @@ trait BuildsLeaderboards
      * views, likes, posts) that actually applies to that church's own accounts — a
      * church without a TikTok account, for example, simply isn't scored on likes.
      */
-    protected function growthScoreRows(): Collection
+    protected function growthScoreRows(bool $scoped = true): Collection
     {
-        $activeSocials = $this->activeSocials();
+        $activeSocials = $this->activeSocials($scoped);
         $metrics = ['reach', 'views', 'likes', 'posts'];
 
         $percentBySocial = [];
@@ -325,9 +332,9 @@ trait BuildsLeaderboards
      * Same composite weekly-growth score as growthScoreRows(), but per person instead
      * of per church — for the personal-accounts presentation board.
      */
-    protected function growthScoreRowsPersonal(): Collection
+    protected function growthScoreRowsPersonal(bool $scoped = true): Collection
     {
-        $activeSocials = $this->activeSocialsPersonal();
+        $activeSocials = $this->activeSocialsPersonal($scoped);
         $metrics = ['reach', 'views', 'likes', 'posts'];
 
         $percentBySocial = [];

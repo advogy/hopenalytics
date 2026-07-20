@@ -17,7 +17,7 @@ class GeocodingService
     public function geocode(string $query): ?array
     {
         $response = Http::withHeaders([
-            'User-Agent' => 'Churchnalytics/1.0 (church social media dashboard)',
+            'User-Agent' => 'Hopenalytics/1.0 (church social media dashboard)',
         ])->get(self::ENDPOINT, [
             'q' => $query,
             'format' => 'json',

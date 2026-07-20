@@ -13,12 +13,16 @@
 
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>@yield('title', 'Churchnalytics')</title>
+        <title>@yield('title', 'Hopenalytics')</title>
+
+        <link rel="icon" type="image/svg+xml" href="{{ asset('images/hopenalytics-mark.svg') }}">
 
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600,700" rel="stylesheet" />
 
         @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+        @include('partials.searchable-select')
 
         <style>
             :root { --sparkline-ring: #ffffff; }
@@ -62,48 +66,27 @@
             }
         </style>
     </head>
-    <body class="flex min-h-screen flex-col bg-[#f9f9f7] font-sans text-slate-900 antialiased dark:bg-[#0d0d0d] dark:text-slate-100">
-        <header class="sticky top-0 z-10 border-b border-black/5 bg-[#f9f9f7]/80 backdrop-blur-md dark:border-white/5 dark:bg-[#0d0d0d]/80">
+    <body class="flex min-h-screen flex-col bg-[#f8f4ec] font-sans text-slate-900 antialiased dark:bg-[#16130f] dark:text-slate-100">
+        <header class="sticky top-0 z-10 border-b border-black/5 bg-[#f8f4ec]/80 backdrop-blur-md dark:border-white/5 dark:bg-[#16130f]/80">
             <div class="mx-auto max-w-6xl px-4 sm:px-6">
-                <div class="flex items-center justify-between py-4">
+                <div class="flex items-center justify-between py-2">
                     <a href="{{ route('churches.index') }}" class="flex items-center gap-2.5">
-                        <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-violet-600 text-sm font-bold text-white shadow-sm">
-                            CN
-                        </span>
-                        <span class="hidden text-lg font-semibold tracking-tight sm:inline">Churchnalytics</span>
+                        <x-logo-mark class="h-16 w-16 shrink-0 text-blue-600 dark:text-[#f3ead9]" />
+                        <span class="hidden text-xl font-semibold tracking-tight sm:inline">Hopenalytics</span>
                     </a>
 
                     <div class="flex items-center gap-2 sm:gap-4">
                         <div class="hidden items-center gap-4 lg:flex">
-                            <a href="{{ route('churches.directory') }}" class="text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
-                                {{ __('nav.directory') }}
-                            </a>
-                            <a href="{{ route('churches.analytics') }}" class="text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
-                                {{ __('nav.analytics') }}
-                            </a>
+                            @can('browse-directory-analytics')
+                                <a href="{{ route('churches.directory') }}" class="text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
+                                    {{ __('nav.directory') }}
+                                </a>
+                                <a href="{{ route('churches.analytics') }}" class="text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
+                                    {{ __('nav.analytics') }}
+                                </a>
+                            @endcan
                             <a href="{{ route('churches.presentation') }}" target="_blank" class="text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
                                 {{ __('nav.presentation') }}
-                            </a>
-                            <a
-                                href="{{ route('about') }}"
-                                title="{{ __('nav.about') }}"
-                                class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-black/5 bg-white text-slate-600 shadow-sm transition hover:bg-slate-50 dark:border-white/5 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-                            >
-                                <x-icon name="information-circle" class="h-5 w-5" />
-                            </a>
-                            <a
-                                href="{{ route('queue.index') }}"
-                                title="{{ __('nav.queue') }}"
-                                class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-black/5 bg-white text-slate-600 shadow-sm transition hover:bg-slate-50 dark:border-white/5 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-                            >
-                                <x-icon name="queue-list" class="h-5 w-5" />
-                            </a>
-                            <a
-                                href="{{ route('settings.edit') }}"
-                                title="{{ __('nav.settings') }}"
-                                class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-black/5 bg-white text-slate-600 shadow-sm transition hover:bg-slate-50 dark:border-white/5 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
-                            >
-                                <x-icon name="cog-6-tooth" class="h-5 w-5" />
                             </a>
                         </div>
 
@@ -126,6 +109,94 @@
                             <x-icon name="moon" class="block h-5 w-5 dark:hidden" />
                         </button>
 
+                        <div class="hidden lg:flex lg:items-center">
+                            @auth
+                                <div class="relative" data-account-menu>
+                                    <button
+                                        type="button"
+                                        data-account-menu-toggle
+                                        aria-expanded="false"
+                                        class="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition-colors duration-150 hover:bg-black/5 dark:text-slate-300 dark:hover:bg-white/10"
+                                    >
+                                        {{ auth()->user()->name }}
+                                        <x-icon name="chevron-down" class="h-4 w-4" />
+                                    </button>
+                                    <div
+                                        data-account-menu-panel
+                                        class="absolute right-0 top-full z-20 mt-2 hidden w-64 rounded-xl border border-black/5 bg-white p-1.5 shadow-lg dark:border-white/5 dark:bg-slate-900"
+                                    >
+                                        <div class="mb-1 border-b border-black/5 px-3 py-3 dark:border-white/5">
+                                            <p class="truncate text-sm font-semibold text-slate-900 dark:text-white">{{ auth()->user()->name }}</p>
+                                            <p class="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">{{ auth()->user()->email }}</p>
+                                        </div>
+                                        <a href="{{ route('profile.edit') }}" class="flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                                            <span class="flex items-center gap-2">
+                                                <x-icon name="user" class="h-4 w-4 shrink-0 text-slate-400" />
+                                                Profil Saya
+                                            </span>
+                                            <x-role-badge :role="auth()->user()->role" />
+                                        </a>
+
+                                        @canany(['manage-queue', 'manage-settings', 'delegate-users', 'manage-hierarchy', 'browse-directory-analytics'])
+                                            <div class="my-1 border-t border-black/5 dark:border-white/5"></div>
+                                            @can('manage-queue')
+                                                <a href="{{ route('queue.index') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                                                    <x-icon name="queue-list" class="h-4 w-4 shrink-0 text-slate-400" />
+                                                    {{ __('nav.queue') }}
+                                                </a>
+                                            @endcan
+                                            @can('delegate-users')
+                                                <a href="{{ route('admin.users.index') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                                                    <x-icon name="users" class="h-4 w-4 shrink-0 text-slate-400" />
+                                                    Kelola Pengguna
+                                                </a>
+                                            @endcan
+                                            @can('manage-hierarchy')
+                                                <a href="{{ route('admin.hierarchy.index') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                                                    <x-icon name="building-office" class="h-4 w-4 shrink-0 text-slate-400" />
+                                                    Kelola Organisasi
+                                                </a>
+                                            @endcan
+                                            @can('browse-directory-analytics')
+                                                <a href="{{ route('admin.people.index') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                                                    <x-icon name="user" class="h-4 w-4 shrink-0 text-slate-400" />
+                                                    Kelola Personal
+                                                </a>
+                                            @endcan
+                                            @can('manage-settings')
+                                                <a href="{{ route('settings.edit') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                                                    <x-icon name="cog-6-tooth" class="h-4 w-4 shrink-0 text-slate-400" />
+                                                    {{ __('nav.settings') }}
+                                                </a>
+                                            @endcan
+                                        @endcanany
+
+                                        <div class="my-1 border-t border-black/5 dark:border-white/5"></div>
+                                        <a href="{{ route('about') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                                            <x-icon name="information-circle" class="h-4 w-4 shrink-0 text-slate-400" />
+                                            {{ __('nav.about') }}
+                                        </a>
+                                        <form method="POST" action="{{ route('logout') }}">
+                                            @csrf
+                                            <button type="submit" class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                                                <x-icon name="arrow-right-on-rectangle" class="h-4 w-4 shrink-0 text-slate-400" />
+                                                {{ __('nav.logout') }}
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            @else
+                                <div class="flex items-center gap-4">
+                                    <a href="{{ route('login') }}" class="text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
+                                        {{ __('nav.login') }}
+                                    </a>
+                                    <a href="{{ route('register') }}" class="text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
+                                        {{ __('nav.register') }}
+                                    </a>
+                                </div>
+                            @endauth
+                        </div>
+
                         <button
                             id="mobile-menu-toggle"
                             type="button"
@@ -142,24 +213,86 @@
 
                 <div id="mobile-menu" class="hidden border-t border-black/5 pb-4 lg:hidden dark:border-white/5">
                     <div class="flex flex-col gap-1 pt-3">
-                        <a href="{{ route('churches.directory') }}" class="rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
-                            {{ __('nav.directory') }}
-                        </a>
-                        <a href="{{ route('churches.analytics') }}" class="rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
-                            {{ __('nav.analytics') }}
-                        </a>
+                        @can('browse-directory-analytics')
+                            <a href="{{ route('churches.directory') }}" class="rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                                {{ __('nav.directory') }}
+                            </a>
+                            <a href="{{ route('churches.analytics') }}" class="rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                                {{ __('nav.analytics') }}
+                            </a>
+                        @endcan
                         <a href="{{ route('churches.presentation') }}" target="_blank" class="rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
                             {{ __('nav.presentation') }}
                         </a>
-                        <a href="{{ route('about') }}" class="rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
-                            {{ __('nav.about') }}
-                        </a>
-                        <a href="{{ route('queue.index') }}" class="rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
-                            {{ __('nav.queue') }}
-                        </a>
-                        <a href="{{ route('settings.edit') }}" class="rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
-                            {{ __('nav.settings') }}
-                        </a>
+                        @auth
+                            <div class="mt-2 border-t border-black/5 pt-3 dark:border-white/5">
+                                <div class="px-3 pb-2">
+                                    <p class="truncate text-sm font-semibold text-slate-900 dark:text-white">{{ auth()->user()->name }}</p>
+                                    <p class="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">{{ auth()->user()->email }}</p>
+                                </div>
+                                <a href="{{ route('profile.edit') }}" class="flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                                    <span class="flex items-center gap-2">
+                                        <x-icon name="user" class="h-4 w-4 shrink-0 text-slate-400" />
+                                        Profil Saya
+                                    </span>
+                                    <x-role-badge :role="auth()->user()->role" />
+                                </a>
+
+                                @canany(['manage-queue', 'manage-settings', 'delegate-users', 'manage-hierarchy', 'browse-directory-analytics'])
+                                    <div class="my-1 border-t border-black/5 dark:border-white/5"></div>
+                                    @can('manage-queue')
+                                        <a href="{{ route('queue.index') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                                            <x-icon name="queue-list" class="h-4 w-4 shrink-0 text-slate-400" />
+                                            {{ __('nav.queue') }}
+                                        </a>
+                                    @endcan
+                                    @can('delegate-users')
+                                        <a href="{{ route('admin.users.index') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                                            <x-icon name="users" class="h-4 w-4 shrink-0 text-slate-400" />
+                                            Kelola Pengguna
+                                        </a>
+                                    @endcan
+                                    @can('manage-hierarchy')
+                                        <a href="{{ route('admin.hierarchy.index') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                                            <x-icon name="building-office" class="h-4 w-4 shrink-0 text-slate-400" />
+                                            Kelola Organisasi
+                                        </a>
+                                    @endcan
+                                    @can('browse-directory-analytics')
+                                        <a href="{{ route('admin.people.index') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                                            <x-icon name="user" class="h-4 w-4 shrink-0 text-slate-400" />
+                                            Kelola Personal
+                                        </a>
+                                    @endcan
+                                    @can('manage-settings')
+                                        <a href="{{ route('settings.edit') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                                            <x-icon name="cog-6-tooth" class="h-4 w-4 shrink-0 text-slate-400" />
+                                            {{ __('nav.settings') }}
+                                        </a>
+                                    @endcan
+                                @endcanany
+
+                                <div class="my-1 border-t border-black/5 dark:border-white/5"></div>
+                                <a href="{{ route('about') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                                    <x-icon name="information-circle" class="h-4 w-4 shrink-0 text-slate-400" />
+                                    {{ __('nav.about') }}
+                                </a>
+                                <form method="POST" action="{{ route('logout') }}">
+                                    @csrf
+                                    <button type="submit" class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                                        <x-icon name="arrow-right-on-rectangle" class="h-4 w-4 shrink-0 text-slate-400" />
+                                        {{ __('nav.logout') }}
+                                    </button>
+                                </form>
+                            </div>
+                        @else
+                            <a href="{{ route('login') }}" class="rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                                {{ __('nav.login') }}
+                            </a>
+                            <a href="{{ route('register') }}" class="rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                                {{ __('nav.register') }}
+                            </a>
+                        @endauth
                     </div>
                 </div>
             </div>
@@ -293,6 +426,34 @@
             })();
 
             (function () {
+                var wrapper = document.querySelector('[data-account-menu]');
+                if (! wrapper) return;
+
+                var toggle = wrapper.querySelector('[data-account-menu-toggle]');
+                var panel = wrapper.querySelector('[data-account-menu-panel]');
+
+                toggle.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    var isOpen = panel.classList.toggle('hidden') === false;
+                    toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+                });
+
+                document.addEventListener('click', function (e) {
+                    if (! panel.classList.contains('hidden') && ! wrapper.contains(e.target)) {
+                        panel.classList.add('hidden');
+                        toggle.setAttribute('aria-expanded', 'false');
+                    }
+                });
+
+                document.addEventListener('keydown', function (e) {
+                    if (e.key === 'Escape' && ! panel.classList.contains('hidden')) {
+                        panel.classList.add('hidden');
+                        toggle.setAttribute('aria-expanded', 'false');
+                    }
+                });
+            })();
+
+            (function () {
                 var dialog = document.getElementById('confirm-dialog');
                 var messageEl = dialog.querySelector('[data-confirm-message]');
                 var acceptBtn = dialog.querySelector('[data-confirm-accept]');
@@ -325,7 +486,7 @@
             })();
 
             (function () {
-                var STORAGE_KEY = 'churchnalytics.refreshBatch';
+                var STORAGE_KEY = 'hopenalytics.refreshBatch';
                 var widget = document.getElementById('refresh-progress-widget');
                 var titleEl = widget.querySelector('[data-progress-title]');
                 var textEl = widget.querySelector('[data-progress-text]');
@@ -508,5 +669,8 @@
                 });
             })();
         </script>
+
+        @include('partials.disable-on-submit')
+        @include('partials.password-toggle')
     </body>
 </html>

@@ -431,6 +431,7 @@ class ExportController extends Controller
         if ($type !== 'personal') {
             $churches = Church::query()
                 ->where('is_active', true)
+                ->visibleTo(auth()->user())
                 ->with(['socials' => fn ($q) => $q
                     ->where('is_active', true)
                     ->when($platform, fn ($query) => $query->where('platform', $platform)),
@@ -458,6 +459,7 @@ class ExportController extends Controller
         if ($type !== 'gereja') {
             $people = Person::query()
                 ->where('is_active', true)
+                ->visibleTo(auth()->user())
                 ->with(['socials' => fn ($q) => $q
                     ->where('is_active', true)
                     ->when($platform, fn ($query) => $query->where('platform', $platform)),
@@ -759,6 +761,7 @@ class ExportController extends Controller
     {
         $churches = Church::query()
             ->where('is_active', true)
+            ->visibleTo(auth()->user())
             ->with(['socials' => fn ($q) => $q->where('is_active', true)->with('latestStat')])
             ->when($churchId, fn ($q) => $q->where('id', $churchId))
             ->orderBy('name')
@@ -812,6 +815,7 @@ class ExportController extends Controller
     {
         $people = Person::query()
             ->where('is_active', true)
+            ->visibleTo(auth()->user())
             ->with(['socials' => fn ($q) => $q->where('is_active', true)->with('latestStat')])
             ->when($personId, fn ($q) => $q->where('id', $personId))
             ->orderBy('name')
@@ -879,18 +883,56 @@ class ExportController extends Controller
         $filenameBase = Str::slug(config('app.name')).'_'.$filenameBase.'_'.Carbon::now('Asia/Jakarta')->format('Y-m-d');
 
         return match ($format) {
-            'pdf' => Pdf::setOptions(['isPhpEnabled' => true])
-                ->loadView('exports.pdf', ['dataset' => $dataset, 'footer' => $footer])
-                ->download("{$filenameBase}.pdf"),
+            'pdf' => $this->downloadPdf($dataset, $footer, "{$filenameBase}.pdf"),
             'word' => $this->downloadWord($dataset, $footer, "{$filenameBase}.docx"),
             'excel' => $this->downloadExcel($dataset, $footer, "{$filenameBase}.xlsx"),
             default => abort(404),
         };
     }
 
+    /**
+     * The footer (divider line, left-aligned footer text, right-aligned page number) is
+     * drawn here via the canvas's page_script() rather than the view's old inline
+     * <script type="text/php"> tag. That tag only ever ran once — wherever that DOM node
+     * happened to land during rendering (in practice, the last page) — since inline PHP
+     * script nodes aren't looped per page the way a canvas-level page_script() callback is.
+     * Registering it here also hands us the real, final $pageNumber/$pageCount at draw time
+     * for each page, so the page-number text can be measured and right-aligned against its
+     * actual width instead of the literal "{PAGE_NUM}"/"{PAGE_COUNT}" token text (which is
+     * longer than the digits that replace it, leaving the text short of the margin).
+     *
+     * page_script() loops over whatever pages already exist on the canvas *right when it's
+     * called* — it doesn't defer to run later. Registering it before render() sees only the
+     * single page that exists prior to layout/pagination, so every page created afterward as
+     * content overflows (page 2, 3, ...) would silently get no footer at all. render() must
+     * run first so every page actually exists, then page_script() can reach all of them;
+     * download()'s own render() call is a no-op afterward since it only renders once.
+     */
+    private function downloadPdf(array $dataset, string $footer, string $filename): Response
+    {
+        $pdf = Pdf::loadView('exports.pdf', ['dataset' => $dataset]);
+        $pdf->render();
+
+        $pdf->getDomPDF()->getCanvas()->page_script(function ($pageNumber, $pageCount, $canvas, $fontMetrics) use ($footer) {
+            $font = $fontMetrics->getFont('Helvetica', 'normal');
+            $size = 8;
+            $color = [0.58, 0.64, 0.72];
+            $y = $canvas->get_height() - 34;
+
+            $canvas->line(40, $y - 8, $canvas->get_width() - 40, $y - 8, [0.89, 0.91, 0.94], 1);
+            $canvas->text(40, $y, $footer, $font, $size, $color);
+
+            $pageText = "Halaman {$pageNumber} dari {$pageCount}";
+            $pageWidth = $fontMetrics->getTextWidth($pageText, $font, $size);
+            $canvas->text($canvas->get_width() - 40 - $pageWidth, $y, $pageText, $font, $size, $color);
+        });
+
+        return $pdf->download($filename);
+    }
+
     private function footerText(): string
     {
-        $text = 'Diunduh dari Churchnalytics pada '.Carbon::now('Asia/Jakarta')->translatedFormat('d M Y H:i').' WIB';
+        $text = 'Diunduh dari Hopenalytics pada '.Carbon::now('Asia/Jakarta')->translatedFormat('d M Y H:i').' WIB';
 
         if (auth()->check()) {
             $text .= ' oleh '.auth()->user()->name;

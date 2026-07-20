@@ -27,6 +27,7 @@ class ChurchRefreshController extends Controller
                 ->whereHas('church', fn ($q2) => $q2->where('is_active', true))
                 ->orWhereHas('person', fn ($q2) => $q2->where('is_active', true)),
             )
+            ->visibleTo($request->user())
             ->get();
 
         $delaySeconds = 0;
@@ -93,6 +94,11 @@ class ChurchRefreshController extends Controller
      */
     public function single(Request $request, ChurchSocial $social): RedirectResponse|JsonResponse
     {
+        abort_unless(
+            ChurchSocial::whereKey($social->id)->visibleTo($request->user())->exists(),
+            404
+        );
+
         if (! $social->is_auto_fetch) {
             $message = "Akun {$social->display_handle} ditandai manual dan tidak bisa di-refresh otomatis.";
 

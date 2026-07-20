@@ -9,24 +9,26 @@
             <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('dashboard.subtitle') }}</p>
         </div>
 
-        <div class="flex items-center gap-3">
-            <form
-                method="POST"
-                action="{{ route('socials.refresh-all') }}"
-                data-confirm="{{ __('dashboard.refresh_confirm', ['count' => $totalSocials]) }}"
-                data-progress-form
-            >
-                @csrf
-                <button
-                    type="submit"
-                    data-progress-button
-                    class="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
+        @can('trigger-refresh')
+            <div class="flex items-center gap-3">
+                <form
+                    method="POST"
+                    action="{{ route('socials.refresh-all') }}"
+                    data-confirm="{{ __('dashboard.refresh_confirm', ['count' => $totalSocials]) }}"
+                    data-progress-form
                 >
-                    <x-icon name="arrow-path" class="h-4 w-4" />
-                    {{ __('dashboard.refresh_button') }}
-                </button>
-            </form>
-        </div>
+                    @csrf
+                    <button
+                        type="submit"
+                        data-progress-button
+                        class="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
+                    >
+                        <x-icon name="arrow-path" class="h-4 w-4" />
+                        {{ __('dashboard.refresh_button') }}
+                    </button>
+                </form>
+            </div>
+        @endcan
     </div>
 
     <div class="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

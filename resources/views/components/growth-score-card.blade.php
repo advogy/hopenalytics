@@ -26,7 +26,7 @@
                 <div class="flex items-center gap-4 py-3 first:pt-0 last:pb-0">
                     <span class="w-6 shrink-0 text-right text-sm font-semibold text-slate-400 dark:text-slate-500">{{ $i + 1 }}</span>
 
-                    <span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                    <span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#f7cd9a] text-sm font-bold text-blue-600 dark:bg-violet-950/60 dark:text-[#f7cd9a]">
                         {{ mb_substr($entity->name, 0, 1) }}
                     </span>
 

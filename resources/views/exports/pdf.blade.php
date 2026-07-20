@@ -41,18 +41,5 @@
             </tbody>
         </table>
     @endif
-
-    <script type="text/php">
-        if (isset($pdf)) {
-            $footerText = {!! json_encode($footer) !!} . " \xC2\xB7 Halaman {PAGE_NUM} dari {PAGE_COUNT}";
-            $font = $fontMetrics->getFont("Helvetica", "normal");
-            $size = 8;
-            $width = $fontMetrics->getTextWidth($footerText, $font, $size);
-            $x = ($pdf->get_width() - $width) / 2;
-            $y = $pdf->get_height() - 34;
-            $pdf->page_line(40, $y - 8, $pdf->get_width() - 40, $y - 8, [0.89, 0.91, 0.94], 1);
-            $pdf->page_text($x, $y, $footerText, $font, $size, [0.58, 0.64, 0.72]);
-        }
-    </script>
 </body>
 </html>

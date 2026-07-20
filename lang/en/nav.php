@@ -5,7 +5,7 @@ return [
     'analytics' => 'Analytics & Charts',
     'presentation' => 'Presentation',
     'about' => 'About',
-    'queue' => 'Queue',
+    'queue' => 'Queue Monitoring',
     'settings' => 'Settings',
     'toggle_theme' => 'Toggle light/dark theme',
     'open_menu' => 'Open menu',
@@ -19,4 +19,8 @@ return [
     'footer_copyright' => 'All rights reserved.',
     'footer_developer' => 'Developed by',
     'footer_version' => 'v:version',
+    'my_account' => 'My Account',
+    'login' => 'Sign In',
+    'register' => 'Register',
+    'logout' => 'Sign Out',
 ];

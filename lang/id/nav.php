@@ -5,7 +5,7 @@ return [
     'analytics' => 'Analitik & Grafik',
     'presentation' => 'Presentasi',
     'about' => 'Tentang',
-    'queue' => 'Antrean',
+    'queue' => 'Monitoring Antrean',
     'settings' => 'Pengaturan',
     'toggle_theme' => 'Ganti tema terang/gelap',
     'open_menu' => 'Buka menu',
@@ -19,4 +19,8 @@ return [
     'footer_copyright' => 'Seluruh hak cipta dilindungi.',
     'footer_developer' => 'Dikembangkan oleh',
     'footer_version' => 'v:version',
+    'my_account' => 'Akun Saya',
+    'login' => 'Masuk',
+    'register' => 'Daftar',
+    'logout' => 'Keluar',
 ];

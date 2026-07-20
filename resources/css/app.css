@@ -10,4 +10,37 @@
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
+
+    /*
+     * Brand palette from the Hopenalytics mark (sunrise disc + growth line) — replaces
+     * Tailwind's default blue/violet scales outright rather than introducing new color
+     * names, so every existing `text-blue-600`, `bg-blue-700`, `from-blue-500 to-violet-600`
+     * etc. across the app picks up the new palette with no per-view changes needed.
+     * blue-600 (the most-used shade — primary buttons/links) and violet-600 (the gradient
+     * badge's second stop) are pinned to the mark's exact Ink/Dawn hex values; the rest of
+     * each ramp is derived around those anchors.
+     */
+    --color-blue-50: #f4f7fb;
+    --color-blue-100: #e5ecf5;
+    --color-blue-200: #c3d3ea;
+    --color-blue-300: #95b2da;
+    --color-blue-400: #6a91c8;
+    --color-blue-500: #32598f;
+    --color-blue-600: #1d3557;
+    --color-blue-700: #152842;
+    --color-blue-800: #0f1e33;
+    --color-blue-900: #0b1728;
+    --color-blue-950: #07101c;
+
+    --color-violet-50: #fdf3ec;
+    --color-violet-100: #fbe4d4;
+    --color-violet-200: #f6c8a8;
+    --color-violet-300: #efa578;
+    --color-violet-400: #e99767;
+    --color-violet-500: #e6864f;
+    --color-violet-600: #df753a;
+    --color-violet-700: #bf5622;
+    --color-violet-800: #96431c;
+    --color-violet-900: #6f3216;
+    --color-violet-950: #371c10;
 }

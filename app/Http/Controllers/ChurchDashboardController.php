@@ -10,6 +10,7 @@ use App\Models\ChurchStat;
 use App\Models\Person;
 use App\Support\ComparisonScope;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 class ChurchDashboardController extends Controller
 {
@@ -19,6 +20,7 @@ class ChurchDashboardController extends Controller
     {
         $churches = Church::query()
             ->where('is_active', true)
+            ->visibleTo(auth()->user())
             ->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat')])
             ->orderBy('name')
             ->get();
@@ -44,6 +46,7 @@ class ChurchDashboardController extends Controller
 
         $people = Person::query()
             ->where('is_active', true)
+            ->visibleTo(auth()->user())
             ->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat')])
             ->get();
 
@@ -228,7 +231,8 @@ class ChurchDashboardController extends Controller
             ->where(fn ($q) => $q
                 ->whereHas('church', fn ($q2) => $q2->where('is_active', true))
                 ->orWhereHas('person', fn ($q2) => $q2->where('is_active', true)),
-            );
+            )
+            ->visibleTo(auth()->user());
     }
 
     public function analytics(Request $request)
@@ -237,13 +241,14 @@ class ChurchDashboardController extends Controller
 
         $churches = Church::query()
             ->where('is_active', true)
+            ->visibleTo(auth()->user())
             ->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat')])
             ->orderBy('name')
             ->get();
 
         $selectedChurchId = $request->query('church_id');
 
-        $growthOverTimeChurch = $this->growthOverTime('church_id', 'churches', $selectedChurchId, $selectedPlatform);
+        $growthOverTimeChurch = $this->growthOverTime('church_id', 'churches', $selectedChurchId, $selectedPlatform, $churches->pluck('id'));
 
         $filteredChurches = $churches
             ->when($selectedChurchId, fn ($collection) => $collection->where('id', (int) $selectedChurchId))
@@ -253,13 +258,14 @@ class ChurchDashboardController extends Controller
 
         $people = Person::query()
             ->where('is_active', true)
+            ->visibleTo(auth()->user())
             ->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat')])
             ->orderBy('name')
             ->get();
 
         $selectedPersonId = $request->query('person_id');
 
-        $growthOverTimePersonal = $this->growthOverTime('person_id', 'people', $selectedPersonId, $selectedPlatform);
+        $growthOverTimePersonal = $this->growthOverTime('person_id', 'people', $selectedPersonId, $selectedPlatform, $people->pluck('id'));
 
         $filteredPeople = $people
             ->when($selectedPersonId, fn ($collection) => $collection->where('id', (int) $selectedPersonId))
@@ -284,14 +290,17 @@ class ChurchDashboardController extends Controller
      * Weekly aggregate stats (reach/views/likes/posts) for church- or person-owned accounts.
      * $ownerColumn is 'church_id' or 'person_id' on church_socials; $ownerTable is the matching
      * owner table ('churches' or 'people') — both are internal constants, never user input.
+     * $visibleIds restricts to IDs the viewing user's role/scope may see (pre-resolved via
+     * Church::visibleTo()/Person::visibleTo(), rather than duplicating that hierarchy SQL here).
      */
-    private function growthOverTime(string $ownerColumn, string $ownerTable, ?string $ownerId, ?string $platform)
+    private function growthOverTime(string $ownerColumn, string $ownerTable, ?string $ownerId, ?string $platform, Collection $visibleIds)
     {
         return ChurchStat::query()
             ->join('church_socials', 'church_socials.id', '=', 'church_stats.church_social_id')
             ->join($ownerTable, "{$ownerTable}.id", '=', "church_socials.{$ownerColumn}")
             ->where('church_socials.is_active', true)
             ->where("{$ownerTable}.is_active", true)
+            ->whereIn("{$ownerTable}.id", $visibleIds)
             ->when($ownerId, fn ($query) => $query->where("{$ownerTable}.id", $ownerId))
             ->when($platform, fn ($query) => $query->where('church_socials.platform', $platform))
             ->selectRaw(
@@ -311,37 +320,48 @@ class ChurchDashboardController extends Controller
         $selectedPlatform = $request->query('platform');
         $search = trim((string) $request->query('search'));
         $autoFetch = in_array($request->query('auto_fetch'), ['auto', 'manual'], true) ? $request->query('auto_fetch') : null;
+        $hideEmptyChurches = $request->boolean('hide_empty_churches');
+        $hideEmptyPeople = $request->boolean('hide_empty_people');
         $activeTab = $request->query('tab') === 'personal' ? 'personal' : 'gereja';
+
+        // Shared with whereHas() below so "no data" means the same thing as what the eager
+        // load actually shows in the account columns — not just "no accounts at all" while
+        // ignoring the platform/auto_fetch filters currently applied.
+        $socialsFilter = fn ($query) => $query
+            ->where('is_active', true)
+            ->when($selectedPlatform, fn ($q) => $q->where('platform', $selectedPlatform))
+            ->when($autoFetch, fn ($q) => $q->where('is_auto_fetch', $autoFetch === 'auto'));
 
         $churches = Church::query()
             ->where('is_active', true)
+            ->visibleTo(auth()->user())
             ->when($search, fn ($q) => $q->where(fn ($q2) => $q2
                 ->where('name', 'like', "%{$search}%")
                 ->orWhere('city', 'like', "%{$search}%"),
             ))
-            ->with(['socials' => fn ($query) => $query
-                ->where('is_active', true)
-                ->when($selectedPlatform, fn ($q) => $q->where('platform', $selectedPlatform))
-                ->when($autoFetch, fn ($q) => $q->where('is_auto_fetch', $autoFetch === 'auto')),
-            ])
+            ->when($hideEmptyChurches, fn ($q) => $q->whereHas('socials', $socialsFilter))
+            ->with(['socials' => $socialsFilter])
             ->orderBy('name')
             ->paginate(20, ['*'], 'churches_page')
-            ->withQueryString();
+            ->withQueryString()
+            // Tab switching is client-side only (no reload), so a link built from the request
+            // that first rendered the page would still point at whatever tab was active then —
+            // force it back to "gereja" regardless.
+            ->appends(['tab' => 'gereja']);
 
         $people = Person::query()
             ->where('is_active', true)
+            ->visibleTo(auth()->user())
             ->when($search, fn ($q) => $q->where(fn ($q2) => $q2
                 ->where('name', 'like', "%{$search}%")
                 ->orWhere('city', 'like', "%{$search}%"),
             ))
-            ->with(['socials' => fn ($query) => $query
-                ->where('is_active', true)
-                ->when($selectedPlatform, fn ($q) => $q->where('platform', $selectedPlatform))
-                ->when($autoFetch, fn ($q) => $q->where('is_auto_fetch', $autoFetch === 'auto')),
-            ])
+            ->when($hideEmptyPeople, fn ($q) => $q->whereHas('socials', $socialsFilter))
+            ->with(['socials' => $socialsFilter])
             ->orderBy('name')
             ->paginate(20, ['*'], 'people_page')
-            ->withQueryString();
+            ->withQueryString()
+            ->appends(['tab' => 'personal']);
 
         return view('churches.directory', [
             'churches' => $churches,
@@ -349,6 +369,8 @@ class ChurchDashboardController extends Controller
             'selectedPlatform' => $selectedPlatform,
             'search' => $search,
             'autoFetch' => $autoFetch,
+            'hideEmptyChurches' => $hideEmptyChurches,
+            'hideEmptyPeople' => $hideEmptyPeople,
             'activeTab' => $activeTab,
         ]);
     }
@@ -399,6 +421,8 @@ class ChurchDashboardController extends Controller
     {
         $countField = ['youtube' => 'subscribers_count', 'instagram' => 'followers_count', 'tiktok' => 'followers_count', 'facebook' => 'followers_count'];
 
+        // Public presentation page — always shows general data, never scoped to whoever
+        // (if anyone) happens to be logged in while it's displayed.
         $churches = Church::query()
             ->where('is_active', true)
             ->with(['socials' => fn ($q) => $q->where('is_active', true)->with('latestStat')])
@@ -431,9 +455,10 @@ class ChurchDashboardController extends Controller
 
     public function presentationGrowth()
     {
+        // Public presentation page — always unscoped, see presentation() above.
         $churches = Church::query()->where('is_active', true)->get();
 
-        $scores = $this->growthScoreRows()->keyBy(fn ($row) => $row['church']->id);
+        $scores = $this->growthScoreRows(scoped: false)->keyBy(fn ($row) => $row['church']->id);
 
         $emptyMetrics = collect(['reach' => null, 'views' => null, 'likes' => null, 'posts' => null]);
 
@@ -453,7 +478,7 @@ class ChurchDashboardController extends Controller
             'scope' => ComparisonScope::church(),
             'rows' => $rows,
             'totalEntities' => $churches->count(),
-            'totalSocials' => $this->activeSocials()->count(),
+            'totalSocials' => $this->activeSocials(scoped: false)->count(),
             'avgScore' => $scoredRows->isNotEmpty() ? round($scoredRows->avg('score'), 2) : null,
         ]);
     }
@@ -462,6 +487,7 @@ class ChurchDashboardController extends Controller
     {
         $countField = ['youtube' => 'subscribers_count', 'instagram' => 'followers_count', 'tiktok' => 'followers_count', 'facebook' => 'followers_count'];
 
+        // Public presentation page — always unscoped, see presentation() above.
         $people = Person::query()
             ->where('is_active', true)
             ->with(['socials' => fn ($q) => $q->where('is_active', true)->with('latestStat')])
@@ -494,9 +520,10 @@ class ChurchDashboardController extends Controller
 
     public function personalPresentationGrowth()
     {
+        // Public presentation page — always unscoped, see presentation() above.
         $people = Person::query()->where('is_active', true)->get();
 
-        $scores = $this->growthScoreRowsPersonal()->keyBy(fn ($row) => $row['person']->id);
+        $scores = $this->growthScoreRowsPersonal(scoped: false)->keyBy(fn ($row) => $row['person']->id);
 
         $emptyMetrics = collect(['reach' => null, 'views' => null, 'likes' => null, 'posts' => null]);
 
@@ -516,7 +543,7 @@ class ChurchDashboardController extends Controller
             'scope' => ComparisonScope::personal(),
             'rows' => $rows,
             'totalEntities' => $people->count(),
-            'totalSocials' => $this->activeSocialsPersonal()->count(),
+            'totalSocials' => $this->activeSocialsPersonal(scoped: false)->count(),
             'avgScore' => $scoredRows->isNotEmpty() ? round($scoredRows->avg('score'), 2) : null,
         ]);
     }

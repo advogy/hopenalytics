@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\SocialCategory;
 use App\Enums\SocialPlatform;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -45,6 +46,19 @@ class ChurchSocial extends Model
     public function latestStat(): HasOne
     {
         return $this->hasOne(ChurchStat::class)->latestOfMany('recorded_at');
+    }
+
+    /**
+     * Restrict a query to social accounts belonging to a church or person the given
+     * user's role/scope may see. A null $user (public presentation pages) is unrestricted —
+     * see Church::scopeVisibleTo() for why.
+     */
+    public function scopeVisibleTo(Builder $query, ?User $user): Builder
+    {
+        return $query->where(function (Builder $q) use ($user) {
+            $q->whereHas('church', fn (Builder $q2) => $q2->visibleTo($user))
+                ->orWhereHas('person', fn (Builder $q2) => $q2->visibleTo($user));
+        });
     }
 
     /**

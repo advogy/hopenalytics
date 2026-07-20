@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'subtitle' => ':name — Church + Analytics.',
+    'subtitle' => ':name — Hope + Analytics.',
     'description' => 'A dashboard for monitoring and analyzing church social media activity — subscriber, follower, view, like, and post growth on YouTube, Instagram, TikTok, and Facebook, all in one place.',
     'feature_monitoring_title' => 'Automated Monitoring',
     'feature_monitoring_desc' => 'Data is fetched automatically every week on a configurable schedule, or manually at any time.',

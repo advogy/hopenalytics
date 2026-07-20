@@ -1,9 +1,10 @@
 @props(['latitude' => null, 'longitude' => null])
 
 <div class="mb-6">
-    <label class="mb-1.5 block text-sm font-medium">
-        {{ __('common.coordinates') }} <span class="text-slate-400">{{ __('common.coordinates_hint') }}</span>
+    <label class="mb-0.5 block text-sm font-medium">
+        {{ __('common.coordinates') }}
     </label>
+    <p class="mb-1.5 text-xs text-slate-400">{{ __('common.coordinates_hint') }}</p>
     <div class="grid grid-cols-2 gap-3">
         <div>
             <input

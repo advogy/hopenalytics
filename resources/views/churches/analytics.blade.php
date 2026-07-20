@@ -167,7 +167,7 @@
 
         {{-- Hero KPI --}}
         <div class="mb-6 flex flex-wrap items-center gap-6 rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/5 dark:bg-slate-900">
-            <span class="inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-violet-600 text-white shadow-sm">
+            <span class="inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 shadow-sm dark:bg-blue-950/50 dark:text-blue-300">
                 <x-icon name="arrow-trending-up" class="h-7 w-7" />
             </span>
 
@@ -348,7 +348,7 @@
                                 <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40" data-church-row @if ($isEmpty) data-empty-row @endif>
                                     <td class="px-4 py-3">
                                         <div class="flex items-center gap-3">
-                                            <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-violet-600 text-xs font-bold text-white">
+                                            <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#f7cd9a] text-xs font-bold text-blue-600 dark:bg-violet-950/60 dark:text-[#f7cd9a]">
                                                 {{ mb_substr($church->name, 0, 1) }}
                                             </span>
                                             <div class="min-w-0">
@@ -481,7 +481,7 @@
 
         {{-- Hero KPI --}}
         <div class="mb-6 flex flex-wrap items-center gap-6 rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/5 dark:bg-slate-900">
-            <span class="inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-violet-600 text-white shadow-sm">
+            <span class="inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 shadow-sm dark:bg-blue-950/50 dark:text-blue-300">
                 <x-icon name="arrow-trending-up" class="h-7 w-7" />
             </span>
 
@@ -652,7 +652,7 @@
                                 <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40" data-person-row @if ($isEmpty) data-empty-row @endif>
                                     <td class="px-4 py-3">
                                         <div class="flex items-center gap-3">
-                                            <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-violet-600 text-xs font-bold text-white">
+                                            <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#f7cd9a] text-xs font-bold text-blue-600 dark:bg-violet-950/60 dark:text-[#f7cd9a]">
                                                 {{ mb_substr($person->name, 0, 1) }}
                                             </span>
                                             <a href="{{ route('people.show', $person) }}" class="min-w-0 font-medium hover:text-blue-600 dark:hover:text-blue-400">

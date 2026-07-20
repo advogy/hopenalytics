@@ -1,11 +1,12 @@
-{{-- Wires up [data-tab-button]/[data-tab-panel] pairs. If a hidden field carries
-     [data-tab-hidden-field], its value is kept in sync so a filter-form GET submit
-     preserves the active tab. --}}
+{{-- Wires up [data-tab-button]/[data-tab-panel] pairs. Every hidden field carrying
+     [data-tab-hidden-field] is kept in sync (a page can have more than one — e.g. a separate
+     filter <form> per tab — so a filter-form GET submit from *any* of them preserves the
+     active tab instead of only whichever hidden field happened to be first in the DOM). --}}
 <script>
     (function () {
         var buttons = document.querySelectorAll('[data-tab-button]');
         var panels = document.querySelectorAll('[data-tab-panel]');
-        var hiddenField = document.querySelector('[data-tab-hidden-field]');
+        var hiddenFields = document.querySelectorAll('[data-tab-hidden-field]');
 
         function activate(tab) {
             buttons.forEach(function (btn) {
@@ -19,7 +20,7 @@
             panels.forEach(function (panel) {
                 panel.classList.toggle('hidden', panel.dataset.tabPanel !== tab);
             });
-            if (hiddenField) hiddenField.value = tab;
+            hiddenFields.forEach(function (field) { field.value = tab; });
         }
 
         buttons.forEach(function (btn) {

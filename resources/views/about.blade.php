@@ -8,9 +8,7 @@
 
     <div class="rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/5 dark:bg-slate-900">
         <div class="mb-6 flex items-center gap-3">
-            <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-violet-600 text-sm font-bold text-white shadow-sm">
-                CN
-            </span>
+            <x-logo-mark class="h-10 w-10 shrink-0 text-blue-600 dark:text-[#f3ead9]" />
             <p class="max-w-3xl text-sm text-slate-600 dark:text-slate-300">
                 {{ __('about.description') }}
             </p>
@@ -74,35 +72,37 @@
         </div>
     </div>
 
-    <div class="mt-6 rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/5 dark:bg-slate-900">
-        <h2 class="mb-1 text-lg font-bold text-slate-900 dark:text-white">{{ __('about.score_title') }}</h2>
-        <p class="mb-6 text-sm text-slate-500 dark:text-slate-400">{{ __('about.score_intro') }}</p>
+    @if (auth()->user()->role !== null)
+        <div class="mt-6 rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/5 dark:bg-slate-900">
+            <h2 class="mb-1 text-lg font-bold text-slate-900 dark:text-white">{{ __('about.score_title') }}</h2>
+            <p class="mb-6 text-sm text-slate-500 dark:text-slate-400">{{ __('about.score_intro') }}</p>
 
-        <div class="mb-6 grid gap-5 sm:grid-cols-2">
-            <div>
-                <p class="font-medium text-slate-900 dark:text-white">{{ __('about.score_step1_title') }}</p>
-                <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('about.score_step1_desc') }}</p>
+            <div class="mb-6 grid gap-5 sm:grid-cols-2">
+                <div>
+                    <p class="font-medium text-slate-900 dark:text-white">{{ __('about.score_step1_title') }}</p>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('about.score_step1_desc') }}</p>
+                </div>
+                <div>
+                    <p class="font-medium text-slate-900 dark:text-white">{{ __('about.score_step2_title') }}</p>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('about.score_step2_desc') }}</p>
+                </div>
             </div>
-            <div>
-                <p class="font-medium text-slate-900 dark:text-white">{{ __('about.score_step2_title') }}</p>
-                <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('about.score_step2_desc') }}</p>
+
+            <div class="mb-6 rounded-xl bg-slate-50 p-4 dark:bg-slate-800/60">
+                <p class="mb-1 text-sm font-medium text-slate-900 dark:text-white">{{ __('about.score_example_title') }}</p>
+                <p class="text-sm text-slate-600 dark:text-slate-300">{{ __('about.score_example_desc') }}</p>
+            </div>
+
+            <div class="grid gap-5 sm:grid-cols-2">
+                <div>
+                    <p class="font-medium text-slate-900 dark:text-white">{{ __('about.score_why_title') }}</p>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('about.score_why_desc') }}</p>
+                </div>
+                <div>
+                    <p class="font-medium text-slate-900 dark:text-white">{{ __('about.score_accounts_title') }}</p>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('about.score_accounts_desc') }}</p>
+                </div>
             </div>
         </div>
-
-        <div class="mb-6 rounded-xl bg-slate-50 p-4 dark:bg-slate-800/60">
-            <p class="mb-1 text-sm font-medium text-slate-900 dark:text-white">{{ __('about.score_example_title') }}</p>
-            <p class="text-sm text-slate-600 dark:text-slate-300">{{ __('about.score_example_desc') }}</p>
-        </div>
-
-        <div class="grid gap-5 sm:grid-cols-2">
-            <div>
-                <p class="font-medium text-slate-900 dark:text-white">{{ __('about.score_why_title') }}</p>
-                <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('about.score_why_desc') }}</p>
-            </div>
-            <div>
-                <p class="font-medium text-slate-900 dark:text-white">{{ __('about.score_accounts_title') }}</p>
-                <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('about.score_accounts_desc') }}</p>
-            </div>
-        </div>
-    </div>
+    @endif
 @endsection
