@@ -5,8 +5,8 @@
 @section('content')
     <div class="mb-6 flex items-center justify-between">
         <div>
-            <h1 class="mb-1 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{{ __('common.church') }}</h1>
-            <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('dashboard.subtitle') }}</p>
+            <h1 class="mb-1 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Dashboard</h1>
+            <p class="text-sm text-slate-500 dark:text-slate-400">{{ $scopeLabel }}</p>
         </div>
 
         @can('trigger-refresh')
@@ -31,7 +31,7 @@
         @endcan
     </div>
 
-    <div class="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <x-stat-card
             :href="route('churches.directory', ['tab' => 'gereja'])"
             icon="building-office"
@@ -39,16 +39,31 @@
             :value="$totalChurches"
         />
         <x-stat-card
+            :href="route('churches.directory', ['tab' => 'institusi'])"
+            icon="building-office"
+            :label="__('dashboard.stat_institutions')"
+            :value="$totalInstitutions"
+        />
+        <x-stat-card
             :href="route('churches.directory', ['tab' => 'personal'])"
             icon="user"
             :label="__('dashboard.stat_people')"
             :value="$totalPeople"
         />
+    </div>
+
+    <div class="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <x-stat-card
             :href="route('churches.directory', ['tab' => 'gereja'])"
             icon="globe-alt"
             :label="__('dashboard.stat_church_socials')"
             :value="$totalSocials"
+        />
+        <x-stat-card
+            :href="route('churches.directory', ['tab' => 'institusi'])"
+            icon="globe-alt"
+            :label="__('dashboard.stat_institution_socials')"
+            :value="$totalInstitutionSocials"
         />
         <x-stat-card
             :href="route('churches.directory', ['tab' => 'personal'])"
@@ -58,7 +73,7 @@
         />
     </div>
 
-    <div class="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <x-stat-card
             :href="route('churches.leaderboard', ['metric' => 'reach', 'sort' => 'value'])"
             icon="arrow-trending-up"
@@ -66,22 +81,25 @@
             :value="number_format($totalReachChurch)"
         />
         <x-stat-card
+            :href="route('institutions.leaderboard', ['metric' => 'reach', 'sort' => 'value'])"
+            icon="arrow-trending-up"
+            :label="__('dashboard.stat_institution_reach')"
+            :value="number_format($totalReachInstitution)"
+        />
+        <x-stat-card
             :href="route('people.leaderboard', ['metric' => 'reach', 'sort' => 'value'])"
             icon="arrow-trending-up"
             :label="__('dashboard.stat_personal_reach')"
             :value="number_format($totalReachPersonal)"
         />
+    </div>
+
+    <div class="mb-8 grid grid-cols-1 gap-4">
         <x-stat-card
             href="#top-pertumbuhan"
             icon="arrow-trending-up"
             :label="__('dashboard.stat_weekly_growth')"
             :value="($weeklyGrowth > 0 ? '+' : '') . number_format($weeklyGrowth)"
-        />
-        <x-stat-card
-            :href="route('churches.needs-attention')"
-            icon="x-circle"
-            :label="__('dashboard.stat_needs_attention')"
-            :value="$accountsNeedingAttention"
         />
     </div>
 
@@ -123,17 +141,23 @@
                 <p class="hidden text-sm text-slate-500 dark:text-slate-400" data-map-summary="personal">
                     {{ __('dashboard.map_summary_personal', ['count' => $mapPeople->count()]) }}
                 </p>
+                <p class="hidden text-sm text-slate-500 dark:text-slate-400" data-map-summary="institusi">
+                    {{ __('dashboard.map_summary_institution', ['count' => $mapInstitutions->count()]) }}
+                </p>
                 <p class="hidden text-sm text-slate-500 dark:text-slate-400" data-map-summary="gabungan">
-                    {{ __('dashboard.map_summary_combined', ['churchCount' => $mapChurches->count(), 'peopleCount' => $mapPeople->count()]) }}
+                    {{ __('dashboard.map_summary_combined', ['churchCount' => $mapChurches->count(), 'peopleCount' => $mapPeople->count(), 'institutionCount' => $mapInstitutions->count()]) }}
                 </p>
             </div>
-            @if ($unmappedCount > 0 || $unmappedPeopleCount > 0)
+            @if ($unmappedCount > 0 || $unmappedPeopleCount > 0 || $unmappedInstitutionsCount > 0)
                 <div class="text-right text-xs text-slate-400 dark:text-slate-500">
                     @if ($unmappedCount > 0)
                         <p>{{ __('dashboard.map_unmapped_church', ['count' => $unmappedCount]) }}</p>
                     @endif
                     @if ($unmappedPeopleCount > 0)
                         <p>{{ __('dashboard.map_unmapped_personal', ['count' => $unmappedPeopleCount]) }}</p>
+                    @endif
+                    @if ($unmappedInstitutionsCount > 0)
+                        <p>{{ __('dashboard.map_unmapped_institution', ['count' => $unmappedInstitutionsCount]) }}</p>
                     @endif
                 </div>
             @endif
@@ -146,12 +170,15 @@
             <button type="button" data-map-tab="personal" class="border-b-2 px-4 py-2 text-sm font-medium transition">
                 {{ __('common.personal') }}
             </button>
+            <button type="button" data-map-tab="institusi" class="border-b-2 px-4 py-2 text-sm font-medium transition">
+                {{ __('common.institution') }}
+            </button>
             <button type="button" data-map-tab="gabungan" class="border-b-2 px-4 py-2 text-sm font-medium transition">
                 {{ __('common.combined') }}
             </button>
         </div>
 
-        @if ($mapChurches->isEmpty() && $mapPeople->isEmpty())
+        @if ($mapChurches->isEmpty() && $mapPeople->isEmpty() && $mapInstitutions->isEmpty())
             <div class="flex h-[650px] items-center justify-center rounded-xl border border-dashed border-slate-200 text-sm text-slate-400 dark:border-slate-700 dark:text-slate-500">
                 {{ __('dashboard.map_empty') }}
             </div>
@@ -160,7 +187,7 @@
         @endif
     </div>
 
-    @if ($mapChurches->isNotEmpty() || $mapPeople->isNotEmpty())
+    @if ($mapChurches->isNotEmpty() || $mapPeople->isNotEmpty() || $mapInstitutions->isNotEmpty())
         <script>
             document.addEventListener('DOMContentLoaded', function () {
                 var mapI18n = {
@@ -174,11 +201,13 @@
                     numberLocale: @json(str_replace('_', '-', app()->getLocale()) === 'id' ? 'id-ID' : 'en-US'),
                     churchLabel: @json(__('common.church')),
                     personalLabel: @json(__('common.personal')),
+                    institutionLabel: @json(__('common.institution')),
                 };
 
                 var churches = @json($mapChurches).map(function (c) { c.type = 'gereja'; return c; });
                 var people = @json($mapPeople).map(function (p) { p.type = 'personal'; return p; });
-                var combined = churches.concat(people);
+                var institutions = @json($mapInstitutions).map(function (i) { i.type = 'institusi'; return i; });
+                var combined = churches.concat(people).concat(institutions);
 
                 var map = L.map('church-map');
 
@@ -231,10 +260,12 @@
                             }, 0);
                             var churchCount = children.filter(function (m) { return m.itemType === 'gereja'; }).length;
                             var personCount = children.filter(function (m) { return m.itemType === 'personal'; }).length;
+                            var institutionCount = children.filter(function (m) { return m.itemType === 'institusi'; }).length;
 
                             var parts = [];
                             if (churchCount > 0) parts.push(churchCount + ' ' + mapI18n.churchLabel);
                             if (personCount > 0) parts.push(personCount + ' ' + mapI18n.personalLabel);
+                            if (institutionCount > 0) parts.push(institutionCount + ' ' + mapI18n.institutionLabel);
 
                             var isMixed = parts.length > 1;
                             var size = isMixed ? 76 : 60;
@@ -262,10 +293,11 @@
                     return group;
                 }
 
-                var dataByTab = { gereja: churches, personal: people, gabungan: combined };
+                var dataByTab = { gereja: churches, personal: people, institusi: institutions, gabungan: combined };
                 var layersByTab = {
                     gereja: buildClusterGroup(churches, '#2563eb'),
                     personal: buildClusterGroup(people, '#7c3aed'),
+                    institusi: buildClusterGroup(institutions, '#d97706'),
                     gabungan: buildClusterGroup(combined, '#0f172a'),
                 };
 

@@ -7,4 +7,5 @@ enum SocialCategory: string
     case Gereja = 'gereja';
     case Umum = 'umum';
     case Personal = 'personal';
+    case Organisasi = 'organisasi';
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\FindsPersonCandidates;
 use App\Models\Person;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -12,6 +13,8 @@ use Illuminate\Validation\Rules\Password;
 
 class RegisterController extends Controller
 {
+    use FindsPersonCandidates;
+
     public function showRegister()
     {
         if (Auth::check()) {
@@ -79,17 +82,25 @@ class RegisterController extends Controller
             'otp_expires_at' => null,
         ])->save();
 
+        $request->session()->forget('otp_user_id');
+
+        Auth::login($user);
+        $request->session()->regenerate();
+
+        // An admin may have already created a Person for this exact individual (e.g. before
+        // they self-registered) — offer to link to it instead of silently creating a second,
+        // disconnected record. Only shown when a plausible match actually exists; otherwise
+        // this is the same one-step flow as before.
+        if (! $user->person && $this->findPersonCandidates($user->name)->isNotEmpty()) {
+            return redirect()->route('link-person');
+        }
+
         if (! $user->person) {
             Person::create([
                 'user_id' => $user->id,
                 'name' => $user->name,
             ]);
         }
-
-        $request->session()->forget('otp_user_id');
-
-        Auth::login($user);
-        $request->session()->regenerate();
 
         return redirect()->route('profile.complete')->with('status', __('auth.otp_verified'));
     }

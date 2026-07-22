@@ -44,7 +44,7 @@ trait BuildsLeaderboards
             ->with('church')
             ->where('is_active', true)
             ->whereHas('church', fn ($q) => $q->where('is_active', true))
-            ->when($scoped, fn ($q) => $q->visibleTo(auth()->user()))
+            ->when($scoped, fn ($q) => $q->whereHas('church', fn ($q2) => $this->analyticsChurchScope($q2)))
             ->get();
     }
 
@@ -54,8 +54,86 @@ trait BuildsLeaderboards
             ->with('person')
             ->where('is_active', true)
             ->whereHas('person', fn ($q) => $q->where('is_active', true))
-            ->when($scoped, fn ($q) => $q->visibleTo(auth()->user()))
+            ->when($scoped, fn ($q) => $q->whereHas('person', fn ($q2) => $this->analyticsPersonScope($q2)))
             ->get();
+    }
+
+    /** Same shape as activeSocials()/activeSocialsPersonal(), for an institution's own organization-level accounts. */
+    protected function activeSocialsInstitution(bool $scoped = true): Collection
+    {
+        return ChurchSocial::query()
+            ->with('institution')
+            ->where('is_active', true)
+            ->whereHas('institution', fn ($q) => $q->where('is_active', true))
+            ->when($scoped, fn ($q) => $q->whereHas('institution', fn ($q2) => $this->analyticsInstitutionScope($q2)))
+            ->get();
+    }
+
+    /**
+     * Same church-visibility rule as Church::scopeVisibleTo(), except a gereja-level viewer
+     * sees their whole Daerah/Konferens instead of just their single church (the same breadth
+     * as an admin_daerah), and a plain member (role === null) sees everything unscoped —
+     * analytics/statistics pages are meant to inform everyone, per the user's explicit call,
+     * not just people with an assigned admin region. Church::scopeVisibleTo() itself stays
+     * untouched: it also drives edit permissions via ChurchPolicy, so widening it there would
+     * accidentally grant admin_gereja edit rights over their whole conference instead of just
+     * their own church — this is a read-only, analytics-only exception.
+     */
+    private function analyticsChurchScope($query)
+    {
+        $user = auth()->user();
+
+        return match (true) {
+            $user->role === null => $query,
+            $user->role->level() === 'gereja' => $query->where('conference_id', $user->church?->conference_id),
+            default => $query->visibleTo($user),
+        };
+    }
+
+    /** Same reasoning as analyticsChurchScope(), for Person instead of Church. */
+    private function analyticsPersonScope($query)
+    {
+        $user = auth()->user();
+
+        return match (true) {
+            $user->role === null => $query,
+            $user->role->level() === 'gereja' => $query->where('conference_id', $user->church?->conference_id),
+            default => $query->visibleTo($user),
+        };
+    }
+
+    /**
+     * Same reasoning as analyticsChurchScope()/analyticsPersonScope(), for Institution instead
+     * of Church/Person — except Institution::scopeVisibleTo() itself already returns everything
+     * for role === null (nasional institutions apply to every union, per the user's explicit
+     * call), so only the gereja-level branch needs overriding here: gereja-level isn't handled
+     * by scopeVisibleTo() at all (falls to its empty default), so this widens it to the same
+     * breadth as analyticsChurchScope() — nasional institutions plus their own Uni's and own
+     * Daerah's institutions, derived from their church's conference the same way
+     * Institution::scopeVisibleTo()'s daerah-level branch derives its own union.
+     */
+    private function analyticsInstitutionScope($query)
+    {
+        $user = auth()->user();
+
+        if ($user->role === null) {
+            return $query;
+        }
+
+        if ($user->role->level() !== 'gereja') {
+            return $query->visibleTo($user);
+        }
+
+        $conferenceId = $user->church?->conference_id;
+        $unionId = $user->church?->conference?->union_id;
+
+        return $query->where(function ($q) use ($conferenceId, $unionId) {
+            $q->where(fn ($q2) => $q2->whereNull('union_id')->whereNull('conference_id')) // nasional
+                ->when($unionId, fn ($q2) => $q2->orWhere(
+                    fn ($q3) => $q3->where('union_id', $unionId)->whereNull('conference_id')
+                )) // this union's own
+                ->when($conferenceId, fn ($q2) => $q2->orWhere('conference_id', $conferenceId)); // this daerah's own
+        });
     }
 
     /**
@@ -206,6 +284,75 @@ trait BuildsLeaderboards
             ? $rows->sortByDesc(fn ($row) => $row['delta'] ?? -INF)
             : $rows->sortByDesc('value')
         )->values();
+    }
+
+    /**
+     * Same as metricComparisonRows()/metricComparisonRowsPersonal(), but aggregated per
+     * institution instead — for the institution-accounts side of the analytics/comparison
+     * pages.
+     */
+    protected function metricComparisonRowsInstitution(string $metric, ?string $platform, string $sortBy = 'delta'): Collection
+    {
+        [$socials, $fieldResolver] = $this->metricDefinition($metric, $this->activeSocialsInstitution());
+
+        if ($platform && $platform !== 'semua') {
+            $socials = $socials->where('platform', SocialPlatform::from($platform));
+        }
+
+        $rows = $socials
+            ->groupBy('institution_id')
+            ->map(function (Collection $institutionSocials) use ($fieldResolver) {
+                $institution = $institutionSocials->first()->institution;
+                $currentTotal = 0;
+                $deltaTotal = 0;
+                $hasDelta = false;
+
+                foreach ($institutionSocials as $social) {
+                    $field = $fieldResolver($social);
+                    $stats = $social->stats()->limit(2)->get();
+                    $currentTotal += $stats->get(0)?->{$field} ?? 0;
+
+                    if ($stats->count() >= 2) {
+                        $deltaTotal += ($stats[0]->{$field} ?? 0) - ($stats[1]->{$field} ?? 0);
+                        $hasDelta = true;
+                    }
+                }
+
+                return [
+                    'institution' => $institution,
+                    'label' => $institution->name,
+                    'value' => $currentTotal,
+                    'delta' => $hasDelta ? $deltaTotal : null,
+                ];
+            });
+
+        return ($sortBy === 'delta'
+            ? $rows->sortByDesc(fn ($row) => $row['delta'] ?? -INF)
+            : $rows->sortByDesc('value')
+        )->values();
+    }
+
+    /**
+     * Active, auto-fetchable accounts whose last fetch attempt failed — the same eligibility
+     * check "Dapatkan Data Terbaru" uses, so this always reflects accounts that button would
+     * refresh but are currently broken. Shared by ChurchDashboardController (the "Akun perlu
+     * perhatian" stat card + its detail page) and Admin\AccountController (the same stat card
+     * on Kelola Akun), so both always agree on what counts as "needs attention".
+     */
+    protected function accountsNeedingAttentionQuery()
+    {
+        return ChurchSocial::query()
+            ->where('is_active', true)
+            ->where('is_auto_fetch', true)
+            ->where('last_fetch_status', 'failed')
+            ->where(fn ($q) => $q
+                ->whereHas('church', fn ($q2) => $q2->where('is_active', true))
+                ->orWhereHas('person', fn ($q2) => $q2->where('is_active', true)),
+            )
+            ->where(fn ($q) => $q
+                ->whereHas('church', fn ($q2) => $this->analyticsChurchScope($q2))
+                ->orWhereHas('person', fn ($q2) => $this->analyticsPersonScope($q2)),
+            );
     }
 
     /**
@@ -377,6 +524,65 @@ trait BuildsLeaderboards
 
                 return [
                     'person' => $person,
+                    'score' => $allPercents->isEmpty() ? null : round($allPercents->avg(), 2),
+                    'metrics' => $byMetric,
+                    'sampleCount' => $allPercents->count(),
+                    'accountCount' => $entries->count(),
+                ];
+            })
+            ->sortByDesc(fn ($row) => $row['score'] ?? -INF)
+            ->values();
+    }
+
+    /**
+     * Same composite weekly-growth score as growthScoreRows()/growthScoreRowsPersonal(), but
+     * per institution instead — for the Institusi tab's Top 5/Bottom 5.
+     */
+    protected function growthScoreRowsInstitution(bool $scoped = true): Collection
+    {
+        $activeSocials = $this->activeSocialsInstitution($scoped);
+        $metrics = ['reach', 'views', 'likes', 'posts'];
+
+        $percentBySocial = [];
+
+        foreach ($metrics as $metric) {
+            [$socials, $fieldResolver] = $this->metricDefinition($metric, $activeSocials);
+
+            foreach ($socials as $social) {
+                $field = $fieldResolver($social);
+                $stats = $social->stats()->limit(2)->get();
+
+                if ($stats->count() < 2) {
+                    continue;
+                }
+
+                $previous = $stats[1]->{$field} ?? 0;
+                $current = $stats[0]->{$field} ?? 0;
+
+                if ($previous <= 0) {
+                    continue;
+                }
+
+                $percentBySocial[$social->id]['institution'] = $social->institution;
+                $percentBySocial[$social->id]['metrics'][$metric] = round((($current - $previous) / $previous) * 100, 2);
+            }
+        }
+
+        return collect($percentBySocial)
+            ->groupBy(fn ($entry) => $entry['institution']->id)
+            ->map(function (Collection $entries) {
+                $institution = $entries->first()['institution'];
+
+                $allPercents = $entries->flatMap(fn ($entry) => $entry['metrics'])->values();
+
+                $byMetric = collect(['reach', 'views', 'likes', 'posts'])->mapWithKeys(function ($metric) use ($entries) {
+                    $values = $entries->pluck("metrics.{$metric}")->filter(fn ($v) => $v !== null);
+
+                    return [$metric => $values->isEmpty() ? null : round($values->avg(), 2)];
+                });
+
+                return [
+                    'institution' => $institution,
                     'score' => $allPercents->isEmpty() ? null : round($allPercents->avg(), 2),
                     'metrics' => $byMetric,
                     'sampleCount' => $allPercents->count(),

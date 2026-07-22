@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Enums\UserRole;
 use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\Facades\Gate;
@@ -53,7 +54,22 @@ class AppServiceProvider extends ServiceProvider
         // (decision #3), so both single and bulk refresh are nasional-level only.
         Gate::define('trigger-refresh', fn (User $user) => $user->role?->hasNasionalAccess() ?? false);
 
-        Gate::define('manage-hierarchy', fn (User $user) => $user->role?->hasNasionalAccess() ?? false);
+        // Governs the Uni/Daerah/Gereja/Institusi CRUD sub-routes nested under Kelola Akun
+        // (create/edit/toggle/delete/socials for each), NOT the page itself anymore — Kelola
+        // Akun's own route (admin.accounts.index) is gated by manage-people below instead,
+        // since that page also holds the Personal tab, which was never gereja-excluded. This
+        // gate is open to any non-read-only, non-gereja-level role — same threshold as browse-
+        // directory-analytics/ChurchPolicy::create(). What each visitor actually sees and can
+        // act on is scoped per-entity by visibleTo() (query-time) and the Union/Conference/
+        // Church/InstitutionPolicy (action-time) — an admin_uni only ever sees/manages what's
+        // under their own Uni, admin_daerah their own Daerah, admin_institusi their own
+        // Institusi, per the user's explicit call. admin_gereja stays excluded here — their one
+        // church is reached via the "Gereja Saya" nav link instead (see layouts.app), and
+        // managed from there via churches.show's own "Kelola Akun" shortcut (churches.socials.
+        // index, gated separately by can:update,church).
+        Gate::define('manage-hierarchy', fn (User $user) => $user->role !== null
+            && ! $user->role->isReadOnly()
+            && $user->role->level() !== 'gereja');
 
         // Institutions aren't nested under a single Union/Conference (per UserRole::level()),
         // so — unlike admin_uni/admin_daerah/admin_gereja — their admins are assigned
@@ -64,11 +80,64 @@ class AppServiceProvider extends ServiceProvider
         // plain member) may reach the delegated user-assignment page.
         Gate::define('delegate-users', fn (User $user) => $user->role?->promotesToLevel() !== null);
 
-        // Directory & Analytics: superadmin/admin_nasional/admin_uni/admin_daerah only —
-        // deliberately excludes admin_gereja and every Pimpinan (read-only) role, per the
-        // user's explicit call. Each admin still only sees their own region (visibleTo()).
+        // Exporting (directory, analytics, leaderboards, comparisons) stays superadmin/
+        // admin_nasional/admin_uni/admin_daerah only, per the user's explicit call —
+        // deliberately excludes admin_gereja, admin_institusi, and every Pimpinan (read-only)
+        // role. level() is null for SuperAdmin (see UserRole::level()), hence its presence in
+        // the allow-list below alongside the three named levels. *Viewing* the Analytics page
+        // itself is a separate, broader gate — see view-analytics below.
         Gate::define('browse-directory-analytics', fn (User $user) => $user->role !== null
             && ! $user->role->isReadOnly()
-            && $user->role->level() !== 'gereja');
+            && in_array($user->role->level(), [null, 'nasional', 'uni', 'daerah'], true));
+
+        // Viewing Analytics & Statistik (as opposed to exporting it — browse-directory-
+        // analytics above) is open to a plain member, admin_gereja, admin_daerah, and
+        // admin_uni too, per the user's explicit call — "so information still gets through,
+        // people can see progress, within their own limits". Only Pimpinan (read-only) roles
+        // stay excluded; they weren't named. What each of these newly-included viewers
+        // actually sees is scoped separately by BuildsLeaderboards::analyticsChurchScope()/
+        // analyticsPersonScope() — a plain member sees everything unscoped (they have no
+        // region), admin_gereja sees their whole Daerah/Konferens (same breadth as
+        // admin_daerah, not just their one church), everyone else keeps their normal
+        // visibleTo() scope.
+        Gate::define('view-analytics', fn (User $user) => $user->role === null || ! $user->role->isReadOnly());
+
+        // Just *viewing* the directory (as opposed to exporting it, or the fuller Analytics
+        // page) is open to literally any logged-in member — including plain, unassigned ones
+        // (role === null) — not just admin_gereja/Pimpinan, per the user's explicit call:
+        // "someone might just want to follow the account". It's a public listing, not an
+        // admin management view, so it's deliberately unscoped by region for everyone
+        // (ChurchDashboardController::directory() no longer applies visibleTo() at all) —
+        // actually managing an entity (adding/editing its socials) still requires can:update
+        // on the church/person/social, which stays scoped, on that entity's own detail page.
+        Gate::define('view-directory', fn (User $user) => true);
+
+        // Reaching Kelola Akun's Personal tab (and people.create) only requires the same
+        // threshold as PersonPolicy::create() — any non-read-only role, including admin_gereja.
+        // Unlike browse-directory-analytics, this deliberately does NOT exclude gereja-level
+        // admins: a Person isn't bound to a single church (decision #2 in PersonPolicy), so
+        // admin_gereja legitimately needs to create/manage personal accounts too, not just
+        // Uni/Daerah/Nasional. Being the broader of the two gates that used to guard "Kelola
+        // Organisasi" and "Kelola Personal" as separate pages (manage-hierarchy above additionally
+        // excludes gereja-level), this is also what the merged Kelola Akun page itself
+        // (admin.accounts.index) is gated by — see routes/web.php. AccountController::index()
+        // still scopes the Personal tab's actual list via visibleTo(), so an admin_gereja
+        // reaching the page only ever sees their own region's people there, same as any other
+        // admin level, and sees no organization tab at all (manage-hierarchy still excludes them
+        // from those).
+        Gate::define('manage-people', fn (User $user) => $user->role !== null && ! $user->role->isReadOnly());
+
+        // A soft-deleted User row still physically exists and still trips restrictOnDelete FK
+        // constraints elsewhere (Union/Conference/Church/Institution can't be hard-deleted
+        // while one still points at them) — regular admins can only soft-delete (destroy())
+        // via UserAssignmentController, so only Superadmin can reach in and either restore one
+        // or purge it for good, per the user's explicit call.
+        Gate::define('manage-deleted-users', fn (User $user) => $user->role === UserRole::SuperAdmin);
+
+        // Audit log (role promote/revoke, user lifecycle, org-unit CRUD — see AuditLogger)
+        // stays Superadmin-only for now, per the user's explicit call ("audit log khusus
+        // untuk superadmin saja dulu") — not even Admin Nasional, unlike most other
+        // nasional-level gates in this file.
+        Gate::define('view-audit-log', fn (User $user) => $user->role === UserRole::SuperAdmin);
     }
 }

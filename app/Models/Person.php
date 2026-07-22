@@ -63,7 +63,10 @@ class Person extends Model
                     ->orWhereHas('conference', fn (Builder $q2) => $q2->where('union_id', $user->union_id));
             }),
             $user->role->level() === 'daerah' => $query->where('conference_id', $user->conference_id),
-            $user->role->level() === 'gereja' => $query->whereRaw('1 = 0'),
+            // gereja/institusi have no reachable People at all — Institution isn't nested in
+            // this chain (see UserRole::level()), and a gereja-level admin's one church isn't
+            // a Person-scoping unit here.
+            default => $query->whereRaw('1 = 0'),
         };
     }
 }

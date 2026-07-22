@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -21,6 +22,32 @@ class Union extends Model
         return $this->hasMany(Conference::class);
     }
 
+    /**
+     * Same scoping shape as Church::scopeVisibleTo() — a daerah-level admin can still *see*
+     * their own parent Uni (for context in Kelola Akun), even though UnionPolicy::update()
+     * additionally excludes daerah level, since editing a level above your own isn't "managing
+     * your own region".
+     */
+    public function scopeVisibleTo(Builder $query, ?User $user): Builder
+    {
+        if ($user === null) {
+            return $query;
+        }
+
+        if ($user->role === null) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return match (true) {
+            $user->role->hasNasionalAccess() || $user->role->level() === 'nasional' => $query,
+            $user->role->level() === 'uni' => $query->where('id', $user->union_id),
+            $user->role->level() === 'daerah' => $query->whereHas(
+                'conferences', fn (Builder $q) => $q->where('id', $user->conference_id)
+            ),
+            default => $query->whereRaw('1 = 0'),
+        };
+    }
+
     public function people(): HasMany
     {
         return $this->hasMany(Person::class);
@@ -29,6 +56,11 @@ class Union extends Model
     public function users(): HasMany
     {
         return $this->hasMany(User::class);
+    }
+
+    public function socials(): HasMany
+    {
+        return $this->hasMany(ChurchSocial::class);
     }
 
     public function getRouteKeyName(): string

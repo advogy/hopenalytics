@@ -2,13 +2,13 @@
 
 return [
     'title_suffix_personal' => ' Personal',
+    'title_suffix_institution' => ' Institusi',
     'leaderboard_back_analytics' => 'Kembali ke analitik & grafik',
     'leaderboard_back_metric' => 'Kembali ke perbandingan metrik',
 
     'sort_all' => 'Semua',
     'leaderboard_subtitle_value' => 'Seluruh akun:noun diurutkan berdasarkan nilai saat ini. :subtitle.',
     'leaderboard_subtitle_delta' => 'Seluruh akun:noun diurutkan dari pertumbuhan tertinggi ke terendah, minggu ini. :subtitle.',
-    'noun_suffix_personal' => ' personal',
     'accounts_count' => ':count akun',
 
     'metric_comparison_title' => 'Perbandingan Metrik :label',
@@ -21,6 +21,7 @@ return [
     'noun_platform' => 'platform',
     'for_all_churches' => 'semua gereja',
     'for_all_personal' => 'semua akun personal',
+    'for_all_institutions' => 'semua institusi',
 
     'platform_comparison_title' => 'Perbandingan Platform:suffix',
     'platform_detail_title' => 'Perbandingan :metric :platform:suffix',
@@ -34,6 +35,7 @@ return [
     'platform_overview_all' => 'seluruh platform',
     'scope_church' => 'gereja',
     'scope_personal' => 'akun personal',
+    'scope_institution' => 'institusi',
     'section_subtitle' => ':count :noun, diurutkan berdasarkan :basis.',
     'sort_basis_delta' => 'pertumbuhan mingguan',
     'sort_basis_value' => ':value saat ini',

@@ -31,6 +31,15 @@ return [
     'otp_verified' => 'Email verified successfully. Welcome!',
     'no_pending_registration' => 'There is no pending registration to verify.',
 
+    'link_person_title' => 'Is One of These You?',
+    'link_person_subtitle' => 'We found a personal account with a similar name that an admin already created. Pick one if it\'s you, so the data already tracked there doesn\'t stay separate from your new account.',
+    'link_person_none' => 'Not me — create a new personal profile',
+    'link_person_social_count' => ':count social account(s) already connected',
+    'link_person_button' => 'Continue',
+    'person_linked' => 'Personal account successfully linked to yours.',
+    'person_created' => 'New personal profile created successfully.',
+    'person_already_claimed' => 'That personal account has already been linked to another account. Please choose again.',
+
     'otp_mail_subject' => '[:app] Verification Code',
     'otp_mail_greeting' => 'Hi :name,',
     'otp_mail_body' => 'Use the code below to verify your email:',

@@ -1,19 +1,19 @@
 # Hopenalytics
 
-A dashboard for monitoring and analyzing church social media growth — subscriber, follower, view, like, and post growth on YouTube, Instagram, TikTok, and Facebook, for both church accounts and personal ministry accounts, all in one place. Access is scoped by organizational level (Union → Conference → Church, plus standalone Institutions), so each admin only sees and manages their own region.
+A dashboard for monitoring and analyzing church social media growth — subscriber, follower, view, like, and post growth on YouTube, Instagram, TikTok, and Facebook, for church accounts, personal ministry accounts, and standalone institution accounts (schools, publishing houses, etc.), all in one place. Access is scoped by organizational level (Union → Conference → Church, plus standalone Institutions), so each admin only sees and manages their own region.
 
 Built with Laravel 12, Vite, and Tailwind CSS 4.
 
 ## Features
 
 - **Automated monitoring** — data is fetched automatically every week on a configurable schedule (via Apify scrapers), or manually at any time, with a live progress bar and the ability to cancel an in-progress refresh.
-- **Analytics & charts** — weekly growth charts (with per-point value labels), filters per church/platform, total reach summaries, and a week-over-week growth score trend per church/person.
+- **Analytics & charts** — weekly growth charts (with per-point value labels), filters per church/platform, total reach summaries, and a week-over-week growth score trend per church/person/institution, across separate Gereja / Institusi / Personal tabs.
 - **Growth score** — a composite, percentage-based score (not raw follower counts) so small and large accounts are compared fairly. See the [/about](resources/views/about.blade.php) page in-app for the full formula.
-- **Performance comparison** — rank churches by platform, by metric (followers, views, likes, posts), by composite growth score, or compare platforms against each other.
-- **Map & presentation mode** — an interactive map of church locations, and a fullscreen presentation view for events/meetings (light/dark, auto-refreshing, with a live leaderboard).
-- **Account directory** — a searchable, filterable list of every social account, with a clear marker for accounts flagged "manual" (auto-fetch off).
+- **Performance comparison** — rank churches, institutions, or personal accounts by platform, by metric (followers, views, likes, posts), by composite growth score, or compare platforms against each other.
+- **Map & presentation mode** — an interactive map of church, personal, and institution locations (with per-type and combined layers), and a fullscreen presentation view for events/meetings (light/dark, auto-refreshing, with a live leaderboard).
+- **Account directory** — a searchable, filterable list of every social account (church, institution, and personal), with a clear marker for accounts flagged "manual" (auto-fetch off).
 - **Manual data entry** — accounts that can't be scraped automatically (e.g. personal Facebook profiles) can have their weekly stats entered by hand.
-- **Data export** — download PDF, Word, or Excel reports for a church, a personal account, a single social account's history, or any comparison/leaderboard view.
+- **Data export** — download PDF, Word, or Excel reports for a church, an institution, a personal account, a single social account's history, or any comparison/leaderboard view.
 - **Queue monitoring** (`/queue`) — track pending jobs, active/completed refresh batches, and failed jobs; cancel a running batch or clear history individually or in bulk.
 
 ### Accounts & access control
@@ -21,8 +21,8 @@ Built with Laravel 12, Vite, and Tailwind CSS 4.
 - **Self-registration** — anyone can sign up; email is verified with a one-time code before the account is usable. A short "Lengkapi Profil" step lets a new member report their Uni/Daerah/Gereja, or skip it and fill it in later from Profil Saya.
 - **Role-based hierarchy** — Uni → Daerah (Conference) → Gereja (Church) form a strict delegation chain, plus standalone Institusi outside that chain. Each level has an **Admin** (manage) and read-only **Pimpinan** role; a Superadmin/Admin Nasional can also bootstrap any level directly. Admins can only promote members into the level directly below their own, scoped to their own region.
 - **Kelola Pengguna** (`/admin/users`) — assign/revoke roles, resend a pending OTP, deactivate or permanently delete an account.
-- **Kelola Organisasi** (`/admin/hierarchy`) — manage the Uni/Daerah/Gereja/Institusi org units themselves (create, edit, deactivate, or delete — delete is blocked while a unit still has dependents).
-- **Kelola Personal** (`/admin/personal`) — manage tracked personal accounts (people whose social media is monitored) independently of the account directory, which now only handles adding social media handles.
+- **Kelola Akun** (`/admin/organization`) — one page, five tabs (Uni / Daerah / Gereja / Institusi / Personal), to manage the org units themselves (create, edit, deactivate, or delete — delete is blocked while a unit still has dependents) and tracked personal accounts (people whose social media is monitored), independently of the account directory, which only handles adding social media handles. Which tabs a visitor sees depends on their role/region — e.g. admin_gereja only ever sees the Personal tab.
+- **"X Saya" shortcuts** — Gereja Saya / Uni Saya / Daerah Saya / Institusi Saya in the account menu jump straight to managing your own org unit's accounts, for the levels whose own tab is otherwise hidden from them in Kelola Akun.
 - **Account security** — rate-limited login/OTP/password-reset (brute-force protection), no user-enumeration on "forgot password", and a current-password check before changing your password or email.
 
 ## Tech stack

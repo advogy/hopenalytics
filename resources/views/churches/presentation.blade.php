@@ -78,12 +78,12 @@
             <div id="rank-list" class="min-h-0 space-y-2 overflow-y-auto">
                 <div id="rank-set-1" class="space-y-2">
                     @foreach ($rows as $i => $row)
-                        @include('churches._presentation-row', ['i' => $i, 'row' => $row])
+                        @include('churches.partials.presentation-row', ['i' => $i, 'row' => $row])
                     @endforeach
                 </div>
                 <div id="rank-set-2" class="mt-2 space-y-2" aria-hidden="true">
                     @foreach ($rows as $i => $row)
-                        @include('churches._presentation-row', ['i' => $i, 'row' => $row])
+                        @include('churches.partials.presentation-row', ['i' => $i, 'row' => $row])
                     @endforeach
                 </div>
             </div>

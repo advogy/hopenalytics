@@ -24,7 +24,7 @@
 
         @include('partials.searchable-select')
     </head>
-    <body class="flex min-h-screen flex-col items-center justify-center bg-[#f8f4ec] px-4 font-sans text-slate-900 antialiased dark:bg-[#16130f] dark:text-slate-100">
+    <body class="flex min-h-screen flex-col items-center justify-center bg-[#f8f4ec] px-4 py-8 font-sans text-slate-900 antialiased dark:bg-[#16130f] dark:text-slate-100">
         <div class="w-full max-w-sm">
             <a href="{{ route('churches.index') }}" class="mb-8 flex items-center justify-center gap-3 whitespace-nowrap">
                 <x-logo-mark class="h-16 w-16 shrink-0 text-blue-600 dark:text-[#f3ead9]" />
@@ -46,6 +46,8 @@
             <div class="rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/5 dark:bg-slate-900">
                 @yield('content')
             </div>
+
+            @include('partials.footer', ['stacked' => true])
         </div>
 
         @include('partials.disable-on-submit')

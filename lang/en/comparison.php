@@ -2,13 +2,13 @@
 
 return [
     'title_suffix_personal' => ' Personal',
+    'title_suffix_institution' => ' Institution',
     'leaderboard_back_analytics' => 'Back to analytics & charts',
     'leaderboard_back_metric' => 'Back to metric comparison',
 
     'sort_all' => 'All',
     'leaderboard_subtitle_value' => 'All:noun accounts ranked by current value. :subtitle.',
     'leaderboard_subtitle_delta' => 'All:noun accounts ranked from highest to lowest growth, this week. :subtitle.',
-    'noun_suffix_personal' => ' personal',
     'accounts_count' => ':count accounts',
 
     'metric_comparison_title' => ':label Metric Comparison',
@@ -21,6 +21,7 @@ return [
     'noun_platform' => 'platforms',
     'for_all_churches' => 'all churches',
     'for_all_personal' => 'all personal accounts',
+    'for_all_institutions' => 'all institutions',
 
     'platform_comparison_title' => 'Platform Comparison:suffix',
     'platform_detail_title' => ':metric :platform Comparison:suffix',
@@ -34,6 +35,7 @@ return [
     'platform_overview_all' => 'all platforms',
     'scope_church' => 'churches',
     'scope_personal' => 'personal accounts',
+    'scope_institution' => 'institutions',
     'section_subtitle' => ':count :noun, sorted by :basis.',
     'sort_basis_delta' => 'weekly growth',
     'sort_basis_value' => 'current :value',

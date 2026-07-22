@@ -2,7 +2,7 @@
 
 return [
     'all_churches' => 'Semua gereja',
-    'edit_church' => 'Edit Gereja',
+    'all_institutions' => 'Semua institusi',
     'add_account' => '+ Tambah Akun',
     'no_socials' => 'Belum ada akun sosial yang terhubung.',
     'personal_account' => 'Akun Personal',
@@ -43,6 +43,14 @@ return [
     'city_placeholder' => 'Contoh: Bekasi',
     'conference' => 'Daerah / Konferens',
     'conference_unassigned' => 'Belum ditugaskan ke Daerah manapun',
+    'search_uni_placeholder' => 'Cari Uni…',
+    'search_daerah_placeholder' => 'Cari Daerah…',
+    'own_church_reach' => 'Jangkau Gereja',
+    'own_church_socials' => 'Akun Sosial Gereja',
+    'own_personal_socials' => 'Akun Sosial Personal',
+    'own_weekly_growth' => 'Pertumbuhan Minggu Ini',
+    'own_institution_reach' => 'Jangkau Institusi',
+    'own_institution_socials' => 'Akun Sosial Institusi',
     'deactivate_church' => 'Nonaktifkan gereja ini',
     'deactivate_church_confirm' => 'Nonaktifkan gereja ini? Data historis tetap tersimpan dan bisa diaktifkan kembali kapan saja.',
     'activate_church' => 'Aktifkan gereja ini',
@@ -54,6 +62,14 @@ return [
     'deactivate_person' => 'Nonaktifkan akun ini',
     'deactivate_person_confirm' => 'Nonaktifkan :name? Data historis tetap tersimpan dan bisa diaktifkan kembali kapan saja.',
     'activate_person' => 'Aktifkan akun ini',
+
+    'login_account' => 'Akun Login',
+    'login_account_linked' => 'Terhubung ke akun login :name (:email).',
+    'login_account_unlinked' => 'Belum ada akun login yang terhubung ke Personal ini.',
+    'link_user' => 'Tautkan',
+    'unlink_user' => 'Lepas tautan akun login',
+    'unlink_user_confirm' => 'Lepas tautan akun login dari :name? Personal ini akan kembali jadi catatan independen tanpa akun.',
+    'search_user_placeholder' => 'Cari nama atau email pengguna…',
 
     'title_edit_social' => 'Edit Akun',
     'title_add_social' => 'Tambah Akun',

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Concerns\BuildsLeaderboards;
 use App\Models\Church;
 use App\Models\ChurchSocial;
+use App\Models\Institution;
 use App\Models\Person;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Response;
@@ -96,6 +97,124 @@ class ExportController extends Controller
         $sort = request()->query('sort') === 'value' ? 'value' : 'delta';
 
         return $this->download($this->metricComparisonDatasetPersonal($sort), $format, 'perbandingan-metrik-personal');
+    }
+
+    public function institutionLeaderboardPreview(string $metric)
+    {
+        $sort = request()->query('sort') === 'value' ? 'value' : 'delta';
+        $dataset = $this->leaderboardDatasetInstitution($metric, $sort);
+
+        $downloadUrl = route('export.institution-leaderboard.download', array_filter(['metric' => $metric, 'format' => 'pdf', 'sort' => $sort === 'value' ? 'value' : null]));
+
+        return $this->preview($dataset, $downloadUrl);
+    }
+
+    public function institutionLeaderboardDownload(string $metric, string $format): BinaryFileResponse|Response
+    {
+        $sort = request()->query('sort') === 'value' ? 'value' : 'delta';
+
+        return $this->download($this->leaderboardDatasetInstitution($metric, $sort), $format, 'leaderboard-institusi-'.$metric);
+    }
+
+    public function institutionMetricComparisonPreview()
+    {
+        $sort = request()->query('sort') === 'value' ? 'value' : 'delta';
+        $dataset = $this->metricComparisonDatasetInstitution($sort);
+
+        $downloadUrl = route('export.institution-metric-comparison.download', array_filter(['format' => 'pdf', 'sort' => $sort === 'value' ? 'value' : null]));
+
+        return $this->preview($dataset, $downloadUrl);
+    }
+
+    public function institutionMetricComparisonDownload(string $format): BinaryFileResponse|Response
+    {
+        $sort = request()->query('sort') === 'value' ? 'value' : 'delta';
+
+        return $this->download($this->metricComparisonDatasetInstitution($sort), $format, 'perbandingan-metrik-institusi');
+    }
+
+    public function institutionPlatformComparisonPreview(string $platform)
+    {
+        abort_unless(isset($this->platformLabels[$platform]), 404);
+
+        $metric = request()->query('metric', 'reach');
+        abort_unless(isset($this->metricLabels[$metric]), 404);
+
+        $sort = request()->query('sort') === 'value' ? 'value' : 'delta';
+        $dataset = $this->platformComparisonDatasetInstitution($platform, $metric, $sort);
+
+        $downloadUrl = route('export.institution-platform.download', array_filter([
+            'platform' => $platform,
+            'format' => 'pdf',
+            'metric' => $metric === 'reach' ? null : $metric,
+            'sort' => $sort === 'value' ? 'value' : null,
+        ]));
+
+        return $this->preview($dataset, $downloadUrl);
+    }
+
+    public function institutionPlatformComparisonDownload(string $platform, string $format): BinaryFileResponse|Response
+    {
+        abort_unless(isset($this->platformLabels[$platform]), 404);
+
+        $metric = request()->query('metric', 'reach');
+        abort_unless(isset($this->metricLabels[$metric]), 404);
+
+        $sort = request()->query('sort') === 'value' ? 'value' : 'delta';
+
+        return $this->download($this->platformComparisonDatasetInstitution($platform, $metric, $sort), $format, "perbandingan-institusi-{$platform}-{$metric}");
+    }
+
+    public function institutionPlatformOverviewPreview(string $platform)
+    {
+        abort_unless(isset($this->platformLabels[$platform]), 404);
+
+        $dataset = $this->platformOverviewDatasetInstitution($platform);
+
+        $downloadUrl = route('export.institution-platform-overview.download', ['platform' => $platform, 'format' => 'pdf']);
+
+        return $this->preview($dataset, $downloadUrl);
+    }
+
+    public function institutionPlatformOverviewDownload(string $platform, string $format): BinaryFileResponse|Response
+    {
+        abort_unless(isset($this->platformLabels[$platform]), 404);
+
+        return $this->download($this->platformOverviewDatasetInstitution($platform), $format, "ringkasan-perbandingan-institusi-{$platform}");
+    }
+
+    public function analyticsInstitutionPreview()
+    {
+        $institutionId = request()->query('institution_id');
+        $platform = request()->query('platform');
+
+        $dataset = $this->analyticsDatasetInstitution($institutionId, $platform);
+
+        $downloadUrl = route('export.institution-analytics.download', array_filter(['format' => 'pdf', 'institution_id' => $institutionId, 'platform' => $platform]));
+
+        return $this->preview($dataset, $downloadUrl);
+    }
+
+    public function analyticsInstitutionDownload(string $format): BinaryFileResponse|Response
+    {
+        $institutionId = request()->query('institution_id');
+        $platform = request()->query('platform');
+
+        $filename = 'analitik-institusi'.($institutionId ? "-{$institutionId}" : '').($platform ? "-{$platform}" : '');
+
+        return $this->download($this->analyticsDatasetInstitution($institutionId, $platform), $format, $filename);
+    }
+
+    public function institutionPreview(Institution $institution)
+    {
+        $dataset = $this->institutionDataset($institution);
+
+        return $this->preview($dataset, route('export.institution.download', ['institution' => $institution, 'format' => 'pdf']));
+    }
+
+    public function institutionDownload(Institution $institution, string $format): BinaryFileResponse|Response
+    {
+        return $this->download($this->institutionDataset($institution), $format, 'institusi-'.$institution->slug);
     }
 
     public function directoryPreview()
@@ -420,6 +539,67 @@ class ExportController extends Controller
         ];
     }
 
+    private function leaderboardDatasetInstitution(string $metric, string $sortBy = 'delta'): array
+    {
+        $titles = $this->leaderboardTitles();
+
+        abort_unless(isset($titles[$metric]), 404);
+
+        [$socials, $field] = $this->metricDefinition($metric, $this->activeSocialsInstitution());
+        $rows = $this->buildLeaderboard($socials, $field, null, $sortBy);
+
+        $title = $sortBy === 'value' ? $titles[$metric]['title'] : 'Pertumbuhan '.$titles[$metric]['title'];
+
+        return [
+            'title' => "{$title} Institusi",
+            'subtitle' => $sortBy === 'value' ? 'Diurutkan berdasarkan nilai saat ini' : $titles[$metric]['subtitle'],
+            'headers' => ['#', 'Institusi', 'Platform', 'Akun', 'Pertumbuhan', 'Saat Ini'],
+            'rows' => $rows->values()->map(fn ($row, $i) => [
+                $i + 1,
+                $row['social']->institution->name,
+                $this->platformLabels[$row['social']->platform->value],
+                $row['social']->display_handle,
+                ($row['delta'] > 0 ? '+' : '').number_format($row['delta']),
+                number_format($row['latest']),
+            ])->all(),
+        ];
+    }
+
+    private function metricComparisonDatasetInstitution(string $sortBy = 'delta'): array
+    {
+        $titles = $this->leaderboardTitles();
+        $activeSocials = $this->activeSocialsInstitution();
+
+        $rows = [];
+
+        foreach ($titles as $metric => $title) {
+            [$socials, $field] = $this->metricDefinition($metric, $activeSocials);
+
+            foreach ($this->buildLeaderboard($socials, $field, null, $sortBy)->values() as $i => $row) {
+                $rows[] = [
+                    $title['title'],
+                    $i + 1,
+                    $row['social']->institution->name,
+                    $this->platformLabels[$row['social']->platform->value],
+                    $row['social']->display_handle,
+                    ($row['delta'] > 0 ? '+' : '').number_format($row['delta']),
+                    number_format($row['latest']),
+                ];
+            }
+        }
+
+        $subtitle = $sortBy === 'value'
+            ? 'Peringkat akun media sosial berdasarkan nilai saat ini — subscriber/followers, views, likes, dan post, untuk semua institusi'
+            : 'Peringkat akun media sosial berdasarkan pertumbuhan mingguan tertinggi — subscriber/followers, views, likes, dan post, untuk semua institusi';
+
+        return [
+            'title' => 'Perbandingan Metrik Institusi',
+            'subtitle' => $subtitle,
+            'headers' => ['Metrik', '#', 'Institusi', 'Platform', 'Akun', 'Pertumbuhan', 'Saat Ini'],
+            'rows' => $rows,
+        ];
+    }
+
     /**
      * $type narrows the export to one tab of the directory page — 'gereja' or 'personal' —
      * or includes both when null.
@@ -572,6 +752,40 @@ class ExportController extends Controller
         return [
             'title' => $person->name,
             'subtitle' => $person->city ? "Data akun media sosial — {$person->city}" : 'Data akun media sosial',
+            'headers' => ['Platform', 'Akun', 'Followers/Subs', 'Following', 'Post/Video', 'Views', 'Likes', 'Status'],
+            'rows' => $rows,
+        ];
+    }
+
+    private function institutionDataset(Institution $institution): array
+    {
+        $institution->load(['socials' => fn ($q) => $q->where('is_active', true)->with('latestStat')]);
+
+        $statusLabels = ['success' => 'Berhasil', 'failed' => 'Gagal', 'pending' => 'Menunggu'];
+
+        $rows = $institution->socials->map(function ($social) use ($statusLabels) {
+            $latest = $social->latestStat;
+            $field = $this->countField[$social->platform->value];
+
+            $status = ! $social->is_auto_fetch
+                ? 'Manual'
+                : ($statusLabels[$social->last_fetch_status] ?? ($social->last_fetched_at ? 'Berhasil' : 'Menunggu'));
+
+            return [
+                $this->platformLabels[$social->platform->value],
+                $social->display_handle,
+                $latest ? number_format($latest->{$field} ?? 0) : '—',
+                $latest ? number_format($latest->following_count ?? 0) : '—',
+                $latest ? number_format($latest->posts_count ?? $latest->videos_count ?? 0) : '—',
+                $latest && $latest->views_count ? number_format($latest->views_count) : '—',
+                $latest && $latest->likes_count ? number_format($latest->likes_count) : '—',
+                $status,
+            ];
+        })->all();
+
+        return [
+            'title' => $institution->name,
+            'subtitle' => 'Data akun media sosial',
             'headers' => ['Platform', 'Akun', 'Followers/Subs', 'Following', 'Post/Video', 'Views', 'Likes', 'Status'],
             'rows' => $rows,
         ];
@@ -754,6 +968,135 @@ class ExportController extends Controller
                 number_format($row['value']),
                 $row['delta'] === null ? '—' : ($row['delta'] > 0 ? '+' : '').number_format($row['delta']),
             ])->all(),
+        ];
+    }
+
+    private function platformOverviewDatasetInstitution(string $platform): array
+    {
+        $applicableMetrics = collect($this->metricPlatforms())
+            ->filter(fn ($platforms) => in_array($platform, $platforms, true))
+            ->keys();
+
+        $rowsByMetric = $applicableMetrics->mapWithKeys(fn ($metric) => [
+            $metric => $this->metricComparisonRowsInstitution($metric, $platform)->keyBy(fn ($row) => $row['institution']->id),
+        ]);
+
+        $institutions = $rowsByMetric
+            ->flatMap(fn ($rows) => $rows->pluck('institution'))
+            ->unique('id')
+            ->sortBy('name')
+            ->values();
+
+        $headers = ['Institusi'];
+        foreach ($applicableMetrics as $metric) {
+            $valueHeader = match (true) {
+                $metric !== 'reach' => $this->metricLabels[$metric],
+                $platform === 'youtube' => 'Subscribers',
+                $platform === 'semua' => 'Jangkauan',
+                default => 'Followers',
+            };
+            $headers[] = $valueHeader;
+            $headers[] = "Pertumbuhan {$valueHeader}";
+        }
+
+        $rows = $institutions->map(function ($institution) use ($applicableMetrics, $rowsByMetric) {
+            $row = [$institution->name];
+
+            foreach ($applicableMetrics as $metric) {
+                $entry = $rowsByMetric[$metric]->get($institution->id);
+                $row[] = $entry ? number_format($entry['value']) : '—';
+                $row[] = ($entry && $entry['delta'] !== null) ? (($entry['delta'] > 0 ? '+' : '').number_format($entry['delta'])) : '—';
+            }
+
+            return $row;
+        })->all();
+
+        $platformLabel = $this->platformLabels[$platform];
+        $metricNames = $applicableMetrics->map(fn ($m) => $this->metricLabels[$m])->implode(', ');
+
+        return [
+            'title' => "Ringkasan Perbandingan {$platformLabel} Institusi",
+            'subtitle' => "{$metricNames} — semua institusi, diurutkan berdasarkan nama.",
+            'headers' => $headers,
+            'rows' => $rows,
+        ];
+    }
+
+    private function platformComparisonDatasetInstitution(string $platform, string $metric, string $sortBy = 'delta'): array
+    {
+        $rows = $this->metricComparisonRowsInstitution($metric, $platform, $sortBy);
+        $platformLabel = $this->platformLabels[$platform];
+        $valueHeader = match (true) {
+            $metric !== 'reach' => $this->metricLabels[$metric],
+            $platform === 'youtube' => 'Subscribers',
+            $platform === 'semua' => 'Jangkauan',
+            default => 'Followers',
+        };
+
+        $subtitle = $sortBy === 'delta'
+            ? "Peringkat institusi berdasarkan pertumbuhan mingguan {$valueHeader} {$platformLabel}"
+            : "Peringkat institusi berdasarkan {$valueHeader} {$platformLabel} saat ini";
+
+        return [
+            'title' => "Perbandingan {$valueHeader} {$platformLabel} Institusi",
+            'subtitle' => $subtitle,
+            'headers' => ['#', 'Institusi', $valueHeader, 'Pertumbuhan Mingguan'],
+            'rows' => $rows->values()->map(fn ($row, $i) => [
+                $i + 1,
+                $row['label'],
+                number_format($row['value']),
+                $row['delta'] === null ? '—' : ($row['delta'] > 0 ? '+' : '').number_format($row['delta']),
+            ])->all(),
+        ];
+    }
+
+    private function analyticsDatasetInstitution(?string $institutionId, ?string $platform): array
+    {
+        $institutions = Institution::query()
+            ->where('is_active', true)
+            ->visibleTo(auth()->user())
+            ->with(['socials' => fn ($q) => $q->where('is_active', true)->with('latestStat')])
+            ->when($institutionId, fn ($q) => $q->where('id', $institutionId))
+            ->orderBy('name')
+            ->get()
+            ->when($platform, fn ($collection) => $collection->filter(
+                fn ($institution) => $institution->socials->contains(fn ($social) => $social->platform->value === $platform)
+            ));
+
+        $rows = $institutions->map(function ($institution) use ($platform) {
+            $displaySocials = $platform
+                ? $institution->socials->filter(fn ($s) => $s->platform->value === $platform)
+                : $institution->socials;
+
+            $reach = $displaySocials->sum(fn ($s) => $s->latestStat?->{$this->countField[$s->platform->value]} ?? 0);
+            $views = $displaySocials->sum(fn ($s) => $s->latestStat?->views_count ?? 0);
+            $likes = $displaySocials->sum(fn ($s) => $s->latestStat?->likes_count ?? 0);
+            $posts = $displaySocials->sum(
+                fn ($s) => isset($this->postField[$s->platform->value]) ? ($s->latestStat?->{$this->postField[$s->platform->value]} ?? 0) : 0
+            );
+
+            return [
+                $institution->name,
+                $displaySocials->count(),
+                number_format($reach),
+                $views ? number_format($views) : '—',
+                $likes ? number_format($likes) : '—',
+                $posts ? number_format($posts) : '—',
+            ];
+        })->all();
+
+        $filterParts = array_filter([
+            $institutionId ? $institutions->first()?->name : null,
+            $platform ? ($this->platformLabels[$platform] ?? null) : null,
+        ]);
+
+        $subtitle = $filterParts ? 'Filter: '.implode(', ', $filterParts) : 'Semua institusi, semua media sosial';
+
+        return [
+            'title' => 'Analitik & Grafik Institusi',
+            'subtitle' => $subtitle,
+            'headers' => ['Institusi', 'Jumlah Akun', 'Total Jangkauan', 'Total Views', 'Total Likes', 'Total Post'],
+            'rows' => $rows,
         ];
     }
 

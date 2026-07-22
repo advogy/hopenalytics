@@ -11,7 +11,7 @@
         <div>
             <h1 class="mb-1 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{{ $title }}{{ $scope->titleSuffix() }}</h1>
             <p class="text-sm text-slate-500 dark:text-slate-400">
-                @php $noun = $scope->isChurch() ? '' : __('comparison.noun_suffix_personal'); @endphp
+                @php $noun = $scope->isChurch() ? '' : ' ' . $scope->noun(); @endphp
                 @if ($sort === 'value')
                     {{ __('comparison.leaderboard_subtitle_value', ['noun' => $noun, 'subtitle' => $subtitle]) }}
                 @else
@@ -19,7 +19,9 @@
                 @endif
             </p>
         </div>
-        <x-export-button :url="$scope->exportLeaderboardUrl(array_filter(['metric' => $metric, 'sort' => $sort === 'value' ? 'value' : null]))" />
+        @can('browse-directory-analytics')
+            <x-export-button :url="$scope->exportLeaderboardUrl(array_filter(['metric' => $metric, 'sort' => $sort === 'value' ? 'value' : null]))" />
+        @endcan
     </div>
 
     <div class="mb-6 flex flex-wrap items-center justify-between gap-3">

@@ -9,6 +9,7 @@ use App\Models\Conference;
 use App\Models\Institution;
 use App\Models\Union;
 use App\Models\User;
+use App\Support\AuditLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -107,7 +108,15 @@ class UserAssignmentController extends Controller
             $scopeDataByLevel['institusi'] = $institutionOptions->map(fn ($i) => ['id' => $i->id, 'label' => $i->name])->values();
         }
 
-        $activeTab = in_array($request->query('tab'), ['admin', 'pemimpin', 'institusi'], true) ? $request->query('tab') : 'unassigned';
+        $activeTab = in_array($request->query('tab'), ['admin', 'pemimpin', 'institusi', 'terhapus'], true) ? $request->query('tab') : 'unassigned';
+
+        // Soft-deleted (destroy()'d) users still physically exist and can silently block a
+        // restrictOnDelete FK elsewhere (Union/Conference/Church/Institution) — this is where
+        // Superadmin reaches in to either restore one or purge it for good (manage-deleted-users
+        // gate, see AppServiceProvider). Everyone else never sees this tab at all.
+        $trashedUsers = $isSuperAdmin
+            ? User::onlyTrashed()->with(['union', 'conference.union', 'church.conference.union', 'institution'])->orderByDesc('deleted_at')->get()
+            : collect();
 
         return view('admin.users.index', [
             'targetLevel' => $targetLevel,
@@ -124,6 +133,7 @@ class UserAssignmentController extends Controller
             'institutionOptions' => $institutionOptions,
             'isSuperAdmin' => $isSuperAdmin,
             'canBootstrapAnyLevel' => $canBootstrapAnyLevel,
+            'trashedUsers' => $trashedUsers,
         ]);
     }
 
@@ -164,6 +174,20 @@ class UserAssignmentController extends Controller
 
         $target->update($update);
 
+        $scopeLabel = match ($scopeColumn) {
+            'union_id' => Union::find($data['scope_id'])?->name,
+            'conference_id' => Conference::find($data['scope_id'])?->name,
+            'church_id' => Church::find($data['scope_id'])?->name,
+            'institution_id' => Institution::find($data['scope_id'])?->name,
+            default => null,
+        };
+
+        AuditLogger::log(
+            'user.promoted',
+            $target,
+            "Menugaskan \"{$target->name}\" sebagai {$newRole->label()}".($scopeLabel ? " ({$scopeLabel})" : '').'.'
+        );
+
         return redirect()->route('admin.users.index', ['tab' => 'unassigned'])
             ->with('status', "\"{$target->name}\" berhasil ditugaskan.");
     }
@@ -172,9 +196,11 @@ class UserAssignmentController extends Controller
     {
         Gate::authorize('revoke', $target);
 
-        // Captured before the update wipes it — decides which tab to land back on.
-        $wasInstitusi = $target->role->level() === 'institusi';
-        $wasReadOnly = $target->role->isReadOnly();
+        // Captured before the update wipes it — decides which tab to land back on, and
+        // labels the audit entry with the role that's being taken away.
+        $oldRole = $target->role;
+        $wasInstitusi = $oldRole->level() === 'institusi';
+        $wasReadOnly = $oldRole->isReadOnly();
 
         // union_id/conference_id/church_id are deliberately kept: once the role is gone
         // they revert to meaning "this member's home region" (see Lengkapi Profil / the
@@ -183,6 +209,8 @@ class UserAssignmentController extends Controller
         // has no such dual meaning — institutions aren't part of the region hierarchy — so
         // it's cleared outright.
         $target->update(['role' => null, 'institution_id' => null]);
+
+        AuditLogger::log('user.revoked', $target, "Mencabut peran {$oldRole->label()} dari \"{$target->name}\".");
 
         $tab = $wasInstitusi ? 'institusi' : ($wasReadOnly ? 'pemimpin' : 'admin');
 
@@ -196,7 +224,35 @@ class UserAssignmentController extends Controller
 
         $target->delete();
 
+        AuditLogger::log('user.deleted', $target, "Menghapus akun \"{$target->name}\".");
+
         return back()->with('status', "\"{$target->name}\" telah dihapus.");
+    }
+
+    public function restore(User $target): RedirectResponse
+    {
+        $target->restore();
+
+        AuditLogger::log('user.restored', $target, "Memulihkan akun \"{$target->name}\".");
+
+        return redirect()->route('admin.users.index', ['tab' => 'terhapus'])
+            ->with('status', "\"{$target->name}\" berhasil dipulihkan.");
+    }
+
+    /**
+     * Unlike destroy() above (a soft delete), this is permanent — the whole point of this
+     * action is clearing a row that's still physically blocking a restrictOnDelete FK
+     * elsewhere despite being "deleted" from every normal list.
+     */
+    public function forceDelete(User $target): RedirectResponse
+    {
+        $name = $target->name;
+        $target->forceDelete();
+
+        AuditLogger::log('user.force_deleted', $target, "Menghapus permanen akun \"{$name}\".");
+
+        return redirect()->route('admin.users.index', ['tab' => 'terhapus'])
+            ->with('status', "\"{$name}\" berhasil dihapus permanen.");
     }
 
     public function toggleActive(Request $request, User $target): RedirectResponse
@@ -206,6 +262,12 @@ class UserAssignmentController extends Controller
         $target->update(['is_active' => ! $target->is_active]);
 
         $status = $target->is_active ? 'diaktifkan kembali' : 'dinonaktifkan';
+
+        AuditLogger::log(
+            $target->is_active ? 'user.activated' : 'user.deactivated',
+            $target,
+            ($target->is_active ? 'Mengaktifkan kembali' : 'Menonaktifkan')." akun \"{$target->name}\"."
+        );
 
         return back()->with('status', "\"{$target->name}\" telah {$status}.");
     }

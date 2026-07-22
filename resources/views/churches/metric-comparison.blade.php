@@ -11,10 +11,12 @@
         <div>
             <h1 class="mb-1 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{{ __('comparison.metric_comparison_title', ['label' => $scope->labelCap()]) }}</h1>
             <p class="text-sm text-slate-500 dark:text-slate-400">
-                {{ __('comparison.metric_comparison_subtitle_score', ['scope' => $scope->isChurch() ? __('comparison.for_all_churches') : __('comparison.for_all_personal')]) }}
+                {{ __('comparison.metric_comparison_subtitle_score', ['scope' => $scope->forAllLabel()]) }}
             </p>
         </div>
-        <x-export-button :url="$scope->exportMetricComparisonUrl()" />
+        @can('browse-directory-analytics')
+            <x-export-button :url="$scope->exportMetricComparisonUrl()" />
+        @endcan
     </div>
 
     <div class="mb-6 flex flex-wrap gap-2">
@@ -36,7 +38,7 @@
 
     <x-growth-score-card
         :title="__('comparison.growth_score_title')"
-        :subtitle="__('comparison.section_subtitle', ['count' => $scoreRows->count(), 'noun' => $scope->isChurch() ? __('comparison.scope_church') : __('comparison.scope_personal'), 'basis' => __('comparison.sort_basis_score')])"
+        :subtitle="__('comparison.section_subtitle', ['count' => $scoreRows->count(), 'noun' => $scope->scopeNoun(), 'basis' => __('comparison.sort_basis_score')])"
         :rows="$scoreRows"
     />
 @endsection

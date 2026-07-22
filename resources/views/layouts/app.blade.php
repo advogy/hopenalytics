@@ -77,10 +77,12 @@
 
                     <div class="flex items-center gap-2 sm:gap-4">
                         <div class="hidden items-center gap-4 lg:flex">
-                            @can('browse-directory-analytics')
+                            @can('view-directory')
                                 <a href="{{ route('churches.directory') }}" class="text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
                                     {{ __('nav.directory') }}
                                 </a>
+                            @endcan
+                            @can('view-analytics')
                                 <a href="{{ route('churches.analytics') }}" class="text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
                                     {{ __('nav.analytics') }}
                                 </a>
@@ -136,8 +138,44 @@
                                             </span>
                                             <x-role-badge :role="auth()->user()->role" />
                                         </a>
+                                        @if (auth()->user()->church_id)
+                                            {{-- admin_gereja's only guaranteed path to their own church — Kelola
+                                                 Akun has no organization tab for gereja-level, and the map/growth
+                                                 widgets on the dashboard only surface it if it happens to have
+                                                 coordinates or growth data yet. --}}
+                                            <a href="{{ route('churches.show', auth()->user()->church) }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                                                <x-icon name="building-office" class="h-4 w-4 shrink-0 text-slate-400" />
+                                                Gereja Saya
+                                            </a>
+                                        @endif
+                                        @if (auth()->user()->union && auth()->user()->can('update', auth()->user()->union))
+                                            {{-- Same gap as Gereja Saya, for admin_uni: Kelola Akun hides
+                                                 the Uni tab from admin_uni themselves (each level skips editing
+                                                 its own entity's identity there), so this is their only path to
+                                                 their own Union's Kelola Akun. can:update (not just union_id
+                                                 being set) keeps this from dead-ending for pimpinan_uni. --}}
+                                            <a href="{{ route('admin.unions.socials.index', auth()->user()->union) }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                                                <x-icon name="building-office" class="h-4 w-4 shrink-0 text-slate-400" />
+                                                Uni Saya
+                                            </a>
+                                        @endif
+                                        @if (auth()->user()->conference && auth()->user()->can('update', auth()->user()->conference))
+                                            <a href="{{ route('admin.conferences.socials.index', auth()->user()->conference) }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                                                <x-icon name="building-office" class="h-4 w-4 shrink-0 text-slate-400" />
+                                                Daerah Saya
+                                            </a>
+                                        @endif
+                                        @if (auth()->user()->institution)
+                                            {{-- Same as Gereja Saya: goes to the read-only institutions.show page (not
+                                                 straight to Kelola Akun), presence-only gated since pimpinan_institusi
+                                                 should see it too — just read-only, same as churches.show. --}}
+                                            <a href="{{ route('institutions.show', auth()->user()->institution) }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                                                <x-icon name="building-office" class="h-4 w-4 shrink-0 text-slate-400" />
+                                                Institusi Saya
+                                            </a>
+                                        @endif
 
-                                        @canany(['manage-queue', 'manage-settings', 'delegate-users', 'manage-hierarchy', 'browse-directory-analytics'])
+                                        @canany(['manage-queue', 'manage-settings', 'delegate-users', 'browse-directory-analytics', 'manage-people', 'view-audit-log'])
                                             <div class="my-1 border-t border-black/5 dark:border-white/5"></div>
                                             @can('manage-queue')
                                                 <a href="{{ route('queue.index') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
@@ -148,19 +186,24 @@
                                             @can('delegate-users')
                                                 <a href="{{ route('admin.users.index') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
                                                     <x-icon name="users" class="h-4 w-4 shrink-0 text-slate-400" />
-                                                    Kelola Pengguna
+                                                    {{ __('nav.manage_users') }}
                                                 </a>
                                             @endcan
-                                            @can('manage-hierarchy')
-                                                <a href="{{ route('admin.hierarchy.index') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                                            {{-- manage-people is the gate for the merged Kelola Akun page (Uni/Daerah/
+                                                 Gereja/Institusi/Personal tabs) — it's the broader of the two gates that
+                                                 used to guard this as two separate links (manage-hierarchy excludes
+                                                 gereja-level; manage-people doesn't), so gating the single merged link
+                                                 on it alone covers everyone who could reach either half before. --}}
+                                            @can('manage-people')
+                                                <a href="{{ route('admin.accounts.index') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
                                                     <x-icon name="building-office" class="h-4 w-4 shrink-0 text-slate-400" />
-                                                    Kelola Organisasi
+                                                    {{ __('nav.manage_accounts') }}
                                                 </a>
                                             @endcan
-                                            @can('browse-directory-analytics')
-                                                <a href="{{ route('admin.people.index') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
-                                                    <x-icon name="user" class="h-4 w-4 shrink-0 text-slate-400" />
-                                                    Kelola Personal
+                                            @can('view-audit-log')
+                                                <a href="{{ route('admin.audit-log.index') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                                                    <x-icon name="clock" class="h-4 w-4 shrink-0 text-slate-400" />
+                                                    {{ __('audit.title') }}
                                                 </a>
                                             @endcan
                                             @can('manage-settings')
@@ -213,10 +256,12 @@
 
                 <div id="mobile-menu" class="hidden border-t border-black/5 pb-4 lg:hidden dark:border-white/5">
                     <div class="flex flex-col gap-1 pt-3">
-                        @can('browse-directory-analytics')
+                        @can('view-directory')
                             <a href="{{ route('churches.directory') }}" class="rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
                                 {{ __('nav.directory') }}
                             </a>
+                        @endcan
+                        @can('view-analytics')
                             <a href="{{ route('churches.analytics') }}" class="rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
                                 {{ __('nav.analytics') }}
                             </a>
@@ -237,8 +282,32 @@
                                     </span>
                                     <x-role-badge :role="auth()->user()->role" />
                                 </a>
+                                @if (auth()->user()->church_id)
+                                    <a href="{{ route('churches.show', auth()->user()->church) }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                                        <x-icon name="building-office" class="h-4 w-4 shrink-0 text-slate-400" />
+                                        Gereja Saya
+                                    </a>
+                                @endif
+                                @if (auth()->user()->union && auth()->user()->can('update', auth()->user()->union))
+                                    <a href="{{ route('admin.unions.socials.index', auth()->user()->union) }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                                        <x-icon name="building-office" class="h-4 w-4 shrink-0 text-slate-400" />
+                                        Uni Saya
+                                    </a>
+                                @endif
+                                @if (auth()->user()->conference && auth()->user()->can('update', auth()->user()->conference))
+                                    <a href="{{ route('admin.conferences.socials.index', auth()->user()->conference) }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                                        <x-icon name="building-office" class="h-4 w-4 shrink-0 text-slate-400" />
+                                        Daerah Saya
+                                    </a>
+                                @endif
+                                @if (auth()->user()->institution)
+                                    <a href="{{ route('institutions.show', auth()->user()->institution) }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                                        <x-icon name="building-office" class="h-4 w-4 shrink-0 text-slate-400" />
+                                        Institusi Saya
+                                    </a>
+                                @endif
 
-                                @canany(['manage-queue', 'manage-settings', 'delegate-users', 'manage-hierarchy', 'browse-directory-analytics'])
+                                @canany(['manage-queue', 'manage-settings', 'delegate-users', 'browse-directory-analytics', 'manage-people', 'view-audit-log'])
                                     <div class="my-1 border-t border-black/5 dark:border-white/5"></div>
                                     @can('manage-queue')
                                         <a href="{{ route('queue.index') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
@@ -249,19 +318,19 @@
                                     @can('delegate-users')
                                         <a href="{{ route('admin.users.index') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
                                             <x-icon name="users" class="h-4 w-4 shrink-0 text-slate-400" />
-                                            Kelola Pengguna
+                                            {{ __('nav.manage_users') }}
                                         </a>
                                     @endcan
-                                    @can('manage-hierarchy')
-                                        <a href="{{ route('admin.hierarchy.index') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                                    @can('manage-people')
+                                        <a href="{{ route('admin.accounts.index') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
                                             <x-icon name="building-office" class="h-4 w-4 shrink-0 text-slate-400" />
-                                            Kelola Organisasi
+                                            {{ __('nav.manage_accounts') }}
                                         </a>
                                     @endcan
-                                    @can('browse-directory-analytics')
-                                        <a href="{{ route('admin.people.index') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
-                                            <x-icon name="user" class="h-4 w-4 shrink-0 text-slate-400" />
-                                            Kelola Personal
+                                    @can('view-audit-log')
+                                        <a href="{{ route('admin.audit-log.index') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                                            <x-icon name="clock" class="h-4 w-4 shrink-0 text-slate-400" />
+                                            {{ __('audit.title') }}
                                         </a>
                                     @endcan
                                     @can('manage-settings')
@@ -316,16 +385,7 @@
             @yield('content')
         </main>
 
-        <footer class="border-t border-black/5 dark:border-white/5">
-            <div class="mx-auto flex max-w-6xl flex-col items-center gap-1 px-6 py-6 text-center text-xs text-slate-400 dark:text-slate-500 sm:flex-row sm:justify-between sm:text-left">
-                <p>
-                    &copy; {{ now()->year }} {{ config('app.name') }}. {{ __('nav.footer_copyright') }}
-                    {{ __('nav.footer_developer') }}
-                    <a href="{{ config('app.developer_url') }}" target="_blank" rel="noopener noreferrer" class="underline hover:text-blue-600 dark:hover:text-blue-400">{{ config('app.developer') }}</a>
-                </p>
-                <p>{{ __('nav.footer_version', ['version' => config('app.version')]) }}</p>
-            </div>
-        </footer>
+        @include('partials.footer')
 
         <dialog id="confirm-dialog" class="bg-white dark:bg-slate-900">
             <div class="p-6">

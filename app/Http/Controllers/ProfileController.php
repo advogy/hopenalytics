@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\FindsPersonCandidates;
 use App\Mail\OtpVerificationMail;
 use App\Models\Church;
 use App\Models\Conference;
+use App\Models\Person;
 use App\Models\Union;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -17,10 +19,29 @@ use Illuminate\Validation\Rules\Password;
 
 class ProfileController extends Controller
 {
+    use FindsPersonCandidates;
+
+    /**
+     * A plain member always has a linked Person by the time they reach here (created at OTP
+     * verification). An admin/leadership account doesn't by default — but per the user's
+     * explicit call, "Profil Saya" (this page, not the separate/unlinked akun-saya route) is
+     * where they'd actually look for their own personal social accounts, so the very first
+     * time they land here without one, this offers the same claim-an-existing-Person-or-create
+     * flow a self-registering member gets (see LinkPersonController), rather than just hiding
+     * the Media Sosial tab forever.
+     */
     public function edit(Request $request)
     {
         $user = $request->user();
         $person = $user->person;
+
+        if (! $person && $user->role !== null && $this->findPersonCandidates($user->name)->isNotEmpty()) {
+            return redirect()->route('link-person');
+        }
+
+        if (! $person && $user->role !== null) {
+            $person = Person::create(['user_id' => $user->id, 'name' => $user->name]);
+        }
 
         // The "Wilayah" tab reuses the Lengkapi Profil fields (see
         // CompleteProfileController) so a member who skipped it during registration can
@@ -29,7 +50,7 @@ class ProfileController extends Controller
         // risk silently changing that assignment (see CompleteProfileController::store()).
         $canEditRegion = $user->role === null;
 
-        $activeTab = in_array($request->query('tab'), ['personal', 'username', 'password', 'wilayah'], true)
+        $activeTab = in_array($request->query('tab'), ['personal', 'sosial', 'username', 'password', 'wilayah'], true)
             ? $request->query('tab')
             : 'username';
 

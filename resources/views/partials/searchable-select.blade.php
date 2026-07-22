@@ -130,4 +130,50 @@
         wrapper._searchableSelect = controller;
         return controller;
     };
+
+    // Wires up a Uni → Daerah cascading pair of the searchable-selects above (or just a flat
+    // Daerah picker when opts.unionSelector is null / matches nothing — e.g. admin_uni, already
+    // scoped to one Uni, has no Uni step to render at all). Shared by churches/form and
+    // admin/institutions/form, which used to each carry their own near-identical copy of this.
+    // Both wrappers' current value (if any) is read directly off their own
+    // [data-searchable-select-value] hidden input, so callers must pre-fill that attribute
+    // server-side for edit-mode preselection to work — churches/form derives its otherwise-
+    // unsubmitted union value from the church's current conference for exactly this reason,
+    // since a church only ever really submits conference_id.
+    window.initUnionConferenceCascade = function (opts) {
+        var conferenceWrapper = document.querySelector(opts.conferenceSelector);
+        var conferenceCtl = window.initSearchableSelect(conferenceWrapper);
+        var currentConferenceId = conferenceWrapper.querySelector('[data-searchable-select-value]').getAttribute('value');
+
+        var unionWrapper = opts.unionSelector ? document.querySelector(opts.unionSelector) : null;
+
+        if (! unionWrapper) {
+            conferenceCtl.setOptions(opts.conferences, opts.conferencePlaceholder);
+            if (currentConferenceId) {
+                var match = opts.conferences.find(function (c) { return String(c.id) === currentConferenceId; });
+                if (match) conferenceCtl.preset(match.id, match.label);
+            }
+            return;
+        }
+
+        var unionCtl = window.initSearchableSelect(unionWrapper, {
+            onChange: function (unionId) {
+                var filtered = unionId ? opts.conferences.filter(function (c) { return String(c.union_id) === String(unionId); }) : [];
+                conferenceCtl.setOptions(filtered, unionId ? opts.conferencePlaceholder : opts.conferenceWaitingPlaceholder);
+            },
+        });
+        unionCtl.setOptions(opts.unions, opts.unionPlaceholder);
+
+        var currentUnionId = unionWrapper.querySelector('[data-searchable-select-value]').getAttribute('value');
+
+        if (currentUnionId) {
+            var currentUnion = opts.unions.find(function (u) { return String(u.id) === currentUnionId; });
+            if (currentUnion) unionCtl.preset(currentUnion.id, currentUnion.label);
+            conferenceCtl.setOptions(opts.conferences.filter(function (c) { return String(c.union_id) === currentUnionId; }), opts.conferencePlaceholder);
+        }
+        if (currentConferenceId) {
+            var currentConference = opts.conferences.find(function (c) { return String(c.id) === currentConferenceId; });
+            if (currentConference) conferenceCtl.preset(currentConference.id, currentConference.label);
+        }
+    };
 </script>

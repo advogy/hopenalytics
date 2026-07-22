@@ -2,7 +2,7 @@
 
 return [
     'all_churches' => 'All churches',
-    'edit_church' => 'Edit Church',
+    'all_institutions' => 'All institutions',
     'add_account' => '+ Add Account',
     'no_socials' => 'No social accounts connected yet.',
     'personal_account' => 'Personal Account',
@@ -43,6 +43,14 @@ return [
     'city_placeholder' => 'e.g.: Bekasi',
     'conference' => 'Daerah / Conference',
     'conference_unassigned' => 'Not assigned to any Daerah yet',
+    'search_uni_placeholder' => 'Search Union…',
+    'search_daerah_placeholder' => 'Search Conference…',
+    'own_church_reach' => 'Church Reach',
+    'own_church_socials' => 'Church Social Accounts',
+    'own_personal_socials' => 'Personal Social Accounts',
+    'own_weekly_growth' => 'Growth This Week',
+    'own_institution_reach' => 'Institution Reach',
+    'own_institution_socials' => 'Institution Social Accounts',
     'deactivate_church' => 'Deactivate this church',
     'deactivate_church_confirm' => 'Deactivate this church? Historical data stays saved and can be reactivated any time.',
     'activate_church' => 'Activate this church',
@@ -54,6 +62,14 @@ return [
     'deactivate_person' => 'Deactivate this account',
     'deactivate_person_confirm' => 'Deactivate :name? Historical data stays saved and can be reactivated any time.',
     'activate_person' => 'Activate this account',
+
+    'login_account' => 'Login Account',
+    'login_account_linked' => 'Linked to login account :name (:email).',
+    'login_account_unlinked' => 'No login account is linked to this Personal yet.',
+    'link_user' => 'Link',
+    'unlink_user' => 'Unlink login account',
+    'unlink_user_confirm' => 'Unlink the login account from :name? This Personal will go back to being an independent record with no account.',
+    'search_user_placeholder' => 'Search user name or email…',
 
     'title_edit_social' => 'Edit Account',
     'title_add_social' => 'Add Account',

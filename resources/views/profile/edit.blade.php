@@ -34,6 +34,9 @@
             <button type="button" data-tab-button="personal" class="border-b-2 px-4 py-2.5 text-sm font-medium transition">
                 Info Personal
             </button>
+            <button type="button" data-tab-button="sosial" class="border-b-2 px-4 py-2.5 text-sm font-medium transition">
+                Media Sosial
+            </button>
         @endif
         @if ($canEditRegion)
             <button type="button" data-tab-button="wilayah" class="border-b-2 px-4 py-2.5 text-sm font-medium transition">
@@ -86,6 +89,32 @@
                     Simpan
                 </button>
             </form>
+        </div>
+
+        <div data-tab-panel="sosial" class="max-w-lg rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/5 dark:bg-slate-900">
+            {{-- This tab is where edit/delete of your own accounts actually happens now — data
+                 display (stats, growth score, history) lives on people.show instead, reached
+                 from Analitik & Grafik Personal, per the user's explicit call: one page for
+                 viewing, one for managing, not the same list duplicated in two places. --}}
+            <div class="mb-4 flex items-center justify-between gap-3">
+                <p class="text-sm text-slate-500 dark:text-slate-400">Akun media sosial pribadi Anda.</p>
+                <a
+                    href="{{ route('people.socials.create', $person) }}"
+                    class="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700"
+                >
+                    {{ __('entity.add_account') }}
+                </a>
+            </div>
+
+            @if ($person->socials->isEmpty())
+                <p class="py-6 text-center text-sm text-slate-400 dark:text-slate-500">{{ __('entity.no_socials') }}</p>
+            @else
+                <ul class="-mx-6 divide-y divide-slate-100 dark:divide-slate-800">
+                    @foreach ($person->socials as $social)
+                        <x-social-account-row :social="$social" padding="px-6 py-3" />
+                    @endforeach
+                </ul>
+            @endif
         </div>
     @endif
 

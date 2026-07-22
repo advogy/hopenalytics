@@ -31,7 +31,9 @@
                 @endif
             </p>
         </div>
-        <x-export-button :url="$scope->exportPlatformComparisonUrl(array_filter(['platform' => $platform, 'metric' => $metric, 'sort' => $sort === 'value' ? 'value' : null]))" />
+        @can('browse-directory-analytics')
+            <x-export-button :url="$scope->exportPlatformComparisonUrl(array_filter(['platform' => $platform, 'metric' => $metric, 'sort' => $sort === 'value' ? 'value' : null]))" />
+        @endcan
     </div>
 
     <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -76,7 +78,7 @@
                         <tr>
                             <td class="px-4 py-2.5 text-slate-400 dark:text-slate-500">{{ $i + 1 }}</td>
                             <td class="px-4 py-2.5">
-                                <a href="{{ $scope->showUrl($row['church'] ?? $row['person']) }}" class="font-medium hover:text-blue-600 dark:hover:text-blue-400">
+                                <a href="{{ $scope->showUrl($row[$scope->rowKey()]) }}" class="font-medium hover:text-blue-600 dark:hover:text-blue-400">
                                     {{ $row['label'] }}
                                 </a>
                             </td>

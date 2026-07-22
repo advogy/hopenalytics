@@ -23,6 +23,22 @@ class RedirectUnassignedMembers
         'profile.complete',
         'profile.complete.store',
         'profile.complete.skip',
+        'link-person',
+        'link-person.store',
+        'churches.directory',
+        'churches.show',
+        'churches.analytics',
+        'churches.metric-comparison',
+        'churches.leaderboard',
+        'churches.needs-attention',
+        'churches.platform-comparison',
+        'people.metric-comparison',
+        'people.leaderboard',
+        'people.platform-comparison',
+        'institutions.show',
+        'institutions.metric-comparison',
+        'institutions.leaderboard',
+        'institutions.platform-comparison',
         'profile.edit',
         'profile.update',
         'profile.password.update',
@@ -33,6 +49,7 @@ class RedirectUnassignedMembers
         'people.show',
         'people.edit',
         'people.update',
+        'people.socials.index',
         'people.socials.create',
         'people.socials.store',
         'socials.edit',
@@ -56,12 +73,21 @@ class RedirectUnassignedMembers
 
         $routeName = $request->route()?->getName();
 
-        if (! in_array($routeName, self::ALLOWED_ROUTES, true) || ! $this->ownsBoundEntity($request)) {
+        if (! in_array($routeName, self::ALLOWED_ROUTES, true) || ! $this->ownsBoundEntity($request, $routeName)) {
             return redirect()->route('akun-saya');
         }
 
         return $next($request);
     }
+
+    /**
+     * Routes that bind a {person}/{social} but are read-only views, not self-management —
+     * PersonPolicy::view()/ChurchPolicy::view() are the actual authority for who a plain
+     * member may look at here (any church, and per Analytics's new reach, any person too —
+     * see BuildsLeaderboards::analyticsPersonScope()), so this middleware's stricter
+     * self-only ownership check below is deliberately skipped for just these two.
+     */
+    private const VIEW_ONLY_ROUTES = ['people.show', 'churches.show', 'institutions.show'];
 
     /**
      * Route-model binding alone doesn't check ownership (anyone could type /personal/5),
@@ -71,8 +97,12 @@ class RedirectUnassignedMembers
      * without a Person (a data-integrity edge case — see MyAccountController) hitting
      * akun-saya must not get redirected back to akun-saya, which would loop forever.
      */
-    private function ownsBoundEntity(Request $request): bool
+    private function ownsBoundEntity(Request $request, ?string $routeName): bool
     {
+        if (in_array($routeName, self::VIEW_ONLY_ROUTES, true)) {
+            return true;
+        }
+
         $routePerson = $request->route('person');
         $routeSocial = $request->route('social');
 

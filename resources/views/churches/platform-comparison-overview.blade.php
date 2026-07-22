@@ -16,10 +16,12 @@
         <div>
             <h1 class="mb-1 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{{ __('comparison.platform_comparison_title', ['suffix' => $scope->titleSuffix()]) }}</h1>
             <p class="text-sm text-slate-500 dark:text-slate-400">
-                {{ __('comparison.platform_overview_subtitle', ['platform' => $platform === 'semua' ? __('comparison.platform_overview_all') : $platformLabels[$platform], 'scope' => $scope->isChurch() ? __('comparison.scope_church') : __('comparison.scope_personal')]) }}
+                {{ __('comparison.platform_overview_subtitle', ['platform' => $platform === 'semua' ? __('comparison.platform_overview_all') : $platformLabels[$platform], 'scope' => $scope->scopeNoun()]) }}
             </p>
         </div>
-        <x-export-button :url="$scope->exportPlatformOverviewUrl(['platform' => $platform])" />
+        @can('browse-directory-analytics')
+            <x-export-button :url="$scope->exportPlatformOverviewUrl(['platform' => $platform])" />
+        @endcan
     </div>
 
     <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -96,7 +98,7 @@
                                     <tr>
                                         <td class="py-2 pr-2 text-slate-400 dark:text-slate-500">{{ $i + 1 }}</td>
                                         <td class="py-2 pr-2">
-                                            <a href="{{ $scope->showUrl($row['church'] ?? $row['person']) }}" class="font-medium hover:text-blue-600 dark:hover:text-blue-400">
+                                            <a href="{{ $scope->showUrl($row[$scope->rowKey()]) }}" class="font-medium hover:text-blue-600 dark:hover:text-blue-400">
                                                 {{ $row['label'] }}
                                             </a>
                                         </td>

@@ -31,6 +31,15 @@ return [
     'otp_verified' => 'Email berhasil diverifikasi. Selamat datang!',
     'no_pending_registration' => 'Tidak ada pendaftaran yang menunggu verifikasi.',
 
+    'link_person_title' => 'Apakah Salah Satu Ini Anda?',
+    'link_person_subtitle' => 'Kami menemukan akun personal dengan nama serupa yang sudah dibuat oleh admin. Pilih salah satu jika itu Anda, supaya data yang sudah tercatat tidak terpisah dari akun baru Anda.',
+    'link_person_none' => 'Bukan saya — buat profil personal baru',
+    'link_person_social_count' => ':count akun media sosial sudah terhubung',
+    'link_person_button' => 'Lanjutkan',
+    'person_linked' => 'Akun personal berhasil dihubungkan ke akun Anda.',
+    'person_created' => 'Profil personal baru berhasil dibuat.',
+    'person_already_claimed' => 'Akun personal itu sudah dihubungkan ke akun lain. Silakan pilih lagi.',
+
     'otp_mail_subject' => '[:app] Kode Verifikasi',
     'otp_mail_greeting' => 'Halo :name,',
     'otp_mail_body' => 'Gunakan kode berikut untuk memverifikasi email Anda:',

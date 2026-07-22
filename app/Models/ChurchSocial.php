@@ -16,8 +16,8 @@ class ChurchSocial extends Model
     use HasFactory;
 
     protected $fillable = [
-        'church_id', 'person_id', 'platform', 'category', 'handle', 'platform_account_id',
-        'profile_url', 'is_active', 'is_auto_fetch', 'last_fetched_at', 'last_fetch_status', 'last_fetch_error',
+        'church_id', 'person_id', 'union_id', 'conference_id', 'institution_id', 'platform', 'category', 'handle',
+        'platform_account_id', 'profile_url', 'is_active', 'is_auto_fetch', 'last_fetched_at', 'last_fetch_status', 'last_fetch_error',
     ];
 
     protected $casts = [
@@ -36,6 +36,21 @@ class ChurchSocial extends Model
     public function person(): BelongsTo
     {
         return $this->belongsTo(Person::class);
+    }
+
+    public function union(): BelongsTo
+    {
+        return $this->belongsTo(Union::class);
+    }
+
+    public function conference(): BelongsTo
+    {
+        return $this->belongsTo(Conference::class);
+    }
+
+    public function institution(): BelongsTo
+    {
+        return $this->belongsTo(Institution::class);
     }
 
     public function stats(): HasMany
@@ -57,7 +72,10 @@ class ChurchSocial extends Model
     {
         return $query->where(function (Builder $q) use ($user) {
             $q->whereHas('church', fn (Builder $q2) => $q2->visibleTo($user))
-                ->orWhereHas('person', fn (Builder $q2) => $q2->visibleTo($user));
+                ->orWhereHas('person', fn (Builder $q2) => $q2->visibleTo($user))
+                ->orWhereHas('union', fn (Builder $q2) => $q2->visibleTo($user))
+                ->orWhereHas('conference', fn (Builder $q2) => $q2->visibleTo($user))
+                ->orWhereHas('institution', fn (Builder $q2) => $q2->visibleTo($user));
         });
     }
 
@@ -70,11 +88,28 @@ class ChurchSocial extends Model
     }
 
     /**
-     * The church's name, or the account owner's name for church-independent personal accounts.
+     * The owning entity's name, whichever of the five owner columns is actually populated.
      */
     public function getDisplayNameAttribute(): string
     {
-        return $this->church?->name ?? $this->person?->name ?? '—';
+        return $this->church?->name ?? $this->person?->name ?? $this->union?->name
+            ?? $this->conference?->name ?? $this->institution?->name ?? '—';
+    }
+
+    /**
+     * [routeName, routeParam] for "back to where this account is managed" — used by
+     * ChurchSocialController::edit()/update()/destroy(), which are shared across all five
+     * owner types via the single /socials/{social}/* routes.
+     */
+    public function manageRoute(): array
+    {
+        return match (true) {
+            $this->church_id !== null => ['churches.socials.index', $this->church],
+            $this->person_id !== null => ['people.socials.index', $this->person],
+            $this->union_id !== null => ['admin.unions.socials.index', $this->union],
+            $this->conference_id !== null => ['admin.conferences.socials.index', $this->conference],
+            $this->institution_id !== null => ['admin.institutions.socials.index', $this->institution],
+        };
     }
 
     /**

@@ -3,7 +3,7 @@
 @section('title', ($social->exists ? __('entity.title_edit_social') : __('entity.title_add_social')) . ' — ' . $church->name)
 
 @section('content')
-    <a href="{{ route('churches.show', $church) }}" class="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
+    <a href="{{ route('churches.socials.index', $church) }}" class="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
         &larr; {{ __('entity.back_to', ['name' => $church->name]) }}
     </a>
 
@@ -73,7 +73,7 @@
             <button type="submit" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700">
                 {{ $social->exists ? __('common.save_changes') : __('entity.title_add_social') }}
             </button>
-            <a href="{{ route('churches.show', $church) }}" class="text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
+            <a href="{{ route('churches.socials.index', $church) }}" class="text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
                 {{ __('common.cancel') }}
             </a>
         </div>

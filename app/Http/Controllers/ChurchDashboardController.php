@@ -5,8 +5,8 @@ namespace App\Http\Controllers;
 use App\Enums\SocialPlatform;
 use App\Http\Controllers\Concerns\BuildsLeaderboards;
 use App\Models\Church;
-use App\Models\ChurchSocial;
 use App\Models\ChurchStat;
+use App\Models\Institution;
 use App\Models\Person;
 use App\Support\ComparisonScope;
 use Illuminate\Http\Request;
@@ -18,9 +18,16 @@ class ChurchDashboardController extends Controller
 
     public function index()
     {
-        $churches = Church::query()
-            ->where('is_active', true)
-            ->visibleTo(auth()->user())
+        // A gereja-level admin manages exactly one church, so most of this dashboard is scoped
+        // to their whole Daerah/Konferens instead — same breadth as an admin_daerah, and
+        // consistent with how Analytics already treats them (see
+        // BuildsLeaderboards::analyticsChurchScope()/analyticsPersonScope()). Only the map and
+        // the platform-score widget stay fully unscoped/national, per the user's explicit
+        // call — a single pin or a platform ranking is more useful seen against the whole
+        // national picture than one Daerah's worth of accounts.
+        $isGerejaLevel = auth()->user()->role?->level() === 'gereja';
+
+        $churches = $this->analyticsChurchScope(Church::query()->where('is_active', true))
             ->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat')])
             ->orderBy('name')
             ->get();
@@ -31,7 +38,11 @@ class ChurchDashboardController extends Controller
 
         $totalReachChurch = $allSocials->sum(fn ($social) => $social->latestStat?->{$reachCountField($social)} ?? 0);
 
-        $mapChurches = $churches->filter(fn ($church) => $church->latitude !== null && $church->longitude !== null)
+        $mapChurchSource = $isGerejaLevel
+            ? Church::query()->where('is_active', true)->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat')])->get()
+            : $churches;
+
+        $mapChurches = $mapChurchSource->filter(fn ($church) => $church->latitude !== null && $church->longitude !== null)
             ->map(fn ($church) => [
                 'name' => $church->name,
                 'city' => $church->city,
@@ -42,11 +53,9 @@ class ChurchDashboardController extends Controller
             ])
             ->values();
 
-        $unmappedCount = $churches->count() - $mapChurches->count();
+        $unmappedCount = $mapChurchSource->count() - $mapChurches->count();
 
-        $people = Person::query()
-            ->where('is_active', true)
-            ->visibleTo(auth()->user())
+        $people = $this->analyticsPersonScope(Person::query()->where('is_active', true))
             ->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat')])
             ->get();
 
@@ -54,7 +63,11 @@ class ChurchDashboardController extends Controller
 
         $totalReachPersonal = $personalSocials->sum(fn ($social) => $social->latestStat?->{$reachCountField($social)} ?? 0);
 
-        $mapPeople = $people->filter(fn ($person) => $person->latitude !== null && $person->longitude !== null)
+        $mapPeopleSource = $isGerejaLevel
+            ? Person::query()->where('is_active', true)->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat')])->get()
+            : $people;
+
+        $mapPeople = $mapPeopleSource->filter(fn ($person) => $person->latitude !== null && $person->longitude !== null)
             ->map(fn ($person) => [
                 'name' => $person->name,
                 'city' => $person->city,
@@ -65,8 +78,38 @@ class ChurchDashboardController extends Controller
             ])
             ->values();
 
-        $unmappedPeopleCount = $people->count() - $mapPeople->count();
+        $unmappedPeopleCount = $mapPeopleSource->count() - $mapPeople->count();
 
+        $institutions = $this->analyticsInstitutionScope(Institution::query()->where('is_active', true))
+            ->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat')])
+            ->get();
+
+        $institutionSocials = $institutions->flatMap->socials;
+
+        $totalReachInstitution = $institutionSocials->sum(fn ($social) => $social->latestStat?->{$reachCountField($social)} ?? 0);
+
+        $mapInstitutionSource = $isGerejaLevel
+            ? Institution::query()->where('is_active', true)->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat')])->get()
+            : $institutions;
+
+        $mapInstitutions = $mapInstitutionSource->filter(fn ($institution) => $institution->latitude !== null && $institution->longitude !== null)
+            ->map(fn ($institution) => [
+                'name' => $institution->name,
+                'city' => $institution->city,
+                'url' => route('institutions.show', $institution),
+                'lat' => $institution->latitude,
+                'lng' => $institution->longitude,
+                'reach' => $institution->socials->sum(fn ($social) => $social->latestStat?->{$reachCountField($social)} ?? 0),
+            ])
+            ->values();
+
+        $unmappedInstitutionsCount = $mapInstitutionSource->count() - $mapInstitutions->count();
+
+        // Unlike the map/platform-score below, Top 5/Bottom 5 use the normal scoped call —
+        // analyticsChurchScope() already resolves a gereja-level viewer to their whole
+        // Daerah/Konferens (same as admin_daerah), not their single church, so this ranks them
+        // against real peers instead of either "1 of 1" or the full nasional field, per the
+        // user's explicit call.
         $allGrowthScores = $this->growthScoreRows();
 
         $mapScoreRow = fn ($row) => [
@@ -79,28 +122,50 @@ class ChurchDashboardController extends Controller
         $topGrowthScores = $allGrowthScores->take(5)->map($mapScoreRow);
         $bottomGrowthScores = $allGrowthScores->sortBy('score')->take(5)->values()->map($mapScoreRow);
 
-        $platformScoreRows = $this->growthScoreRowsByPlatform($this->activeSocials());
+        $platformScoreRows = $this->growthScoreRowsByPlatform($this->activeSocials(scoped: ! $isGerejaLevel));
 
         // "Pertumbuhan minggu ini" combines church and personal accounts (unlike the leaderboard above,
         // which stays church-only since it ranks churches against each other).
         [$combinedReachSocials, $combinedReachField] = $this->metricDefinition('reach', $allSocials->merge($personalSocials));
         $weeklyGrowth = $this->buildLeaderboard($combinedReachSocials, $combinedReachField, null)->sum('delta');
 
-        $accountsNeedingAttention = $this->accountsNeedingAttentionQuery()->count();
+        $user = auth()->user();
+
+        // Shown under the dashboard title so it's always clear whose data this is — especially
+        // for a gereja-level admin, whose stat cards and "big picture" widgets deliberately use
+        // two different scopes (see the block comment at the top of this method).
+        $scopeLabel = match (true) {
+            $user->role?->hasNasionalAccess() || $user->role?->level() === 'nasional'
+                => 'Ringkasan nasional — seluruh gereja dan akun personal.',
+            $user->role?->level() === 'uni'
+                => 'Wilayah Uni ' . ($user->union?->name ?? '—') . '.',
+            $user->role?->level() === 'daerah'
+                => 'Wilayah Daerah ' . ($user->conference?->name ?? '—') . '.',
+            $isGerejaLevel
+                => ($user->church?->name ?? 'gereja Anda') . ' — kartu statistik dan Top 5/Terendah untuk wilayah Daerah/Konferens Anda; Peta dan Skor Platform ditampilkan secara nasional untuk perbandingan.',
+            $user->role?->level() === 'institusi'
+                => 'Institusi ' . ($user->institution?->name ?? '—') . '.',
+            default => __('dashboard.subtitle'),
+        };
 
         return view('churches.index', [
+            'scopeLabel' => $scopeLabel,
             'totalChurches' => $churches->count(),
             'totalSocials' => $allSocials->count(),
             'totalPeople' => $people->count(),
             'totalPersonalSocials' => $personalSocials->count(),
+            'totalInstitutions' => $institutions->count(),
+            'totalInstitutionSocials' => $institutionSocials->count(),
             'totalReachChurch' => $totalReachChurch,
             'totalReachPersonal' => $totalReachPersonal,
+            'totalReachInstitution' => $totalReachInstitution,
             'weeklyGrowth' => $weeklyGrowth,
-            'accountsNeedingAttention' => $accountsNeedingAttention,
             'mapChurches' => $mapChurches,
             'unmappedCount' => $unmappedCount,
             'mapPeople' => $mapPeople,
             'unmappedPeopleCount' => $unmappedPeopleCount,
+            'mapInstitutions' => $mapInstitutions,
+            'unmappedInstitutionsCount' => $unmappedInstitutionsCount,
             'topGrowthScores' => $topGrowthScores,
             'bottomGrowthScores' => $bottomGrowthScores,
             'platformScoreRows' => $platformScoreRows,
@@ -217,31 +282,110 @@ class ChurchDashboardController extends Controller
         ]);
     }
 
-    /**
-     * Active, auto-fetchable accounts whose last fetch attempt failed — the same eligibility
-     * check "Dapatkan Data Terbaru" uses, so this always reflects accounts that button would
-     * refresh but are currently broken.
-     */
-    private function accountsNeedingAttentionQuery()
+    public function institutionMetricComparison()
     {
-        return ChurchSocial::query()
-            ->where('is_active', true)
-            ->where('is_auto_fetch', true)
-            ->where('last_fetch_status', 'failed')
-            ->where(fn ($q) => $q
-                ->whereHas('church', fn ($q2) => $q2->where('is_active', true))
-                ->orWhereHas('person', fn ($q2) => $q2->where('is_active', true)),
-            )
-            ->visibleTo(auth()->user());
+        $metricLabels = ['reach' => 'Followers/Subscribers', 'views' => 'Views', 'likes' => 'Likes', 'posts' => 'Post / Video'];
+
+        $scoreRows = $this->growthScoreRowsInstitution()->map(fn ($row) => [
+            'entity' => $row['institution'],
+            'score' => $row['score'],
+            'metrics' => $row['metrics'],
+            'accountCount' => $row['accountCount'],
+        ]);
+
+        return view('churches.metric-comparison', [
+            'scope' => ComparisonScope::institution(),
+            'metricLabels' => $metricLabels,
+            'scoreRows' => $scoreRows,
+        ]);
+    }
+
+    public function institutionLeaderboard(Request $request, string $metric)
+    {
+        $titles = $this->leaderboardTitles();
+        $metricLabels = ['reach' => 'Followers/Subscribers', 'views' => 'Views', 'likes' => 'Likes', 'posts' => 'Post / Video'];
+
+        abort_unless(isset($titles[$metric]), 404);
+
+        $sort = $request->query('sort') === 'value' ? 'value' : 'delta';
+
+        [$socials, $field] = $this->metricDefinition($metric, $this->activeSocialsInstitution());
+
+        $rows = $this->buildLeaderboard($socials, $field, null, $sort);
+
+        return view('churches.leaderboard', [
+            'scope' => ComparisonScope::institution(),
+            'metric' => $metric,
+            'metricLabels' => $metricLabels,
+            'title' => $titles[$metric]['title'],
+            'subtitle' => $titles[$metric]['subtitle'],
+            'sort' => $sort,
+            'rows' => $rows,
+        ]);
+    }
+
+    public function institutionPlatformComparison(Request $request, string $platform = 'semua')
+    {
+        $platformLabels = ['semua' => 'Semua', 'youtube' => 'YouTube', 'instagram' => 'Instagram', 'tiktok' => 'TikTok', 'facebook' => 'Facebook'];
+        $metricLabels = ['reach' => 'Followers/Subscribers', 'views' => 'Views', 'likes' => 'Likes', 'posts' => 'Post / Video'];
+        $metricPlatforms = $this->metricPlatforms();
+
+        abort_unless(isset($platformLabels[$platform]), 404);
+
+        $sort = $request->query('sort') === 'value' ? 'value' : 'delta';
+        $metric = $request->query('metric');
+
+        if (! $metric) {
+            $applicableMetrics = collect($metricPlatforms)
+                ->filter(fn ($platforms) => in_array($platform, $platforms, true))
+                ->keys();
+
+            $sections = $applicableMetrics->mapWithKeys(fn ($m) => [
+                $m => $this->metricComparisonRowsInstitution($m, $platform, $sort),
+            ]);
+
+            $platformScoreRows = $platform === 'semua' ? $this->growthScoreRowsByPlatform($this->activeSocialsInstitution()) : null;
+
+            return view('churches.platform-comparison-overview', [
+                'scope' => ComparisonScope::institution(),
+                'platform' => $platform,
+                'platformLabels' => $platformLabels,
+                'metricLabels' => $metricLabels,
+                'sort' => $sort,
+                'sections' => $sections,
+                'platformScoreRows' => $platformScoreRows,
+            ]);
+        }
+
+        abort_unless(isset($metricLabels[$metric]), 404);
+
+        if (! in_array($platform, $metricPlatforms[$metric], true)) {
+            $fallbackPlatform = collect($metricPlatforms[$metric])->first(fn ($p) => $p !== 'semua');
+
+            return redirect()->route('institutions.platform-comparison', array_filter([
+                'platform' => $fallbackPlatform,
+                'metric' => $metric,
+                'sort' => $sort === 'value' ? 'value' : null,
+            ]));
+        }
+
+        return view('churches.platform-comparison', [
+            'scope' => ComparisonScope::institution(),
+            'platform' => $platform,
+            'platformLabels' => $platformLabels,
+            'metric' => $metric,
+            'metricLabels' => $metricLabels,
+            'metricPlatforms' => $metricPlatforms[$metric],
+            'sort' => $sort,
+            'rows' => $this->metricComparisonRowsInstitution($metric, $platform, $sort),
+        ]);
     }
 
     public function analytics(Request $request)
     {
         $selectedPlatform = $request->query('platform');
 
-        $churches = Church::query()
-            ->where('is_active', true)
-            ->visibleTo(auth()->user())
+        $churches = $this->analyticsChurchScope(Church::query()->where('is_active', true))
             ->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat')])
             ->orderBy('name')
             ->get();
@@ -256,9 +400,7 @@ class ChurchDashboardController extends Controller
                 fn ($church) => $church->socials->contains(fn ($social) => $social->platform->value === $selectedPlatform)
             ));
 
-        $people = Person::query()
-            ->where('is_active', true)
-            ->visibleTo(auth()->user())
+        $people = $this->analyticsPersonScope(Person::query()->where('is_active', true))
             ->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat')])
             ->orderBy('name')
             ->get();
@@ -273,6 +415,21 @@ class ChurchDashboardController extends Controller
                 fn ($person) => $person->socials->contains(fn ($social) => $social->platform->value === $selectedPlatform)
             ));
 
+        $institutions = $this->analyticsInstitutionScope(Institution::query()->where('is_active', true))
+            ->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat')])
+            ->orderBy('name')
+            ->get();
+
+        $selectedInstitutionId = $request->query('institution_id');
+
+        $growthOverTimeInstitution = $this->growthOverTime('institution_id', 'institutions', $selectedInstitutionId, $selectedPlatform, $institutions->pluck('id'));
+
+        $filteredInstitutions = $institutions
+            ->when($selectedInstitutionId, fn ($collection) => $collection->where('id', (int) $selectedInstitutionId))
+            ->when($selectedPlatform, fn ($collection) => $collection->filter(
+                fn ($institution) => $institution->socials->contains(fn ($social) => $social->platform->value === $selectedPlatform)
+            ));
+
         return view('churches.analytics', [
             'churches' => $churches,
             'filteredChurches' => $filteredChurches,
@@ -282,16 +439,21 @@ class ChurchDashboardController extends Controller
             'filteredPeople' => $filteredPeople,
             'growthOverTimePersonal' => $growthOverTimePersonal,
             'selectedPersonId' => $selectedPersonId,
+            'institutions' => $institutions,
+            'filteredInstitutions' => $filteredInstitutions,
+            'growthOverTimeInstitution' => $growthOverTimeInstitution,
+            'selectedInstitutionId' => $selectedInstitutionId,
             'selectedPlatform' => $selectedPlatform,
         ]);
     }
 
     /**
-     * Weekly aggregate stats (reach/views/likes/posts) for church- or person-owned accounts.
-     * $ownerColumn is 'church_id' or 'person_id' on church_socials; $ownerTable is the matching
-     * owner table ('churches' or 'people') — both are internal constants, never user input.
-     * $visibleIds restricts to IDs the viewing user's role/scope may see (pre-resolved via
-     * Church::visibleTo()/Person::visibleTo(), rather than duplicating that hierarchy SQL here).
+     * Weekly aggregate stats (reach/views/likes/posts) for church-, person-, or institution-owned
+     * accounts. $ownerColumn is 'church_id', 'person_id', or 'institution_id' on church_socials;
+     * $ownerTable is the matching owner table ('churches', 'people', or 'institutions') — both
+     * are internal constants, never user input. $visibleIds restricts to IDs the viewing user's
+     * role/scope may see (pre-resolved via Church::visibleTo()/Person::visibleTo()/
+     * Institution::visibleTo(), rather than duplicating that hierarchy SQL here).
      */
     private function growthOverTime(string $ownerColumn, string $ownerTable, ?string $ownerId, ?string $platform, Collection $visibleIds)
     {
@@ -322,7 +484,8 @@ class ChurchDashboardController extends Controller
         $autoFetch = in_array($request->query('auto_fetch'), ['auto', 'manual'], true) ? $request->query('auto_fetch') : null;
         $hideEmptyChurches = $request->boolean('hide_empty_churches');
         $hideEmptyPeople = $request->boolean('hide_empty_people');
-        $activeTab = $request->query('tab') === 'personal' ? 'personal' : 'gereja';
+        $hideEmptyInstitutions = $request->boolean('hide_empty_institutions');
+        $activeTab = in_array($request->query('tab'), ['personal', 'institusi'], true) ? $request->query('tab') : 'gereja';
 
         // Shared with whereHas() below so "no data" means the same thing as what the eager
         // load actually shows in the account columns — not just "no accounts at all" while
@@ -332,9 +495,13 @@ class ChurchDashboardController extends Controller
             ->when($selectedPlatform, fn ($q) => $q->where('platform', $selectedPlatform))
             ->when($autoFetch, fn ($q) => $q->where('is_auto_fetch', $autoFetch === 'auto'));
 
+        // The directory is a public, read-only listing — every account visible to anyone
+        // browsing it, not scoped to the viewer's own admin region. visibleTo() scoping is
+        // for "what can I manage", which is a different question, answered instead by the
+        // can:update checks on the church/person detail pages (and by churches.index / Kelola
+        // Akun's Personal tab, which still apply visibleTo() for that management context).
         $churches = Church::query()
             ->where('is_active', true)
-            ->visibleTo(auth()->user())
             ->when($search, fn ($q) => $q->where(fn ($q2) => $q2
                 ->where('name', 'like', "%{$search}%")
                 ->orWhere('city', 'like', "%{$search}%"),
@@ -351,7 +518,6 @@ class ChurchDashboardController extends Controller
 
         $people = Person::query()
             ->where('is_active', true)
-            ->visibleTo(auth()->user())
             ->when($search, fn ($q) => $q->where(fn ($q2) => $q2
                 ->where('name', 'like', "%{$search}%")
                 ->orWhere('city', 'like', "%{$search}%"),
@@ -363,14 +529,26 @@ class ChurchDashboardController extends Controller
             ->withQueryString()
             ->appends(['tab' => 'personal']);
 
+        $institutions = Institution::query()
+            ->where('is_active', true)
+            ->when($search, fn ($q) => $q->where('name', 'like', "%{$search}%"))
+            ->when($hideEmptyInstitutions, fn ($q) => $q->whereHas('socials', $socialsFilter))
+            ->with(['socials' => $socialsFilter])
+            ->orderBy('name')
+            ->paginate(20, ['*'], 'institutions_page')
+            ->withQueryString()
+            ->appends(['tab' => 'institusi']);
+
         return view('churches.directory', [
             'churches' => $churches,
             'people' => $people,
+            'institutions' => $institutions,
             'selectedPlatform' => $selectedPlatform,
             'search' => $search,
             'autoFetch' => $autoFetch,
             'hideEmptyChurches' => $hideEmptyChurches,
             'hideEmptyPeople' => $hideEmptyPeople,
+            'hideEmptyInstitutions' => $hideEmptyInstitutions,
             'activeTab' => $activeTab,
         ]);
     }
@@ -619,10 +797,70 @@ class ChurchDashboardController extends Controller
 
         $scoreHistory = $this->growthScoreHistory($church->socials);
 
+        // Only a gereja-level viewer gets these — their own dashboard stat cards now show
+        // their whole Daerah/Konferens (per the user's explicit call), so this is the one
+        // place left that summarizes just their own world at a glance: this one church, plus
+        // their own personal accounts (they manage both — see Profil Saya's Media Sosial tab).
+        $ownStats = null;
+
+        if (auth()->user()->role?->level() === 'gereja') {
+            $reachCountField = fn ($social) => $social->platform === SocialPlatform::YouTube ? 'subscribers_count' : 'followers_count';
+
+            $personSocials = auth()->user()->person
+                ? auth()->user()->person->socials()->where('is_active', true)->with('latestStat')->get()
+                : collect();
+
+            $combinedSocials = $church->socials->merge($personSocials);
+            [$reachSocials, $reachField] = $this->metricDefinition('reach', $combinedSocials);
+
+            $ownStats = [
+                'churchReach' => $church->socials->sum(fn ($social) => $social->latestStat?->{$reachCountField($social)} ?? 0),
+                'totalAccounts' => $church->socials->count(),
+                'weeklyGrowth' => $this->buildLeaderboard($reachSocials, $reachField, null)->sum('delta'),
+                'personalAccounts' => $personSocials->count(),
+            ];
+        }
+
         return view('churches.show', [
             'church' => $church,
             'history' => $history,
             'scoreHistory' => $scoreHistory,
+            'ownStats' => $ownStats,
+        ]);
+    }
+
+    public function showInstitution(Institution $institution)
+    {
+        $institution->load(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat')]);
+
+        $history = $institution->socials->mapWithKeys(
+            fn ($social) => [$social->id => $social->stats()->limit(30)->get()]
+        );
+
+        $scoreHistory = $this->growthScoreHistory($institution->socials);
+
+        // Only the admin_institusi actually bound to THIS institution gets these — same
+        // reasoning as churches.show's $ownStats (see show() above), minus the personal-accounts
+        // card, which has no institution-level equivalent.
+        $ownStats = null;
+
+        if (auth()->user()->role?->level() === 'institusi' && auth()->user()->institution_id === $institution->id) {
+            $reachCountField = fn ($social) => $social->platform === SocialPlatform::YouTube ? 'subscribers_count' : 'followers_count';
+
+            [$reachSocials, $reachField] = $this->metricDefinition('reach', $institution->socials);
+
+            $ownStats = [
+                'reach' => $institution->socials->sum(fn ($social) => $social->latestStat?->{$reachCountField($social)} ?? 0),
+                'totalAccounts' => $institution->socials->count(),
+                'weeklyGrowth' => $this->buildLeaderboard($reachSocials, $reachField, null)->sum('delta'),
+            ];
+        }
+
+        return view('institutions.show', [
+            'institution' => $institution,
+            'history' => $history,
+            'scoreHistory' => $scoreHistory,
+            'ownStats' => $ownStats,
         ]);
     }
 }

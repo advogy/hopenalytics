@@ -3,10 +3,12 @@
 namespace App\Support;
 
 /**
- * Distinguishes the church-scoped vs personal-scoped variant of the comparison/leaderboard/
+ * Distinguishes the church/personal/institution-scoped variants of the comparison/leaderboard/
  * presentation pages, which are otherwise structurally identical. Passed into the shared
  * Blade views so they can resolve the right route names, labels, and row keys without
- * duplicating markup per scope.
+ * duplicating markup per scope. Institution has no public presentation page (see
+ * presentationUrl()/presentationGrowthUrl() below) and no other()-counterpart — those two
+ * remain a church<->personal pair only, per the user's explicit call.
  */
 class ComparisonScope
 {
@@ -24,117 +26,230 @@ class ComparisonScope
         return new self('personal');
     }
 
+    public static function institution(): self
+    {
+        return new self('institusi');
+    }
+
     public function isChurch(): bool
     {
         return $this->type === 'gereja';
     }
 
-    /** The key holding the entity model on a comparison row: $row['church'] or $row['person']. */
+    public function isPersonal(): bool
+    {
+        return $this->type === 'personal';
+    }
+
+    public function isInstitution(): bool
+    {
+        return $this->type === 'institusi';
+    }
+
+    /** The key holding the entity model on a comparison row: $row['church']/$row['person']/$row['institution']. */
     public function rowKey(): string
     {
-        return $this->isChurch() ? 'church' : 'person';
+        return match ($this->type) {
+            'gereja' => 'church',
+            'personal' => 'person',
+            'institusi' => 'institution',
+        };
     }
 
     /** Table column header for the entity name. */
     public function nameLabel(): string
     {
-        return $this->isChurch() ? __('common.church') : __('common.name');
+        return match ($this->type) {
+            'gereja' => __('common.church'),
+            'personal' => __('common.name'),
+            'institusi' => __('common.institution'),
+        };
     }
 
     /** Noun used in sentences like "Peringkat X {noun}". */
     public function noun(): string
     {
-        return $this->isChurch() ? mb_strtolower(__('common.church')) : mb_strtolower(__('common.personal'));
+        return match ($this->type) {
+            'gereja' => mb_strtolower(__('common.church')),
+            'personal' => mb_strtolower(__('common.personal')),
+            'institusi' => mb_strtolower(__('common.institution')),
+        };
     }
 
-    /** " Personal" suffix appended to church-side titles, or '' for the church scope itself. */
+    /** " Personal"/" Institusi" suffix appended to church-side titles, or '' for the church scope itself. */
     public function titleSuffix(): string
     {
-        return $this->isChurch() ? '' : __('comparison.title_suffix_personal');
+        return match ($this->type) {
+            'gereja' => '',
+            'personal' => __('comparison.title_suffix_personal'),
+            'institusi' => __('comparison.title_suffix_institution'),
+        };
     }
 
-    /** Capitalized label: "Gereja" or "Personal". */
+    /** Capitalized label: "Gereja", "Personal", or "Institusi". */
     public function labelCap(): string
     {
-        return $this->isChurch() ? __('common.church') : __('common.personal');
+        return match ($this->type) {
+            'gereja' => __('common.church'),
+            'personal' => __('common.personal'),
+            'institusi' => __('common.institution'),
+        };
     }
 
     /** Icon name representing this scope, for nav links that switch to it. */
     public function icon(): string
     {
-        return $this->isChurch() ? 'building-office' : 'user';
+        return match ($this->type) {
+            'gereja' => 'building-office',
+            'personal' => 'user',
+            'institusi' => 'building-office',
+        };
     }
 
-    /** The opposite scope — church <-> personal. */
+    /** "for all X" phrase, used on the metric-comparison score subtitle. */
+    public function forAllLabel(): string
+    {
+        return match ($this->type) {
+            'gereja' => __('comparison.for_all_churches'),
+            'personal' => __('comparison.for_all_personal'),
+            'institusi' => __('comparison.for_all_institutions'),
+        };
+    }
+
+    /** Plural noun used in section subtitles like ":count :noun, sorted by :basis". */
+    public function scopeNoun(): string
+    {
+        return match ($this->type) {
+            'gereja' => __('comparison.scope_church'),
+            'personal' => __('comparison.scope_personal'),
+            'institusi' => __('comparison.scope_institution'),
+        };
+    }
+
+    /**
+     * The opposite scope — church <-> personal only. Never called on an institution scope;
+     * institution has no public presentation page to switch to/from (see presentationUrl()
+     * below), so it maps to itself as a safe fallback rather than throwing.
+     */
     public function other(): self
     {
-        return $this->isChurch() ? self::personal() : self::church();
+        return match ($this->type) {
+            'gereja' => self::personal(),
+            'personal' => self::church(),
+            'institusi' => self::institution(),
+        };
     }
 
     public function metricComparisonUrl(array $params = []): string
     {
-        return route($this->isChurch() ? 'churches.metric-comparison' : 'people.metric-comparison', $params);
+        return route(match ($this->type) {
+            'gereja' => 'churches.metric-comparison',
+            'personal' => 'people.metric-comparison',
+            'institusi' => 'institutions.metric-comparison',
+        }, $params);
     }
 
     public function leaderboardUrl(array $params = []): string
     {
-        return route($this->isChurch() ? 'churches.leaderboard' : 'people.leaderboard', $params);
+        return route(match ($this->type) {
+            'gereja' => 'churches.leaderboard',
+            'personal' => 'people.leaderboard',
+            'institusi' => 'institutions.leaderboard',
+        }, $params);
     }
 
     public function platformComparisonUrl(array $params = []): string
     {
-        return route($this->isChurch() ? 'churches.platform-comparison' : 'people.platform-comparison', $params);
+        return route(match ($this->type) {
+            'gereja' => 'churches.platform-comparison',
+            'personal' => 'people.platform-comparison',
+            'institusi' => 'institutions.platform-comparison',
+        }, $params);
     }
 
     public function analyticsUrl(): string
     {
-        return $this->isChurch() ? route('churches.analytics') : route('churches.analytics', ['tab' => 'personal']);
+        return match ($this->type) {
+            'gereja' => route('churches.analytics'),
+            'personal' => route('churches.analytics', ['tab' => 'personal']),
+            'institusi' => route('churches.analytics', ['tab' => 'institusi']),
+        };
     }
 
     public function showUrl($entity): string
     {
-        return route($this->isChurch() ? 'churches.show' : 'people.show', $entity);
+        return route(match ($this->type) {
+            'gereja' => 'churches.show',
+            'personal' => 'people.show',
+            'institusi' => 'institutions.show',
+        }, $entity);
     }
 
     /** Where the leaderboard page's back-link should point. */
     public function leaderboardBackUrl(): string
     {
-        return $this->isChurch() ? $this->analyticsUrl() : $this->metricComparisonUrl();
+        return $this->isPersonal() ? $this->metricComparisonUrl() : $this->analyticsUrl();
     }
 
     /** Label for the leaderboard page's back-link. */
     public function leaderboardBackLabel(): string
     {
-        return $this->isChurch() ? __('comparison.leaderboard_back_analytics') : __('comparison.leaderboard_back_metric');
+        return $this->isPersonal() ? __('comparison.leaderboard_back_metric') : __('comparison.leaderboard_back_analytics');
     }
 
+    /** Institution has no public presentation board — never call this on an institution scope. */
     public function presentationUrl(): string
     {
-        return route($this->isChurch() ? 'churches.presentation' : 'people.presentation');
+        return match ($this->type) {
+            'gereja' => route('churches.presentation'),
+            'personal' => route('people.presentation'),
+            'institusi' => throw new \LogicException('Institution has no public presentation page.'),
+        };
     }
 
+    /** Institution has no public presentation board — never call this on an institution scope. */
     public function presentationGrowthUrl(): string
     {
-        return route($this->isChurch() ? 'churches.presentation-growth' : 'people.presentation-growth');
+        return match ($this->type) {
+            'gereja' => route('churches.presentation-growth'),
+            'personal' => route('people.presentation-growth'),
+            'institusi' => throw new \LogicException('Institution has no public presentation page.'),
+        };
     }
 
     public function exportMetricComparisonUrl(array $params = []): string
     {
-        return route($this->isChurch() ? 'export.metric-comparison.preview' : 'export.personal-metric-comparison.preview', $params);
+        return route(match ($this->type) {
+            'gereja' => 'export.metric-comparison.preview',
+            'personal' => 'export.personal-metric-comparison.preview',
+            'institusi' => 'export.institution-metric-comparison.preview',
+        }, $params);
     }
 
     public function exportLeaderboardUrl(array $params = []): string
     {
-        return route($this->isChurch() ? 'export.leaderboard.preview' : 'export.personal-leaderboard.preview', $params);
+        return route(match ($this->type) {
+            'gereja' => 'export.leaderboard.preview',
+            'personal' => 'export.personal-leaderboard.preview',
+            'institusi' => 'export.institution-leaderboard.preview',
+        }, $params);
     }
 
     public function exportPlatformComparisonUrl(array $params = []): string
     {
-        return route($this->isChurch() ? 'export.platform.preview' : 'export.personal-platform.preview', $params);
+        return route(match ($this->type) {
+            'gereja' => 'export.platform.preview',
+            'personal' => 'export.personal-platform.preview',
+            'institusi' => 'export.institution-platform.preview',
+        }, $params);
     }
 
     public function exportPlatformOverviewUrl(array $params = []): string
     {
-        return route($this->isChurch() ? 'export.platform-overview.preview' : 'export.personal-platform-overview.preview', $params);
+        return route(match ($this->type) {
+            'gereja' => 'export.platform-overview.preview',
+            'personal' => 'export.personal-platform-overview.preview',
+            'institusi' => 'export.institution-platform-overview.preview',
+        }, $params);
     }
 }

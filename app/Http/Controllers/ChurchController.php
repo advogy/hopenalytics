@@ -6,6 +6,7 @@ use App\Models\Church;
 use App\Models\Conference;
 use App\Models\Union;
 use App\Services\GeocodingService;
+use App\Support\AuditLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -48,6 +49,8 @@ class ChurchController extends Controller
 
         $church = Church::create($data);
 
+        AuditLogger::log('church.created', $church, "Menambahkan Gereja \"{$church->name}\".");
+
         return redirect()->route('churches.show', $church)->with('status', "Gereja \"{$church->name}\" berhasil ditambahkan.");
     }
 
@@ -80,6 +83,8 @@ class ChurchController extends Controller
         $data['conference_id'] = $this->resolveConferenceId($request, $church->conference_id);
 
         $church->update($data);
+
+        AuditLogger::log('church.updated', $church, "Memperbarui Gereja \"{$church->name}\".");
 
         return redirect()->route('churches.show', $church)->with('status', "Gereja \"{$church->name}\" berhasil diperbarui.");
     }
@@ -151,7 +156,13 @@ class ChurchController extends Controller
         $church->update(['is_active' => ! $church->is_active]);
         $status = $church->is_active ? 'diaktifkan kembali' : 'dinonaktifkan';
 
-        return redirect()->route('admin.hierarchy.index', ['tab' => 'gereja'])->with('status', "Gereja \"{$church->name}\" telah {$status}.");
+        AuditLogger::log(
+            $church->is_active ? 'church.activated' : 'church.deactivated',
+            $church,
+            ($church->is_active ? 'Mengaktifkan kembali' : 'Menonaktifkan')." Gereja \"{$church->name}\"."
+        );
+
+        return redirect()->route('admin.accounts.index', ['tab' => 'gereja'])->with('status', "Gereja \"{$church->name}\" telah {$status}.");
     }
 
     /**
@@ -160,17 +171,24 @@ class ChurchController extends Controller
      * delete() would just bubble up as a raw QueryException. Its ChurchSocial accounts cascade
      * delete along with it — that's intentional cleanup, not something to guard against.
      * Nonaktifkan is the safe default; this is only for cleaning up a church created by mistake.
+     *
+     * withTrashed() matters here: a soft-deleted User row (User uses SoftDeletes) is still
+     * physically present in the table and still trips the DB-level FK constraint, even though
+     * Eloquent's default query hides it — without withTrashed() this check would say "no users"
+     * and then fail with a raw QueryException on the delete() below anyway.
      */
     public function destroy(Church $church): RedirectResponse
     {
-        if ($church->users()->exists()) {
-            return redirect()->route('admin.hierarchy.index', ['tab' => 'gereja'])
+        if ($church->users()->withTrashed()->exists()) {
+            return redirect()->route('admin.accounts.index', ['tab' => 'gereja'])
                 ->with('error', "Gereja \"{$church->name}\" tidak bisa dihapus karena masih ada pengguna yang ditugaskan. Nonaktifkan saja, atau pindahkan penugasan pengguna terlebih dahulu.");
         }
 
         $name = $church->name;
         $church->delete();
 
-        return redirect()->route('admin.hierarchy.index', ['tab' => 'gereja'])->with('status', "Gereja \"{$name}\" berhasil dihapus.");
+        AuditLogger::log('church.deleted', $church, "Menghapus permanen Gereja \"{$name}\".");
+
+        return redirect()->route('admin.accounts.index', ['tab' => 'gereja'])->with('status', "Gereja \"{$name}\" berhasil dihapus.");
     }
 }

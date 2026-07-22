@@ -1,9 +1,19 @@
+@php
+    // A member managing their own linked Person belongs back on Profil Saya's Media Sosial
+    // tab — that's where they add/edit/delete their own accounts now — while an admin
+    // managing someone else's lands on the shared people.socials.index list instead. Same
+    // rule as PersonSocialController::manageLocation().
+    $backRoute = $person->user_id === auth()->id()
+        ? route('profile.edit', ['tab' => 'sosial'])
+        : route('people.socials.index', $person);
+@endphp
+
 @extends('layouts.app')
 
 @section('title', ($social->exists ? __('entity.title_edit_social') : __('entity.title_add_social')) . ' — ' . $person->name)
 
 @section('content')
-    <a href="{{ route('people.show', $person) }}" class="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
+    <a href="{{ $backRoute }}" class="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
         &larr; {{ __('entity.back_to', ['name' => $person->name]) }}
     </a>
 
@@ -60,7 +70,7 @@
             <button type="submit" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700">
                 {{ $social->exists ? __('common.save_changes') : __('entity.title_add_social') }}
             </button>
-            <a href="{{ route('people.show', $person) }}" class="text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
+            <a href="{{ $backRoute }}" class="text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
                 {{ __('common.cancel') }}
             </a>
         </div>

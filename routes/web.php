@@ -1,8 +1,10 @@
 <?php
 
+use App\Http\Controllers\Admin\AccountController;
+use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\ConferenceController;
-use App\Http\Controllers\Admin\HierarchyController;
 use App\Http\Controllers\Admin\InstitutionController;
+use App\Http\Controllers\Admin\OrganizationSocialController;
 use App\Http\Controllers\Admin\UnionController;
 use App\Http\Controllers\Admin\UserAssignmentController;
 use App\Http\Controllers\AuthController;
@@ -13,6 +15,7 @@ use App\Http\Controllers\ChurchSocialController;
 use App\Http\Controllers\CompleteProfileController;
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\ForgotPasswordController;
+use App\Http\Controllers\LinkPersonController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\MyAccountController;
 use App\Http\Controllers\PersonController;
@@ -58,6 +61,9 @@ Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group
     Route::post('/lengkapi-profil', [CompleteProfileController::class, 'store'])->name('profile.complete.store');
     Route::post('/lengkapi-profil/skip', [CompleteProfileController::class, 'skip'])->name('profile.complete.skip');
 
+    Route::get('/pilih-personal', [LinkPersonController::class, 'show'])->name('link-person');
+    Route::post('/pilih-personal', [LinkPersonController::class, 'store'])->name('link-person.store');
+
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::put('/profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password.update');
@@ -77,12 +83,12 @@ Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group
     });
 
     Route::get('/', [ChurchDashboardController::class, 'index'])->name('churches.index');
-    Route::get('/analytics', [ChurchDashboardController::class, 'analytics'])->name('churches.analytics')->middleware('can:browse-directory-analytics');
-    Route::get('/gereja/metrik', [ChurchDashboardController::class, 'metricComparison'])->name('churches.metric-comparison');
-    Route::get('/gereja/metrik/{metric}', [ChurchDashboardController::class, 'leaderboard'])->name('churches.leaderboard');
-    Route::get('/directory', [ChurchDashboardController::class, 'directory'])->name('churches.directory')->middleware('can:browse-directory-analytics');
-    Route::get('/akun-bermasalah', [ChurchDashboardController::class, 'needsAttention'])->name('churches.needs-attention');
-    Route::get('/gereja/platform/{platform?}', [ChurchDashboardController::class, 'platformComparison'])->name('churches.platform-comparison');
+    Route::get('/analytics', [ChurchDashboardController::class, 'analytics'])->name('churches.analytics')->middleware('can:view-analytics');
+    Route::get('/gereja/metrik', [ChurchDashboardController::class, 'metricComparison'])->name('churches.metric-comparison')->middleware('can:view-analytics');
+    Route::get('/gereja/metrik/{metric}', [ChurchDashboardController::class, 'leaderboard'])->name('churches.leaderboard')->middleware('can:view-analytics');
+    Route::get('/directory', [ChurchDashboardController::class, 'directory'])->name('churches.directory')->middleware('can:view-directory');
+    Route::get('/akun-bermasalah', [ChurchDashboardController::class, 'needsAttention'])->name('churches.needs-attention')->middleware('can:view-analytics');
+    Route::get('/gereja/platform/{platform?}', [ChurchDashboardController::class, 'platformComparison'])->name('churches.platform-comparison')->middleware('can:view-analytics');
 
     Route::view('/about', 'about')->name('about');
 
@@ -100,6 +106,7 @@ Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group
     Route::patch('/churches/{church:slug}/toggle-active', [ChurchController::class, 'toggleActive'])->name('churches.toggle-active')->middleware('can:delete,church');
     Route::delete('/churches/{church:slug}', [ChurchController::class, 'destroy'])->name('churches.destroy')->middleware('can:delete,church');
 
+    Route::get('/churches/{church:slug}/socials', [ChurchSocialController::class, 'index'])->name('churches.socials.index')->middleware('can:update,church');
     Route::get('/churches/{church:slug}/socials/create', [ChurchSocialController::class, 'create'])->name('socials.create')->middleware('can:update,church');
     Route::post('/churches/{church:slug}/socials', [ChurchSocialController::class, 'store'])->name('socials.store')->middleware('can:update,church');
     Route::get('/socials/{social}/edit', [ChurchSocialController::class, 'edit'])->name('socials.edit')->middleware('can:update,social');
@@ -108,10 +115,14 @@ Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group
     Route::put('/socials/{social}', [ChurchSocialController::class, 'update'])->name('socials.update')->middleware('can:update,social');
     Route::delete('/socials/{social}', [ChurchSocialController::class, 'destroy'])->name('socials.destroy')->middleware('can:update,social');
 
-    Route::get('/personal/metrik', [ChurchDashboardController::class, 'personalMetricComparison'])->name('people.metric-comparison');
-    Route::get('/personal/metrik/{metric}', [ChurchDashboardController::class, 'personalLeaderboard'])->name('people.leaderboard');
-    Route::get('/personal/platform/{platform?}', [ChurchDashboardController::class, 'personalPlatformComparison'])->name('people.platform-comparison');
-    Route::get('/admin/personal', [PersonController::class, 'index'])->name('admin.people.index')->middleware('can:browse-directory-analytics');
+    Route::get('/personal/metrik', [ChurchDashboardController::class, 'personalMetricComparison'])->name('people.metric-comparison')->middleware('can:view-analytics');
+    Route::get('/personal/metrik/{metric}', [ChurchDashboardController::class, 'personalLeaderboard'])->name('people.leaderboard')->middleware('can:view-analytics');
+    Route::get('/personal/platform/{platform?}', [ChurchDashboardController::class, 'personalPlatformComparison'])->name('people.platform-comparison')->middleware('can:view-analytics');
+
+    Route::get('/institusi/metrik', [ChurchDashboardController::class, 'institutionMetricComparison'])->name('institutions.metric-comparison')->middleware('can:view-analytics');
+    Route::get('/institusi/metrik/{metric}', [ChurchDashboardController::class, 'institutionLeaderboard'])->name('institutions.leaderboard')->middleware('can:view-analytics');
+    Route::get('/institusi/platform/{platform?}', [ChurchDashboardController::class, 'institutionPlatformComparison'])->name('institutions.platform-comparison')->middleware('can:view-analytics');
+    Route::get('/institusi/{institution:slug}', [ChurchDashboardController::class, 'showInstitution'])->name('institutions.show')->middleware('can:view,institution');
     Route::middleware('can:create,App\Models\Person')->group(function () {
         Route::get('/personal/create', [PersonController::class, 'create'])->name('people.create');
         Route::post('/personal', [PersonController::class, 'store'])->name('people.store');
@@ -119,8 +130,11 @@ Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group
     Route::get('/personal/{person}/edit', [PersonController::class, 'edit'])->name('people.edit')->middleware('can:update,person');
     Route::put('/personal/{person}', [PersonController::class, 'update'])->name('people.update')->middleware('can:update,person');
     Route::patch('/personal/{person}/toggle-active', [PersonController::class, 'toggleActive'])->name('people.toggle-active')->middleware('can:delete,person');
+    Route::post('/personal/{person}/link-user', [PersonController::class, 'linkUser'])->name('people.link-user')->middleware('can:delete,person');
+    Route::post('/personal/{person}/unlink-user', [PersonController::class, 'unlinkUser'])->name('people.unlink-user')->middleware('can:delete,person');
     Route::delete('/personal/{person}', [PersonController::class, 'destroy'])->name('people.destroy')->middleware('can:delete,person');
 
+    Route::get('/personal/{person}/socials', [PersonSocialController::class, 'index'])->name('people.socials.index')->middleware('can:update,person');
     Route::get('/personal/{person}/socials/create', [PersonSocialController::class, 'create'])->name('people.socials.create')->middleware('can:update,person');
     Route::post('/personal/{person}/socials', [PersonSocialController::class, 'store'])->name('people.socials.store')->middleware('can:update,person');
 
@@ -133,47 +147,70 @@ Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group
     Route::get('/refresh/{batch}/status', [ChurchRefreshController::class, 'status'])->name('socials.refresh-status');
     Route::post('/socials/{social}/refresh', [ChurchRefreshController::class, 'single'])->name('socials.refresh')->middleware(['can:trigger-refresh', 'throttle:10,1']);
 
-    Route::get('/export/gereja/leaderboard/{metric}/preview', [ExportController::class, 'leaderboardPreview'])->name('export.leaderboard.preview');
-    Route::get('/export/gereja/leaderboard/{metric}/{format}', [ExportController::class, 'leaderboardDownload'])->name('export.leaderboard.download');
+    // All exports below mirror the Analytics/Directory pages' own can:browse-directory-analytics
+    // gate — the page itself being restricted doesn't stop someone from hitting its export URL
+    // directly unless the export route is gated too.
+    Route::middleware('can:browse-directory-analytics')->group(function () {
+        Route::get('/export/gereja/leaderboard/{metric}/preview', [ExportController::class, 'leaderboardPreview'])->name('export.leaderboard.preview');
+        Route::get('/export/gereja/leaderboard/{metric}/{format}', [ExportController::class, 'leaderboardDownload'])->name('export.leaderboard.download');
 
-    Route::get('/export/gereja/metrik/preview', [ExportController::class, 'metricComparisonPreview'])->name('export.metric-comparison.preview');
-    Route::get('/export/gereja/metrik/{format}', [ExportController::class, 'metricComparisonDownload'])->name('export.metric-comparison.download');
+        Route::get('/export/gereja/metrik/preview', [ExportController::class, 'metricComparisonPreview'])->name('export.metric-comparison.preview');
+        Route::get('/export/gereja/metrik/{format}', [ExportController::class, 'metricComparisonDownload'])->name('export.metric-comparison.download');
 
-    Route::get('/export/personal/leaderboard/{metric}/preview', [ExportController::class, 'personalLeaderboardPreview'])->name('export.personal-leaderboard.preview');
-    Route::get('/export/personal/leaderboard/{metric}/{format}', [ExportController::class, 'personalLeaderboardDownload'])->name('export.personal-leaderboard.download');
+        Route::get('/export/personal/leaderboard/{metric}/preview', [ExportController::class, 'personalLeaderboardPreview'])->name('export.personal-leaderboard.preview');
+        Route::get('/export/personal/leaderboard/{metric}/{format}', [ExportController::class, 'personalLeaderboardDownload'])->name('export.personal-leaderboard.download');
 
-    Route::get('/export/personal/metrik/preview', [ExportController::class, 'personalMetricComparisonPreview'])->name('export.personal-metric-comparison.preview');
-    Route::get('/export/personal/metrik/{format}', [ExportController::class, 'personalMetricComparisonDownload'])->name('export.personal-metric-comparison.download');
+        Route::get('/export/personal/metrik/preview', [ExportController::class, 'personalMetricComparisonPreview'])->name('export.personal-metric-comparison.preview');
+        Route::get('/export/personal/metrik/{format}', [ExportController::class, 'personalMetricComparisonDownload'])->name('export.personal-metric-comparison.download');
 
-    Route::get('/export/personal/platform/{platform}/overview/preview', [ExportController::class, 'personalPlatformOverviewPreview'])->name('export.personal-platform-overview.preview');
-    Route::get('/export/personal/platform/{platform}/overview/{format}', [ExportController::class, 'personalPlatformOverviewDownload'])->name('export.personal-platform-overview.download');
+        Route::get('/export/personal/platform/{platform}/overview/preview', [ExportController::class, 'personalPlatformOverviewPreview'])->name('export.personal-platform-overview.preview');
+        Route::get('/export/personal/platform/{platform}/overview/{format}', [ExportController::class, 'personalPlatformOverviewDownload'])->name('export.personal-platform-overview.download');
 
-    Route::get('/export/personal/platform/{platform}/preview', [ExportController::class, 'personalPlatformComparisonPreview'])->name('export.personal-platform.preview');
-    Route::get('/export/personal/platform/{platform}/{format}', [ExportController::class, 'personalPlatformComparisonDownload'])->name('export.personal-platform.download');
+        Route::get('/export/personal/platform/{platform}/preview', [ExportController::class, 'personalPlatformComparisonPreview'])->name('export.personal-platform.preview');
+        Route::get('/export/personal/platform/{platform}/{format}', [ExportController::class, 'personalPlatformComparisonDownload'])->name('export.personal-platform.download');
 
-    Route::get('/export/personal/analytics/preview', [ExportController::class, 'analyticsPersonalPreview'])->name('export.personal-analytics.preview');
-    Route::get('/export/personal/analytics/{format}', [ExportController::class, 'analyticsPersonalDownload'])->name('export.personal-analytics.download');
+        Route::get('/export/personal/analytics/preview', [ExportController::class, 'analyticsPersonalPreview'])->name('export.personal-analytics.preview');
+        Route::get('/export/personal/analytics/{format}', [ExportController::class, 'analyticsPersonalDownload'])->name('export.personal-analytics.download');
 
-    Route::get('/export/directory/preview', [ExportController::class, 'directoryPreview'])->name('export.directory.preview');
-    Route::get('/export/directory/{format}', [ExportController::class, 'directoryDownload'])->name('export.directory.download');
+        Route::get('/export/directory/preview', [ExportController::class, 'directoryPreview'])->name('export.directory.preview');
+        Route::get('/export/directory/{format}', [ExportController::class, 'directoryDownload'])->name('export.directory.download');
 
-    Route::get('/export/church/{church:slug}/preview', [ExportController::class, 'churchPreview'])->name('export.church.preview')->middleware('can:view,church');
-    Route::get('/export/church/{church:slug}/{format}', [ExportController::class, 'churchDownload'])->name('export.church.download')->middleware('can:view,church');
+        Route::get('/export/gereja/platform/{platform}/overview/preview', [ExportController::class, 'platformOverviewPreview'])->name('export.platform-overview.preview');
+        Route::get('/export/gereja/platform/{platform}/overview/{format}', [ExportController::class, 'platformOverviewDownload'])->name('export.platform-overview.download');
 
-    Route::get('/export/person/{person}/preview', [ExportController::class, 'personPreview'])->name('export.person.preview')->middleware('can:view,person');
-    Route::get('/export/person/{person}/{format}', [ExportController::class, 'personDownload'])->name('export.person.download')->middleware('can:view,person');
+        Route::get('/export/gereja/platform/{platform}/preview', [ExportController::class, 'platformComparisonPreview'])->name('export.platform.preview');
+        Route::get('/export/gereja/platform/{platform}/{format}', [ExportController::class, 'platformComparisonDownload'])->name('export.platform.download');
+
+        Route::get('/export/gereja/analytics/preview', [ExportController::class, 'analyticsPreview'])->name('export.analytics.preview');
+        Route::get('/export/gereja/analytics/{format}', [ExportController::class, 'analyticsDownload'])->name('export.analytics.download');
+
+        Route::get('/export/institusi/leaderboard/{metric}/preview', [ExportController::class, 'institutionLeaderboardPreview'])->name('export.institution-leaderboard.preview');
+        Route::get('/export/institusi/leaderboard/{metric}/{format}', [ExportController::class, 'institutionLeaderboardDownload'])->name('export.institution-leaderboard.download');
+
+        Route::get('/export/institusi/metrik/preview', [ExportController::class, 'institutionMetricComparisonPreview'])->name('export.institution-metric-comparison.preview');
+        Route::get('/export/institusi/metrik/{format}', [ExportController::class, 'institutionMetricComparisonDownload'])->name('export.institution-metric-comparison.download');
+
+        Route::get('/export/institusi/platform/{platform}/overview/preview', [ExportController::class, 'institutionPlatformOverviewPreview'])->name('export.institution-platform-overview.preview');
+        Route::get('/export/institusi/platform/{platform}/overview/{format}', [ExportController::class, 'institutionPlatformOverviewDownload'])->name('export.institution-platform-overview.download');
+
+        Route::get('/export/institusi/platform/{platform}/preview', [ExportController::class, 'institutionPlatformComparisonPreview'])->name('export.institution-platform.preview');
+        Route::get('/export/institusi/platform/{platform}/{format}', [ExportController::class, 'institutionPlatformComparisonDownload'])->name('export.institution-platform.download');
+
+        Route::get('/export/institusi/analytics/preview', [ExportController::class, 'analyticsInstitutionPreview'])->name('export.institution-analytics.preview');
+        Route::get('/export/institusi/analytics/{format}', [ExportController::class, 'analyticsInstitutionDownload'])->name('export.institution-analytics.download');
+    });
+
+    Route::get('/export/church/{church:slug}/preview', [ExportController::class, 'churchPreview'])->name('export.church.preview')->middleware('can:export,church');
+    Route::get('/export/church/{church:slug}/{format}', [ExportController::class, 'churchDownload'])->name('export.church.download')->middleware('can:export,church');
+
+    Route::get('/export/person/{person}/preview', [ExportController::class, 'personPreview'])->name('export.person.preview')->middleware('can:export,person');
+    Route::get('/export/person/{person}/{format}', [ExportController::class, 'personDownload'])->name('export.person.download')->middleware('can:export,person');
+
+    Route::get('/export/institution/{institution:slug}/preview', [ExportController::class, 'institutionPreview'])->name('export.institution.preview')->middleware('can:export,institution');
+    Route::get('/export/institution/{institution:slug}/{format}', [ExportController::class, 'institutionDownload'])->name('export.institution.download')->middleware('can:export,institution');
 
     Route::get('/export/social/{social}/preview', [ExportController::class, 'socialHistoryPreview'])->name('export.social-history.preview')->middleware('can:view,social');
     Route::get('/export/social/{social}/{format}', [ExportController::class, 'socialHistoryDownload'])->name('export.social-history.download')->middleware('can:view,social');
-
-    Route::get('/export/gereja/platform/{platform}/overview/preview', [ExportController::class, 'platformOverviewPreview'])->name('export.platform-overview.preview');
-    Route::get('/export/gereja/platform/{platform}/overview/{format}', [ExportController::class, 'platformOverviewDownload'])->name('export.platform-overview.download');
-
-    Route::get('/export/gereja/platform/{platform}/preview', [ExportController::class, 'platformComparisonPreview'])->name('export.platform.preview');
-    Route::get('/export/gereja/platform/{platform}/{format}', [ExportController::class, 'platformComparisonDownload'])->name('export.platform.download');
-
-    Route::get('/export/gereja/analytics/preview', [ExportController::class, 'analyticsPreview'])->name('export.analytics.preview');
-    Route::get('/export/gereja/analytics/{format}', [ExportController::class, 'analyticsDownload'])->name('export.analytics.download');
 
     Route::middleware('can:delegate-users')->prefix('admin/users')->name('admin.users.')->group(function () {
         Route::get('/', [UserAssignmentController::class, 'index'])->name('index');
@@ -184,29 +221,67 @@ Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group
         Route::delete('/{target}', [UserAssignmentController::class, 'destroy'])->name('destroy');
     });
 
+    Route::middleware('can:manage-deleted-users')->prefix('admin/users')->name('admin.users.')->group(function () {
+        Route::post('/{target}/restore', [UserAssignmentController::class, 'restore'])->name('restore')->withTrashed();
+        Route::delete('/{target}/force', [UserAssignmentController::class, 'forceDelete'])->name('force-delete')->withTrashed();
+    });
+
+    Route::get('/admin/audit-log', [AuditLogController::class, 'index'])->name('admin.audit-log.index')->middleware('can:view-audit-log');
+
+    // "Kelola Akun" — the merged Uni/Daerah/Gereja/Institusi/Personal page. Gated by
+    // manage-people rather than manage-hierarchy: manage-people's requirement (any non-
+    // read-only role) is strictly broader than manage-hierarchy's (same, minus gereja-level),
+    // so this is exactly "manage-hierarchy OR manage-people" without needing a third gate —
+    // it's what lets admin_gereja reach the page for the Personal tab even though every
+    // organization tab stays invisible to them (see AccountController::visibleTabsFor()).
+    Route::get('/admin/organization', [AccountController::class, 'index'])->name('admin.accounts.index')->middleware('can:manage-people');
+    Route::get('/admin/organization/tanpa-akun-sosial', [AccountController::class, 'noSocials'])->name('admin.accounts.no-socials')->middleware('can:manage-people');
+
     Route::middleware('can:manage-hierarchy')->prefix('admin')->name('admin.')->group(function () {
-        Route::get('/hierarchy', [HierarchyController::class, 'index'])->name('hierarchy.index');
+        Route::middleware('can:create,App\Models\Union')->group(function () {
+            Route::get('/unions/create', [UnionController::class, 'create'])->name('unions.create');
+            Route::post('/unions', [UnionController::class, 'store'])->name('unions.store');
+        });
+        Route::get('/unions/{union:slug}/edit', [UnionController::class, 'edit'])->name('unions.edit')->middleware('can:update,union');
+        Route::put('/unions/{union:slug}', [UnionController::class, 'update'])->name('unions.update')->middleware('can:update,union');
+        Route::patch('/unions/{union:slug}/toggle-active', [UnionController::class, 'toggleActive'])->name('unions.toggle-active')->middleware('can:update,union');
+        Route::delete('/unions/{union:slug}', [UnionController::class, 'destroy'])->name('unions.destroy')->middleware('can:delete,union');
 
-        Route::get('/unions/create', [UnionController::class, 'create'])->name('unions.create');
-        Route::post('/unions', [UnionController::class, 'store'])->name('unions.store');
-        Route::get('/unions/{union:slug}/edit', [UnionController::class, 'edit'])->name('unions.edit');
-        Route::put('/unions/{union:slug}', [UnionController::class, 'update'])->name('unions.update');
-        Route::patch('/unions/{union:slug}/toggle-active', [UnionController::class, 'toggleActive'])->name('unions.toggle-active');
-        Route::delete('/unions/{union:slug}', [UnionController::class, 'destroy'])->name('unions.destroy');
+        Route::middleware('can:update,union')->group(function () {
+            Route::get('/unions/{union:slug}/socials', [OrganizationSocialController::class, 'unionIndex'])->name('unions.socials.index');
+            Route::get('/unions/{union:slug}/socials/create', [OrganizationSocialController::class, 'unionCreate'])->name('unions.socials.create');
+            Route::post('/unions/{union:slug}/socials', [OrganizationSocialController::class, 'unionStore'])->name('unions.socials.store');
+        });
 
-        Route::get('/conferences/create', [ConferenceController::class, 'create'])->name('conferences.create');
-        Route::post('/conferences', [ConferenceController::class, 'store'])->name('conferences.store');
-        Route::get('/conferences/{conference:slug}/edit', [ConferenceController::class, 'edit'])->name('conferences.edit');
-        Route::put('/conferences/{conference:slug}', [ConferenceController::class, 'update'])->name('conferences.update');
-        Route::patch('/conferences/{conference:slug}/toggle-active', [ConferenceController::class, 'toggleActive'])->name('conferences.toggle-active');
-        Route::delete('/conferences/{conference:slug}', [ConferenceController::class, 'destroy'])->name('conferences.destroy');
+        Route::middleware('can:create,App\Models\Conference')->group(function () {
+            Route::get('/conferences/create', [ConferenceController::class, 'create'])->name('conferences.create');
+            Route::post('/conferences', [ConferenceController::class, 'store'])->name('conferences.store');
+        });
+        Route::get('/conferences/{conference:slug}/edit', [ConferenceController::class, 'edit'])->name('conferences.edit')->middleware('can:update,conference');
+        Route::put('/conferences/{conference:slug}', [ConferenceController::class, 'update'])->name('conferences.update')->middleware('can:update,conference');
+        Route::patch('/conferences/{conference:slug}/toggle-active', [ConferenceController::class, 'toggleActive'])->name('conferences.toggle-active')->middleware('can:update,conference');
+        Route::delete('/conferences/{conference:slug}', [ConferenceController::class, 'destroy'])->name('conferences.destroy')->middleware('can:delete,conference');
 
-        Route::get('/institutions/create', [InstitutionController::class, 'create'])->name('institutions.create');
-        Route::post('/institutions', [InstitutionController::class, 'store'])->name('institutions.store');
-        Route::get('/institutions/{institution:slug}/edit', [InstitutionController::class, 'edit'])->name('institutions.edit');
-        Route::put('/institutions/{institution:slug}', [InstitutionController::class, 'update'])->name('institutions.update');
-        Route::patch('/institutions/{institution:slug}/toggle-active', [InstitutionController::class, 'toggleActive'])->name('institutions.toggle-active');
-        Route::delete('/institutions/{institution:slug}', [InstitutionController::class, 'destroy'])->name('institutions.destroy');
+        Route::middleware('can:update,conference')->group(function () {
+            Route::get('/conferences/{conference:slug}/socials', [OrganizationSocialController::class, 'conferenceIndex'])->name('conferences.socials.index');
+            Route::get('/conferences/{conference:slug}/socials/create', [OrganizationSocialController::class, 'conferenceCreate'])->name('conferences.socials.create');
+            Route::post('/conferences/{conference:slug}/socials', [OrganizationSocialController::class, 'conferenceStore'])->name('conferences.socials.store');
+        });
+
+        Route::middleware('can:create,App\Models\Institution')->group(function () {
+            Route::get('/institutions/create', [InstitutionController::class, 'create'])->name('institutions.create');
+            Route::post('/institutions', [InstitutionController::class, 'store'])->name('institutions.store');
+        });
+        Route::get('/institutions/{institution:slug}/edit', [InstitutionController::class, 'edit'])->name('institutions.edit')->middleware('can:update,institution');
+        Route::put('/institutions/{institution:slug}', [InstitutionController::class, 'update'])->name('institutions.update')->middleware('can:update,institution');
+        Route::patch('/institutions/{institution:slug}/toggle-active', [InstitutionController::class, 'toggleActive'])->name('institutions.toggle-active')->middleware('can:update,institution');
+        Route::delete('/institutions/{institution:slug}', [InstitutionController::class, 'destroy'])->name('institutions.destroy')->middleware('can:delete,institution');
+
+        Route::middleware('can:update,institution')->group(function () {
+            Route::get('/institutions/{institution:slug}/socials', [OrganizationSocialController::class, 'institutionIndex'])->name('institutions.socials.index');
+            Route::get('/institutions/{institution:slug}/socials/create', [OrganizationSocialController::class, 'institutionCreate'])->name('institutions.socials.create');
+            Route::post('/institutions/{institution:slug}/socials', [OrganizationSocialController::class, 'institutionStore'])->name('institutions.socials.store');
+        });
     });
 
 }); // end auth+verified+RedirectUnassignedMembers group
