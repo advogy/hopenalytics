@@ -22,8 +22,13 @@ jobs:
         with:
           php-version: '8.3'
 
+      # --no-scripts: composer's post-autoload-dump hook runs `artisan package:discover`, which
+      # boots the app — and routes/console.php queries the app_settings table right at file-load
+      # time (for the auto-fetch schedule), which needs a DB this CI checkout doesn't have. Safe
+      # to skip: Laravel rebuilds its package-discovery cache lazily on the real server instead,
+      # which does have a working .env/DB.
       - name: Install Composer dependencies
-        run: composer install --no-dev --optimize-autoloader --prefer-dist
+        run: composer install --no-dev --optimize-autoloader --prefer-dist --no-scripts
 
       - name: Setup Node
         uses: actions/setup-node@v4
