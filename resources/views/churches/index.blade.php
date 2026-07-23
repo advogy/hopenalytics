@@ -204,9 +204,16 @@
                     institutionLabel: @json(__('common.institution')),
                 };
 
-                var churches = @json($mapChurches).map(function (c) { c.type = 'gereja'; return c; });
-                var people = @json($mapPeople).map(function (p) { p.type = 'personal'; return p; });
-                var institutions = @json($mapInstitutions).map(function (i) { i.type = 'institusi'; return i; });
+                {{--
+                    JSON_INVALID_UTF8_SUBSTITUTE (on top of Blade's default hex-escaping flags):
+                    without it, a single invalid-UTF-8 byte anywhere in a name/city — easy to pick
+                    up from copy-pasted real-world data — makes json_encode() return false, which
+                    prints as nothing, turning "var churches = .map(...)" into a syntax error that
+                    kills this whole inline script silently (map never renders, no console clue).
+                --}}
+                var churches = @json($mapChurches, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_INVALID_UTF8_SUBSTITUTE).map(function (c) { c.type = 'gereja'; return c; });
+                var people = @json($mapPeople, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_INVALID_UTF8_SUBSTITUTE).map(function (p) { p.type = 'personal'; return p; });
+                var institutions = @json($mapInstitutions, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_INVALID_UTF8_SUBSTITUTE).map(function (i) { i.type = 'institusi'; return i; });
                 var combined = churches.concat(people).concat(institutions);
 
                 var map = L.map('church-map');
