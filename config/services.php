@@ -43,4 +43,8 @@ return [
         'token' => env('APIFY_TOKEN'),
     ],
 
+    'deploy' => [
+        'token' => env('DEPLOY_TOKEN'),
+    ],
+
 ];

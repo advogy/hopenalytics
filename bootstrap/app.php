@@ -15,6 +15,12 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\SetLocale::class,
             \App\Http\Middleware\SecurityHeaders::class,
         ]);
+
+        // CI calls /deploy/run directly (no session, so no CSRF token to send) — the route's
+        // own token check (VerifyDeployToken) is what actually guards it.
+        $middleware->validateCsrfTokens(except: [
+            'deploy/run',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

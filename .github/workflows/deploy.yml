@@ -1,10 +1,16 @@
 name: Deploy to Hostinger
 
-# Hostinger shared hosting has no SSH/Node here, so the build has to happen in CI: install
-# Composer + npm dependencies, run `npm run build` (see README.md), then upload the result over
-# FTP. .env, storage/, and public/storage (the storage:link symlink) are excluded on purpose —
-# they hold production secrets / runtime data / a symlink FTP can't transfer, and must already
-# exist on the server from the initial manual setup.
+# Hostinger shared hosting has no SSH/Node, so the build happens in CI: install Composer + npm
+# dependencies, run `npm run build` (see README.md), then package everything into ONE zip and
+# upload it (a single FTP transfer, not thousands of file-by-file round trips — vendor/ alone is
+# ~8,000 files, which reliably blew past Hostinger's 1-hour FTP session limit under the previous
+# full-tree-sync approach). Finally, hit /deploy/run (App\Http\Controllers\DeployController) —
+# token-guarded — which extracts the zip in place and runs migrations, since a shell-less host
+# can't do either of those itself.
+#
+# .env, storage/, and public/storage (the storage:link symlink) are deliberately left out of the
+# zip — they hold production secrets / runtime data / a symlink a zip extract shouldn't touch,
+# and must already exist on the server from the initial manual setup.
 on:
   push:
     branches: [main]
@@ -40,24 +46,24 @@ jobs:
           npm ci
           npm run build
 
-      - name: Deploy over FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.HOSTINGER_FTP_HOST }}
-          username: ${{ secrets.HOSTINGER_FTP_USERNAME }}
-          password: ${{ secrets.HOSTINGER_FTP_PASSWORD }}
-          # Must match wherever the Laravel project root already lives on the server (the
-          # folder that contains app/, public/, vendor/, etc.) — set this secret to that path,
-          # e.g. "/domains/hopenalytics.id/public_html/" or "/public_html/".
-          server-dir: ${{ secrets.HOSTINGER_FTP_SERVER_DIR }}
-          exclude: |
-            **/.git*
-            **/.git*/**
-            **/.github/**
-            **/node_modules/**
-            **/tests/**
-            **/.env
-            **/.env.*
-            **/storage/**
-            **/public/storage/**
-            **/public/hot
+      - name: Package deploy-payload.zip
+        run: |
+          zip -rq deploy-payload.zip \
+            app bootstrap config database lang resources routes vendor public \
+            artisan composer.json composer.lock \
+            -x "public/storage/*" -x "public/hot"
+          ls -lh deploy-payload.zip
+
+      - name: Upload deploy-payload.zip over FTP
+        run: |
+          DIR="${{ secrets.HOSTINGER_FTP_SERVER_DIR }}"
+          DIR="${DIR#./}"
+          DIR="${DIR%/}"
+          curl -sS -T deploy-payload.zip \
+            "ftp://${{ secrets.HOSTINGER_FTP_HOST }}/$DIR/deploy-payload.zip" \
+            --user "${{ secrets.HOSTINGER_FTP_USERNAME }}:${{ secrets.HOSTINGER_FTP_PASSWORD }}"
+
+      - name: Trigger extract + migrate on the server
+        run: |
+          curl -sS -f -X POST "${{ secrets.DEPLOY_URL }}" \
+            -H "X-Deploy-Token: ${{ secrets.DEPLOY_TOKEN }}"

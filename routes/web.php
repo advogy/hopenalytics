@@ -13,6 +13,7 @@ use App\Http\Controllers\ChurchDashboardController;
 use App\Http\Controllers\ChurchRefreshController;
 use App\Http\Controllers\ChurchSocialController;
 use App\Http\Controllers\CompleteProfileController;
+use App\Http\Controllers\DeployController;
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\ForgotPasswordController;
 use App\Http\Controllers\LinkPersonController;
@@ -29,6 +30,12 @@ use App\Http\Middleware\RedirectUnassignedMembers;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/locale/{locale}', [LocaleController::class, 'switch'])->name('locale.switch');
+
+// CI's zip-extract + migrate trigger (see .github/workflows/deploy.yml) — token-guarded, see
+// App\Http\Middleware\VerifyDeployToken. throttle on top of the token check as defense in depth.
+Route::post('/deploy/run', [DeployController::class, 'run'])
+    ->name('deploy.run')
+    ->middleware(['throttle:6,1', \App\Http\Middleware\VerifyDeployToken::class]);
 
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.attempt')->middleware('throttle:login');
