@@ -1,12 +1,19 @@
+{{--
+    Expects: $user, $tab (which tab panel this row lives in — unassigned/admin/pemimpin/
+    institusi — so the controller can redirect back to the same tab instead of whatever tab
+    happened to be in the URL when the page was first loaded; tab-switching here is client-side
+    only, see partials/tab-script.blade.php, so the URL never reflects the tab actually visible).
+--}}
 <div class="flex flex-nowrap items-center justify-end gap-3">
     @unless ($user->hasVerifiedEmail())
-        <form method="POST" action="{{ route('admin.users.resend-otp', $user) }}">
+        <form method="POST" action="{{ route('admin.users.resend-otp', $user) }}" data-disable-on-submit>
             @csrf
+            <input type="hidden" name="tab" value="{{ $tab }}">
             <button
                 type="submit"
                 title="{{ __('users.resend_otp') }}"
                 aria-label="{{ __('users.resend_otp') }}"
-                class="shrink-0 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                class="shrink-0 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 disabled:cursor-not-allowed disabled:opacity-60"
             >
                 <x-icon name="arrow-path" class="h-5 w-5" />
             </button>
@@ -19,6 +26,7 @@
         @if ($user->is_active) data-confirm="{{ __('users.deactivate_user_confirm', ['name' => $user->name]) }}" @endif
     >
         @csrf
+        <input type="hidden" name="tab" value="{{ $tab }}">
         <button
             type="submit"
             title="{{ $user->is_active ? __('accounts.deactivate') : __('accounts.activate') }}"
@@ -36,6 +44,7 @@
     >
         @csrf
         @method('DELETE')
+        <input type="hidden" name="tab" value="{{ $tab }}">
         <button
             type="submit"
             title="{{ __('common.delete') }}"

@@ -50,6 +50,8 @@ return [
     'institutions_count' => ':count institusi',
 
     'data_per_church' => 'Data Per Gereja',
+    'group_national' => 'Nasional',
+    'group_union_level' => 'Tingkat Uni (belum ada Daerah)',
     'data_per_personal' => 'Data Per Personal',
     'data_per_institution' => 'Data Per Institusi',
     'hide_empty_churches' => 'Sembunyikan gereja tanpa data',

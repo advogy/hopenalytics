@@ -129,7 +129,7 @@
                                     </form>
                                 </td>
                                 <td class="py-2 pr-2">
-                                    @include('admin.users.partials.row-actions', ['user' => $user])
+                                    @include('admin.users.partials.row-actions', ['user' => $user, 'tab' => 'unassigned'])
                                 </td>
                             </tr>
                         @endforeach
@@ -250,7 +250,7 @@
                                                 {{ __('users.revoke') }}
                                             </button>
                                         </form>
-                                        @include('admin.users.partials.row-actions', ['user' => $user])
+                                        @include('admin.users.partials.row-actions', ['user' => $user, 'tab' => 'admin'])
                                     </div>
                                 </td>
                             </tr>
@@ -310,7 +310,7 @@
                                                 {{ __('users.revoke') }}
                                             </button>
                                         </form>
-                                        @include('admin.users.partials.row-actions', ['user' => $user])
+                                        @include('admin.users.partials.row-actions', ['user' => $user, 'tab' => 'pemimpin'])
                                     </div>
                                 </td>
                             </tr>
@@ -367,7 +367,7 @@
                                                     {{ __('users.revoke') }}
                                                 </button>
                                             </form>
-                                            @include('admin.users.partials.row-actions', ['user' => $user])
+                                            @include('admin.users.partials.row-actions', ['user' => $user, 'tab' => 'institusi'])
                                         </div>
                                     </td>
                                 </tr>

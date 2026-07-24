@@ -385,8 +385,11 @@ class ChurchDashboardController extends Controller
     {
         $selectedPlatform = $request->query('platform');
 
+        // conference.union is only needed for the Data Per * tables' Uni/Daerah grouping (see
+        // analytics.blade.php's $groupEntityRows) — cheap to always eager-load rather than
+        // conditionally adding it just for nasional/uni-level viewers.
         $churches = $this->analyticsChurchScope(Church::query()->where('is_active', true))
-            ->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat')])
+            ->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat'), 'conference.union'])
             ->orderBy('name')
             ->get();
 
@@ -401,7 +404,7 @@ class ChurchDashboardController extends Controller
             ));
 
         $people = $this->analyticsPersonScope(Person::query()->where('is_active', true))
-            ->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat')])
+            ->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat'), 'union', 'conference.union'])
             ->orderBy('name')
             ->get();
 
@@ -416,7 +419,7 @@ class ChurchDashboardController extends Controller
             ));
 
         $institutions = $this->analyticsInstitutionScope(Institution::query()->where('is_active', true))
-            ->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat')])
+            ->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat'), 'union', 'conference.union'])
             ->orderBy('name')
             ->get();
 

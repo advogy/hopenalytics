@@ -50,6 +50,8 @@ return [
     'institutions_count' => ':count institutions',
 
     'data_per_church' => 'Data Per Church',
+    'group_national' => 'National',
+    'group_union_level' => 'Union level (no Conference yet)',
     'data_per_personal' => 'Data Per Personal',
     'data_per_institution' => 'Data Per Institution',
     'hide_empty_churches' => 'Hide churches with no data',

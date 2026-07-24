@@ -28,6 +28,8 @@ return [
     'otp_expired' => 'The OTP code has expired. Please resend it.',
     'resend_otp' => 'Resend code',
     'otp_resent' => 'A new OTP code has been sent to your email.',
+    'cancel_registration' => 'Exit',
+    'cancel_registration_confirm' => 'Cancel this registration?',
     'otp_verified' => 'Email verified successfully. Welcome!',
     'no_pending_registration' => 'There is no pending registration to verify.',
 

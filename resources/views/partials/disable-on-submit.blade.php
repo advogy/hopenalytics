@@ -1,5 +1,7 @@
 {{-- Disables a form's submit button(s) once it's submitted, to block double-submits
-     while the request is in flight (e.g. forms that trigger an email send). --}}
+     while the request is in flight (e.g. forms that trigger an email send). Also spins any
+     icon inside the button, so icon-only buttons (no visible label to swap to "Sending…") still
+     get a clear in-progress cue. --}}
 <script>
     document.addEventListener('submit', function (e) {
         var form = e.target;
@@ -8,6 +10,9 @@
 
         form.querySelectorAll('button[type="submit"]').forEach(function (button) {
             button.disabled = true;
+
+            var icon = button.querySelector('svg');
+            if (icon) icon.classList.add('animate-spin');
         });
     });
 </script>

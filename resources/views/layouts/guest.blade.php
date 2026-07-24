@@ -55,6 +55,7 @@
             @include('partials.footer', ['stacked' => true])
         </div>
 
+        @include('partials.confirm-dialog')
         @include('partials.disable-on-submit')
         @include('partials.password-toggle')
     </body>

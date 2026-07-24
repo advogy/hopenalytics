@@ -226,7 +226,7 @@ class UserAssignmentController extends Controller
 
         AuditLogger::log('user.deleted', $target, "Menghapus akun \"{$target->name}\".");
 
-        return back()->with('status', "\"{$target->name}\" telah dihapus.");
+        return $this->redirectToTab($request)->with('status', "\"{$target->name}\" telah dihapus.");
     }
 
     public function restore(User $target): RedirectResponse
@@ -269,7 +269,7 @@ class UserAssignmentController extends Controller
             ($target->is_active ? 'Mengaktifkan kembali' : 'Menonaktifkan')." akun \"{$target->name}\"."
         );
 
-        return back()->with('status', "\"{$target->name}\" telah {$status}.");
+        return $this->redirectToTab($request)->with('status', "\"{$target->name}\" telah {$status}.");
     }
 
     public function resendOtp(Request $request, User $target): RedirectResponse
@@ -280,7 +280,24 @@ class UserAssignmentController extends Controller
 
         $target->sendVerificationOtp();
 
-        return back()->with('status', "Kode OTP baru telah dikirim ke {$target->email}.");
+        return $this->redirectToTab($request)->with('status', "Kode OTP baru telah dikirim ke {$target->email}.");
+    }
+
+    /**
+     * destroy()/toggleActive()/resendOtp() are all called from row-actions.blade.php, shared
+     * across 4 tabs — tab-switching there is client-side only (see partials/tab-script.blade.php),
+     * so the URL never reflects whichever tab is actually visible when the form submits. back()
+     * would instead redirect to whatever tab was in the URL at page-load time, landing the admin
+     * on the wrong tab. Each form carries its own tab as a hidden field so this can redirect to
+     * the tab the row actually lives in, not whatever the URL happened to say.
+     */
+    private function redirectToTab(Request $request): RedirectResponse
+    {
+        $tab = in_array($request->input('tab'), ['admin', 'pemimpin', 'institusi', 'terhapus'], true)
+            ? $request->input('tab')
+            : 'unassigned';
+
+        return redirect()->route('admin.users.index', ['tab' => $tab]);
     }
 
     private function assignedUsersQuery(User $actor, string $targetLevel, array $roleValues)

@@ -15,7 +15,10 @@ return [
 
     'name' => env('APP_NAME', 'Laravel'),
 
-    'version' => env('APP_VERSION', '1.0.0'),
+    // Not env()-backed on purpose: bumping this is a code change (ship it via git push + the
+    // deploy pipeline), not a server config change — putting it in .env would mean editing it
+    // by hand on the Hostinger server on every release instead.
+    'version' => '1.0.0',
 
     'developer' => env('APP_DEVELOPER', 'Advogy'),
 

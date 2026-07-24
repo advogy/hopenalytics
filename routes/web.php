@@ -45,6 +45,7 @@ Route::post('/register', [RegisterController::class, 'register'])->name('registe
 Route::get('/verify-otp', [RegisterController::class, 'showVerifyOtp'])->name('verify-otp');
 Route::post('/verify-otp', [RegisterController::class, 'verifyOtp'])->name('verify-otp.attempt')->middleware('throttle:verify-otp');
 Route::post('/verify-otp/resend', [RegisterController::class, 'resendOtp'])->name('verify-otp.resend')->middleware('throttle:3,10');
+Route::post('/verify-otp/cancel', [RegisterController::class, 'cancelRegistration'])->name('verify-otp.cancel');
 
 Route::get('/forgot-password', [ForgotPasswordController::class, 'show'])->name('forgot-password');
 Route::post('/forgot-password', [ForgotPasswordController::class, 'send'])->name('forgot-password.send')->middleware('throttle:3,10');

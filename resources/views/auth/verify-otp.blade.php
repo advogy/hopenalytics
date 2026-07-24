@@ -34,4 +34,16 @@
             {{ __('auth.resend_otp') }}
         </button>
     </form>
+
+    <form
+        method="POST"
+        action="{{ route('verify-otp.cancel') }}"
+        class="mt-2 text-center"
+        data-confirm="{{ __('auth.cancel_registration_confirm') }}"
+    >
+        @csrf
+        <button type="submit" class="text-sm text-slate-400 hover:text-red-600 dark:text-slate-500 dark:hover:text-red-400">
+            {{ __('auth.cancel_registration') }}
+        </button>
+    </form>
 @endsection

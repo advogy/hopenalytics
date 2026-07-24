@@ -28,6 +28,8 @@ return [
     'otp_expired' => 'Kode OTP sudah kedaluwarsa. Silakan kirim ulang.',
     'resend_otp' => 'Kirim ulang kode',
     'otp_resent' => 'Kode OTP baru telah dikirim ke email Anda.',
+    'cancel_registration' => 'Keluar',
+    'cancel_registration_confirm' => 'Batalkan pendaftaran ini?',
     'otp_verified' => 'Email berhasil diverifikasi. Selamat datang!',
     'no_pending_registration' => 'Tidak ada pendaftaran yang menunggu verifikasi.',
 

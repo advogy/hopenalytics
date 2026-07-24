@@ -9,6 +9,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 
 class RegisterController extends Controller
@@ -26,17 +27,30 @@ class RegisterController extends Controller
 
     public function register(Request $request): RedirectResponse
     {
+        // Only a *verified* email blocks a new registration — an unverified one can't do
+        // anything but sit there waiting for its OTP (see cancelRegistration()'s doc comment),
+        // so re-submitting the same email just resumes/resets that same pending signup below
+        // instead of erroring out.
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->whereNotNull('email_verified_at')],
             'password' => ['required', 'string', Password::min(8)->uncompromised(), 'confirmed'],
         ]);
 
-        $user = User::create([
-            'name' => $data['name'],
-            'email' => $data['email'],
-            'password' => Hash::make($data['password']),
-        ]);
+        $user = User::where('email', $data['email'])->whereNull('email_verified_at')->first();
+
+        if ($user) {
+            $user->forceFill([
+                'name' => $data['name'],
+                'password' => Hash::make($data['password']),
+            ])->save();
+        } else {
+            $user = User::create([
+                'name' => $data['name'],
+                'email' => $data['email'],
+                'password' => Hash::make($data['password']),
+            ]);
+        }
 
         $this->generateAndSendOtp($user);
 
@@ -103,6 +117,19 @@ class RegisterController extends Controller
         }
 
         return redirect()->route('profile.complete')->with('status', __('auth.otp_verified'));
+    }
+
+    /**
+     * "Keluar" on the verify-otp page. Doesn't touch the unverified account itself — it can't do
+     * anything without its OTP anyway (no session auth guard until verifyOtp() succeeds), and
+     * register()'s unique-email check only cares about *verified* emails, so re-registering the
+     * same address later just resumes this same pending signup instead of being blocked by it.
+     */
+    public function cancelRegistration(Request $request): RedirectResponse
+    {
+        $request->session()->forget('otp_user_id');
+
+        return redirect()->route('login');
     }
 
     public function resendOtp(Request $request): RedirectResponse
