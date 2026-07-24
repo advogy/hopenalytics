@@ -34,12 +34,25 @@
         </a>
     </p>
 
-    <a
-        href="{{ route('churches.presentation') }}"
-        target="_blank"
-        class="mt-4 flex items-center justify-center gap-1.5 text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400"
-    >
-        <x-icon name="arrow-top-right-on-square" class="h-4 w-4" />
-        {{ __('nav.presentation') }}
-    </a>
+    <div class="mt-8 flex items-center justify-center gap-4 text-sm">
+        <a
+            href="{{ route('churches.presentation') }}"
+            target="_blank"
+            class="flex items-center gap-1.5 text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400"
+        >
+            <x-icon name="arrow-top-right-on-square" class="h-4 w-4" />
+            {{ __('nav.presentation') }}
+        </a>
+
+        <span class="text-slate-300 dark:text-slate-600">|</span>
+
+        <a
+            href="{{ route('about.public') }}"
+            target="_blank"
+            class="flex items-center gap-1.5 text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400"
+        >
+            <x-icon name="arrow-top-right-on-square" class="h-4 w-4" />
+            {{ __('nav.about') }}
+        </a>
+    </div>
 @endsection

@@ -1,4 +1,5 @@
-@extends('layouts.app')
+@php($wide = true)
+@extends('layouts.guest')
 
 @section('title', __('nav.about') . ' — ' . config('app.name'))
 

@@ -60,6 +60,10 @@ Route::get('/gereja/presentation/growth', [ChurchDashboardController::class, 'pr
 Route::get('/personal/presentation', [ChurchDashboardController::class, 'personalPresentation'])->name('people.presentation');
 Route::get('/personal/presentation/growth', [ChurchDashboardController::class, 'personalPresentationGrowth'])->name('people.presentation-growth');
 
+// Public mirror of the logged-in /about page (same content, see partials/about-content) — for
+// the login page's "Tentang" link, which by definition has to work before anyone's logged in.
+Route::view('/tentang', 'about-public')->name('about.public');
+
 Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
     Route::get('/dashboard', [MyAccountController::class, 'index'])->name('akun-saya');
