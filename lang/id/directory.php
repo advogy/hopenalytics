@@ -3,6 +3,9 @@
 return [
     'subtitle' => 'Daftar lengkap handle media sosial semua gereja dan akun personal.',
     'search_placeholder' => 'Cari nama atau kota…',
+    'search_placeholder_gereja' => 'Cari gereja…',
+    'search_placeholder_personal' => 'Cari personal…',
+    'search_placeholder_institusi' => 'Cari institusi…',
     'add_account' => '+ Akun',
     'manage' => 'Kelola',
     'no_churches' => 'Belum ada data gereja.',

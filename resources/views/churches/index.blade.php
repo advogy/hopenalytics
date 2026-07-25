@@ -94,6 +94,26 @@
         />
     </div>
 
+    @if ($goalRows->isNotEmpty())
+        <div class="mb-8">
+            <div class="mb-3 flex items-center justify-between">
+                <h2 class="text-lg font-bold text-slate-900 dark:text-white">{{ __('goals.section_title') }}</h2>
+                <p class="text-sm text-slate-500 dark:text-slate-400">{{ $goalRows->first()['scopeLabel'] }}</p>
+            </div>
+            <div class="grid grid-cols-1 gap-4">
+                @foreach ($goalRows as $row)
+                    <x-goal-card
+                        :label="$row['label']"
+                        :year="$row['year']"
+                        :target="$row['target']"
+                        :current="$row['current']"
+                        :percent="$row['percent']"
+                    />
+                @endforeach
+            </div>
+        </div>
+    @endif
+
     <div class="mb-8 grid grid-cols-1 gap-4">
         <x-stat-card
             href="#top-pertumbuhan"

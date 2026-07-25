@@ -4,7 +4,6 @@ return [
     'title_suffix_personal' => ' Personal',
     'title_suffix_institution' => ' Institution',
     'leaderboard_back_analytics' => 'Back to analytics & charts',
-    'leaderboard_back_metric' => 'Back to metric comparison',
 
     'sort_all' => 'All',
     'leaderboard_subtitle_value' => 'All:noun accounts ranked by current value. :subtitle.',

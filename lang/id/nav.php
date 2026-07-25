@@ -23,6 +23,7 @@ return [
     'my_account' => 'Akun Saya',
     'manage_accounts' => 'Kelola Akun',
     'manage_users' => 'Kelola Pengguna',
+    'manage_goals' => 'Kelola Tujuan',
     'back_to_analytics' => 'Analitik & Statistik',
     'login' => 'Masuk',
     'register' => 'Daftar',

@@ -50,6 +50,11 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('manage-queue', fn (User $user) => $user->role?->hasNasionalAccess() ?? false);
         Gate::define('manage-settings', fn (User $user) => $user->role?->hasNasionalAccess() ?? false);
 
+        // Setting the national reach/views/likes/posts targets (evenly divided down the Uni >
+        // Daerah chain for the dashboard's Goal widget) is nasional-level only, same threshold
+        // as manage-queue/manage-settings above.
+        Gate::define('manage-goals', fn (User $user) => $user->role?->hasNasionalAccess() ?? false);
+
         // Fetching fresh data spends paid Apify credits per call regardless of scope
         // (decision #3), so both single and bulk refresh are nasional-level only.
         Gate::define('trigger-refresh', fn (User $user) => $user->role?->hasNasionalAccess() ?? false);

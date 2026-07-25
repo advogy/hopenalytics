@@ -24,17 +24,19 @@
         @endcan
     </div>
 
+    @php $regionParams = array_filter(['union_id' => $selectedUnionId, 'conference_id' => $selectedConferenceId]); @endphp
+
     <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div class="flex flex-wrap gap-2">
             <a
-                href="{{ $scope->metricComparisonUrl(array_filter(['sort' => $sort === 'value' ? 'value' : null])) }}"
+                href="{{ $scope->metricComparisonUrl(array_merge(array_filter(['sort' => $sort === 'value' ? 'value' : null]), $regionParams)) }}"
                 class="rounded-full border px-3 py-1.5 text-sm font-medium transition border-black/10 bg-white text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
             >
                 {{ __('comparison.sort_all') }}
             </a>
             @foreach ($metricLabels as $value => $label)
                 <a
-                    href="{{ $scope->leaderboardUrl(array_filter(['metric' => $value, 'sort' => $sort === 'value' ? 'value' : null])) }}"
+                    href="{{ $scope->leaderboardUrl(array_merge(array_filter(['metric' => $value, 'sort' => $sort === 'value' ? 'value' : null]), $regionParams)) }}"
                     class="rounded-full border px-3 py-1.5 text-sm font-medium transition {{ $value === $metric ? 'border-blue-600 bg-blue-600 text-white' : 'border-black/10 bg-white text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700' }}"
                 >
                     {{ $label }}
@@ -44,10 +46,48 @@
 
         <x-sort-toggle
             :sort="$sort"
-            :delta-url="$scope->leaderboardUrl(['metric' => $metric])"
-            :value-url="$scope->leaderboardUrl(['metric' => $metric, 'sort' => 'value'])"
+            :delta-url="$scope->leaderboardUrl(array_merge(['metric' => $metric], $regionParams))"
+            :value-url="$scope->leaderboardUrl(array_merge(['metric' => $metric, 'sort' => 'value'], $regionParams))"
         />
     </div>
 
-    <x-leaderboard :title="$title" :subtitle="__('comparison.accounts_count', ['count' => $rows->count()])" :rows="$rows" :value-label="__('common.current')" :name-label="$scope->nameLabel()" />
+    @if ($isNasionalView || $isUniView)
+        <x-filter-card>
+            <form method="GET" action="{{ $scope->leaderboardUrl(['metric' => $metric]) }}" id="church-leaderboard-filter-form" class="flex flex-wrap items-center gap-3">
+                <input type="hidden" name="sort" value="{{ $sort }}">
+
+                @include('partials.analytics-region-filter', [
+                    'prefix' => 'church-leaderboard',
+                    'formId' => 'church-leaderboard-filter-form',
+                    'isNasionalView' => $isNasionalView,
+                    'isUniView' => $isUniView,
+                    'unionOptions' => $unionOptions,
+                    'conferenceOptions' => $conferenceOptions,
+                    'selectedUnionId' => $selectedUnionId,
+                    'selectedConferenceId' => $selectedConferenceId,
+                ])
+
+                @if ($selectedConferenceId || ($isNasionalView && $selectedUnionId))
+                    <a href="{{ $scope->leaderboardUrl(array_filter(['metric' => $metric, 'sort' => $sort === 'value' ? 'value' : null])) }}" class="text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
+                        {{ __('common.reset_filter') }}
+                    </a>
+                @endif
+            </form>
+        </x-filter-card>
+    @endif
+
+    <x-leaderboard
+        :title="$title"
+        :subtitle="__('comparison.accounts_count', ['count' => $rows->count()])"
+        :rows="$rows"
+        :value-label="__('common.current')"
+        :name-label="$scope->nameLabel()"
+        :grouped-rows="$groupedRows"
+        group-prefix="church-leaderboard"
+        :is-nasional-view="$isNasionalView"
+    />
+
+    @if ($groupedRows !== null)
+        @include('partials.analytics-group-toggle')
+    @endif
 @endsection

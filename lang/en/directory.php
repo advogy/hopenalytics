@@ -3,6 +3,9 @@
 return [
     'subtitle' => 'Full list of social media handles for every church and personal account.',
     'search_placeholder' => 'Search name or city…',
+    'search_placeholder_gereja' => 'Search churches…',
+    'search_placeholder_personal' => 'Search personal…',
+    'search_placeholder_institusi' => 'Search institutions…',
     'add_account' => '+ Account',
     'manage' => 'Manage',
     'no_churches' => 'No church data yet.',

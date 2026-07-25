@@ -141,8 +141,15 @@
     // unsubmitted union value from the church's current conference for exactly this reason,
     // since a church only ever really submits conference_id.
     window.initUnionConferenceCascade = function (opts) {
+        // Optional: fires on top of the built-in narrowing logic below, whenever EITHER combobox
+        // changes — e.g. the analytics filters use this to reload the page with the new
+        // selection, instead of just silently updating a hidden form field to submit later.
+        var externalOnChange = opts.onChange || function () {};
+
         var conferenceWrapper = document.querySelector(opts.conferenceSelector);
-        var conferenceCtl = window.initSearchableSelect(conferenceWrapper);
+        var conferenceCtl = window.initSearchableSelect(conferenceWrapper, {
+            onChange: function (conferenceId) { externalOnChange(conferenceId); },
+        });
         var currentConferenceId = conferenceWrapper.querySelector('[data-searchable-select-value]').getAttribute('value');
 
         var unionWrapper = opts.unionSelector ? document.querySelector(opts.unionSelector) : null;
@@ -156,15 +163,20 @@
             return;
         }
 
+        // Must be read BEFORE setOptions() below — setOptions() blanks the input's live .value,
+        // and (at least for a form-associated control) that also clears what getAttribute('value')
+        // reports back, not just the live property. Reading this first is what makes edit-mode
+        // preselection actually stick instead of silently reverting to blank on load.
+        var currentUnionId = unionWrapper.querySelector('[data-searchable-select-value]').getAttribute('value');
+
         var unionCtl = window.initSearchableSelect(unionWrapper, {
             onChange: function (unionId) {
                 var filtered = unionId ? opts.conferences.filter(function (c) { return String(c.union_id) === String(unionId); }) : [];
                 conferenceCtl.setOptions(filtered, unionId ? opts.conferencePlaceholder : opts.conferenceWaitingPlaceholder);
+                externalOnChange(unionId);
             },
         });
         unionCtl.setOptions(opts.unions, opts.unionPlaceholder);
-
-        var currentUnionId = unionWrapper.querySelector('[data-searchable-select-value]').getAttribute('value');
 
         if (currentUnionId) {
             var currentUnion = opts.unions.find(function (u) { return String(u.id) === currentUnionId; });

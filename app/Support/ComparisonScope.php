@@ -185,16 +185,16 @@ class ComparisonScope
         }, $entity);
     }
 
-    /** Where the leaderboard page's back-link should point. */
+    /** Where the leaderboard page's back-link should point — same as every other comparison page: straight back to Analitik & Grafik. */
     public function leaderboardBackUrl(): string
     {
-        return $this->isPersonal() ? $this->metricComparisonUrl() : $this->analyticsUrl();
+        return $this->analyticsUrl();
     }
 
     /** Label for the leaderboard page's back-link. */
     public function leaderboardBackLabel(): string
     {
-        return $this->isPersonal() ? __('comparison.leaderboard_back_metric') : __('comparison.leaderboard_back_analytics');
+        return __('comparison.leaderboard_back_analytics');
     }
 
     /** Institution has no public presentation board — never call this on an institution scope. */

@@ -23,6 +23,7 @@ return [
     'my_account' => 'My Account',
     'manage_accounts' => 'Manage Accounts',
     'manage_users' => 'Manage Users',
+    'manage_goals' => 'Manage Goals',
     'back_to_analytics' => 'Analytics & Charts',
     'login' => 'Sign In',
     'register' => 'Register',

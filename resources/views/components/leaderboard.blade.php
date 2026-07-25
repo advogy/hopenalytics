@@ -1,4 +1,12 @@
-@props(['title', 'subtitle', 'rows', 'valueLabel', 'viewAllUrl' => null, 'exportUrl' => null, 'nameLabel' => null])
+{{--
+    $groupedRows/$groupPrefix/$isNasionalView are opt-in — leave them out and this renders the
+    same flat table it always has (used as-is by other leaderboard pages). Passing $groupedRows
+    (shaped by BuildsLeaderboards::groupByRegion()) switches to the collapsible Uni/Daerah
+    grouping used on the per-metric leaderboard pages — see partials/leaderboard-row.blade.php
+    for the shared row markup and components/analytics-group-row.blade.php + partials/analytics-
+    group-toggle.blade.php for the group headers/click handling.
+--}}
+@props(['title', 'subtitle', 'rows', 'valueLabel', 'viewAllUrl' => null, 'exportUrl' => null, 'nameLabel' => null, 'groupedRows' => null, 'groupPrefix' => null, 'isNasionalView' => false])
 
 @php $nameLabel ??= __('common.name'); @endphp
 
@@ -37,33 +45,38 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                    @foreach ($rows as $i => $row)
-                        @php $entity = $row['social']->church ?? $row['social']->person; @endphp
-                        <tr>
-                            <td class="py-2 pr-2 text-slate-400 dark:text-slate-500">{{ $i + 1 }}</td>
-                            <td class="py-2 pr-2">
-                                <a
-                                    href="{{ $row['social']->church ? route('churches.show', $entity) : route('people.show', $entity) }}"
-                                    class="font-medium hover:text-blue-600 dark:hover:text-blue-400"
-                                >
-                                    {{ $row['social']->display_name }}
-                                </a>
-                            </td>
-                            <td class="py-2 pr-2">
-                                <span class="inline-flex items-center gap-1.5 whitespace-nowrap">
-                                    <x-platform-icon :platform="$row['social']->platform" class="h-4.5 w-4.5" />
-                                    {{ $row['social']->display_handle }}
-                                </span>
-                            </td>
-                            <td class="py-2 pr-2 text-right font-medium tabular-nums {{ $row['delta'] > 0 ? 'text-emerald-600 dark:text-emerald-400' : ($row['delta'] < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-400 dark:text-slate-500') }}">
-                                <span class="inline-flex items-center gap-1">
-                                    <x-icon :name="$row['delta'] > 0 ? 'arrow-trending-up' : ($row['delta'] < 0 ? 'arrow-trending-down' : 'minus-small')" class="h-3.5 w-3.5" />
-                                    {{ $row['delta'] > 0 ? '+' : '' }}{{ number_format($row['delta']) }}
-                                </span>
-                            </td>
-                            <td class="py-2 text-right tabular-nums">{{ number_format($row['latest']) }}</td>
-                        </tr>
-                    @endforeach
+                    @if ($groupedRows !== null)
+                        @foreach ($groupedRows as $unionKey => $unionGroup)
+                            @if ($isNasionalView)
+                                <x-analytics-group-row
+                                    :label="$unionGroup['label']"
+                                    :count="$unionGroup['conferences']->sum(fn ($c) => $c['rows']->count())"
+                                    :colspan="5"
+                                    :toggle-id="$groupPrefix.'-union-'.$unionKey"
+                                />
+                            @endif
+                            @foreach ($unionGroup['conferences'] as $conferenceKey => $conferenceGroup)
+                                <x-analytics-group-row
+                                    :label="$conferenceGroup['label']"
+                                    :count="$conferenceGroup['rows']->count()"
+                                    :colspan="5"
+                                    :toggle-id="$groupPrefix.'-conf-'.$unionKey.'-'.$conferenceKey"
+                                    :ancestors="$isNasionalView ? $groupPrefix.'-union-'.$unionKey : null"
+                                />
+                                @foreach ($conferenceGroup['rows'] as $i => $row)
+                                    @include('partials.leaderboard-row', [
+                                        'row' => $row,
+                                        'index' => $i,
+                                        'ancestors' => ($isNasionalView ? $groupPrefix.'-union-'.$unionKey.' ' : '').$groupPrefix.'-conf-'.$unionKey.'-'.$conferenceKey,
+                                    ])
+                                @endforeach
+                            @endforeach
+                        @endforeach
+                    @else
+                        @foreach ($rows as $i => $row)
+                            @include('partials.leaderboard-row', ['row' => $row, 'index' => $i])
+                        @endforeach
+                    @endif
                 </tbody>
             </table>
         </div>

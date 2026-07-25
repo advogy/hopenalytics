@@ -4,10 +4,115 @@ namespace App\Http\Controllers\Concerns;
 
 use App\Enums\SocialPlatform;
 use App\Models\ChurchSocial;
+use App\Models\Conference;
+use App\Models\Union;
 use Illuminate\Support\Collection;
 
 trait BuildsLeaderboards
 {
+    /**
+     * Nasional-level viewer (or a plain member, whose analytics scope is unscoped — see
+     * analyticsChurchScope()/analyticsPersonScope()/analyticsInstitutionScope()): gets an
+     * unrestricted, unscoped view. Shared by every page that offers the Uni/Daerah region
+     * filter + collapsible grouping (Analitik & Grafik, Perbandingan Metrik, and the per-metric
+     * leaderboard pages).
+     */
+    protected function isNasionalView(): bool
+    {
+        $role = auth()->user()->role;
+
+        return $role === null || ($role->hasNasionalAccess() ?? false) || $role->level() === 'nasional';
+    }
+
+    /** A uni-level viewer gets Daerah > entity grouping (no Uni tier — it'd always be their own single Uni). */
+    protected function isUniView(): bool
+    {
+        return ! $this->isNasionalView() && auth()->user()->role->level() === 'uni';
+    }
+
+    /**
+     * Union/Conference option lists for the region filter's cascading comboboxes, scoped to what
+     * the viewer may pick from: nasional sees every Union (and every Conference, or just the
+     * selected Union's once one is chosen); uni-level only ever sees their own Union's
+     * Conferences (no Union combobox is rendered for them at all — see the region-filter partial).
+     */
+    protected function regionFilterOptions(?string $selectedUnionId): array
+    {
+        $isNasionalView = $this->isNasionalView();
+        $isUniView = $this->isUniView();
+        $user = auth()->user();
+
+        $unionOptions = $isNasionalView ? Union::where('is_active', true)->orderBy('name')->get() : collect();
+
+        $conferenceOptions = Conference::where('is_active', true)
+            ->when($isUniView, fn ($query) => $query->where('union_id', $user->union_id))
+            ->when($isNasionalView && $selectedUnionId, fn ($query) => $query->where('union_id', $selectedUnionId))
+            ->with('union')
+            ->orderBy('name')
+            ->get();
+
+        return [$unionOptions, $conferenceOptions];
+    }
+
+    /**
+     * Matches an entity (Church/Person/Institution) against the selected Uni/Daerah — Church has
+     * no union_id column of its own (only conference_id), hence the ?? fallback chain; it just
+     * always resolves to null there and falls through correctly to the conference_id check.
+     */
+    protected function matchesRegionFilter(?string $selectedUnionId, ?string $selectedConferenceId): \Closure
+    {
+        return function ($entity) use ($selectedUnionId, $selectedConferenceId) {
+            if ($selectedConferenceId) {
+                return (string) $entity->conference_id === (string) $selectedConferenceId;
+            }
+
+            if ($selectedUnionId) {
+                $entityUnionId = $entity->conference?->union_id ?? $entity->union_id ?? null;
+
+                return $entityUnionId !== null && (string) $entityUnionId === (string) $selectedUnionId;
+            }
+
+            return true;
+        };
+    }
+
+    /**
+     * Groups any rows collection into the same Uni > Daerah > entity nesting used across the
+     * region-filterable pages — $entityAccessor plucks the Church/Person/Institution out of one
+     * row, since each caller's row shape differs (analytics' ['church'=>...], metricComparison's
+     * ['entity'=>...], leaderboard's ['social'=>...] where the entity is $social->church).
+     */
+    protected function groupByRegion(Collection $rows, callable $entityAccessor): Collection
+    {
+        return $rows
+            ->groupBy(function ($row) use ($entityAccessor) {
+                $entity = $entityAccessor($row);
+                $union = $entity->conference?->union ?? $entity->union ?? null;
+
+                return $union?->id ?? 'nasional';
+            })
+            ->map(function ($unionRows) use ($entityAccessor) {
+                $sample = $entityAccessor($unionRows->first());
+                $union = $sample->conference?->union ?? $sample->union ?? null;
+
+                return [
+                    'label' => $union?->name ?? __('analytics.group_national'),
+                    'conferences' => $unionRows
+                        ->groupBy(fn ($row) => $entityAccessor($row)->conference?->id ?? 'uni-level')
+                        ->map(function ($conferenceRows) use ($entityAccessor) {
+                            $sample = $entityAccessor($conferenceRows->first());
+
+                            return [
+                                'label' => $sample->conference?->name ?? __('analytics.group_union_level'),
+                                'rows' => $conferenceRows,
+                            ];
+                        })
+                        ->sortBy('label'),
+                ];
+            })
+            ->sortBy('label');
+    }
+
     protected function leaderboardTitles(): array
     {
         return [
@@ -41,7 +146,7 @@ trait BuildsLeaderboards
     protected function activeSocials(bool $scoped = true): Collection
     {
         return ChurchSocial::query()
-            ->with('church')
+            ->with('church.conference.union')
             ->where('is_active', true)
             ->whereHas('church', fn ($q) => $q->where('is_active', true))
             ->when($scoped, fn ($q) => $q->whereHas('church', fn ($q2) => $this->analyticsChurchScope($q2)))
@@ -51,7 +156,7 @@ trait BuildsLeaderboards
     protected function activeSocialsPersonal(bool $scoped = true): Collection
     {
         return ChurchSocial::query()
-            ->with('person')
+            ->with(['person.conference.union', 'person.union'])
             ->where('is_active', true)
             ->whereHas('person', fn ($q) => $q->where('is_active', true))
             ->when($scoped, fn ($q) => $q->whereHas('person', fn ($q2) => $this->analyticsPersonScope($q2)))
@@ -62,7 +167,7 @@ trait BuildsLeaderboards
     protected function activeSocialsInstitution(bool $scoped = true): Collection
     {
         return ChurchSocial::query()
-            ->with('institution')
+            ->with(['institution.conference.union', 'institution.union'])
             ->where('is_active', true)
             ->whereHas('institution', fn ($q) => $q->where('is_active', true))
             ->when($scoped, fn ($q) => $q->whereHas('institution', fn ($q2) => $this->analyticsInstitutionScope($q2)))

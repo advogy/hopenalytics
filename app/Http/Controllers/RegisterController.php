@@ -59,35 +59,43 @@ class RegisterController extends Controller
         return redirect()->route('verify-otp');
     }
 
+    /**
+     * Deliberately doesn't require session.otp_user_id to render — that's only used to pre-fill
+     * the email field as a convenience right after register() redirects here. Verification
+     * itself (verifyOtp()/resendOtp() below) is keyed off the email+code the visitor submits,
+     * not session state, so a lost/expired session or a different device (e.g. registering on
+     * desktop, checking the code on a phone) never strands anyone with no way back in — the
+     * old session-only design bounced straight to /register with no path to use a code an admin
+     * had just resent from Kelola Pengguna. Same reasoning as ForgotPasswordController.
+     */
     public function showVerifyOtp(Request $request)
     {
-        $user = $this->pendingUser($request);
+        $pendingUser = $this->pendingUser($request);
 
-        if (! $user) {
-            return redirect()->route('register')->with('error', __('auth.no_pending_registration'));
-        }
-
-        return view('auth.verify-otp', ['email' => $user->email]);
+        return view('auth.verify-otp', [
+            'email' => old('email', $pendingUser?->email),
+        ]);
     }
 
     public function verifyOtp(Request $request): RedirectResponse
     {
-        $user = $this->pendingUser($request);
-
-        if (! $user) {
-            return redirect()->route('register')->with('error', __('auth.no_pending_registration'));
-        }
-
-        $request->validate([
+        $data = $request->validate([
+            'email' => ['required', 'email'],
             'code' => ['required', 'string'],
         ]);
 
-        if ($user->otp_code !== $request->input('code') || $user->otp_expires_at === null) {
-            return back()->withErrors(['code' => __('auth.otp_invalid')]);
+        $user = User::where('email', $data['email'])->whereNull('email_verified_at')->first();
+
+        // $user === null folds into the same "kode salah" branch as a real user's wrong code —
+        // a distinct "no such pending registration" message here would let an attacker
+        // enumerate which emails have a pending unverified signup, the same concern
+        // ForgotPasswordController::reset() already guards against.
+        if (! $user || $user->otp_code !== $data['code'] || $user->otp_expires_at === null) {
+            return back()->withErrors(['code' => __('auth.otp_invalid')])->withInput();
         }
 
         if ($user->otp_expires_at->isPast()) {
-            return back()->withErrors(['code' => __('auth.otp_expired')]);
+            return back()->withErrors(['code' => __('auth.otp_expired')])->withInput();
         }
 
         $user->forceFill([
@@ -134,15 +142,19 @@ class RegisterController extends Controller
 
     public function resendOtp(Request $request): RedirectResponse
     {
-        $user = $this->pendingUser($request);
+        $data = $request->validate([
+            'email' => ['required', 'email'],
+        ]);
 
-        if (! $user) {
-            return redirect()->route('register')->with('error', __('auth.no_pending_registration'));
+        $user = User::where('email', $data['email'])->whereNull('email_verified_at')->first();
+
+        // Same "sent" response whether or not $user resolves — same anti-enumeration reasoning
+        // as verifyOtp() above.
+        if ($user) {
+            $this->generateAndSendOtp($user);
         }
 
-        $this->generateAndSendOtp($user);
-
-        return back()->with('status', __('auth.otp_resent'));
+        return back()->with('status', __('auth.otp_resent'))->withInput();
     }
 
     private function pendingUser(Request $request): ?User

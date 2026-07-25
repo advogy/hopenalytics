@@ -4,7 +4,6 @@ return [
     'title_suffix_personal' => ' Personal',
     'title_suffix_institution' => ' Institusi',
     'leaderboard_back_analytics' => 'Kembali ke analitik & grafik',
-    'leaderboard_back_metric' => 'Kembali ke perbandingan metrik',
 
     'sort_all' => 'Semua',
     'leaderboard_subtitle_value' => 'Seluruh akun:noun diurutkan berdasarkan nilai saat ini. :subtitle.',

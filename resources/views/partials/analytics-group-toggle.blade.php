@@ -5,6 +5,14 @@
     entity row and a mid-tier Daerah header are both plain sibling <tr>s in the same <tbody>, with
     no real DOM nesting for hidden-ness to cascade through on its own. Everything starts collapsed
     (the `expanded` map starts empty, so any row with ancestors starts hidden).
+
+    Each table's search box (data-group-search-scope="church"/"person"/"institution", next to its
+    title) filters that table's entity rows by name and auto-expands every ancestor group of a
+    match, so a hit inside a currently-collapsed group is actually visible instead of silently
+    matching nothing. It only ever touches entity rows (skips group-header rows themselves, which
+    also carry data-group-ancestors) via inline style.display — a separate mechanism from the
+    `hidden` attribute above or the "hide empty" checkbox's .hidden class, so all three can each
+    hide a row independently without one undoing another.
 --}}
 <script>
     (function () {
@@ -31,6 +39,35 @@
 
             var id = header.dataset.groupToggle;
             expanded[id] = ! expanded[id];
+            refresh();
+        });
+
+        document.addEventListener('input', function (e) {
+            var input = e.target.closest('[data-group-search-scope]');
+            if (! input) return;
+
+            var scope = input.dataset.groupSearchScope;
+            var query = input.value.trim().toLowerCase();
+
+            document.querySelectorAll('[data-group-ancestors]').forEach(function (row) {
+                if (row.hasAttribute('data-group-toggle')) return; // never hide/filter group headers themselves
+
+                var ancestors = row.dataset.groupAncestors.split(' ').filter(Boolean);
+                if (! ancestors.length || ancestors[0].indexOf(scope + '-') !== 0) return; // different table
+
+                if (! query) {
+                    row.style.display = '';
+                    return;
+                }
+
+                var matches = row.textContent.toLowerCase().indexOf(query) !== -1;
+                row.style.display = matches ? '' : 'none';
+
+                if (matches) {
+                    ancestors.forEach(function (id) { expanded[id] = true; });
+                }
+            });
+
             refresh();
         });
 

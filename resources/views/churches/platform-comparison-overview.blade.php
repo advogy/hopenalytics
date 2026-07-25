@@ -24,11 +24,13 @@
         @endcan
     </div>
 
+    @php $regionParams = array_filter(['union_id' => $selectedUnionId, 'conference_id' => $selectedConferenceId]); @endphp
+
     <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div class="flex flex-wrap gap-2">
             @foreach ($platformLabels as $value => $label)
                 <a
-                    href="{{ $scope->platformComparisonUrl(array_filter(['platform' => $value === 'semua' ? null : $value, 'sort' => $sort === 'value' ? 'value' : null])) }}"
+                    href="{{ $scope->platformComparisonUrl(array_merge(array_filter(['platform' => $value === 'semua' ? null : $value, 'sort' => $sort === 'value' ? 'value' : null]), $regionParams)) }}"
                     class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition {{ $value === $platform ? 'border-blue-600 bg-blue-600 text-white' : 'border-black/10 bg-white text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700' }}"
                 >
                     @if ($value !== 'semua')
@@ -41,10 +43,35 @@
 
         <x-sort-toggle
             :sort="$sort"
-            :delta-url="$scope->platformComparisonUrl(array_filter(['platform' => $platformParam]))"
-            :value-url="$scope->platformComparisonUrl(array_filter(['platform' => $platformParam, 'sort' => 'value']))"
+            :delta-url="$scope->platformComparisonUrl(array_merge(array_filter(['platform' => $platformParam]), $regionParams))"
+            :value-url="$scope->platformComparisonUrl(array_merge(array_filter(['platform' => $platformParam, 'sort' => 'value']), $regionParams))"
         />
     </div>
+
+    @if ($platform !== 'semua' && ($isNasionalView || $isUniView))
+        <x-filter-card>
+            <form method="GET" action="{{ $scope->platformComparisonUrl(array_filter(['platform' => $platformParam])) }}" id="platform-overview-filter-form" class="flex flex-wrap items-center gap-3">
+                <input type="hidden" name="sort" value="{{ $sort }}">
+
+                @include('partials.analytics-region-filter', [
+                    'prefix' => 'platform-overview',
+                    'formId' => 'platform-overview-filter-form',
+                    'isNasionalView' => $isNasionalView,
+                    'isUniView' => $isUniView,
+                    'unionOptions' => $unionOptions,
+                    'conferenceOptions' => $conferenceOptions,
+                    'selectedUnionId' => $selectedUnionId,
+                    'selectedConferenceId' => $selectedConferenceId,
+                ])
+
+                @if ($selectedConferenceId || ($isNasionalView && $selectedUnionId))
+                    <a href="{{ $scope->platformComparisonUrl(array_filter(['platform' => $platformParam, 'sort' => $sort === 'value' ? 'value' : null])) }}" class="text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
+                        {{ __('common.reset_filter') }}
+                    </a>
+                @endif
+            </form>
+        </x-filter-card>
+    @endif
 
     @if ($platform === 'semua')
         <x-platform-score-card

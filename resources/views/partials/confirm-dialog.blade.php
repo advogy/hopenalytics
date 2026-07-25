@@ -49,12 +49,19 @@
         var acceptBtn = dialog.querySelector('[data-confirm-accept]');
         var cancelBtn = dialog.querySelector('[data-confirm-cancel]');
         var pendingForm = null;
+        var pendingSubmitter = null;
 
         document.addEventListener('submit', function (e) {
             var form = e.target;
             if (form.hasAttribute && form.hasAttribute('data-confirm') && !form.dataset.confirmed) {
                 e.preventDefault();
                 pendingForm = form;
+                // e.submitter is whichever button actually triggered this — matters when a form
+                // has more than one submit button with its own formaction (e.g. verify-otp's
+                // shared form: verify/resend/cancel all submit the same form to different URLs),
+                // since requestSubmit() without it would silently fall back to the form's own
+                // default action instead of replaying the button that was actually clicked.
+                pendingSubmitter = e.submitter;
                 messageEl.textContent = form.getAttribute('data-confirm');
                 dialog.showModal();
             }
@@ -64,13 +71,15 @@
             if (pendingForm) {
                 pendingForm.dataset.confirmed = 'true';
                 dialog.close();
-                pendingForm.requestSubmit();
+                pendingForm.requestSubmit(pendingSubmitter || undefined);
                 pendingForm = null;
+                pendingSubmitter = null;
             }
         });
 
         cancelBtn.addEventListener('click', function () {
             pendingForm = null;
+            pendingSubmitter = null;
             dialog.close();
         });
     })();

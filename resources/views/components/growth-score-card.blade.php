@@ -1,4 +1,11 @@
-@props(['title', 'subtitle', 'rows', 'viewAllUrl' => null, 'showMetrics' => true])
+{{--
+    $groupedRows/$groupPrefix/$isNasionalView are opt-in — leave them out (as the Dashboard's
+    Top5/Bottom5 widgets do) and this renders the same flat list it always has. Passing
+    $groupedRows (shaped by BuildsLeaderboards::groupByRegion()) switches to the collapsible
+    Uni/Daerah grouping used on Perbandingan Metrik — see partials/growth-score-row.blade.php for
+    the shared row markup and partials/analytics-group-toggle.blade.php for the click handling.
+--}}
+@props(['title', 'subtitle', 'rows', 'viewAllUrl' => null, 'showMetrics' => true, 'groupedRows' => null, 'groupPrefix' => null, 'isNasionalView' => false])
 
 @php
     $metricLabels = ['reach' => 'Reach', 'views' => 'Views', 'likes' => 'Likes', 'posts' => 'Post / Video'];
@@ -21,53 +28,38 @@
         </p>
     @else
         <div class="divide-y divide-slate-100 dark:divide-slate-800">
-            @foreach ($rows as $i => $row)
-                @php $entity = $row['entity']; $score = $row['score']; @endphp
-                <div class="flex items-center gap-4 py-3 first:pt-0 last:pb-0">
-                    <span class="w-6 shrink-0 text-right text-sm font-semibold text-slate-400 dark:text-slate-500">{{ $i + 1 }}</span>
-
-                    <span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#f7cd9a] text-sm font-bold text-blue-600 dark:bg-violet-950/60 dark:text-[#f7cd9a]">
-                        {{ mb_substr($entity->name, 0, 1) }}
-                    </span>
-
-                    <div class="min-w-0 flex-1">
-                        <a
-                            href="{{ $entity instanceof \App\Models\Church ? route('churches.show', $entity) : route('people.show', $entity) }}"
-                            class="block truncate font-medium hover:text-blue-600 dark:hover:text-blue-400"
-                        >
-                            {{ $entity->name }}
-                        </a>
-                        <p class="truncate text-xs text-slate-500 dark:text-slate-400">
-                            @if ($entity->city)
-                                {{ $entity->city }} &middot;
-                            @endif
-                            {{ __('comparison.accounts_count', ['count' => $row['accountCount']]) }}
-                        </p>
-                    </div>
-
-                    @if ($showMetrics)
-                        <div class="hidden shrink-0 items-center gap-3 text-sm sm:flex">
-                            @foreach ($metricLabels as $key => $label)
-                                @php $value = $row['metrics'][$key] ?? null; @endphp
-                                <span class="inline-flex items-center gap-1">
-                                    <span class="text-slate-400 dark:text-slate-500">{{ $label }}</span>
-                                    @if ($value === null)
-                                        <span class="text-slate-300 dark:text-slate-600">&ndash;</span>
-                                    @else
-                                        <span class="{{ $value > 0 ? 'text-emerald-600 dark:text-emerald-400' : ($value < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-400 dark:text-slate-500') }}">
-                                            {{ $value > 0 ? '+' : '' }}{{ number_format($value, 1) }}%
-                                        </span>
-                                    @endif
-                                </span>
-                            @endforeach
-                        </div>
+            @if ($groupedRows !== null)
+                @foreach ($groupedRows as $unionKey => $unionGroup)
+                    @if ($isNasionalView)
+                        <x-analytics-group-header-div
+                            :label="$unionGroup['label']"
+                            :count="$unionGroup['conferences']->sum(fn ($c) => $c['rows']->count())"
+                            :toggle-id="$groupPrefix.'-union-'.$unionKey"
+                        />
                     @endif
-
-                    <span class="w-20 shrink-0 text-right text-lg font-bold tabular-nums {{ $score > 0 ? 'text-emerald-600 dark:text-emerald-400' : ($score < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-400 dark:text-slate-500') }}">
-                        {{ $score > 0 ? '+' : '' }}{{ number_format($score, 1) }}%
-                    </span>
-                </div>
-            @endforeach
+                    @foreach ($unionGroup['conferences'] as $conferenceKey => $conferenceGroup)
+                        <x-analytics-group-header-div
+                            :label="$conferenceGroup['label']"
+                            :count="$conferenceGroup['rows']->count()"
+                            :toggle-id="$groupPrefix.'-conf-'.$unionKey.'-'.$conferenceKey"
+                            :ancestors="$isNasionalView ? $groupPrefix.'-union-'.$unionKey : null"
+                        />
+                        @foreach ($conferenceGroup['rows'] as $i => $row)
+                            @include('partials.growth-score-row', [
+                                'row' => $row,
+                                'index' => $i,
+                                'showMetrics' => $showMetrics,
+                                'metricLabels' => $metricLabels,
+                                'ancestors' => ($isNasionalView ? $groupPrefix.'-union-'.$unionKey.' ' : '').$groupPrefix.'-conf-'.$unionKey.'-'.$conferenceKey,
+                            ])
+                        @endforeach
+                    @endforeach
+                @endforeach
+            @else
+                @foreach ($rows as $i => $row)
+                    @include('partials.growth-score-row', ['row' => $row, 'index' => $i, 'showMetrics' => $showMetrics, 'metricLabels' => $metricLabels])
+                @endforeach
+            @endif
         </div>
     @endif
 </div>

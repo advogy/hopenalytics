@@ -16,6 +16,7 @@ use App\Http\Controllers\CompleteProfileController;
 use App\Http\Controllers\DeployController;
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\ForgotPasswordController;
+use App\Http\Controllers\GoalController;
 use App\Http\Controllers\LinkPersonController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\MyAccountController;
@@ -107,6 +108,11 @@ Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group
     Route::middleware('can:manage-settings')->group(function () {
         Route::get('/settings', [SettingsController::class, 'edit'])->name('settings.edit');
         Route::put('/settings', [SettingsController::class, 'update'])->name('settings.update');
+    });
+
+    Route::middleware('can:manage-goals')->group(function () {
+        Route::get('/tujuan', [GoalController::class, 'edit'])->name('goals.edit');
+        Route::put('/tujuan', [GoalController::class, 'update'])->name('goals.update');
     });
 
     Route::middleware('can:create,App\Models\Church')->group(function () {

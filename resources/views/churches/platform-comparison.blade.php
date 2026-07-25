@@ -53,6 +53,31 @@
         />
     </div>
 
+    @if ($isNasionalView || $isUniView)
+        <x-filter-card>
+            <form method="GET" action="{{ $scope->platformComparisonUrl(array_filter(['platform' => $platformParam, 'metric' => $metric])) }}" id="platform-detail-filter-form" class="flex flex-wrap items-center gap-3">
+                <input type="hidden" name="sort" value="{{ $sort }}">
+
+                @include('partials.analytics-region-filter', [
+                    'prefix' => 'platform-detail',
+                    'formId' => 'platform-detail-filter-form',
+                    'isNasionalView' => $isNasionalView,
+                    'isUniView' => $isUniView,
+                    'unionOptions' => $unionOptions,
+                    'conferenceOptions' => $conferenceOptions,
+                    'selectedUnionId' => $selectedUnionId,
+                    'selectedConferenceId' => $selectedConferenceId,
+                ])
+
+                @if ($selectedConferenceId || ($isNasionalView && $selectedUnionId))
+                    <a href="{{ $scope->platformComparisonUrl(array_filter(['platform' => $platformParam, 'metric' => $metric, 'sort' => $sort === 'value' ? 'value' : null])) }}" class="text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
+                        {{ __('common.reset_filter') }}
+                    </a>
+                @endif
+            </form>
+        </x-filter-card>
+    @endif
+
     <div class="mb-8 rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
         <p class="mb-4 font-bold text-slate-900 dark:text-white">
             {{ __('comparison.value_per_entity', ['value' => $valueHeader, 'platform' => $platformLabels[$platform], 'label' => $scope->labelCap()]) }}
@@ -74,29 +99,45 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-900">
-                    @foreach ($rows as $i => $row)
-                        <tr>
-                            <td class="px-4 py-2.5 text-slate-400 dark:text-slate-500">{{ $i + 1 }}</td>
-                            <td class="px-4 py-2.5">
-                                <a href="{{ $scope->showUrl($row[$scope->rowKey()]) }}" class="font-medium hover:text-blue-600 dark:hover:text-blue-400">
-                                    {{ $row['label'] }}
-                                </a>
-                            </td>
-                            <td class="px-4 py-2.5 text-right font-medium tabular-nums">{{ number_format($row['value']) }}</td>
-                            <td class="px-4 py-2.5 text-right tabular-nums">
-                                @if ($row['delta'] === null)
-                                    <span class="text-slate-300 dark:text-slate-600">—</span>
-                                @else
-                                    <span class="inline-flex items-center gap-1 font-medium {{ $row['delta'] > 0 ? 'text-emerald-600 dark:text-emerald-400' : ($row['delta'] < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-400 dark:text-slate-500') }}">
-                                        <x-icon :name="$row['delta'] > 0 ? 'arrow-trending-up' : ($row['delta'] < 0 ? 'arrow-trending-down' : 'minus-small')" class="h-3.5 w-3.5" />
-                                        {{ $row['delta'] > 0 ? '+' : '' }}{{ number_format($row['delta']) }}
-                                    </span>
-                                @endif
-                            </td>
-                        </tr>
-                    @endforeach
+                    @if ($groupedRows !== null)
+                        @foreach ($groupedRows as $unionKey => $unionGroup)
+                            @if ($isNasionalView)
+                                <x-analytics-group-row
+                                    :label="$unionGroup['label']"
+                                    :count="$unionGroup['conferences']->sum(fn ($c) => $c['rows']->count())"
+                                    :colspan="4"
+                                    :toggle-id="'platform-detail-union-'.$unionKey"
+                                />
+                            @endif
+                            @foreach ($unionGroup['conferences'] as $conferenceKey => $conferenceGroup)
+                                <x-analytics-group-row
+                                    :label="$conferenceGroup['label']"
+                                    :count="$conferenceGroup['rows']->count()"
+                                    :colspan="4"
+                                    :toggle-id="'platform-detail-conf-'.$unionKey.'-'.$conferenceKey"
+                                    :ancestors="$isNasionalView ? 'platform-detail-union-'.$unionKey : null"
+                                />
+                                @foreach ($conferenceGroup['rows'] as $i => $row)
+                                    @include('partials.platform-comparison-row', [
+                                        'row' => $row,
+                                        'index' => $i,
+                                        'scope' => $scope,
+                                        'ancestors' => ($isNasionalView ? 'platform-detail-union-'.$unionKey.' ' : '').'platform-detail-conf-'.$unionKey.'-'.$conferenceKey,
+                                    ])
+                                @endforeach
+                            @endforeach
+                        @endforeach
+                    @else
+                        @foreach ($rows as $i => $row)
+                            @include('partials.platform-comparison-row', ['row' => $row, 'index' => $i, 'scope' => $scope])
+                        @endforeach
+                    @endif
                 </tbody>
             </table>
         </div>
+    @endif
+
+    @if ($groupedRows !== null)
+        @include('partials.analytics-group-toggle')
     @endif
 @endsection
