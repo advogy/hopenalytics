@@ -103,6 +103,8 @@ class PersonController extends Controller
 
         $data = array_merge($data, $this->resolveOrgScope($request, $person->union_id, $person->conference_id));
 
+        $person->update($data);
+
         // Skip logging when someone edits their own linked Person — that's a self-service
         // profile edit (Profil Saya's Info Personal tab), not the "admin acts on the system"
         // kind of thing this log is for, even when the actor happens to also hold a role
