@@ -232,6 +232,8 @@ Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group
 
     Route::middleware('can:delegate-users')->prefix('admin/users')->name('admin.users.')->group(function () {
         Route::get('/', [UserAssignmentController::class, 'index'])->name('index');
+        Route::get('/{target}/edit', [UserAssignmentController::class, 'edit'])->name('edit');
+        Route::put('/{target}', [UserAssignmentController::class, 'update'])->name('update');
         Route::post('/{target}/promote', [UserAssignmentController::class, 'promote'])->name('promote');
         Route::post('/{target}/revoke', [UserAssignmentController::class, 'revoke'])->name('revoke');
         Route::post('/{target}/toggle-active', [UserAssignmentController::class, 'toggleActive'])->name('toggle-active');

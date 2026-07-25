@@ -83,6 +83,12 @@ class UserPolicy
         return $this->manageable($actor, $target);
     }
 
+    /** Editing a target's login/display name (User.name) shares the same scoping as the other row actions. */
+    public function update(User $actor, User $target): bool
+    {
+        return $this->manageable($actor, $target);
+    }
+
     private function manageable(User $actor, User $target): bool
     {
         if ($actor->is($target)) {

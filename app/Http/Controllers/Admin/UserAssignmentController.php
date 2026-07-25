@@ -255,6 +255,38 @@ class UserAssignmentController extends Controller
             ->with('status', "\"{$name}\" berhasil dihapus permanen.");
     }
 
+    /**
+     * A minimal edit page for the target's own login/display name (User.name) — distinct
+     * from Person.name, which is the separate public-directory profile name edited via
+     * people/{person} instead. Reached from Kelola Pengguna's row-actions, so $tab comes
+     * through the query string to redirect back to the right tab on save (see redirectToTab()).
+     */
+    public function edit(Request $request, User $target)
+    {
+        Gate::authorize('update', $target);
+
+        $tab = in_array($request->query('tab'), ['admin', 'pemimpin', 'institusi', 'terhapus'], true)
+            ? $request->query('tab')
+            : 'unassigned';
+
+        return view('admin.users.edit', ['target' => $target, 'tab' => $tab]);
+    }
+
+    public function update(Request $request, User $target): RedirectResponse
+    {
+        Gate::authorize('update', $target);
+
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+        ]);
+
+        $target->update($data);
+
+        AuditLogger::log('user.updated', $target, "Memperbarui nama akun menjadi \"{$target->name}\".");
+
+        return $this->redirectToTab($request)->with('status', "\"{$target->name}\" berhasil diperbarui.");
+    }
+
     public function toggleActive(Request $request, User $target): RedirectResponse
     {
         Gate::authorize('toggleActive', $target);

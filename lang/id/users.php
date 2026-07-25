@@ -45,6 +45,12 @@ return [
     'force_delete' => 'Hapus Permanen',
     'force_delete_confirm' => 'Hapus permanen ":name"? Tindakan ini tidak bisa dibatalkan.',
 
+    'edit_title' => 'Edit Akun Pengguna',
+    'edit_name_label' => 'Nama Akun',
+    'edit_name_hint' => 'Nama login/tampilan akun ini. Berbeda dari nama profil Personal (Direktori Akun), yang diedit terpisah lewat Kelola Akun.',
+
+    'this_is_you' => 'Ini akun Anda',
+
     'resend_otp' => 'Kirim Ulang OTP',
     'deactivate_user_confirm' => 'Nonaktifkan ":name"? Mereka tidak akan bisa login sampai diaktifkan kembali.',
     'delete_user_confirm' => 'Hapus ":name"? Akun ini akan hilang dari semua daftar.',

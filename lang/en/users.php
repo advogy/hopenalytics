@@ -45,6 +45,12 @@ return [
     'force_delete' => 'Permanently Delete',
     'force_delete_confirm' => 'Permanently delete ":name"? This action cannot be undone.',
 
+    'edit_title' => 'Edit User Account',
+    'edit_name_label' => 'Account Name',
+    'edit_name_hint' => 'This account\'s login/display name. Different from their Personal profile name (Account Directory), which is edited separately via Manage Accounts.',
+
+    'this_is_you' => 'This is your account',
+
     'resend_otp' => 'Resend OTP',
     'deactivate_user_confirm' => 'Deactivate ":name"? They won\'t be able to log in until reactivated.',
     'delete_user_confirm' => 'Delete ":name"? This account will disappear from every list.',
