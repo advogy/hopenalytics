@@ -29,7 +29,7 @@
             </label>
         </div>
 
-        <div class="mb-5 grid grid-cols-2 gap-4">
+        <div class="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
                 <label for="auto_fetch_day" class="mb-1.5 block text-sm font-medium">{{ __('settings.day') }}</label>
                 <select id="auto_fetch_day" name="auto_fetch_day" class="w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none dark:border-white/10 dark:bg-slate-800">

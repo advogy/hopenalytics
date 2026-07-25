@@ -24,7 +24,7 @@
         </a>
     @endif
 
-    <div class="mb-8 flex items-center justify-between">
+    <div class="mb-8 flex flex-wrap items-center justify-between gap-3">
         <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{{ $owner->name }}</h1>
 
         <a

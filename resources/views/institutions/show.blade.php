@@ -9,12 +9,12 @@
         </a>
     @endcan
 
-    <div class="mb-8 flex items-center justify-between">
+    <div class="mb-8 flex flex-wrap items-center justify-between gap-3">
         <div>
             <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{{ $institution->name }}</h1>
         </div>
 
-        <div class="flex items-center gap-3">
+        <div class="flex flex-wrap items-center gap-3">
             {{-- Same reasoning as churches.show's Kelola Akun shortcut: only the admin_institusi
                  actually bound to THIS institution gets it. admin_uni/daerah/nasional manage
                  exclusively through Kelola Akun, per the user's explicit call — this page

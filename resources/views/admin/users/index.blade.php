@@ -33,7 +33,7 @@
         </p>
     </div>
 
-    <div class="mb-6 flex gap-2 border-b border-black/5 dark:border-white/5">
+    <div class="mb-6 flex gap-2 overflow-x-auto border-b border-black/5 dark:border-white/5">
         <button type="button" data-tab-button="unassigned" class="border-b-2 px-4 py-2.5 text-sm font-medium transition">
             {{ __('users.tab_unassigned') }}
         </button>

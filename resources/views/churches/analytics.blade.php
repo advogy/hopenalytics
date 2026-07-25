@@ -162,7 +162,7 @@
         <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('analytics.subtitle') }}</p>
     </div>
 
-    <div class="mb-6 flex gap-2 border-b border-black/5 dark:border-white/5">
+    <div class="mb-6 flex gap-2 overflow-x-auto border-b border-black/5 dark:border-white/5">
         <button
             type="button"
             data-tab-button="gereja"
@@ -422,13 +422,13 @@
                     <h2 class="text-lg font-bold text-slate-900 dark:text-white">{{ __('analytics.data_per_church') }}</h2>
                     <div class="flex flex-wrap items-center gap-4">
                         @if ($groupedChurchRows !== null)
-                            <label class="relative">
+                            <label class="relative w-full sm:w-auto">
                                 <x-icon name="magnifying-glass" class="pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                                 <input
                                     type="text"
                                     data-group-search-scope="church"
                                     placeholder="{{ __('analytics.group_search_placeholder') }}"
-                                    class="w-52 rounded-full border border-black/10 bg-slate-50 py-1.5 pr-3 pl-8 text-sm shadow-sm focus:border-blue-500 focus:bg-white focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:focus:bg-slate-900"
+                                    class="w-full sm:w-52 rounded-full border border-black/10 bg-slate-50 py-1.5 pr-3 pl-8 text-sm shadow-sm focus:border-blue-500 focus:bg-white focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:focus:bg-slate-900"
                                 >
                             </label>
                         @endif
@@ -733,13 +733,13 @@
                     <h2 class="text-lg font-bold text-slate-900 dark:text-white">{{ __('analytics.data_per_personal') }}</h2>
                     <div class="flex flex-wrap items-center gap-4">
                         @if ($groupedPersonRows !== null)
-                            <label class="relative">
+                            <label class="relative w-full sm:w-auto">
                                 <x-icon name="magnifying-glass" class="pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                                 <input
                                     type="text"
                                     data-group-search-scope="person"
                                     placeholder="{{ __('analytics.group_search_placeholder') }}"
-                                    class="w-52 rounded-full border border-black/10 bg-slate-50 py-1.5 pr-3 pl-8 text-sm shadow-sm focus:border-blue-500 focus:bg-white focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:focus:bg-slate-900"
+                                    class="w-full sm:w-52 rounded-full border border-black/10 bg-slate-50 py-1.5 pr-3 pl-8 text-sm shadow-sm focus:border-blue-500 focus:bg-white focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:focus:bg-slate-900"
                                 >
                             </label>
                         @endif
@@ -1043,13 +1043,13 @@
                     <h2 class="text-lg font-bold text-slate-900 dark:text-white">{{ __('analytics.data_per_institution') }}</h2>
                     <div class="flex flex-wrap items-center gap-4">
                         @if ($groupedInstitutionRows !== null)
-                            <label class="relative">
+                            <label class="relative w-full sm:w-auto">
                                 <x-icon name="magnifying-glass" class="pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                                 <input
                                     type="text"
                                     data-group-search-scope="institution"
                                     placeholder="{{ __('analytics.group_search_placeholder') }}"
-                                    class="w-52 rounded-full border border-black/10 bg-slate-50 py-1.5 pr-3 pl-8 text-sm shadow-sm focus:border-blue-500 focus:bg-white focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:focus:bg-slate-900"
+                                    class="w-full sm:w-52 rounded-full border border-black/10 bg-slate-50 py-1.5 pr-3 pl-8 text-sm shadow-sm focus:border-blue-500 focus:bg-white focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:focus:bg-slate-900"
                                 >
                             </label>
                         @endif

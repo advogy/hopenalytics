@@ -18,7 +18,7 @@
         &larr; {{ __('common.back') }}
     </a>
 
-    <div class="mb-8 flex items-center justify-between">
+    <div class="mb-8 flex flex-wrap items-center justify-between gap-3">
         <div>
             <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{{ $church->name }}</h1>
             @if ($church->city)

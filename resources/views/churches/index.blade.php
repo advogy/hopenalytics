@@ -183,7 +183,7 @@
             @endif
         </div>
 
-        <div class="mb-4 flex gap-2 border-b border-black/5 dark:border-white/5">
+        <div class="mb-4 flex gap-2 overflow-x-auto border-b border-black/5 dark:border-white/5">
             <button type="button" data-map-tab="gereja" class="border-b-2 px-4 py-2 text-sm font-medium transition">
                 {{ __('common.church') }}
             </button>

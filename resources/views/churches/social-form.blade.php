@@ -21,7 +21,7 @@
             @method('PUT')
         @endif
 
-        <div class="mb-5 grid grid-cols-2 gap-4">
+        <div class="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
                 <label for="platform" class="mb-1.5 block text-sm font-medium">{{ __('entity.platform') }}</label>
                 <select id="platform" name="platform" required class="w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none dark:border-white/10 dark:bg-slate-800">

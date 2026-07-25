@@ -16,7 +16,7 @@
         <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('directory.subtitle') }}</p>
     </div>
 
-    <div class="mb-6 flex gap-2 border-b border-black/5 dark:border-white/5">
+    <div class="mb-6 flex gap-2 overflow-x-auto border-b border-black/5 dark:border-white/5">
         <button type="button" data-tab-button="gereja" class="border-b-2 px-4 py-2.5 text-sm font-medium transition">
             {{ __('common.church') }}
         </button>
@@ -49,7 +49,7 @@
                 'selectedConferenceId' => $selectedConferenceId,
             ])
 
-            <label class="relative">
+            <label class="relative w-full sm:w-auto">
                 <x-icon name="magnifying-glass" class="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <input
                     type="text"
@@ -57,7 +57,7 @@
                     value="{{ $search }}"
                     placeholder="{{ __('directory.search_placeholder_'.$activeTab) }}"
                     data-tab-placeholder="{{ json_encode(['gereja' => __('directory.search_placeholder_gereja'), 'personal' => __('directory.search_placeholder_personal'), 'institusi' => __('directory.search_placeholder_institusi')]) }}"
-                    class="w-56 rounded-full border border-black/10 bg-slate-50 py-2.5 pr-4 pl-9 text-sm font-medium text-slate-700 shadow-sm transition placeholder:font-normal placeholder:text-slate-400 hover:bg-slate-100 focus:bg-white focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500 dark:hover:bg-slate-700 dark:focus:bg-slate-800"
+                    class="w-full sm:w-56 rounded-full border border-black/10 bg-slate-50 py-2.5 pr-4 pl-9 text-sm font-medium text-slate-700 shadow-sm transition placeholder:font-normal placeholder:text-slate-400 hover:bg-slate-100 focus:bg-white focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500 dark:hover:bg-slate-700 dark:focus:bg-slate-800"
                 >
             </label>
 

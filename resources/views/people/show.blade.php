@@ -9,13 +9,13 @@
         </a>
     @endcan
 
-    <div class="mb-8 flex items-center justify-between">
+    <div class="mb-8 flex flex-wrap items-center justify-between gap-3">
         <div>
             <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{{ $person->name }}</h1>
             <p class="text-slate-500 dark:text-slate-400">{{ __('entity.personal_account') }}</p>
         </div>
 
-        <div class="flex items-center gap-3">
+        <div class="flex flex-wrap items-center gap-3">
             {{-- A plain member's own /dashboard (akun-saya) renders this same view — this is
                  their only guaranteed path to actually manage their accounts from their
                  landing page, since Profil Saya's Media Sosial tab is the "real" management

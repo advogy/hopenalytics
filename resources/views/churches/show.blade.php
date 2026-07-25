@@ -14,7 +14,7 @@
         </a>
     @endcan
 
-    <div class="mb-8 flex items-center justify-between">
+    <div class="mb-8 flex flex-wrap items-center justify-between gap-3">
         <div>
             <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{{ $church->name }}</h1>
             @if ($church->city)
@@ -22,7 +22,7 @@
             @endif
         </div>
 
-        <div class="flex items-center gap-3">
+        <div class="flex flex-wrap items-center gap-3">
             {{-- Only the admin_gereja actually assigned to THIS specific church gets this
                  shortcut — they have no other path to management (Kelola Akun has no Gereja
                  tab for gereja-level). admin_uni/daerah/nasional can technically can:update
