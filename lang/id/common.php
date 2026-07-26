@@ -42,4 +42,10 @@ return [
     'no_growth_data' => 'Belum ada data pertumbuhan (butuh minimal 2 minggu pencatatan).',
     'coordinates' => 'Koordinat',
     'coordinates_hint' => '(opsional — otomatis terisi dari kota, isi manual untuk override)',
+    'back_to_top' => 'Kembali ke atas',
+    'customer_service' => 'Customer Service',
+    'cs_whatsapp_link_national' => 'Hubungi Koordinator Nasional',
+    'cs_whatsapp_link_union' => 'Hubungi Koordinator Uni :union',
+    'cs_group_link_national' => 'Gabung Grup WhatsApp Nasional',
+    'cs_group_link_union' => 'Gabung Grup WhatsApp Uni :union',
 ];

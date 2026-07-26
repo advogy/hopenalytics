@@ -23,6 +23,22 @@
 
         <x-form-field name="name" :label="__('accounts.uni_name')" required :value="$union->name" />
 
+        <x-form-field
+            name="coordinator_whatsapp_number"
+            :label="__('accounts.uni_coordinator_whatsapp')"
+            :hint="__('accounts.uni_coordinator_whatsapp_hint')"
+            :value="$union->coordinator_whatsapp_number"
+            placeholder="628123456789"
+        />
+
+        <x-form-field
+            name="whatsapp_group_link"
+            :label="__('accounts.uni_whatsapp_group_link')"
+            :hint="__('accounts.uni_whatsapp_group_link_hint')"
+            :value="$union->whatsapp_group_link"
+            placeholder="https://chat.whatsapp.com/…"
+        />
+
         <div class="flex items-center gap-3">
             <button type="submit" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700">
                 {{ $union->exists ? __('common.save_changes') : __('accounts.title_add_uni') }}

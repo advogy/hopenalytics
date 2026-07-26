@@ -42,4 +42,10 @@ return [
     'no_growth_data' => 'No growth data yet (needs at least 2 weeks of tracking).',
     'coordinates' => 'Coordinates',
     'coordinates_hint' => '(optional — auto-filled from city, enter manually to override)',
+    'back_to_top' => 'Back to top',
+    'customer_service' => 'Customer Service',
+    'cs_whatsapp_link_national' => 'Contact National Coordinator',
+    'cs_whatsapp_link_union' => 'Contact :union Union Coordinator',
+    'cs_group_link_national' => 'Join National WhatsApp Group',
+    'cs_group_link_union' => 'Join :union Union WhatsApp Group',
 ];

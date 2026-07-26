@@ -3,9 +3,9 @@
     <head>
         <script>
             (function () {
-                var theme = localStorage.getItem('theme');
-                var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                if (theme === 'dark' || (! theme && prefersDark)) {
+                // Light is the default for everyone until they explicitly switch — no falling
+                // back to the OS/browser's prefers-color-scheme like before.
+                if (localStorage.getItem('theme') === 'dark') {
                     document.documentElement.classList.add('dark');
                 }
             })();
@@ -58,5 +58,6 @@
         @include('partials.confirm-dialog')
         @include('partials.disable-on-submit')
         @include('partials.password-toggle')
+        @include('partials.floating-widgets')
     </body>
 </html>

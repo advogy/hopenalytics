@@ -63,6 +63,27 @@
             <p class="mb-6 text-sm text-slate-400 dark:text-slate-500">{{ __('settings.auto_fetch_inactive') }}</p>
         @endif
 
+        <div class="mb-6 border-t border-black/5 pt-6 dark:border-white/5">
+            <h2 class="mb-1 font-bold text-slate-900 dark:text-white">{{ __('settings.cs_title') }}</h2>
+            <p class="mb-4 text-sm text-slate-500 dark:text-slate-400">{{ __('settings.cs_subtitle') }}</p>
+
+            <x-form-field
+                name="cs_whatsapp_number"
+                :label="__('settings.cs_whatsapp_number')"
+                :hint="__('settings.cs_whatsapp_number_hint')"
+                :value="$settings->cs_whatsapp_number"
+                placeholder="628123456789"
+            />
+
+            <x-form-field
+                name="cs_whatsapp_group_link"
+                :label="__('settings.cs_whatsapp_group_link')"
+                :hint="__('settings.cs_whatsapp_group_link_hint')"
+                :value="$settings->cs_whatsapp_group_link"
+                placeholder="https://chat.whatsapp.com/…"
+            />
+        </div>
+
         <button type="submit" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700">
             {{ __('settings.save_settings') }}
         </button>

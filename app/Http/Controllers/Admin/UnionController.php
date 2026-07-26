@@ -18,7 +18,11 @@ class UnionController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $data = $request->validate(['name' => ['required', 'string', 'max:255']]);
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'coordinator_whatsapp_number' => ['nullable', 'string', 'max:32'],
+            'whatsapp_group_link' => ['nullable', 'url', 'max:2048'],
+        ]);
         $data['slug'] = $this->uniqueSlug($data['name']);
 
         $union = Union::create($data);
@@ -35,7 +39,11 @@ class UnionController extends Controller
 
     public function update(Request $request, Union $union): RedirectResponse
     {
-        $data = $request->validate(['name' => ['required', 'string', 'max:255']]);
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'coordinator_whatsapp_number' => ['nullable', 'string', 'max:32'],
+            'whatsapp_group_link' => ['nullable', 'url', 'max:2048'],
+        ]);
 
         $union->update($data);
 

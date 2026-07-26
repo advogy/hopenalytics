@@ -11,7 +11,7 @@ class Union extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'slug', 'is_active'];
+    protected $fillable = ['name', 'slug', 'is_active', 'coordinator_whatsapp_number', 'whatsapp_group_link'];
 
     protected $casts = [
         'is_active' => 'boolean',
@@ -66,5 +66,17 @@ class Union extends Model
     public function getRouteKeyName(): string
     {
         return 'slug';
+    }
+
+    /**
+     * A wa.me link built from this Union's own coordinator_whatsapp_number, or null if it's
+     * unset — same digit-stripping as AppSetting::csWhatsappUrl(), so the floating Customer
+     * Service widget can fall back to the national coordinator when a Union hasn't set its own.
+     */
+    public function coordinatorWhatsappUrl(): ?string
+    {
+        $digits = preg_replace('/\D/', '', (string) $this->coordinator_whatsapp_number);
+
+        return $digits !== '' ? "https://wa.me/{$digits}" : null;
     }
 }

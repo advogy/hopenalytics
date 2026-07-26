@@ -3,9 +3,9 @@
 <head>
     <script>
         (function () {
-            var theme = localStorage.getItem('theme');
-            var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            if (theme === 'dark' || (! theme && prefersDark)) {
+            // Light is the default for everyone until they explicitly switch — no falling
+            // back to the OS/browser's prefers-color-scheme like before.
+            if (localStorage.getItem('theme') === 'dark') {
                 document.documentElement.classList.add('dark');
             }
         })();

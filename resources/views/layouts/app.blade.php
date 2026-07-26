@@ -3,9 +3,9 @@
     <head>
         <script>
             (function () {
-                var theme = localStorage.getItem('theme');
-                var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                if (theme === 'dark' || (! theme && prefersDark)) {
+                // Light is the default for everyone until they explicitly switch — no falling
+                // back to the OS/browser's prefers-color-scheme like before.
+                if (localStorage.getItem('theme') === 'dark') {
                     document.documentElement.classList.add('dark');
                 }
             })();
@@ -383,6 +383,8 @@
 
         @include('partials.confirm-dialog')
 
+        @include('partials.floating-widgets')
+
         <dialog id="export-dialog" class="bg-white dark:bg-slate-900">
             <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4 dark:border-slate-800">
                 <p class="text-sm font-medium text-slate-500 dark:text-slate-400">{{ __('nav.export_preview_title') }}</p>
@@ -398,9 +400,12 @@
             <div id="export-dialog-content" class="max-h-[70vh] overflow-y-auto p-6"></div>
         </dialog>
 
+        {{-- bottom-40 (not bottom-4) leaves room for partials/floating-widgets' persistent
+             back-to-top/Customer Service buttons, which occupy the bottom-6/bottom-24 band in
+             the same corner — this card only appears temporarily during an active bulk refresh. --}}
         <div
             id="refresh-progress-widget"
-            class="fixed bottom-4 right-4 z-50 hidden w-72 rounded-xl border border-slate-200 bg-white p-4 shadow-lg dark:border-slate-700 dark:bg-slate-900"
+            class="fixed bottom-40 right-4 z-50 hidden w-72 rounded-xl border border-slate-200 bg-white p-4 shadow-lg dark:border-slate-700 dark:bg-slate-900"
         >
             <div class="mb-2 flex items-center justify-between gap-3">
                 <p data-progress-title class="text-sm font-medium text-slate-700 dark:text-slate-200"></p>

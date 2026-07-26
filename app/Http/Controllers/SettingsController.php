@@ -38,6 +38,8 @@ class SettingsController extends Controller
             'auto_fetch_enabled' => ['nullable', 'boolean'],
             'auto_fetch_day' => ['required', 'integer', 'min:0', 'max:6'],
             'auto_fetch_time' => ['required', 'date_format:H:i'],
+            'cs_whatsapp_number' => ['nullable', 'string', 'max:32'],
+            'cs_whatsapp_group_link' => ['nullable', 'url', 'max:2048'],
         ]);
 
         $data['auto_fetch_enabled'] = $request->boolean('auto_fetch_enabled');

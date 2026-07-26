@@ -24,8 +24,15 @@ class FetchSingleChurchData implements ShouldQueue
 {
     use Batchable, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    // Shortened from 60s — Hostinger has no persistent queue:work daemon, only a cron-triggered
+    // `queue:work --stop-when-empty` every minute (see routes/console.php), so a 60s backoff
+    // meant a retried job often missed that minute's run entirely and had to wait for the next
+    // cron tick, making a bulk batch with a few problem accounts sit stuck well below 100% for
+    // several minutes. 10s still gives a struggling API a moment before hammering it again, but
+    // is short enough that the SAME queue:work invocation (which keeps looping until the queue
+    // is genuinely empty) can usually pick the retry back up itself.
     public int $tries = 3;
-    public int $backoff = 60;
+    public int $backoff = 10;
     public int $timeout = 90;
 
     public function __construct(

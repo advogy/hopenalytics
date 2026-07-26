@@ -211,4 +211,39 @@
             </div>
         @endif
     </div>
+
+    {{--
+        Unlike the floating refresh-progress widget (layouts/app.blade.php), this page has no
+        single batch id to poll a JSON status endpoint for — it shows several independent lists
+        (pending queue, active/completed batches, failed jobs) all computed together in
+        QueueMonitorController::index(). Re-fetching the same page as HTML and swapping each
+        section's already-stable id (#antrean-pending/#batch-aktif/#batch-selesai/#job-gagal)
+        avoids duplicating that controller's query/formatting logic in JS. Confirm-dialog clicks
+        on swapped-in forms still work with no extra wiring — partials/confirm-dialog.blade.php
+        listens on `document`, not on each form, so newly-injected forms are covered automatically.
+    --}}
+    <script>
+        (function () {
+            var sectionIds = ['antrean-pending', 'batch-aktif', 'batch-selesai', 'job-gagal'];
+
+            function refresh() {
+                if (document.visibilityState !== 'visible') return;
+
+                fetch(window.location.href, { headers: { 'Accept': 'text/html' } })
+                    .then(function (res) { return res.text(); })
+                    .then(function (html) {
+                        var fresh = new DOMParser().parseFromString(html, 'text/html');
+
+                        sectionIds.forEach(function (id) {
+                            var current = document.getElementById(id);
+                            var updated = fresh.getElementById(id);
+                            if (current && updated) current.innerHTML = updated.innerHTML;
+                        });
+                    })
+                    .catch(function () {});
+            }
+
+            setInterval(refresh, 3000);
+        })();
+    </script>
 @endsection
