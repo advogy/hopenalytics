@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\SocialPlatform;
+use App\Jobs\FetchSingleChurchData;
 use App\Models\Church;
 use App\Models\ChurchSocial;
 use Illuminate\Http\RedirectResponse;
@@ -34,6 +35,13 @@ class ChurchSocialController extends Controller
         $data = $this->validated($request, false, $church->id, null, null);
 
         $social = $church->socials()->create($data);
+
+        // Auto-fetch accounts get their first data point right away instead of waiting for
+        // the weekly schedule (which could be up to a week off) — same job the Refresh button
+        // and weekly schedule already use, so it's queued/processed the same way.
+        if ($social->is_auto_fetch) {
+            FetchSingleChurchData::dispatch($social);
+        }
 
         return redirect()->route('churches.socials.index', $church)->with('status', "Akun {$social->display_handle} berhasil ditambahkan.");
     }

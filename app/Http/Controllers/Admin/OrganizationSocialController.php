@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Enums\SocialPlatform;
 use App\Http\Controllers\Controller;
+use App\Jobs\FetchSingleChurchData;
 use App\Models\ChurchSocial;
 use App\Models\Conference;
 use App\Models\Institution;
@@ -41,6 +42,10 @@ class OrganizationSocialController extends Controller
         $data = $this->validated($request, 'union_id', $union->id, null);
         $social = $union->socials()->create($data);
 
+        if ($social->is_auto_fetch) {
+            FetchSingleChurchData::dispatch($social);
+        }
+
         return redirect()->route('admin.unions.socials.index', $union)->with('status', "Akun {$social->display_handle} berhasil ditambahkan.");
     }
 
@@ -63,6 +68,10 @@ class OrganizationSocialController extends Controller
         $data = $this->validated($request, 'conference_id', $conference->id, null);
         $social = $conference->socials()->create($data);
 
+        if ($social->is_auto_fetch) {
+            FetchSingleChurchData::dispatch($social);
+        }
+
         return redirect()->route('admin.conferences.socials.index', $conference)->with('status', "Akun {$social->display_handle} berhasil ditambahkan.");
     }
 
@@ -84,6 +93,10 @@ class OrganizationSocialController extends Controller
     {
         $data = $this->validated($request, 'institution_id', $institution->id, null);
         $social = $institution->socials()->create($data);
+
+        if ($social->is_auto_fetch) {
+            FetchSingleChurchData::dispatch($social);
+        }
 
         return redirect()->route('admin.institutions.socials.index', $institution)->with('status', "Akun {$social->display_handle} berhasil ditambahkan.");
     }
