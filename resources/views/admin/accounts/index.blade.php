@@ -133,16 +133,19 @@
                     class="w-full rounded-full border border-black/10 bg-slate-50 py-2.5 pr-4 pl-9 text-sm font-medium text-slate-700 shadow-sm transition placeholder:font-normal placeholder:text-slate-400 hover:bg-slate-100 focus:bg-white focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500 dark:hover:bg-slate-700 dark:focus:bg-slate-800"
                 >
             </label>
-            <select
-                name="sort_uni"
-                onchange="this.form.submit()"
-                class="rounded-full border border-black/10 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm focus:border-blue-500 focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:text-slate-200"
-            >
-                <option value="name_asc" @selected($sortUni === 'name_asc')>{{ __('accounts.sort_name_asc') }}</option>
-                <option value="name_desc" @selected($sortUni === 'name_desc')>{{ __('accounts.sort_name_desc') }}</option>
-                <option value="status_active" @selected($sortUni === 'status_active')>{{ __('accounts.sort_status_active') }}</option>
-                <option value="status_inactive" @selected($sortUni === 'status_inactive')>{{ __('accounts.sort_status_inactive') }}</option>
-            </select>
+            <label class="relative">
+                <select
+                    name="sort_uni"
+                    onchange="this.form.submit()"
+                    class="appearance-none rounded-full border border-black/10 bg-white py-2.5 pr-10 pl-4 text-sm font-medium text-slate-700 shadow-sm focus:border-blue-500 focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:text-slate-200"
+                >
+                    <option value="name_asc" @selected($sortUni === 'name_asc')>{{ __('accounts.sort_name_asc') }}</option>
+                    <option value="name_desc" @selected($sortUni === 'name_desc')>{{ __('accounts.sort_name_desc') }}</option>
+                    <option value="status_active" @selected($sortUni === 'status_active')>{{ __('accounts.sort_status_active') }}</option>
+                    <option value="status_inactive" @selected($sortUni === 'status_inactive')>{{ __('accounts.sort_status_inactive') }}</option>
+                </select>
+                <x-icon name="chevron-down" class="pointer-events-none absolute top-1/2 right-3.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+            </label>
         </form>
 
         @if ($unions->isEmpty())
@@ -214,18 +217,21 @@
                     class="w-full rounded-full border border-black/10 bg-slate-50 py-2.5 pr-4 pl-9 text-sm font-medium text-slate-700 shadow-sm transition placeholder:font-normal placeholder:text-slate-400 hover:bg-slate-100 focus:bg-white focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500 dark:hover:bg-slate-700 dark:focus:bg-slate-800"
                 >
             </label>
-            <select
-                name="sort_daerah"
-                onchange="this.form.submit()"
-                class="rounded-full border border-black/10 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm focus:border-blue-500 focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:text-slate-200"
-            >
-                <option value="name_asc" @selected($sortDaerah === 'name_asc')>{{ __('accounts.sort_name_asc') }}</option>
-                <option value="name_desc" @selected($sortDaerah === 'name_desc')>{{ __('accounts.sort_name_desc') }}</option>
-                <option value="union_asc" @selected($sortDaerah === 'union_asc')>{{ __('accounts.sort_union_asc') }}</option>
-                <option value="union_desc" @selected($sortDaerah === 'union_desc')>{{ __('accounts.sort_union_desc') }}</option>
-                <option value="status_active" @selected($sortDaerah === 'status_active')>{{ __('accounts.sort_status_active') }}</option>
-                <option value="status_inactive" @selected($sortDaerah === 'status_inactive')>{{ __('accounts.sort_status_inactive') }}</option>
-            </select>
+            <label class="relative">
+                <select
+                    name="sort_daerah"
+                    onchange="this.form.submit()"
+                    class="appearance-none rounded-full border border-black/10 bg-white py-2.5 pr-10 pl-4 text-sm font-medium text-slate-700 shadow-sm focus:border-blue-500 focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:text-slate-200"
+                >
+                    <option value="name_asc" @selected($sortDaerah === 'name_asc')>{{ __('accounts.sort_name_asc') }}</option>
+                    <option value="name_desc" @selected($sortDaerah === 'name_desc')>{{ __('accounts.sort_name_desc') }}</option>
+                    <option value="union_asc" @selected($sortDaerah === 'union_asc')>{{ __('accounts.sort_union_asc') }}</option>
+                    <option value="union_desc" @selected($sortDaerah === 'union_desc')>{{ __('accounts.sort_union_desc') }}</option>
+                    <option value="status_active" @selected($sortDaerah === 'status_active')>{{ __('accounts.sort_status_active') }}</option>
+                    <option value="status_inactive" @selected($sortDaerah === 'status_inactive')>{{ __('accounts.sort_status_inactive') }}</option>
+                </select>
+                <x-icon name="chevron-down" class="pointer-events-none absolute top-1/2 right-3.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+            </label>
         </form>
 
         @if ($conferences->isEmpty())
@@ -297,20 +303,23 @@
                     class="w-full rounded-full border border-black/10 bg-slate-50 py-2.5 pr-4 pl-9 text-sm font-medium text-slate-700 shadow-sm transition placeholder:font-normal placeholder:text-slate-400 hover:bg-slate-100 focus:bg-white focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500 dark:hover:bg-slate-700 dark:focus:bg-slate-800"
                 >
             </label>
-            <select
-                name="sort_gereja"
-                onchange="this.form.submit()"
-                class="rounded-full border border-black/10 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm focus:border-blue-500 focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:text-slate-200"
-            >
-                <option value="name_asc" @selected($sortGereja === 'name_asc')>{{ __('accounts.sort_name_asc') }}</option>
-                <option value="name_desc" @selected($sortGereja === 'name_desc')>{{ __('accounts.sort_name_desc') }}</option>
-                <option value="city_asc" @selected($sortGereja === 'city_asc')>{{ __('accounts.sort_city_asc') }}</option>
-                <option value="city_desc" @selected($sortGereja === 'city_desc')>{{ __('accounts.sort_city_desc') }}</option>
-                <option value="daerah_asc" @selected($sortGereja === 'daerah_asc')>{{ __('accounts.sort_daerah_asc') }}</option>
-                <option value="daerah_desc" @selected($sortGereja === 'daerah_desc')>{{ __('accounts.sort_daerah_desc') }}</option>
-                <option value="status_active" @selected($sortGereja === 'status_active')>{{ __('accounts.sort_status_active') }}</option>
-                <option value="status_inactive" @selected($sortGereja === 'status_inactive')>{{ __('accounts.sort_status_inactive') }}</option>
-            </select>
+            <label class="relative">
+                <select
+                    name="sort_gereja"
+                    onchange="this.form.submit()"
+                    class="appearance-none rounded-full border border-black/10 bg-white py-2.5 pr-10 pl-4 text-sm font-medium text-slate-700 shadow-sm focus:border-blue-500 focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:text-slate-200"
+                >
+                    <option value="name_asc" @selected($sortGereja === 'name_asc')>{{ __('accounts.sort_name_asc') }}</option>
+                    <option value="name_desc" @selected($sortGereja === 'name_desc')>{{ __('accounts.sort_name_desc') }}</option>
+                    <option value="city_asc" @selected($sortGereja === 'city_asc')>{{ __('accounts.sort_city_asc') }}</option>
+                    <option value="city_desc" @selected($sortGereja === 'city_desc')>{{ __('accounts.sort_city_desc') }}</option>
+                    <option value="daerah_asc" @selected($sortGereja === 'daerah_asc')>{{ __('accounts.sort_daerah_asc') }}</option>
+                    <option value="daerah_desc" @selected($sortGereja === 'daerah_desc')>{{ __('accounts.sort_daerah_desc') }}</option>
+                    <option value="status_active" @selected($sortGereja === 'status_active')>{{ __('accounts.sort_status_active') }}</option>
+                    <option value="status_inactive" @selected($sortGereja === 'status_inactive')>{{ __('accounts.sort_status_inactive') }}</option>
+                </select>
+                <x-icon name="chevron-down" class="pointer-events-none absolute top-1/2 right-3.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+            </label>
         </form>
 
         @if ($churches->isEmpty())
@@ -389,18 +398,21 @@
                     class="w-full rounded-full border border-black/10 bg-slate-50 py-2.5 pr-4 pl-9 text-sm font-medium text-slate-700 shadow-sm transition placeholder:font-normal placeholder:text-slate-400 hover:bg-slate-100 focus:bg-white focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500 dark:hover:bg-slate-700 dark:focus:bg-slate-800"
                 >
             </label>
-            <select
-                name="sort_institusi"
-                onchange="this.form.submit()"
-                class="rounded-full border border-black/10 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm focus:border-blue-500 focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:text-slate-200"
-            >
-                <option value="name_asc" @selected($sortInstitusi === 'name_asc')>{{ __('accounts.sort_name_asc') }}</option>
-                <option value="name_desc" @selected($sortInstitusi === 'name_desc')>{{ __('accounts.sort_name_desc') }}</option>
-                <option value="region_asc" @selected($sortInstitusi === 'region_asc')>{{ __('accounts.sort_region_asc') }}</option>
-                <option value="region_desc" @selected($sortInstitusi === 'region_desc')>{{ __('accounts.sort_region_desc') }}</option>
-                <option value="status_active" @selected($sortInstitusi === 'status_active')>{{ __('accounts.sort_status_active') }}</option>
-                <option value="status_inactive" @selected($sortInstitusi === 'status_inactive')>{{ __('accounts.sort_status_inactive') }}</option>
-            </select>
+            <label class="relative">
+                <select
+                    name="sort_institusi"
+                    onchange="this.form.submit()"
+                    class="appearance-none rounded-full border border-black/10 bg-white py-2.5 pr-10 pl-4 text-sm font-medium text-slate-700 shadow-sm focus:border-blue-500 focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:text-slate-200"
+                >
+                    <option value="name_asc" @selected($sortInstitusi === 'name_asc')>{{ __('accounts.sort_name_asc') }}</option>
+                    <option value="name_desc" @selected($sortInstitusi === 'name_desc')>{{ __('accounts.sort_name_desc') }}</option>
+                    <option value="region_asc" @selected($sortInstitusi === 'region_asc')>{{ __('accounts.sort_region_asc') }}</option>
+                    <option value="region_desc" @selected($sortInstitusi === 'region_desc')>{{ __('accounts.sort_region_desc') }}</option>
+                    <option value="status_active" @selected($sortInstitusi === 'status_active')>{{ __('accounts.sort_status_active') }}</option>
+                    <option value="status_inactive" @selected($sortInstitusi === 'status_inactive')>{{ __('accounts.sort_status_inactive') }}</option>
+                </select>
+                <x-icon name="chevron-down" class="pointer-events-none absolute top-1/2 right-3.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+            </label>
         </form>
 
         @if ($institutions->isEmpty())
@@ -481,20 +493,23 @@
                     class="w-full rounded-full border border-black/10 bg-slate-50 py-2.5 pr-4 pl-9 text-sm font-medium text-slate-700 shadow-sm transition placeholder:font-normal placeholder:text-slate-400 hover:bg-slate-100 focus:bg-white focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500 dark:hover:bg-slate-700 dark:focus:bg-slate-800"
                 >
             </label>
-            <select
-                name="sort_personal"
-                onchange="this.form.submit()"
-                class="rounded-full border border-black/10 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm focus:border-blue-500 focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:text-slate-200"
-            >
-                <option value="name_asc" @selected($sortPersonal === 'name_asc')>{{ __('accounts.sort_name_asc') }}</option>
-                <option value="name_desc" @selected($sortPersonal === 'name_desc')>{{ __('accounts.sort_name_desc') }}</option>
-                <option value="city_asc" @selected($sortPersonal === 'city_asc')>{{ __('accounts.sort_city_asc') }}</option>
-                <option value="city_desc" @selected($sortPersonal === 'city_desc')>{{ __('accounts.sort_city_desc') }}</option>
-                <option value="scope_asc" @selected($sortPersonal === 'scope_asc')>{{ __('accounts.sort_scope_asc') }}</option>
-                <option value="scope_desc" @selected($sortPersonal === 'scope_desc')>{{ __('accounts.sort_scope_desc') }}</option>
-                <option value="status_active" @selected($sortPersonal === 'status_active')>{{ __('accounts.sort_status_active') }}</option>
-                <option value="status_inactive" @selected($sortPersonal === 'status_inactive')>{{ __('accounts.sort_status_inactive') }}</option>
-            </select>
+            <label class="relative">
+                <select
+                    name="sort_personal"
+                    onchange="this.form.submit()"
+                    class="appearance-none rounded-full border border-black/10 bg-white py-2.5 pr-10 pl-4 text-sm font-medium text-slate-700 shadow-sm focus:border-blue-500 focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:text-slate-200"
+                >
+                    <option value="name_asc" @selected($sortPersonal === 'name_asc')>{{ __('accounts.sort_name_asc') }}</option>
+                    <option value="name_desc" @selected($sortPersonal === 'name_desc')>{{ __('accounts.sort_name_desc') }}</option>
+                    <option value="city_asc" @selected($sortPersonal === 'city_asc')>{{ __('accounts.sort_city_asc') }}</option>
+                    <option value="city_desc" @selected($sortPersonal === 'city_desc')>{{ __('accounts.sort_city_desc') }}</option>
+                    <option value="scope_asc" @selected($sortPersonal === 'scope_asc')>{{ __('accounts.sort_scope_asc') }}</option>
+                    <option value="scope_desc" @selected($sortPersonal === 'scope_desc')>{{ __('accounts.sort_scope_desc') }}</option>
+                    <option value="status_active" @selected($sortPersonal === 'status_active')>{{ __('accounts.sort_status_active') }}</option>
+                    <option value="status_inactive" @selected($sortPersonal === 'status_inactive')>{{ __('accounts.sort_status_inactive') }}</option>
+                </select>
+                <x-icon name="chevron-down" class="pointer-events-none absolute top-1/2 right-3.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+            </label>
         </form>
 
         @if ($people->isEmpty())
