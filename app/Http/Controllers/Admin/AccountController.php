@@ -10,7 +10,9 @@ use App\Models\Institution;
 use App\Models\Person;
 use App\Models\Union;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class AccountController extends Controller
 {
@@ -41,6 +43,12 @@ class AccountController extends Controller
         $searchInstitusi = trim((string) $request->query('search_institusi'));
         $searchPersonal = trim((string) $request->query('search_personal'));
 
+        $sortUni = $request->query('sort_uni', 'name_asc');
+        $sortDaerah = $request->query('sort_daerah', 'name_asc');
+        $sortGereja = $request->query('sort_gereja', 'name_asc');
+        $sortInstitusi = $request->query('sort_institusi', 'name_asc');
+        $sortPersonal = $request->query('sort_personal', 'name_asc');
+
         // Tab switching is client-side only (no page reload — see partials/tab-script.blade.php),
         // so a pagination link built from the *current* request's query string would still
         // carry whatever tab was active on page load, not whatever tab the visitor is actually
@@ -50,16 +58,23 @@ class AccountController extends Controller
         $unions = Union::withCount(['conferences', 'people', 'users'])
             ->visibleTo($request->user())
             ->when($searchUni, fn ($q) => $q->where('name', 'like', "%{$searchUni}%"))
-            ->orderBy('name')
-            ->paginate(20, ['*'], 'uni_page')
+            ->tap(fn ($q) => $this->applyNameOrStatusSort($q, $sortUni))
+            ->paginate(30, ['*'], 'uni_page')
             ->withQueryString()
             ->appends(['tab' => 'uni']);
 
         $conferences = Conference::with('union')->withCount(['churches', 'people', 'users'])
             ->visibleTo($request->user())
             ->when($searchDaerah, fn ($q) => $q->where('name', 'like', "%{$searchDaerah}%"))
-            ->orderBy('name')
-            ->paginate(20, ['*'], 'daerah_page')
+            ->tap(fn ($q) => match ($sortDaerah) {
+                'name_desc' => $q->orderByDesc('name'),
+                'union_asc' => $q->orderBy(Union::select('name')->whereColumn('unions.id', 'conferences.union_id'))->orderBy('name'),
+                'union_desc' => $q->orderByDesc(Union::select('name')->whereColumn('unions.id', 'conferences.union_id'))->orderBy('name'),
+                'status_active' => $q->orderByDesc('is_active')->orderBy('name'),
+                'status_inactive' => $q->orderBy('is_active')->orderBy('name'),
+                default => $q->orderBy('name'),
+            })
+            ->paginate(30, ['*'], 'daerah_page')
             ->withQueryString()
             ->appends(['tab' => 'daerah']);
 
@@ -69,16 +84,32 @@ class AccountController extends Controller
         $churches = Church::with('conference.union')->withCount('users')
             ->visibleTo($request->user())
             ->when($searchGereja, fn ($q) => $q->where('name', 'like', "%{$searchGereja}%"))
-            ->orderBy('name')
-            ->paginate(20, ['*'], 'gereja_page')
+            ->tap(fn ($q) => match ($sortGereja) {
+                'name_desc' => $q->orderByDesc('name'),
+                'city_asc' => $q->orderBy('city')->orderBy('name'),
+                'city_desc' => $q->orderByDesc('city')->orderBy('name'),
+                'daerah_asc' => $q->orderBy(Conference::select('name')->whereColumn('conferences.id', 'churches.conference_id'))->orderBy('name'),
+                'daerah_desc' => $q->orderByDesc(Conference::select('name')->whereColumn('conferences.id', 'churches.conference_id'))->orderBy('name'),
+                'status_active' => $q->orderByDesc('is_active')->orderBy('name'),
+                'status_inactive' => $q->orderBy('is_active')->orderBy('name'),
+                default => $q->orderBy('name'),
+            })
+            ->paginate(30, ['*'], 'gereja_page')
             ->withQueryString()
             ->appends(['tab' => 'gereja']);
 
         $institutions = Institution::with('conference.union', 'union')->withCount('users')
             ->manageableBy($request->user())
             ->when($searchInstitusi, fn ($q) => $q->where('name', 'like', "%{$searchInstitusi}%"))
-            ->orderBy('name')
-            ->paginate(20, ['*'], 'institusi_page')
+            ->tap(fn ($q) => match ($sortInstitusi) {
+                'name_desc' => $q->orderByDesc('name'),
+                'region_asc' => $q->orderBy($this->institutionRegionOrderExpression())->orderBy('name'),
+                'region_desc' => $q->orderByDesc($this->institutionRegionOrderExpression())->orderBy('name'),
+                'status_active' => $q->orderByDesc('is_active')->orderBy('name'),
+                'status_inactive' => $q->orderBy('is_active')->orderBy('name'),
+                default => $q->orderBy('name'),
+            })
+            ->paginate(30, ['*'], 'institusi_page')
             ->withQueryString()
             ->appends(['tab' => 'institusi']);
 
@@ -92,8 +123,17 @@ class AccountController extends Controller
                 ->where('name', 'like', "%{$searchPersonal}%")
                 ->orWhere('city', 'like', "%{$searchPersonal}%"),
             ))
-            ->orderBy('name')
-            ->paginate(20, ['*'], 'personal_page')
+            ->tap(fn ($q) => match ($sortPersonal) {
+                'name_desc' => $q->orderByDesc('name'),
+                'city_asc' => $q->orderBy('city')->orderBy('name'),
+                'city_desc' => $q->orderByDesc('city')->orderBy('name'),
+                'scope_asc' => $q->orderBy($this->personScopeOrderExpression())->orderBy('name'),
+                'scope_desc' => $q->orderByDesc($this->personScopeOrderExpression())->orderBy('name'),
+                'status_active' => $q->orderByDesc('is_active')->orderBy('name'),
+                'status_inactive' => $q->orderBy('is_active')->orderBy('name'),
+                default => $q->orderBy('name'),
+            })
+            ->paginate(30, ['*'], 'personal_page')
             ->withQueryString()
             ->appends(['tab' => 'personal']);
 
@@ -120,8 +160,50 @@ class AccountController extends Controller
             'searchGereja' => $searchGereja,
             'searchInstitusi' => $searchInstitusi,
             'searchPersonal' => $searchPersonal,
+            'sortUni' => $sortUni,
+            'sortDaerah' => $sortDaerah,
+            'sortGereja' => $sortGereja,
+            'sortInstitusi' => $sortInstitusi,
+            'sortPersonal' => $sortPersonal,
             'visibleTabs' => $visibleTabs,
         ]);
+    }
+
+    /** Shared by every tab's "name"/"status" sort options — the two every tab has in common. */
+    private function applyNameOrStatusSort(Builder $query, string $sort): void
+    {
+        match ($sort) {
+            'name_desc' => $query->orderByDesc('name'),
+            'status_active' => $query->orderByDesc('is_active')->orderBy('name'),
+            'status_inactive' => $query->orderBy('is_active')->orderBy('name'),
+            default => $query->orderBy('name'),
+        };
+    }
+
+    /**
+     * An institution's "region" column (see admin.accounts.index) shows its Conference name if
+     * it has one, else its Union name, else "Nasional" — this mirrors that same fallback chain
+     * as a single orderable expression, since Eloquent's orderBy() can't sort by "whichever of
+     * these two relations happens to be set" any other way. Institutions/People are the only
+     * entities that attach to a Conference OR a Union OR neither (see UserRole::level()'s "institusi
+     * sits outside the nasional→uni→daerah chain" — Church always has a Conference, Union/Conference
+     * rows sort by their own name column directly), so this pattern isn't needed elsewhere.
+     */
+    private function institutionRegionOrderExpression()
+    {
+        return DB::raw('COALESCE(
+            (SELECT name FROM conferences WHERE conferences.id = institutions.conference_id),
+            (SELECT name FROM unions WHERE unions.id = institutions.union_id)
+        )');
+    }
+
+    /** Same fallback chain as institutionRegionOrderExpression(), for Person's "scope" column instead. */
+    private function personScopeOrderExpression()
+    {
+        return DB::raw('COALESCE(
+            (SELECT name FROM conferences WHERE conferences.id = people.conference_id),
+            (SELECT name FROM unions WHERE unions.id = people.union_id)
+        )');
     }
 
     /**
