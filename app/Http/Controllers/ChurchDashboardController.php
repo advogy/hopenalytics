@@ -31,9 +31,20 @@ class ChurchDashboardController extends Controller
         $isGerejaLevel = auth()->user()->role?->level() === 'gereja';
 
         $churches = $this->analyticsChurchScope(Church::query()->where('is_active', true))
-            ->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat')])
+            ->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat'), 'conference.union'])
             ->orderBy('name')
             ->get();
+
+        // Map markers don't carry their own Uni/Daerah color — churches only reach a Union
+        // through their Conference, while Person/Institution can also attach directly to a
+        // Union — so this mirrors BuildsLeaderboards::regionEntityUnion()'s fallback chain
+        // rather than reusing it (that one takes ChurchSocial-shaped rows, not these entities).
+        $resolveUnion = fn ($entity) => $entity->conference?->union ?? $entity->union ?? null;
+
+        // Church/Person/Institution each have their own direct conference() relation (unlike
+        // resolveUnion() above, this needs no fallback chain — an entity is either attached to a
+        // Conference or it isn't, there's nothing else to fall back to).
+        $resolveConference = fn ($entity) => $entity->conference;
 
         $allSocials = $churches->flatMap->socials;
 
@@ -42,7 +53,7 @@ class ChurchDashboardController extends Controller
         $totalReachChurch = $allSocials->sum(fn ($social) => $social->latestStat?->{$reachCountField($social)} ?? 0);
 
         $mapChurchSource = $isGerejaLevel
-            ? Church::query()->where('is_active', true)->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat')])->get()
+            ? Church::query()->where('is_active', true)->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat'), 'conference.union'])->get()
             : $churches;
 
         $mapChurches = $mapChurchSource->filter(fn ($church) => $church->latitude !== null && $church->longitude !== null)
@@ -53,13 +64,17 @@ class ChurchDashboardController extends Controller
                 'lat' => $church->latitude,
                 'lng' => $church->longitude,
                 'reach' => $church->socials->sum(fn ($social) => $social->latestStat?->{$reachCountField($social)} ?? 0),
+                'unionId' => $resolveUnion($church)?->id,
+                'unionName' => $resolveUnion($church)?->name,
+                'conferenceId' => $resolveConference($church)?->id,
+                'conferenceName' => $resolveConference($church)?->name,
             ])
             ->values();
 
         $unmappedCount = $mapChurchSource->count() - $mapChurches->count();
 
         $people = $this->analyticsPersonScope(Person::query()->where('is_active', true))
-            ->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat')])
+            ->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat'), 'conference.union', 'union'])
             ->get();
 
         $personalSocials = $people->flatMap->socials;
@@ -67,7 +82,7 @@ class ChurchDashboardController extends Controller
         $totalReachPersonal = $personalSocials->sum(fn ($social) => $social->latestStat?->{$reachCountField($social)} ?? 0);
 
         $mapPeopleSource = $isGerejaLevel
-            ? Person::query()->where('is_active', true)->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat')])->get()
+            ? Person::query()->where('is_active', true)->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat'), 'conference.union', 'union'])->get()
             : $people;
 
         $mapPeople = $mapPeopleSource->filter(fn ($person) => $person->latitude !== null && $person->longitude !== null)
@@ -78,13 +93,17 @@ class ChurchDashboardController extends Controller
                 'lat' => $person->latitude,
                 'lng' => $person->longitude,
                 'reach' => $person->socials->sum(fn ($social) => $social->latestStat?->{$reachCountField($social)} ?? 0),
+                'unionId' => $resolveUnion($person)?->id,
+                'unionName' => $resolveUnion($person)?->name,
+                'conferenceId' => $resolveConference($person)?->id,
+                'conferenceName' => $resolveConference($person)?->name,
             ])
             ->values();
 
         $unmappedPeopleCount = $mapPeopleSource->count() - $mapPeople->count();
 
         $institutions = $this->analyticsInstitutionScope(Institution::query()->where('is_active', true))
-            ->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat')])
+            ->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat'), 'conference.union', 'union'])
             ->get();
 
         $institutionSocials = $institutions->flatMap->socials;
@@ -92,7 +111,7 @@ class ChurchDashboardController extends Controller
         $totalReachInstitution = $institutionSocials->sum(fn ($social) => $social->latestStat?->{$reachCountField($social)} ?? 0);
 
         $mapInstitutionSource = $isGerejaLevel
-            ? Institution::query()->where('is_active', true)->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat')])->get()
+            ? Institution::query()->where('is_active', true)->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat'), 'conference.union', 'union'])->get()
             : $institutions;
 
         $mapInstitutions = $mapInstitutionSource->filter(fn ($institution) => $institution->latitude !== null && $institution->longitude !== null)
@@ -103,10 +122,38 @@ class ChurchDashboardController extends Controller
                 'lat' => $institution->latitude,
                 'lng' => $institution->longitude,
                 'reach' => $institution->socials->sum(fn ($social) => $social->latestStat?->{$reachCountField($social)} ?? 0),
+                'unionId' => $resolveUnion($institution)?->id,
+                'unionName' => $resolveUnion($institution)?->name,
+                'conferenceId' => $resolveConference($institution)?->id,
+                'conferenceName' => $resolveConference($institution)?->name,
             ])
             ->values();
 
         $unmappedInstitutionsCount = $mapInstitutionSource->count() - $mapInstitutions->count();
+
+        // The map's "Uni/Daerah" tab recolors the same church/personal/institution pins by
+        // region instead of adding new markers (Union/Conference have no lat/lng of their own)
+        // — pins whose Uni/Daerah can't be resolved are left out of that tab entirely (rather
+        // than lumped into a catch-all bucket) to avoid visually overlapping real territory they
+        // don't belong to, so both the legend and this tab's own summary count only cover pins
+        // that actually have a Union.
+        $mapOrganizationItems = $mapChurches->concat($mapPeople)->concat($mapInstitutions)
+            ->filter(fn ($item) => $item['unionId'] !== null);
+
+        $mapUnions = $mapOrganizationItems
+            ->unique('unionId')
+            ->sortBy('unionName')
+            ->values()
+            ->map(fn ($item) => ['id' => $item['unionId'], 'name' => $item['unionName']]);
+
+        // The Daerah-level layer shown once the viewer zooms into a Union — inherits its color
+        // from the parent Union (assigned in JS) so the two zoom tiers read as the same region.
+        $mapConferences = $mapOrganizationItems
+            ->filter(fn ($item) => $item['conferenceId'] !== null)
+            ->unique('conferenceId')
+            ->sortBy('conferenceName')
+            ->values()
+            ->map(fn ($item) => ['id' => $item['conferenceId'], 'name' => $item['conferenceName'], 'unionId' => $item['unionId']]);
 
         // Unlike the map/platform-score below, Top 5/Bottom 5 use the normal scoped call —
         // analyticsChurchScope() already resolves a gereja-level viewer to their whole
@@ -165,6 +212,9 @@ class ChurchDashboardController extends Controller
             'totalReachPersonal' => $totalReachPersonal,
             'totalReachInstitution' => $totalReachInstitution,
             'weeklyGrowth' => $weeklyGrowth,
+            'mapUnions' => $mapUnions,
+            'mapConferences' => $mapConferences,
+            'mapOrganizationCount' => $mapOrganizationItems->count(),
             'mapChurches' => $mapChurches,
             'unmappedCount' => $unmappedCount,
             'mapPeople' => $mapPeople,
@@ -986,7 +1036,7 @@ class ChurchDashboardController extends Controller
         $hideEmptyPeople = $request->boolean('hide_empty_people');
         $hideEmptyInstitutions = $request->boolean('hide_empty_institutions');
         $hideEmptyOrganizations = $request->boolean('hide_empty_organizations');
-        $activeTab = in_array($request->query('tab'), ['institusi', 'personal', 'organisasi'], true) ? $request->query('tab') : 'gereja';
+        $activeTab = in_array($request->query('tab'), ['institusi', 'personal', 'gereja'], true) ? $request->query('tab') : 'organisasi';
 
         // The directory is public and unscoped (see below), so — unlike every other
         // region-filterable page — the Uni/Daerah picker isn't narrowed to the viewer's own

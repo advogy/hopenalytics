@@ -3,7 +3,7 @@
     $postField = ['youtube' => 'videos_count', 'instagram' => 'posts_count', 'tiktok' => 'posts_count'];
     $platformLabels = ['youtube' => 'YouTube', 'instagram' => 'Instagram', 'tiktok' => 'TikTok', 'facebook' => 'Facebook'];
 
-    $activeTab = in_array(request()->query('tab'), ['personal', 'institusi', 'organisasi'], true) ? request()->query('tab') : 'gereja';
+    $activeTab = in_array(request()->query('tab'), ['personal', 'institusi', 'gereja'], true) ? request()->query('tab') : 'organisasi';
 
     // Data Per * tables: a nasional-level viewer (or a plain member, whose analytics scope is
     // unscoped — see BuildsLeaderboards::analyticsChurchScope()) gets a 3-tier Uni > Daerah >

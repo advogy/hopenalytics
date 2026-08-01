@@ -155,7 +155,10 @@
         <div class="mb-4 flex flex-wrap items-start justify-between gap-2">
             <div>
                 <h2 class="font-bold text-slate-900 dark:text-white">{{ __('dashboard.map_title') }}</h2>
-                <p class="text-sm text-slate-500 dark:text-slate-400" data-map-summary="gereja">
+                <p class="text-sm text-slate-500 dark:text-slate-400" data-map-summary="organisasi">
+                    {{ __('dashboard.map_summary_organization', ['count' => $mapOrganizationCount, 'unionCount' => $mapUnions->count()]) }}
+                </p>
+                <p class="hidden text-sm text-slate-500 dark:text-slate-400" data-map-summary="gereja">
                     {{ __('dashboard.map_summary_church', ['count' => $mapChurches->count()]) }}
                 </p>
                 <p class="hidden text-sm text-slate-500 dark:text-slate-400" data-map-summary="personal">
@@ -184,6 +187,9 @@
         </div>
 
         <div class="mb-4 flex gap-2 overflow-x-auto border-b border-black/5 dark:border-white/5">
+            <button type="button" data-map-tab="organisasi" class="border-b-2 px-4 py-2 text-sm font-medium transition">
+                {{ __('comparison.organization_label') }}
+            </button>
             <button type="button" data-map-tab="gereja" class="border-b-2 px-4 py-2 text-sm font-medium transition">
                 {{ __('common.church') }}
             </button>
@@ -203,6 +209,7 @@
                 {{ __('dashboard.map_empty') }}
             </div>
         @else
+            <div id="church-map-union-legend" class="mb-3 flex flex-wrap gap-x-4 gap-y-1.5"></div>
             <div id="church-map" class="relative z-0 h-[650px] w-full rounded-xl"></div>
         @endif
     </div>
@@ -235,6 +242,43 @@
                 var people = @json($mapPeople, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_INVALID_UTF8_SUBSTITUTE).map(function (p) { p.type = 'personal'; return p; });
                 var institutions = @json($mapInstitutions, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_INVALID_UTF8_SUBSTITUTE).map(function (i) { i.type = 'institusi'; return i; });
                 var combined = churches.concat(people).concat(institutions);
+
+                // "Uni/Daerah" tab: no per-church markers (Union/Conference have no lat/lng of
+                // their own, and church-level detail already lives in the Gereja tab) — zoomed
+                // out it shows one region per Union, zoomed in one region per Daerah, each just
+                // an outline (still built from that region's own churches' coordinates) plus a
+                // summary popup — see buildRegionLayer()/refreshOrganizationLayer() below.
+                var mapUnions = @json($mapUnions);
+                var mapConferences = @json($mapConferences);
+                var unionColorPalette = ['#2563eb', '#dc2626', '#059669', '#d97706', '#7c3aed', '#db2777', '#0891b2', '#65a30d', '#ea580c', '#4f46e5'];
+                var unionColorById = {};
+                mapUnions.forEach(function (u, i) { unionColorById[u.id] = unionColorPalette[i % unionColorPalette.length]; });
+                var conferenceColorById = {};
+                mapConferences.forEach(function (c) { conferenceColorById[c.id] = unionColorById[c.unionId]; });
+
+                // Monotone chain convex hull (Andrew's algorithm) — draws each Union's rough
+                // service-area outline from its own churches' coordinates, since there's no
+                // official administrative boundary data to draw against. Returns null under 3
+                // points (no polygon is meaningful yet).
+                function convexHull(points) {
+                    if (points.length < 3) return null;
+                    var pts = points.slice().sort(function (a, b) { return a[0] - b[0] || a[1] - b[1]; });
+                    function cross(o, a, b) { return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]); }
+                    var lower = [];
+                    for (var i = 0; i < pts.length; i++) {
+                        while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], pts[i]) <= 0) lower.pop();
+                        lower.push(pts[i]);
+                    }
+                    var upper = [];
+                    for (var i = pts.length - 1; i >= 0; i--) {
+                        while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], pts[i]) <= 0) upper.pop();
+                        upper.push(pts[i]);
+                    }
+                    lower.pop();
+                    upper.pop();
+                    var hull = lower.concat(upper);
+                    return hull.length >= 3 ? hull : null;
+                }
 
                 var map = L.map('church-map');
 
@@ -320,7 +364,76 @@
                     return group;
                 }
 
-                var dataByTab = { gereja: churches, personal: people, institusi: institutions, gabungan: combined };
+                // Items with no resolvable Union are left out of this tab entirely (not lumped
+                // into a catch-all "Other" bucket) — showing them risked visually overlapping
+                // real Union/Daerah territory they don't actually belong to.
+                var organizationItems = combined.filter(function (item) { return item.unionId && unionColorById[item.unionId]; });
+
+                function churchPointsOf(items) {
+                    return items.filter(function (item) { return item.type === 'gereja'; }).map(function (item) { return [item.lat, item.lng]; });
+                }
+
+                function regionCentroid(points) {
+                    var totals = points.reduce(function (acc, p) { return [acc[0] + p[0], acc[1] + p[1]]; }, [0, 0]);
+                    return [totals[0] / points.length, totals[1] / points.length];
+                }
+
+                function regionSummaryPopup(name, items) {
+                    var churchCount = items.filter(function (item) { return item.type === 'gereja'; }).length;
+                    var personCount = items.filter(function (item) { return item.type === 'personal'; }).length;
+                    var institutionCount = items.filter(function (item) { return item.type === 'institusi'; }).length;
+                    var totalReach = items.reduce(function (sum, item) { return sum + item.reach; }, 0);
+
+                    var summaryParts = [churchCount + ' ' + mapI18n.churchLabel];
+                    if (personCount > 0) summaryParts.push(personCount + ' ' + mapI18n.personalLabel);
+                    if (institutionCount > 0) summaryParts.push(institutionCount + ' ' + mapI18n.institutionLabel);
+
+                    return '<p class="font-semibold">' + name + '</p>' +
+                        '<p class="mt-1 text-xs">' + summaryParts.join(', ') + '</p>' +
+                        '<p class="text-xs">' + mapI18n.reachLabel + totalReach.toLocaleString(mapI18n.numberLocale) + '</p>';
+                }
+
+                // The region's outline is still only ever built from its own churches' coordinates
+                // (personal/institution pins don't factor into the shape, only into the popup's
+                // summary counts) — a region with zero mapped churches renders nothing at all,
+                // rather than falling back to some other point source.
+                function buildRegionLayer(items, name, color) {
+                    var churchPoints = churchPointsOf(items);
+                    if (churchPoints.length === 0) return null;
+
+                    var hullPoints = convexHull(churchPoints);
+                    var shape = hullPoints
+                        ? L.polygon(hullPoints, { color: color, weight: 2, fillColor: color, fillOpacity: 0.15 })
+                        : L.circleMarker(regionCentroid(churchPoints), { radius: 10, color: color, weight: 2, fillColor: color, fillOpacity: 0.5 });
+
+                    return shape.bindPopup(regionSummaryPopup(name, items));
+                }
+
+                var unionRegionLayers = mapUnions.map(function (u) {
+                    return buildRegionLayer(organizationItems.filter(function (item) { return item.unionId === u.id; }), u.name, unionColorById[u.id]);
+                }).filter(function (layer) { return layer !== null; });
+
+                var conferenceRegionLayers = mapConferences.map(function (c) {
+                    return buildRegionLayer(organizationItems.filter(function (item) { return item.conferenceId === c.id; }), c.name, conferenceColorById[c.id]);
+                }).filter(function (layer) { return layer !== null; });
+
+                var unionLayer = L.layerGroup(unionRegionLayers);
+                var conferenceLayer = L.layerGroup(conferenceRegionLayers);
+                var ORGANIZATION_ZOOM_THRESHOLD = 9;
+
+                var legendEl = document.getElementById('church-map-union-legend');
+                if (legendEl) {
+                    var legendItems = mapUnions.map(function (u) {
+                        return { color: unionColorById[u.id], label: u.name };
+                    });
+                    legendEl.innerHTML = legendItems.map(function (item) {
+                        return '<span class="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">' +
+                            '<span class="inline-block h-2.5 w-2.5 shrink-0 rounded-full" style="background:' + item.color + '"></span>' +
+                            item.label + '</span>';
+                    }).join('');
+                }
+
+                var dataByTab = { gereja: churches, personal: people, institusi: institutions, gabungan: combined, organisasi: organizationItems };
                 var layersByTab = {
                     gereja: buildClusterGroup(churches, '#2563eb'),
                     personal: buildClusterGroup(people, '#7c3aed'),
@@ -333,11 +446,38 @@
                 var fallbackZoom = 10;
 
                 var activeLayer = null;
+                var currentTab = null;
+
+                // The "Uni/Daerah" tab swaps between unionLayer/conferenceLayer as the viewer
+                // zooms, instead of being one fixed entry in layersByTab like every other tab —
+                // guarded by currentTab so the zoomend listener is a no-op on every other tab.
+                var organizationSubLayer = null;
+
+                function refreshOrganizationLayer() {
+                    if (currentTab !== 'organisasi') return;
+
+                    var desired = map.getZoom() >= ORGANIZATION_ZOOM_THRESHOLD ? conferenceLayer : unionLayer;
+                    if (organizationSubLayer === desired) return;
+
+                    if (organizationSubLayer) map.removeLayer(organizationSubLayer);
+                    organizationSubLayer = desired;
+                    map.addLayer(organizationSubLayer);
+                }
+
+                map.on('zoomend', refreshOrganizationLayer);
 
                 function activateMapTab(tab) {
                     if (activeLayer) map.removeLayer(activeLayer);
-                    activeLayer = layersByTab[tab];
-                    map.addLayer(activeLayer);
+                    if (organizationSubLayer) { map.removeLayer(organizationSubLayer); organizationSubLayer = null; }
+
+                    currentTab = tab;
+
+                    if (tab === 'organisasi') {
+                        activeLayer = null;
+                    } else {
+                        activeLayer = layersByTab[tab];
+                        map.addLayer(activeLayer);
+                    }
 
                     var items = dataByTab[tab];
                     if (items.length > 0) {
@@ -347,9 +487,16 @@
                         map.setView(fallbackCenter, fallbackZoom);
                     }
 
+                    // fitBounds()/setView() above only fire 'zoomend' if the zoom level actually
+                    // changes — this covers the case where it doesn't (e.g. switching tabs
+                    // without the view moving), so the right sub-layer still shows immediately.
+                    refreshOrganizationLayer();
+
                     document.querySelectorAll('[data-map-summary]').forEach(function (el) {
                         el.classList.toggle('hidden', el.dataset.mapSummary !== tab);
                     });
+
+                    if (legendEl) legendEl.classList.toggle('hidden', tab !== 'organisasi');
 
                     document.querySelectorAll('[data-map-tab]').forEach(function (btn) {
                         var isActive = btn.dataset.mapTab === tab;
@@ -365,7 +512,7 @@
                     btn.addEventListener('click', function () { activateMapTab(btn.dataset.mapTab); });
                 });
 
-                activateMapTab('gereja');
+                activateMapTab('organisasi');
             });
         </script>
     @endif
