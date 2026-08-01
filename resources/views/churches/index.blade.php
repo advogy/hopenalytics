@@ -229,6 +229,7 @@
                     churchLabel: @json(__('common.church')),
                     personalLabel: @json(__('common.personal')),
                     institutionLabel: @json(__('common.institution')),
+                    officeLabel: @json(__('dashboard.map_office_label')),
                 };
 
                 {{--
@@ -409,16 +410,40 @@
                     return shape.bindPopup(regionSummaryPopup(name, items));
                 }
 
+                // A distinct small solid marker for the region's actual office location (set via
+                // Kelola Akun → Uni/Daerah) — separate from buildRegionLayer()'s territory outline
+                // (built purely from church coordinates) and its own centroid-fallback marker, so
+                // the three never get visually confused for one another.
+                function buildOfficeMarker(region, color) {
+                    if (region.officeLat == null || region.officeLng == null) return null;
+
+                    return L.circleMarker([region.officeLat, region.officeLng], {
+                        radius: 6,
+                        color: '#ffffff',
+                        weight: 2,
+                        fillColor: color,
+                        fillOpacity: 1,
+                    }).bindPopup('<p class="font-semibold">' + mapI18n.officeLabel + ' ' + region.name + '</p>');
+                }
+
                 var unionRegionLayers = mapUnions.map(function (u) {
                     return buildRegionLayer(organizationItems.filter(function (item) { return item.unionId === u.id; }), u.name, unionColorById[u.id]);
                 }).filter(function (layer) { return layer !== null; });
+
+                var unionOfficeMarkers = mapUnions.map(function (u) {
+                    return buildOfficeMarker(u, unionColorById[u.id]);
+                }).filter(function (marker) { return marker !== null; });
 
                 var conferenceRegionLayers = mapConferences.map(function (c) {
                     return buildRegionLayer(organizationItems.filter(function (item) { return item.conferenceId === c.id; }), c.name, conferenceColorById[c.id]);
                 }).filter(function (layer) { return layer !== null; });
 
-                var unionLayer = L.layerGroup(unionRegionLayers);
-                var conferenceLayer = L.layerGroup(conferenceRegionLayers);
+                var conferenceOfficeMarkers = mapConferences.map(function (c) {
+                    return buildOfficeMarker(c, conferenceColorById[c.id]);
+                }).filter(function (marker) { return marker !== null; });
+
+                var unionLayer = L.layerGroup(unionRegionLayers.concat(unionOfficeMarkers));
+                var conferenceLayer = L.layerGroup(conferenceRegionLayers.concat(conferenceOfficeMarkers));
                 var ORGANIZATION_ZOOM_THRESHOLD = 9;
 
                 var legendEl = document.getElementById('church-map-union-legend');
@@ -433,7 +458,18 @@
                     }).join('');
                 }
 
-                var dataByTab = { gereja: churches, personal: people, institusi: institutions, gabungan: combined, organisasi: organizationItems };
+                // Office coordinates can sit well outside where any of that region's mapped
+                // church/personal/institution pins happen to be, so they're folded into this
+                // tab's own bounds-fit too — otherwise switching to it wouldn't necessarily bring
+                // the office marker into view.
+                var organizationBoundsItems = organizationItems.concat(
+                    mapUnions.filter(function (u) { return u.officeLat != null && u.officeLng != null; })
+                        .map(function (u) { return { lat: u.officeLat, lng: u.officeLng }; }),
+                    mapConferences.filter(function (c) { return c.officeLat != null && c.officeLng != null; })
+                        .map(function (c) { return { lat: c.officeLat, lng: c.officeLng }; })
+                );
+
+                var dataByTab = { gereja: churches, personal: people, institusi: institutions, gabungan: combined, organisasi: organizationBoundsItems };
                 var layersByTab = {
                     gereja: buildClusterGroup(churches, '#2563eb'),
                     personal: buildClusterGroup(people, '#7c3aed'),

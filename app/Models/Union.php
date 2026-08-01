@@ -11,10 +11,12 @@ class Union extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'slug', 'is_active', 'coordinator_whatsapp_number', 'whatsapp_group_link'];
+    protected $fillable = ['name', 'slug', 'is_active', 'coordinator_whatsapp_number', 'whatsapp_group_link', 'latitude', 'longitude'];
 
     protected $casts = [
         'is_active' => 'boolean',
+        'latitude' => 'float',
+        'longitude' => 'float',
     ];
 
     public function conferences(): HasMany

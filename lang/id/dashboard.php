@@ -29,6 +29,7 @@ return [
     'map_summary_institution' => ':count institusi terpetakan berdasarkan kota.',
     'map_summary_combined' => ':churchCount gereja, :peopleCount personal, :institutionCount institusi terpetakan berdasarkan kota.',
     'map_summary_organization' => ':count entitas terpetakan, diwarnai berdasarkan :unionCount Uni/Daerah.',
+    'map_office_label' => 'Kantor',
     'map_unmapped_church' => ':count gereja belum punya koordinat.',
     'map_unmapped_personal' => ':count personal belum punya koordinat.',
     'map_unmapped_institution' => ':count institusi belum punya koordinat.',

@@ -12,10 +12,12 @@ class Conference extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['union_id', 'name', 'slug', 'is_active'];
+    protected $fillable = ['union_id', 'name', 'slug', 'is_active', 'latitude', 'longitude'];
 
     protected $casts = [
         'is_active' => 'boolean',
+        'latitude' => 'float',
+        'longitude' => 'float',
     ];
 
     public function union(): BelongsTo

@@ -22,7 +22,11 @@ class UnionController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'coordinator_whatsapp_number' => ['nullable', 'string', 'max:32'],
             'whatsapp_group_link' => ['nullable', 'url', 'max:2048'],
+            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
         ]);
+        $data['latitude'] = $request->filled('latitude') ? (float) $data['latitude'] : null;
+        $data['longitude'] = $request->filled('longitude') ? (float) $data['longitude'] : null;
         $data['slug'] = $this->uniqueSlug($data['name']);
 
         $union = Union::create($data);
@@ -43,7 +47,11 @@ class UnionController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'coordinator_whatsapp_number' => ['nullable', 'string', 'max:32'],
             'whatsapp_group_link' => ['nullable', 'url', 'max:2048'],
+            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
         ]);
+        $data['latitude'] = $request->filled('latitude') ? (float) $data['latitude'] : null;
+        $data['longitude'] = $request->filled('longitude') ? (float) $data['longitude'] : null;
 
         $union->update($data);
 

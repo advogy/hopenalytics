@@ -140,11 +140,22 @@ class ChurchDashboardController extends Controller
         $mapOrganizationItems = $mapChurches->concat($mapPeople)->concat($mapInstitutions)
             ->filter(fn ($item) => $item['unionId'] !== null);
 
+        $unionIds = $mapOrganizationItems->pluck('unionId')->unique();
+        $unionOffices = Union::whereIn('id', $unionIds)->get(['id', 'latitude', 'longitude'])->keyBy('id');
+
         $mapUnions = $mapOrganizationItems
             ->unique('unionId')
             ->sortBy('unionName')
             ->values()
-            ->map(fn ($item) => ['id' => $item['unionId'], 'name' => $item['unionName']]);
+            ->map(fn ($item) => [
+                'id' => $item['unionId'],
+                'name' => $item['unionName'],
+                'officeLat' => $unionOffices[$item['unionId']]->latitude ?? null,
+                'officeLng' => $unionOffices[$item['unionId']]->longitude ?? null,
+            ]);
+
+        $conferenceIds = $mapOrganizationItems->pluck('conferenceId')->filter()->unique();
+        $conferenceOffices = Conference::whereIn('id', $conferenceIds)->get(['id', 'latitude', 'longitude'])->keyBy('id');
 
         // The Daerah-level layer shown once the viewer zooms into a Union — inherits its color
         // from the parent Union (assigned in JS) so the two zoom tiers read as the same region.
@@ -153,7 +164,13 @@ class ChurchDashboardController extends Controller
             ->unique('conferenceId')
             ->sortBy('conferenceName')
             ->values()
-            ->map(fn ($item) => ['id' => $item['conferenceId'], 'name' => $item['conferenceName'], 'unionId' => $item['unionId']]);
+            ->map(fn ($item) => [
+                'id' => $item['conferenceId'],
+                'name' => $item['conferenceName'],
+                'unionId' => $item['unionId'],
+                'officeLat' => $conferenceOffices[$item['conferenceId']]->latitude ?? null,
+                'officeLng' => $conferenceOffices[$item['conferenceId']]->longitude ?? null,
+            ]);
 
         // Unlike the map/platform-score below, Top 5/Bottom 5 use the normal scoped call —
         // analyticsChurchScope() already resolves a gereja-level viewer to their whole

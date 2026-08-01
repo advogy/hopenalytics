@@ -22,7 +22,11 @@ class ConferenceController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'union_id' => ['required', 'integer', 'exists:unions,id'],
+            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
         ]);
+        $data['latitude'] = $request->filled('latitude') ? (float) $data['latitude'] : null;
+        $data['longitude'] = $request->filled('longitude') ? (float) $data['longitude'] : null;
         $data['slug'] = $this->uniqueSlug($data['name']);
         $data['union_id'] = $this->resolveUnionId($request, $data['union_id']);
 
@@ -43,7 +47,11 @@ class ConferenceController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'union_id' => ['required', 'integer', 'exists:unions,id'],
+            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
         ]);
+        $data['latitude'] = $request->filled('latitude') ? (float) $data['latitude'] : null;
+        $data['longitude'] = $request->filled('longitude') ? (float) $data['longitude'] : null;
         $data['union_id'] = $this->resolveUnionId($request, $conference->union_id);
 
         $conference->update($data);

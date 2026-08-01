@@ -29,6 +29,7 @@ return [
     'map_summary_institution' => ':count institutions mapped by city.',
     'map_summary_combined' => ':churchCount churches, :peopleCount personal accounts, :institutionCount institutions mapped by city.',
     'map_summary_organization' => ':count entities mapped, colored by :unionCount Uni/Daerah.',
+    'map_office_label' => 'Office:',
     'map_unmapped_church' => ':count churches without coordinates yet.',
     'map_unmapped_personal' => ':count personal accounts without coordinates yet.',
     'map_unmapped_institution' => ':count institutions without coordinates yet.',
