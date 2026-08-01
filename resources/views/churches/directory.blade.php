@@ -17,6 +17,9 @@
     </div>
 
     <div class="mb-6 flex gap-2 overflow-x-auto border-b border-black/5 dark:border-white/5">
+        <button type="button" data-tab-button="organisasi" class="border-b-2 px-4 py-2.5 text-sm font-medium transition">
+            {{ __('comparison.organization_label') }}
+        </button>
         <button type="button" data-tab-button="gereja" class="border-b-2 px-4 py-2.5 text-sm font-medium transition">
             {{ __('common.church') }}
         </button>
@@ -56,7 +59,7 @@
                     name="search"
                     value="{{ $search }}"
                     placeholder="{{ __('directory.search_placeholder_'.$activeTab) }}"
-                    data-tab-placeholder="{{ json_encode(['gereja' => __('directory.search_placeholder_gereja'), 'personal' => __('directory.search_placeholder_personal'), 'institusi' => __('directory.search_placeholder_institusi')]) }}"
+                    data-tab-placeholder="{{ json_encode(['gereja' => __('directory.search_placeholder_gereja'), 'personal' => __('directory.search_placeholder_personal'), 'institusi' => __('directory.search_placeholder_institusi'), 'organisasi' => __('directory.search_placeholder_organisasi')]) }}"
                     class="w-full sm:w-56 rounded-full border border-black/10 bg-slate-50 py-2.5 pr-4 pl-9 text-sm font-medium text-slate-700 shadow-sm transition placeholder:font-normal placeholder:text-slate-400 hover:bg-slate-100 focus:bg-white focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500 dark:hover:bg-slate-700 dark:focus:bg-slate-800"
                 >
             </label>
@@ -80,13 +83,84 @@
                 {{ __('common.search') }}
             </button>
 
-            @if ($selectedPlatform || $search || $autoFetch || $hideEmptyChurches || $hideEmptyPeople || $hideEmptyInstitutions || $selectedUnionId || $selectedConferenceId)
+            @if ($selectedPlatform || $search || $autoFetch || $hideEmptyChurches || $hideEmptyPeople || $hideEmptyInstitutions || $hideEmptyOrganizations || $selectedUnionId || $selectedConferenceId)
                 <a href="{{ route('churches.directory', ['tab' => $activeTab]) }}" class="text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
                     {{ __('common.reset_filter') }}
                 </a>
             @endif
         </form>
     </x-filter-card>
+
+    {{-- ===================== TAB: ORGANISASI ===================== --}}
+    <div data-tab-panel="organisasi">
+        <div class="rounded-2xl border border-black/5 bg-white shadow-sm dark:border-white/5 dark:bg-slate-900">
+            <div class="flex items-center justify-end gap-3 px-4 py-3">
+                <label class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                    <input
+                        type="checkbox"
+                        form="directory-filter-form"
+                        name="hide_empty_organizations"
+                        value="1"
+                        onchange="this.form.submit()"
+                        @checked($hideEmptyOrganizations)
+                        class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800"
+                    >
+                    {{ __('directory.hide_empty_organizations') }}
+                </label>
+            </div>
+
+            @if ($organizations->isEmpty())
+                <div class="border-t border-black/5 p-12 text-center dark:border-white/5">
+                    <p class="text-slate-500 dark:text-slate-400">{{ __('directory.no_organizations') }}</p>
+                </div>
+            @else
+                <div class="overflow-x-auto border-t border-black/5 dark:border-white/5">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-slate-50 dark:bg-slate-800/60">
+                            <tr>
+                                <th class="px-4 py-3 font-medium text-slate-500 dark:text-slate-400">{{ __('comparison.organization_name_label') }}</th>
+                                <th class="px-4 py-3 font-medium text-slate-500 dark:text-slate-400">{{ __('common.account') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-900">
+                            @foreach ($groupedOrganizations as $unionKey => $unionGroup)
+                                <x-analytics-group-row
+                                    :label="$unionGroup['label']"
+                                    :count="$unionGroup['conferences']->sum(fn ($c) => $c['rows']->count()) + $unionGroup['rows']->count()"
+                                    :colspan="2"
+                                    :toggle-id="'directory-organization-union-'.$unionKey"
+                                />
+                                @foreach ($unionGroup['rows'] as $organization)
+                                    @include('partials.directory-organization-row', [
+                                        'organization' => $organization,
+                                        'depth' => 1,
+                                        'ancestors' => 'directory-organization-union-'.$unionKey,
+                                    ])
+                                @endforeach
+                                @foreach ($unionGroup['conferences'] as $conferenceKey => $conferenceGroup)
+                                    <x-analytics-group-row
+                                        :label="$conferenceGroup['label']"
+                                        :count="$conferenceGroup['rows']->count()"
+                                        :colspan="2"
+                                        :toggle-id="'directory-organization-conf-'.$unionKey.'-'.$conferenceKey"
+                                        :ancestors="'directory-organization-union-'.$unionKey"
+                                        :depth="1"
+                                    />
+                                    @foreach ($conferenceGroup['rows'] as $organization)
+                                        @include('partials.directory-organization-row', [
+                                            'organization' => $organization,
+                                            'depth' => 2,
+                                            'ancestors' => 'directory-organization-union-'.$unionKey.' directory-organization-conf-'.$unionKey.'-'.$conferenceKey,
+                                        ])
+                                    @endforeach
+                                @endforeach
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+        </div>
+    </div>
 
     {{-- ===================== TAB: GEREJA ===================== --}}
     <div data-tab-panel="gereja">
@@ -135,10 +209,12 @@
                                         :colspan="3"
                                         :toggle-id="'directory-church-conf-'.$unionKey.'-'.$conferenceKey"
                                         :ancestors="'directory-church-union-'.$unionKey"
+                                        :depth="1"
                                     />
                                     @foreach ($conferenceGroup['rows'] as $church)
                                         @include('partials.directory-church-row', [
                                             'church' => $church,
+                                            'depth' => 2,
                                             'ancestors' => 'directory-church-union-'.$unionKey.' directory-church-conf-'.$unionKey.'-'.$conferenceKey,
                                         ])
                                     @endforeach
@@ -197,10 +273,12 @@
                                         :colspan="2"
                                         :toggle-id="'directory-institution-conf-'.$unionKey.'-'.$conferenceKey"
                                         :ancestors="'directory-institution-union-'.$unionKey"
+                                        :depth="1"
                                     />
                                     @foreach ($conferenceGroup['rows'] as $institution)
                                         @include('partials.directory-institution-row', [
                                             'institution' => $institution,
+                                            'depth' => 2,
                                             'ancestors' => 'directory-institution-union-'.$unionKey.' directory-institution-conf-'.$unionKey.'-'.$conferenceKey,
                                         ])
                                     @endforeach
@@ -259,10 +337,12 @@
                                         :colspan="2"
                                         :toggle-id="'directory-person-conf-'.$unionKey.'-'.$conferenceKey"
                                         :ancestors="'directory-person-union-'.$unionKey"
+                                        :depth="1"
                                     />
                                     @foreach ($conferenceGroup['rows'] as $person)
                                         @include('partials.directory-person-row', [
                                             'person' => $person,
+                                            'depth' => 2,
                                             'ancestors' => 'directory-person-union-'.$unionKey.' directory-person-conf-'.$unionKey.'-'.$conferenceKey,
                                         ])
                                     @endforeach

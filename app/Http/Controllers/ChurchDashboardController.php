@@ -509,6 +509,170 @@ class ChurchDashboardController extends Controller
         ]);
     }
 
+    public function organizationMetricComparison(Request $request)
+    {
+        $metricLabels = ['reach' => 'Followers/Subscribers', 'views' => 'Views', 'likes' => 'Likes', 'posts' => 'Post / Video'];
+
+        $isUniView = $this->isUniView();
+        $selectedUnionId = $isUniView ? (string) $request->user()->union_id : $request->query('union_id');
+        $selectedConferenceId = $request->query('conference_id');
+        $matchesRegionFilter = $this->matchesRegionFilter($selectedUnionId, $selectedConferenceId);
+        [$unionOptions, $conferenceOptions] = $this->regionFilterOptions($selectedUnionId);
+
+        $scoreRows = $this->growthScoreRowsOrganization()
+            ->map(fn ($row) => [
+                'entity' => $row['organization'],
+                'score' => $row['score'],
+                'metrics' => $row['metrics'],
+                'accountCount' => $row['accountCount'],
+            ])
+            ->filter(fn ($row) => $matchesRegionFilter($row['entity']))
+            ->values();
+
+        $groupedScoreRows = ($this->isNasionalView() || $isUniView)
+            ? $this->groupByRegion($scoreRows, fn ($row) => $row['entity'])
+            : null;
+
+        return view('churches.metric-comparison', [
+            'scope' => ComparisonScope::organization(),
+            'metricLabels' => $metricLabels,
+            'scoreRows' => $scoreRows,
+            'groupedScoreRows' => $groupedScoreRows,
+            'unionOptions' => $unionOptions,
+            'conferenceOptions' => $conferenceOptions,
+            'selectedUnionId' => $selectedUnionId,
+            'selectedConferenceId' => $selectedConferenceId,
+            'isNasionalView' => $this->isNasionalView(),
+            'isUniView' => $isUniView,
+        ]);
+    }
+
+    public function organizationLeaderboard(Request $request, string $metric)
+    {
+        $titles = $this->leaderboardTitles();
+        $metricLabels = ['reach' => 'Followers/Subscribers', 'views' => 'Views', 'likes' => 'Likes', 'posts' => 'Post / Video'];
+
+        abort_unless(isset($titles[$metric]), 404);
+
+        $sort = $request->query('sort') === 'value' ? 'value' : 'delta';
+
+        $isUniView = $this->isUniView();
+        $selectedUnionId = $isUniView ? (string) $request->user()->union_id : $request->query('union_id');
+        $selectedConferenceId = $request->query('conference_id');
+        $matchesRegionFilter = $this->matchesRegionFilter($selectedUnionId, $selectedConferenceId);
+        [$unionOptions, $conferenceOptions] = $this->regionFilterOptions($selectedUnionId);
+
+        [$socials, $field] = $this->metricDefinition($metric, $this->activeSocialsOrganization());
+
+        $rows = $this->buildLeaderboard($socials, $field, null, $sort)
+            ->filter(fn ($row) => $matchesRegionFilter($row['social']->union ?? $row['social']->conference))
+            ->values();
+
+        $groupedRows = ($this->isNasionalView() || $isUniView)
+            ? $this->groupByRegion($rows, fn ($row) => $row['social']->union ?? $row['social']->conference)
+            : null;
+
+        return view('churches.leaderboard', [
+            'scope' => ComparisonScope::organization(),
+            'metric' => $metric,
+            'metricLabels' => $metricLabels,
+            'title' => $titles[$metric]['title'],
+            'subtitle' => $titles[$metric]['subtitle'],
+            'sort' => $sort,
+            'rows' => $rows,
+            'groupedRows' => $groupedRows,
+            'unionOptions' => $unionOptions,
+            'conferenceOptions' => $conferenceOptions,
+            'selectedUnionId' => $selectedUnionId,
+            'selectedConferenceId' => $selectedConferenceId,
+            'isNasionalView' => $this->isNasionalView(),
+            'isUniView' => $isUniView,
+        ]);
+    }
+
+    public function organizationPlatformComparison(Request $request, string $platform = 'semua')
+    {
+        $platformLabels = ['semua' => 'Semua', 'youtube' => 'YouTube', 'instagram' => 'Instagram', 'tiktok' => 'TikTok', 'facebook' => 'Facebook'];
+        $metricLabels = ['reach' => 'Followers/Subscribers', 'views' => 'Views', 'likes' => 'Likes', 'posts' => 'Post / Video'];
+        $metricPlatforms = $this->metricPlatforms();
+
+        abort_unless(isset($platformLabels[$platform]), 404);
+
+        $sort = $request->query('sort') === 'value' ? 'value' : 'delta';
+        $metric = $request->query('metric');
+
+        $isNasionalView = $this->isNasionalView();
+        $isUniView = $this->isUniView();
+        $selectedUnionId = $isUniView ? (string) $request->user()->union_id : $request->query('union_id');
+        $selectedConferenceId = $request->query('conference_id');
+        $matchesRegionFilter = $this->matchesRegionFilter($selectedUnionId, $selectedConferenceId);
+        [$unionOptions, $conferenceOptions] = $this->regionFilterOptions($selectedUnionId);
+        $regionFilterData = [
+            'unionOptions' => $unionOptions,
+            'conferenceOptions' => $conferenceOptions,
+            'selectedUnionId' => $selectedUnionId,
+            'selectedConferenceId' => $selectedConferenceId,
+            'isNasionalView' => $isNasionalView,
+            'isUniView' => $isUniView,
+        ];
+
+        if (! $metric) {
+            $applicableMetrics = collect($metricPlatforms)
+                ->filter(fn ($platforms) => in_array($platform, $platforms, true))
+                ->keys();
+
+            $sections = $applicableMetrics->mapWithKeys(fn ($m) => [
+                $m => $this->metricComparisonRowsOrganization($m, $platform, $sort)
+                    ->filter(fn ($row) => $matchesRegionFilter($row['organization']))
+                    ->values(),
+            ]);
+
+            $platformScoreRows = $platform === 'semua' ? $this->growthScoreRowsByPlatform($this->activeSocialsOrganization()) : null;
+
+            return view('churches.platform-comparison-overview', array_merge([
+                'scope' => ComparisonScope::organization(),
+                'platform' => $platform,
+                'platformLabels' => $platformLabels,
+                'metricLabels' => $metricLabels,
+                'sort' => $sort,
+                'sections' => $sections,
+                'platformScoreRows' => $platformScoreRows,
+            ], $regionFilterData));
+        }
+
+        abort_unless(isset($metricLabels[$metric]), 404);
+
+        if (! in_array($platform, $metricPlatforms[$metric], true)) {
+            $fallbackPlatform = collect($metricPlatforms[$metric])->first(fn ($p) => $p !== 'semua');
+
+            return redirect()->route('organizations.platform-comparison', array_filter([
+                'platform' => $fallbackPlatform,
+                'metric' => $metric,
+                'sort' => $sort === 'value' ? 'value' : null,
+            ]));
+        }
+
+        $rows = $this->metricComparisonRowsOrganization($metric, $platform, $sort)
+            ->filter(fn ($row) => $matchesRegionFilter($row['organization']))
+            ->values();
+
+        $groupedRows = ($isNasionalView || $isUniView)
+            ? $this->groupByRegion($rows, fn ($row) => $row['organization'])
+            : null;
+
+        return view('churches.platform-comparison', array_merge([
+            'scope' => ComparisonScope::organization(),
+            'platform' => $platform,
+            'platformLabels' => $platformLabels,
+            'metric' => $metric,
+            'metricLabels' => $metricLabels,
+            'metricPlatforms' => $metricPlatforms[$metric],
+            'sort' => $sort,
+            'rows' => $rows,
+            'groupedRows' => $groupedRows,
+        ], $regionFilterData));
+    }
+
     public function institutionPlatformComparison(Request $request, string $platform = 'semua')
     {
         $platformLabels = ['semua' => 'Semua', 'youtube' => 'YouTube', 'instagram' => 'Instagram', 'tiktok' => 'TikTok', 'facebook' => 'Facebook'];
@@ -671,6 +835,42 @@ class ChurchDashboardController extends Controller
                 fn ($institution) => $institution->socials->contains(fn ($social) => $social->platform->value === $selectedPlatform)
             ));
 
+        // Organisasi tab: Union- and Conference-owned accounts shown together as one flat list
+        // (each row is either a Union or a Conference model), grouped Uni > Daerah the same way
+        // as the other three tabs — a Union row sits at the "uni-level" tier under itself, a
+        // Conference row at its own Daerah tier under its parent Union (see BuildsLeaderboards::
+        // regionEntityUnion()/regionEntityConference()).
+        $visibleUnions = $this->analyticsUnionScope(Union::query()->where('is_active', true))
+            ->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat')])
+            ->orderBy('name')
+            ->get();
+
+        $visibleConferences = $this->analyticsConferenceScope(Conference::query()->where('is_active', true))
+            ->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat'), 'union'])
+            ->orderBy('name')
+            ->get();
+
+        $organizations = $visibleUnions->concat($visibleConferences)
+            ->filter($matchesRegionFilter)
+            ->values();
+
+        $selectedOrganizationKey = $request->query('organization_id');
+        [$selectedOrgType, $selectedOrgId] = $this->parseOrganizationKey($selectedOrganizationKey);
+
+        $growthOverTimeOrganization = $this->growthOverTimeOrganization(
+            $selectedOrganizationKey, $selectedPlatform, $visibleUnions->pluck('id'), $visibleConferences->pluck('id'), $selectedStartDate, $selectedEndDate
+        );
+
+        $filteredOrganizations = $organizations
+            ->when($selectedOrganizationKey, fn ($collection) => $collection->filter(fn ($org) => match ($selectedOrgType) {
+                'union' => $org instanceof Union && (string) $org->id === (string) $selectedOrgId,
+                'conference' => $org instanceof Conference && (string) $org->id === (string) $selectedOrgId,
+                default => true,
+            }))
+            ->when($selectedPlatform, fn ($collection) => $collection->filter(
+                fn ($org) => $org->socials->contains(fn ($social) => $social->platform->value === $selectedPlatform)
+            ));
+
         return view('churches.analytics', [
             'churches' => $churches,
             'filteredChurches' => $filteredChurches,
@@ -684,6 +884,10 @@ class ChurchDashboardController extends Controller
             'filteredInstitutions' => $filteredInstitutions,
             'growthOverTimeInstitution' => $growthOverTimeInstitution,
             'selectedInstitutionId' => $selectedInstitutionId,
+            'organizations' => $organizations,
+            'filteredOrganizations' => $filteredOrganizations,
+            'growthOverTimeOrganization' => $growthOverTimeOrganization,
+            'selectedOrganizationKey' => $selectedOrganizationKey,
             'selectedPlatform' => $selectedPlatform,
             'unionOptions' => $unionOptions,
             'conferenceOptions' => $conferenceOptions,
@@ -738,6 +942,41 @@ class ChurchDashboardController extends Controller
             ->get();
     }
 
+    /**
+     * Same shape as growthOverTime(), for the Organisasi tab — Union- and Conference-owned
+     * accounts don't share a single owner column, so this checks both directly instead of the
+     * generic $ownerColumn/$ownerTable join growthOverTime() uses for the other three tabs.
+     * $selectedOrganizationKey is the composite "union-ID"/"conference-ID" entity-picker value
+     * (see BuildsLeaderboards::parseOrganizationKey()).
+     */
+    private function growthOverTimeOrganization(?string $selectedOrganizationKey, ?string $platform, Collection $visibleUnionIds, Collection $visibleConferenceIds, ?string $startDate = null, ?string $endDate = null)
+    {
+        [$selectedType, $selectedId] = $this->parseOrganizationKey($selectedOrganizationKey);
+
+        return ChurchStat::query()
+            ->join('church_socials', 'church_socials.id', '=', 'church_stats.church_social_id')
+            ->where('church_socials.is_active', true)
+            ->where(function ($query) use ($visibleUnionIds, $visibleConferenceIds) {
+                $query->whereIn('church_socials.union_id', $visibleUnionIds)
+                    ->orWhereIn('church_socials.conference_id', $visibleConferenceIds);
+            })
+            ->when($selectedType === 'union', fn ($query) => $query->where('church_socials.union_id', $selectedId))
+            ->when($selectedType === 'conference', fn ($query) => $query->where('church_socials.conference_id', $selectedId))
+            ->when($platform, fn ($query) => $query->where('church_socials.platform', $platform))
+            ->when($startDate, fn ($query) => $query->whereDate('church_stats.recorded_at', '>=', $startDate))
+            ->when($endDate, fn ($query) => $query->whereDate('church_stats.recorded_at', '<=', $endDate))
+            ->selectRaw(
+                "church_stats.recorded_at as recorded_at,
+                SUM(CASE WHEN church_socials.platform = 'youtube' THEN church_stats.subscribers_count ELSE church_stats.followers_count END) as total_reach,
+                SUM(church_stats.views_count) as total_views,
+                SUM(church_stats.likes_count) as total_likes,
+                SUM(CASE WHEN church_socials.platform = 'youtube' THEN church_stats.videos_count ELSE church_stats.posts_count END) as total_posts"
+            )
+            ->groupBy('church_stats.recorded_at')
+            ->orderBy('church_stats.recorded_at')
+            ->get();
+    }
+
     public function directory(Request $request)
     {
         $selectedPlatform = $request->query('platform');
@@ -746,7 +985,8 @@ class ChurchDashboardController extends Controller
         $hideEmptyChurches = $request->boolean('hide_empty_churches');
         $hideEmptyPeople = $request->boolean('hide_empty_people');
         $hideEmptyInstitutions = $request->boolean('hide_empty_institutions');
-        $activeTab = in_array($request->query('tab'), ['institusi', 'personal'], true) ? $request->query('tab') : 'gereja';
+        $hideEmptyOrganizations = $request->boolean('hide_empty_organizations');
+        $activeTab = in_array($request->query('tab'), ['institusi', 'personal', 'organisasi'], true) ? $request->query('tab') : 'gereja';
 
         // The directory is public and unscoped (see below), so — unlike every other
         // region-filterable page — the Uni/Daerah picker isn't narrowed to the viewer's own
@@ -778,6 +1018,17 @@ class ChurchDashboardController extends Controller
                 ->where('union_id', $selectedUnionId)
                 ->orWhereHas('conference', fn ($q3) => $q3->where('union_id', $selectedUnionId))
             ));
+
+        // A Union row never "is" a specific Daerah, so a conference_id filter excludes every
+        // Union outright; a Conference row's own union_id column narrows it directly, same as
+        // Person/Institution above.
+        $applyUnionRegionFilter = fn ($query) => $query
+            ->when($selectedConferenceId, fn ($q) => $q->whereRaw('1 = 0'))
+            ->when($selectedUnionId && ! $selectedConferenceId, fn ($q) => $q->where('id', $selectedUnionId));
+
+        $applyConferenceRegionFilter = fn ($query) => $query
+            ->when($selectedConferenceId, fn ($q) => $q->where('id', $selectedConferenceId))
+            ->when($selectedUnionId && ! $selectedConferenceId, fn ($q) => $q->where('union_id', $selectedUnionId));
 
         // Shared with whereHas() below so "no data" means the same thing as what the eager
         // load actually shows in the account columns — not just "no accounts at all" while
@@ -834,6 +1085,27 @@ class ChurchDashboardController extends Controller
             ->get();
         $groupedInstitutions = $this->groupByRegion($institutions, fn ($institution) => $institution);
 
+        $unions = Union::query()
+            ->where('is_active', true)
+            ->when($search, fn ($q) => $q->where('name', 'like', "%{$search}%"))
+            ->tap($applyUnionRegionFilter)
+            ->when($hideEmptyOrganizations, fn ($q) => $q->whereHas('socials', $socialsFilter))
+            ->with(['socials' => $socialsFilter])
+            ->orderBy('name')
+            ->get();
+
+        $conferences = Conference::query()
+            ->where('is_active', true)
+            ->when($search, fn ($q) => $q->where('name', 'like', "%{$search}%"))
+            ->tap($applyConferenceRegionFilter)
+            ->when($hideEmptyOrganizations, fn ($q) => $q->whereHas('socials', $socialsFilter))
+            ->with(['socials' => $socialsFilter, 'union'])
+            ->orderBy('name')
+            ->get();
+
+        $organizations = $unions->concat($conferences)->values();
+        $groupedOrganizations = $this->groupByRegion($organizations, fn ($organization) => $organization);
+
         return view('churches.directory', [
             'churches' => $churches,
             'groupedChurches' => $groupedChurches,
@@ -841,12 +1113,15 @@ class ChurchDashboardController extends Controller
             'groupedPeople' => $groupedPeople,
             'institutions' => $institutions,
             'groupedInstitutions' => $groupedInstitutions,
+            'organizations' => $organizations,
+            'groupedOrganizations' => $groupedOrganizations,
             'selectedPlatform' => $selectedPlatform,
             'search' => $search,
             'autoFetch' => $autoFetch,
             'hideEmptyChurches' => $hideEmptyChurches,
             'hideEmptyPeople' => $hideEmptyPeople,
             'hideEmptyInstitutions' => $hideEmptyInstitutions,
+            'hideEmptyOrganizations' => $hideEmptyOrganizations,
             'activeTab' => $activeTab,
             'unionOptions' => $unionOptions,
             'conferenceOptions' => $conferenceOptions,

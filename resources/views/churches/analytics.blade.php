@@ -3,7 +3,7 @@
     $postField = ['youtube' => 'videos_count', 'instagram' => 'posts_count', 'tiktok' => 'posts_count'];
     $platformLabels = ['youtube' => 'YouTube', 'instagram' => 'Instagram', 'tiktok' => 'TikTok', 'facebook' => 'Facebook'];
 
-    $activeTab = in_array(request()->query('tab'), ['personal', 'institusi'], true) ? request()->query('tab') : 'gereja';
+    $activeTab = in_array(request()->query('tab'), ['personal', 'institusi', 'organisasi'], true) ? request()->query('tab') : 'gereja';
 
     // Data Per * tables: a nasional-level viewer (or a plain member, whose analytics scope is
     // unscoped — see BuildsLeaderboards::analyticsChurchScope()) gets a 3-tier Uni > Daerah >
@@ -21,31 +21,54 @@
     $groupedChurchRows = null;
     $groupedPersonRows = null;
     $groupedInstitutionRows = null;
+    $groupedOrganizationRows = null;
 
-    // $rows is a Collection of the ['church'|'person'|'institution' => $entity, ...] arrays
-    // already built per tab below; $entityAccessor plucks the entity out of one row so this one
-    // closure can group all three tables' rows identically.
+    // $rows is a Collection of the ['church'|'person'|'institution'|'organization' => $entity,
+    // ...] arrays already built per tab below; $entityAccessor plucks the entity out of one row
+    // so this one closure can group all four tables' rows identically. The Organisasi tab's own
+    // entity is a Union OR a Conference model directly (not something with a further ->union/
+    // ->conference relation chain to walk) — a Union groups under itself; a Conference groups
+    // under its own ->union and bucket-keys under itself (never falling to 'uni-level', unlike
+    // every other entity type, which has no conference_id of its own to be *the* Daerah tier).
     $groupEntityRows = function ($rows, $entityAccessor) {
+        $resolveUnion = fn ($entity) => match (true) {
+            $entity instanceof \App\Models\Union => $entity,
+            $entity instanceof \App\Models\Conference => $entity->union,
+            default => $entity->conference?->union ?? $entity->union ?? null,
+        };
+        $resolveConference = fn ($entity) => match (true) {
+            $entity instanceof \App\Models\Conference => $entity,
+            $entity instanceof \App\Models\Union => null,
+            default => $entity->conference ?? null,
+        };
+
         return $rows
-            ->groupBy(function ($row) use ($entityAccessor) {
-                $entity = $entityAccessor($row);
-                $union = $entity->conference?->union ?? $entity->union ?? null;
+            ->groupBy(function ($row) use ($entityAccessor, $resolveUnion) {
+                $union = $resolveUnion($entityAccessor($row));
 
                 return $union?->id ?? 'nasional';
             })
-            ->map(function ($unionRows) use ($entityAccessor) {
+            ->map(function ($unionRows) use ($entityAccessor, $resolveUnion, $resolveConference) {
                 $sample = $entityAccessor($unionRows->first());
-                $union = $sample->conference?->union ?? $sample->union ?? null;
+                $union = $resolveUnion($sample);
+
+                // A row whose entity IS the Union itself sits directly under the Union's own
+                // header — Union sits above Daerah, so it can never itself "not have a Daerah
+                // yet" the way a church/institution/conference-owned row can.
+                $ownRows = $unionRows->filter(fn ($row) => $entityAccessor($row) instanceof \App\Models\Union);
+                $nestedRows = $unionRows->reject(fn ($row) => $entityAccessor($row) instanceof \App\Models\Union);
 
                 return [
                     'label' => $union?->name ?? __('analytics.group_national'),
-                    'conferences' => $unionRows
-                        ->groupBy(fn ($row) => $entityAccessor($row)->conference?->id ?? 'uni-level')
-                        ->map(function ($conferenceRows) use ($entityAccessor) {
+                    'rows' => $ownRows,
+                    'conferences' => $nestedRows
+                        ->groupBy(fn ($row) => $resolveConference($entityAccessor($row))?->id ?? 'uni-level')
+                        ->map(function ($conferenceRows) use ($entityAccessor, $resolveConference) {
                             $sample = $entityAccessor($conferenceRows->first());
+                            $conference = $resolveConference($sample);
 
                             return [
-                                'label' => $sample->conference?->name ?? __('analytics.group_union_level'),
+                                'label' => $conference?->name ?? __('analytics.group_union_level'),
                                 'rows' => $conferenceRows,
                             ];
                         })
@@ -146,6 +169,40 @@
     if ($latestPointInstitution && $previousPointInstitution && $previousPointInstitution->total_reach > 0) {
         $reachGrowthPercentInstitution = round((($latestPointInstitution->total_reach - $previousPointInstitution->total_reach) / $previousPointInstitution->total_reach) * 100, 2);
     }
+
+    // Organisasi tab
+    $selectedOrganizationName = $selectedOrganizationKey ? $organizations->first(function ($org) use ($selectedOrganizationKey) {
+        $key = ($org instanceof \App\Models\Union ? 'union-' : 'conference-').$org->id;
+
+        return $key === $selectedOrganizationKey;
+    })?->name : null;
+    $organizationSuffix = $selectedOrganizationName ? __('analytics.suffix_entity', ['name' => $selectedOrganizationName]) : __('analytics.suffix_all_organizations');
+
+    $reachSubtitleOrganization = $selectedPlatform
+        ? ($selectedPlatform === 'youtube' ? __('analytics.reach_subtitle_youtube') : __('analytics.reach_subtitle_platform', ['platform' => $selectedPlatformLabel]))
+        : __('analytics.reach_subtitle_combined');
+    $reachSubtitleOrganization .= $organizationSuffix;
+
+    $viewsSubtitleOrganization = __('analytics.views_subtitle');
+    $viewsSubtitleOrganization .= ($selectedPlatform && $selectedPlatform !== 'youtube') ? __('analytics.not_available_platform') : '';
+    $viewsSubtitleOrganization .= $organizationSuffix;
+
+    $likesSubtitleOrganization = __('analytics.likes_subtitle');
+    $likesSubtitleOrganization .= ($selectedPlatform && $selectedPlatform !== 'tiktok') ? __('analytics.not_available_platform') : '';
+    $likesSubtitleOrganization .= $organizationSuffix;
+
+    $postsSubtitleOrganization = __('analytics.posts_subtitle');
+    $postsSubtitleOrganization .= ($selectedPlatform === 'facebook') ? __('analytics.not_available_platform') : '';
+    $postsSubtitleOrganization .= $organizationSuffix;
+
+    $growthLabelsOrganization = $growthOverTimeOrganization->pluck('recorded_at')->map(fn ($d) => \Illuminate\Support\Carbon::parse($d)->translatedFormat('d M'));
+
+    $latestPointOrganization = $growthOverTimeOrganization->last();
+    $previousPointOrganization = $growthOverTimeOrganization->count() >= 2 ? $growthOverTimeOrganization[$growthOverTimeOrganization->count() - 2] : null;
+    $reachGrowthPercentOrganization = null;
+    if ($latestPointOrganization && $previousPointOrganization && $previousPointOrganization->total_reach > 0) {
+        $reachGrowthPercentOrganization = round((($latestPointOrganization->total_reach - $previousPointOrganization->total_reach) / $previousPointOrganization->total_reach) * 100, 2);
+    }
 @endphp
 
 @extends('layouts.app')
@@ -163,6 +220,13 @@
     </div>
 
     <div class="mb-6 flex gap-2 overflow-x-auto border-b border-black/5 dark:border-white/5">
+        <button
+            type="button"
+            data-tab-button="organisasi"
+            class="border-b-2 px-4 py-2.5 text-sm font-medium transition"
+        >
+            {{ __('comparison.organization_label') }}
+        </button>
         <button
             type="button"
             data-tab-button="gereja"
@@ -184,6 +248,326 @@
         >
             {{ __('common.personal') }}
         </button>
+    </div>
+
+    {{-- ===================== TAB: ORGANISASI ===================== --}}
+    <div data-tab-panel="organisasi">
+        <div class="mb-6 flex flex-wrap items-start justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <a
+                    href="{{ route('organizations.metric-comparison') }}"
+                    class="inline-flex items-center gap-1.5 rounded-lg border border-black/10 bg-white px-4 py-2 text-sm font-medium shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:hover:bg-slate-700"
+                >
+                    <x-icon name="globe-alt" class="h-4 w-4" />
+                    {{ __('analytics.metric_comparison_organization') }}
+                </a>
+                <a
+                    href="{{ route('organizations.platform-comparison', $selectedPlatform ?: null) }}"
+                    class="inline-flex items-center gap-1.5 rounded-lg border border-black/10 bg-white px-4 py-2 text-sm font-medium shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:hover:bg-slate-700"
+                >
+                    <x-icon name="arrow-trending-up" class="h-4 w-4" />
+                    {{ __('analytics.platform_comparison_organization') }}
+                </a>
+            </div>
+        </div>
+
+        {{-- Filters --}}
+        <x-filter-card>
+            <form method="GET" id="organisasi-filter-form" class="flex flex-wrap items-center gap-3">
+                <input type="hidden" name="tab" value="organisasi">
+
+                @include('partials.analytics-region-filter', [
+                    'prefix' => 'organization',
+                    'formId' => 'organisasi-filter-form',
+                    'isNasionalView' => $isNasionalView,
+                    'isUniView' => $isUniView,
+                    'unionOptions' => $unionOptions,
+                    'conferenceOptions' => $conferenceOptions,
+                    'selectedUnionId' => $selectedUnionId,
+                    'selectedConferenceId' => $selectedConferenceId,
+                ])
+
+                @include('partials.analytics-entity-filter', [
+                    'prefix' => 'organization',
+                    'formId' => 'organisasi-filter-form',
+                    'fieldName' => 'organization_id',
+                    'icon' => 'flag',
+                    'placeholder' => __('analytics.all_organizations'),
+                    'selectedId' => $selectedOrganizationKey,
+                    'options' => $organizations->map(fn ($org) => [
+                        'id' => ($org instanceof \App\Models\Union ? 'union-' : 'conference-').$org->id,
+                        'label' => $org->name,
+                    ])->values(),
+                ])
+
+                <label class="relative">
+                    <x-icon name="globe-alt" class="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <select
+                        name="platform"
+                        onchange="this.form.submit()"
+                        class="appearance-none rounded-full border border-black/10 bg-slate-50 py-2.5 pr-10 pl-9 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-100 dark:border-white/10 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                    >
+                        <option value="">{{ __('common.all_social_media') }}</option>
+                        @foreach ($platformLabels as $value => $label)
+                            <option value="{{ $value }}" @selected($selectedPlatform === $value)>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                    <x-icon name="chevron-down" class="pointer-events-none absolute top-1/2 right-3.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                </label>
+
+                @include('partials.analytics-date-range-filter', [
+                    'prefix' => 'organization',
+                    'selectedStartDate' => $selectedStartDate,
+                    'selectedEndDate' => $selectedEndDate,
+                ])
+
+                @if ($selectedOrganizationKey || $selectedPlatform || $selectedConferenceId || $selectedStartDate || $selectedEndDate || ($isNasionalView && $selectedUnionId))
+                    <a href="{{ route('churches.analytics', ['tab' => 'organisasi']) }}" class="text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
+                        {{ __('common.reset_filter') }}
+                    </a>
+                @endif
+            </form>
+        </x-filter-card>
+
+        {{-- Hero KPI --}}
+        <div class="mb-6 flex flex-wrap items-center gap-6 rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/5 dark:bg-slate-900">
+            <span class="inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 shadow-sm dark:bg-blue-950/50 dark:text-blue-300">
+                <x-icon name="arrow-trending-up" class="h-7 w-7" />
+            </span>
+
+            <div class="min-w-[180px]">
+                <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('analytics.total_reach_current') }}</p>
+                <p class="text-3xl font-bold tabular-nums text-slate-900 dark:text-white">
+                    {{ number_format($latestPointOrganization->total_reach ?? 0) }}
+                </p>
+            </div>
+
+            @if ($reachGrowthPercentOrganization !== null)
+                <div class="flex items-center gap-2 rounded-full border px-4 py-2 {{ $reachGrowthPercentOrganization >= 0 ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950' : 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950' }}">
+                    <x-icon :name="$reachGrowthPercentOrganization > 0 ? 'arrow-trending-up' : ($reachGrowthPercentOrganization < 0 ? 'arrow-trending-down' : 'minus-small')" class="h-4 w-4 {{ $reachGrowthPercentOrganization >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400' }}" />
+                    <span class="text-sm font-semibold tabular-nums {{ $reachGrowthPercentOrganization >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400' }}">
+                        {{ $reachGrowthPercentOrganization > 0 ? '+' : '' }}{{ number_format($reachGrowthPercentOrganization, 2) }}%
+                    </span>
+                    <span class="text-xs text-slate-400 dark:text-slate-500">{{ __('common.this_week') }}</span>
+                </div>
+            @endif
+        </div>
+
+        <div class="mb-8 grid gap-6 sm:grid-cols-2">
+            <div class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
+                <p class="font-bold text-slate-900 dark:text-white">{{ __('analytics.growth_reach_title') }}</p>
+                <p class="mb-4 text-sm text-slate-500 dark:text-slate-400">{{ $reachSubtitleOrganization }}{{ __('analytics.per_week') }}</p>
+                <x-growth-chart :values="$growthOverTimeOrganization->pluck('total_reach')" :labels="$growthLabelsOrganization" />
+            </div>
+
+            <div class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
+                <p class="font-bold text-slate-900 dark:text-white">{{ __('analytics.growth_views_title') }}</p>
+                <p class="mb-4 text-sm text-slate-500 dark:text-slate-400">{{ $viewsSubtitleOrganization }}{{ __('analytics.per_week') }}</p>
+                <x-growth-chart :values="$growthOverTimeOrganization->pluck('total_views')" :labels="$growthLabelsOrganization" />
+            </div>
+
+            <div class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
+                <p class="font-bold text-slate-900 dark:text-white">{{ __('analytics.growth_likes_title') }}</p>
+                <p class="mb-4 text-sm text-slate-500 dark:text-slate-400">{{ $likesSubtitleOrganization }}{{ __('analytics.per_week') }}</p>
+                <x-growth-chart :values="$growthOverTimeOrganization->pluck('total_likes')" :labels="$growthLabelsOrganization" />
+            </div>
+
+            <div class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
+                <p class="font-bold text-slate-900 dark:text-white">{{ __('analytics.growth_posts_title') }}</p>
+                <p class="mb-4 text-sm text-slate-500 dark:text-slate-400">{{ $postsSubtitleOrganization }}{{ __('analytics.per_week') }}</p>
+                <x-growth-chart :values="$growthOverTimeOrganization->pluck('total_posts')" :labels="$growthLabelsOrganization" />
+            </div>
+        </div>
+
+        @if ($filteredOrganizations->isEmpty())
+            <div class="rounded-2xl border border-dashed border-slate-300 p-12 text-center dark:border-slate-700">
+                <p class="text-slate-500 dark:text-slate-400">
+                    {{ $organizations->isEmpty() ? __('analytics.no_organization_data') : __('analytics.no_organization_match_filter') }}
+                </p>
+            </div>
+        @else
+            @php
+                $allDisplaySocialsOrganization = $filteredOrganizations->flatMap(
+                    fn ($org) => $selectedPlatform
+                        ? $org->socials->filter(fn ($s) => $s->platform->value === $selectedPlatform)
+                        : $org->socials
+                );
+                $grandByPlatformOrganization = $allDisplaySocialsOrganization->groupBy(fn ($s) => $s->platform->value);
+                $grandReachOrganization = $allDisplaySocialsOrganization->sum(fn ($s) => $s->latestStat?->{$countField[$s->platform->value]} ?? 0);
+                $grandViewsOrganization = $allDisplaySocialsOrganization->sum(fn ($s) => $s->latestStat?->views_count ?? 0);
+                $grandLikesOrganization = $allDisplaySocialsOrganization->sum(fn ($s) => $s->latestStat?->likes_count ?? 0);
+                $grandPostsOrganization = $allDisplaySocialsOrganization->sum(
+                    fn ($s) => isset($postField[$s->platform->value]) ? ($s->latestStat?->{$postField[$s->platform->value]} ?? 0) : 0
+                );
+
+                $organizationRows = $filteredOrganizations->map(function ($org) use ($selectedPlatform, $countField, $postField) {
+                    $displaySocials = $selectedPlatform
+                        ? $org->socials->filter(fn ($s) => $s->platform->value === $selectedPlatform)
+                        : $org->socials;
+
+                    return [
+                        'organization' => $org,
+                        'socials' => $displaySocials,
+                        'reach' => $displaySocials->sum(fn ($s) => $s->latestStat?->{$countField[$s->platform->value]} ?? 0),
+                        'views' => $displaySocials->sum(fn ($s) => $s->latestStat?->views_count ?? 0),
+                        'likes' => $displaySocials->sum(fn ($s) => $s->latestStat?->likes_count ?? 0),
+                        'posts' => $displaySocials->sum(
+                            fn ($s) => isset($postField[$s->platform->value]) ? ($s->latestStat?->{$postField[$s->platform->value]} ?? 0) : 0
+                        ),
+                    ];
+                });
+
+                $maxOrganizationReach = $organizationRows->max('reach') ?: 1;
+                $groupedOrganizationRows = ($isNasionalView || $isUniView) ? $groupEntityRows($organizationRows, fn ($row) => $row['organization']) : null;
+            @endphp
+
+            <div class="mb-6 overflow-x-auto rounded-2xl border border-black/5 dark:border-white/5">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-slate-50 dark:bg-slate-800/60">
+                        <tr>
+                            <th class="px-4 py-3 font-medium text-slate-500 dark:text-slate-400">{{ __('analytics.grand_total') }}</th>
+                            <th class="px-4 py-3 font-medium text-slate-500 dark:text-slate-400">{{ __('common.account') }}</th>
+                            <th class="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400">{{ __('analytics.total_reach') }}</th>
+                            <th class="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400">{{ __('analytics.total_views') }}</th>
+                            <th class="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400">{{ __('analytics.total_likes') }}</th>
+                            <th class="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400">{{ __('analytics.total_posts') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white dark:bg-slate-900">
+                        <tr>
+                            <td class="px-4 py-3 font-semibold">{{ __('analytics.organizations_count', ['count' => $filteredOrganizations->count()]) }}</td>
+                            <td class="px-4 py-3">
+                                @if ($grandByPlatformOrganization->isEmpty())
+                                    <span class="text-slate-300 dark:text-slate-600">—</span>
+                                @else
+                                    <p class="mb-1 text-xs text-slate-400 dark:text-slate-500">{{ __('analytics.account_count') }}</p>
+                                    <div class="mb-2 flex flex-wrap gap-1.5">
+                                        @foreach ($grandByPlatformOrganization as $platformValue => $group)
+                                            <span class="inline-flex items-center gap-1.5 rounded-full border border-black/5 bg-slate-50 py-1 pr-2.5 pl-1 dark:border-white/5 dark:bg-slate-800">
+                                                <x-platform-icon :platform="$platformValue" class="h-4.5 w-4.5" />
+                                                <span class="font-semibold tabular-nums">{{ $group->count() }}</span>
+                                            </span>
+                                        @endforeach
+                                    </div>
+
+                                    <p class="mb-1 text-xs text-slate-400 dark:text-slate-500">{{ __('analytics.total_followers_subscribers') }}</p>
+                                    <div class="flex flex-wrap gap-1.5">
+                                        @foreach ($grandByPlatformOrganization as $platformValue => $group)
+                                            <span class="inline-flex items-center gap-1.5 rounded-full border border-black/5 bg-slate-50 py-1 pr-2.5 pl-1 dark:border-white/5 dark:bg-slate-800">
+                                                <x-platform-icon :platform="$platformValue" class="h-4.5 w-4.5" />
+                                                <span class="font-semibold tabular-nums">
+                                                    {{ number_format($group->sum(fn ($s) => $s->latestStat?->{$countField[$platformValue]} ?? 0)) }}
+                                                </span>
+                                            </span>
+                                        @endforeach
+                                    </div>
+                                @endif
+                            </td>
+                            <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ number_format($grandReachOrganization) }}</td>
+                            <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ $grandViewsOrganization ? number_format($grandViewsOrganization) : '—' }}</td>
+                            <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ $grandLikesOrganization ? number_format($grandLikesOrganization) : '—' }}</td>
+                            <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ $grandPostsOrganization ? number_format($grandPostsOrganization) : '—' }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="rounded-2xl border border-black/5 bg-white shadow-sm dark:border-white/5 dark:bg-slate-900">
+                <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-4">
+                    <h2 class="text-lg font-bold text-slate-900 dark:text-white">{{ __('analytics.data_per_organization') }}</h2>
+                    <div class="flex flex-wrap items-center gap-4">
+                        @if ($groupedOrganizationRows !== null)
+                            <label class="relative w-full sm:w-auto">
+                                <x-icon name="magnifying-glass" class="pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                                <input
+                                    type="text"
+                                    data-group-search-scope="organization"
+                                    placeholder="{{ __('analytics.group_search_placeholder') }}"
+                                    class="w-full sm:w-52 rounded-full border border-black/10 bg-slate-50 py-1.5 pr-3 pl-8 text-sm shadow-sm focus:border-blue-500 focus:bg-white focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:focus:bg-slate-900"
+                                >
+                            </label>
+                        @endif
+                        <label class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                            <input type="checkbox" id="hide-empty-organizations" class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800">
+                            {{ __('analytics.hide_empty_organizations') }}
+                        </label>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto border-t border-black/5 dark:border-white/5">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-slate-50 dark:bg-slate-800/60">
+                            <tr>
+                                <th class="px-4 py-3 font-medium text-slate-500 dark:text-slate-400">{{ __('comparison.organization_name_label') }}</th>
+                                <th class="px-4 py-3 font-medium text-slate-500 dark:text-slate-400">{{ __('common.account') }}</th>
+                                <th class="px-4 py-3 font-medium text-slate-500 dark:text-slate-400">{{ __('analytics.total_reach') }}</th>
+                                <th class="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400">Views</th>
+                                <th class="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400">Likes</th>
+                                <th class="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400">Post / Video</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-900">
+                            @if ($groupedOrganizationRows !== null)
+                                @foreach ($groupedOrganizationRows as $unionKey => $unionGroup)
+                                    @if ($isNasionalView)
+                                        <x-analytics-group-row
+                                            :label="$unionGroup['label']"
+                                            :count="$unionGroup['conferences']->sum(fn ($c) => $c['rows']->count()) + $unionGroup['rows']->count()"
+                                            :colspan="6"
+                                            :toggle-id="'organization-union-'.$unionKey"
+                                        />
+                                    @endif
+                                    @foreach ($unionGroup['rows'] as $row)
+                                        @include('partials.analytics-organization-row', [
+                                            'row' => $row,
+                                            'maxReach' => $maxOrganizationReach,
+                                            'depth' => 1,
+                                            'ancestors' => $isNasionalView ? 'organization-union-'.$unionKey : null,
+                                        ])
+                                    @endforeach
+                                    @foreach ($unionGroup['conferences'] as $conferenceKey => $conferenceGroup)
+                                        <x-analytics-group-row
+                                            :label="$conferenceGroup['label']"
+                                            :count="$conferenceGroup['rows']->count()"
+                                            :colspan="6"
+                                            :toggle-id="'organization-conf-'.$unionKey.'-'.$conferenceKey"
+                                            :ancestors="$isNasionalView ? 'organization-union-'.$unionKey : null"
+                                            :depth="1"
+                                        />
+                                        @foreach ($conferenceGroup['rows'] as $row)
+                                            @include('partials.analytics-organization-row', [
+                                                'row' => $row,
+                                                'maxReach' => $maxOrganizationReach,
+                                                'depth' => 2,
+                                                'ancestors' => ($isNasionalView ? 'organization-union-'.$unionKey.' ' : '').'organization-conf-'.$unionKey.'-'.$conferenceKey,
+                                            ])
+                                        @endforeach
+                                    @endforeach
+                                @endforeach
+                            @else
+                                @foreach ($organizationRows as $row)
+                                    @include('partials.analytics-organization-row', ['row' => $row, 'maxReach' => $maxOrganizationReach])
+                                @endforeach
+                            @endif
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <script>
+                (function () {
+                    var checkbox = document.getElementById('hide-empty-organizations');
+                    if (! checkbox) return;
+
+                    checkbox.addEventListener('change', function () {
+                        document.querySelectorAll('[data-organization-row]').forEach(function (row) {
+                            var isEmpty = row.hasAttribute('data-empty-row');
+                            row.classList.toggle('hidden', checkbox.checked && isEmpty);
+                        });
+                    });
+                })();
+            </script>
+        @endif
     </div>
 
     {{-- ===================== TAB: GEREJA ===================== --}}
@@ -470,11 +854,13 @@
                                             :colspan="7"
                                             :toggle-id="'church-conf-'.$unionKey.'-'.$conferenceKey"
                                             :ancestors="$isNasionalView ? 'church-union-'.$unionKey : null"
+                                            :depth="1"
                                         />
                                         @foreach ($conferenceGroup['rows'] as $row)
                                             @include('partials.analytics-church-row', [
                                                 'row' => $row,
                                                 'maxReach' => $maxChurchReach,
+                                                'depth' => 2,
                                                 'ancestors' => ($isNasionalView ? 'church-union-'.$unionKey.' ' : '').'church-conf-'.$unionKey.'-'.$conferenceKey,
                                             ])
                                         @endforeach
@@ -497,316 +883,6 @@
 
                     checkbox.addEventListener('change', function () {
                         document.querySelectorAll('[data-church-row]').forEach(function (row) {
-                            var isEmpty = row.hasAttribute('data-empty-row');
-                            row.classList.toggle('hidden', checkbox.checked && isEmpty);
-                        });
-                    });
-                })();
-            </script>
-        @endif
-    </div>
-
-    {{-- ===================== TAB: PERSONAL ===================== --}}
-    <div data-tab-panel="personal">
-        <div class="mb-6 flex flex-wrap items-start justify-between gap-3">
-            <div class="flex items-center gap-3">
-                <a
-                    href="{{ route('people.metric-comparison') }}"
-                    class="inline-flex items-center gap-1.5 rounded-lg border border-black/10 bg-white px-4 py-2 text-sm font-medium shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:hover:bg-slate-700"
-                >
-                    <x-icon name="globe-alt" class="h-4 w-4" />
-                    {{ __('analytics.metric_comparison_personal') }}
-                </a>
-                <a
-                    href="{{ route('people.platform-comparison', $selectedPlatform ?: null) }}"
-                    class="inline-flex items-center gap-1.5 rounded-lg border border-black/10 bg-white px-4 py-2 text-sm font-medium shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:hover:bg-slate-700"
-                >
-                    <x-icon name="arrow-trending-up" class="h-4 w-4" />
-                    {{ __('analytics.platform_comparison_personal') }}
-                </a>
-            </div>
-            @can('browse-directory-analytics')
-                <x-export-button :url="route('export.personal-analytics.preview', array_filter(['person_id' => $selectedPersonId, 'platform' => $selectedPlatform]))" />
-            @endcan
-        </div>
-
-        {{-- Filters --}}
-        <x-filter-card>
-            <form method="GET" id="personal-filter-form" class="flex flex-wrap items-center gap-3">
-                <input type="hidden" name="tab" value="personal">
-
-                @include('partials.analytics-region-filter', [
-                    'prefix' => 'person',
-                    'formId' => 'personal-filter-form',
-                    'isNasionalView' => $isNasionalView,
-                    'isUniView' => $isUniView,
-                    'unionOptions' => $unionOptions,
-                    'conferenceOptions' => $conferenceOptions,
-                    'selectedUnionId' => $selectedUnionId,
-                    'selectedConferenceId' => $selectedConferenceId,
-                ])
-
-                @include('partials.analytics-entity-filter', [
-                    'prefix' => 'person',
-                    'formId' => 'personal-filter-form',
-                    'fieldName' => 'person_id',
-                    'icon' => 'user',
-                    'placeholder' => __('analytics.all_personal'),
-                    'selectedId' => $selectedPersonId,
-                    'options' => $people->map(fn ($p) => ['id' => $p->id, 'label' => $p->name])->values(),
-                ])
-
-                <label class="relative">
-                    <x-icon name="globe-alt" class="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <select
-                        name="platform"
-                        onchange="this.form.submit()"
-                        class="appearance-none rounded-full border border-black/10 bg-slate-50 py-2.5 pr-10 pl-9 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-100 dark:border-white/10 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-                    >
-                        <option value="">{{ __('common.all_social_media') }}</option>
-                        @foreach ($platformLabels as $value => $label)
-                            <option value="{{ $value }}" @selected($selectedPlatform === $value)>{{ $label }}</option>
-                        @endforeach
-                    </select>
-                    <x-icon name="chevron-down" class="pointer-events-none absolute top-1/2 right-3.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                </label>
-
-                @include('partials.analytics-date-range-filter', [
-                    'prefix' => 'person',
-                    'selectedStartDate' => $selectedStartDate,
-                    'selectedEndDate' => $selectedEndDate,
-                ])
-
-                @if ($selectedPersonId || $selectedPlatform || $selectedConferenceId || $selectedStartDate || $selectedEndDate || ($isNasionalView && $selectedUnionId))
-                    <a href="{{ route('churches.analytics', ['tab' => 'personal']) }}" class="text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
-                        {{ __('common.reset_filter') }}
-                    </a>
-                @endif
-            </form>
-        </x-filter-card>
-
-        {{-- Hero KPI --}}
-        <div class="mb-6 flex flex-wrap items-center gap-6 rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/5 dark:bg-slate-900">
-            <span class="inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 shadow-sm dark:bg-blue-950/50 dark:text-blue-300">
-                <x-icon name="arrow-trending-up" class="h-7 w-7" />
-            </span>
-
-            <div class="min-w-[180px]">
-                <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('analytics.total_reach_current') }}</p>
-                <p class="text-3xl font-bold tabular-nums text-slate-900 dark:text-white">
-                    {{ number_format($latestPointPersonal->total_reach ?? 0) }}
-                </p>
-            </div>
-
-            @if ($reachGrowthPercentPersonal !== null)
-                <div class="flex items-center gap-2 rounded-full border px-4 py-2 {{ $reachGrowthPercentPersonal >= 0 ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950' : 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950' }}">
-                    <x-icon :name="$reachGrowthPercentPersonal > 0 ? 'arrow-trending-up' : ($reachGrowthPercentPersonal < 0 ? 'arrow-trending-down' : 'minus-small')" class="h-4 w-4 {{ $reachGrowthPercentPersonal >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400' }}" />
-                    <span class="text-sm font-semibold tabular-nums {{ $reachGrowthPercentPersonal >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400' }}">
-                        {{ $reachGrowthPercentPersonal > 0 ? '+' : '' }}{{ number_format($reachGrowthPercentPersonal, 2) }}%
-                    </span>
-                    <span class="text-xs text-slate-400 dark:text-slate-500">{{ __('common.this_week') }}</span>
-                </div>
-            @endif
-        </div>
-
-        <div class="mb-8 grid gap-6 sm:grid-cols-2">
-            <div class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
-                <p class="font-bold text-slate-900 dark:text-white">{{ __('analytics.growth_reach_title') }}</p>
-                <p class="mb-4 text-sm text-slate-500 dark:text-slate-400">{{ $reachSubtitlePersonal }}{{ __('analytics.per_week') }}</p>
-                <x-growth-chart :values="$growthOverTimePersonal->pluck('total_reach')" :labels="$growthLabelsPersonal" />
-            </div>
-
-            <div class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
-                <p class="font-bold text-slate-900 dark:text-white">{{ __('analytics.growth_views_title') }}</p>
-                <p class="mb-4 text-sm text-slate-500 dark:text-slate-400">{{ $viewsSubtitlePersonal }}{{ __('analytics.per_week') }}</p>
-                <x-growth-chart :values="$growthOverTimePersonal->pluck('total_views')" :labels="$growthLabelsPersonal" />
-            </div>
-
-            <div class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
-                <p class="font-bold text-slate-900 dark:text-white">{{ __('analytics.growth_likes_title') }}</p>
-                <p class="mb-4 text-sm text-slate-500 dark:text-slate-400">{{ $likesSubtitlePersonal }}{{ __('analytics.per_week') }}</p>
-                <x-growth-chart :values="$growthOverTimePersonal->pluck('total_likes')" :labels="$growthLabelsPersonal" />
-            </div>
-
-            <div class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
-                <p class="font-bold text-slate-900 dark:text-white">{{ __('analytics.growth_posts_title') }}</p>
-                <p class="mb-4 text-sm text-slate-500 dark:text-slate-400">{{ $postsSubtitlePersonal }}{{ __('analytics.per_week') }}</p>
-                <x-growth-chart :values="$growthOverTimePersonal->pluck('total_posts')" :labels="$growthLabelsPersonal" />
-            </div>
-        </div>
-
-        @if ($filteredPeople->isEmpty())
-            <div class="rounded-2xl border border-dashed border-slate-300 p-12 text-center dark:border-slate-700">
-                <p class="text-slate-500 dark:text-slate-400">
-                    {{ $people->isEmpty() ? __('analytics.no_personal_data') : __('analytics.no_personal_match_filter') }}
-                </p>
-            </div>
-        @else
-            @php
-                $allDisplaySocialsPersonal = $filteredPeople->flatMap(
-                    fn ($person) => $selectedPlatform
-                        ? $person->socials->filter(fn ($s) => $s->platform->value === $selectedPlatform)
-                        : $person->socials
-                );
-                $grandByPlatformPersonal = $allDisplaySocialsPersonal->groupBy(fn ($s) => $s->platform->value);
-                $grandReachPersonal = $allDisplaySocialsPersonal->sum(fn ($s) => $s->latestStat?->{$countField[$s->platform->value]} ?? 0);
-                $grandViewsPersonal = $allDisplaySocialsPersonal->sum(fn ($s) => $s->latestStat?->views_count ?? 0);
-                $grandLikesPersonal = $allDisplaySocialsPersonal->sum(fn ($s) => $s->latestStat?->likes_count ?? 0);
-                $grandPostsPersonal = $allDisplaySocialsPersonal->sum(
-                    fn ($s) => isset($postField[$s->platform->value]) ? ($s->latestStat?->{$postField[$s->platform->value]} ?? 0) : 0
-                );
-
-                $personRows = $filteredPeople->map(function ($person) use ($selectedPlatform, $countField, $postField) {
-                    $displaySocials = $selectedPlatform
-                        ? $person->socials->filter(fn ($s) => $s->platform->value === $selectedPlatform)
-                        : $person->socials;
-
-                    return [
-                        'person' => $person,
-                        'socials' => $displaySocials,
-                        'reach' => $displaySocials->sum(fn ($s) => $s->latestStat?->{$countField[$s->platform->value]} ?? 0),
-                        'views' => $displaySocials->sum(fn ($s) => $s->latestStat?->views_count ?? 0),
-                        'likes' => $displaySocials->sum(fn ($s) => $s->latestStat?->likes_count ?? 0),
-                        'posts' => $displaySocials->sum(
-                            fn ($s) => isset($postField[$s->platform->value]) ? ($s->latestStat?->{$postField[$s->platform->value]} ?? 0) : 0
-                        ),
-                    ];
-                });
-
-                $maxPersonReach = $personRows->max('reach') ?: 1;
-                $groupedPersonRows = ($isNasionalView || $isUniView) ? $groupEntityRows($personRows, fn ($row) => $row['person']) : null;
-            @endphp
-
-            <div class="mb-6 overflow-x-auto rounded-2xl border border-black/5 dark:border-white/5">
-                <table class="w-full text-left text-sm">
-                    <thead class="bg-slate-50 dark:bg-slate-800/60">
-                        <tr>
-                            <th class="px-4 py-3 font-medium text-slate-500 dark:text-slate-400">{{ __('analytics.grand_total') }}</th>
-                            <th class="px-4 py-3 font-medium text-slate-500 dark:text-slate-400">{{ __('common.account') }}</th>
-                            <th class="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400">{{ __('analytics.total_reach') }}</th>
-                            <th class="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400">{{ __('analytics.total_views') }}</th>
-                            <th class="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400">{{ __('analytics.total_likes') }}</th>
-                            <th class="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400">{{ __('analytics.total_posts') }}</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white dark:bg-slate-900">
-                        <tr>
-                            <td class="px-4 py-3 font-semibold">{{ __('analytics.personal_count', ['count' => $filteredPeople->count()]) }}</td>
-                            <td class="px-4 py-3">
-                                @if ($grandByPlatformPersonal->isEmpty())
-                                    <span class="text-slate-300 dark:text-slate-600">—</span>
-                                @else
-                                    <p class="mb-1 text-xs text-slate-400 dark:text-slate-500">{{ __('analytics.account_count') }}</p>
-                                    <div class="mb-2 flex flex-wrap gap-1.5">
-                                        @foreach ($grandByPlatformPersonal as $platformValue => $group)
-                                            <span class="inline-flex items-center gap-1.5 rounded-full border border-black/5 bg-slate-50 py-1 pr-2.5 pl-1 dark:border-white/5 dark:bg-slate-800">
-                                                <x-platform-icon :platform="$platformValue" class="h-4.5 w-4.5" />
-                                                <span class="font-semibold tabular-nums">{{ $group->count() }}</span>
-                                            </span>
-                                        @endforeach
-                                    </div>
-
-                                    <p class="mb-1 text-xs text-slate-400 dark:text-slate-500">{{ __('analytics.total_followers_subscribers') }}</p>
-                                    <div class="flex flex-wrap gap-1.5">
-                                        @foreach ($grandByPlatformPersonal as $platformValue => $group)
-                                            <span class="inline-flex items-center gap-1.5 rounded-full border border-black/5 bg-slate-50 py-1 pr-2.5 pl-1 dark:border-white/5 dark:bg-slate-800">
-                                                <x-platform-icon :platform="$platformValue" class="h-4.5 w-4.5" />
-                                                <span class="font-semibold tabular-nums">
-                                                    {{ number_format($group->sum(fn ($s) => $s->latestStat?->{$countField[$platformValue]} ?? 0)) }}
-                                                </span>
-                                            </span>
-                                        @endforeach
-                                    </div>
-                                @endif
-                            </td>
-                            <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ number_format($grandReachPersonal) }}</td>
-                            <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ $grandViewsPersonal ? number_format($grandViewsPersonal) : '—' }}</td>
-                            <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ $grandLikesPersonal ? number_format($grandLikesPersonal) : '—' }}</td>
-                            <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ $grandPostsPersonal ? number_format($grandPostsPersonal) : '—' }}</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="rounded-2xl border border-black/5 bg-white shadow-sm dark:border-white/5 dark:bg-slate-900">
-                <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-4">
-                    <h2 class="text-lg font-bold text-slate-900 dark:text-white">{{ __('analytics.data_per_personal') }}</h2>
-                    <div class="flex flex-wrap items-center gap-4">
-                        @if ($groupedPersonRows !== null)
-                            <label class="relative w-full sm:w-auto">
-                                <x-icon name="magnifying-glass" class="pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                                <input
-                                    type="text"
-                                    data-group-search-scope="person"
-                                    placeholder="{{ __('analytics.group_search_placeholder') }}"
-                                    class="w-full sm:w-52 rounded-full border border-black/10 bg-slate-50 py-1.5 pr-3 pl-8 text-sm shadow-sm focus:border-blue-500 focus:bg-white focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:focus:bg-slate-900"
-                                >
-                            </label>
-                        @endif
-                        <label class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-                            <input type="checkbox" id="hide-empty-people" class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800">
-                            {{ __('analytics.hide_empty_personal') }}
-                        </label>
-                    </div>
-                </div>
-
-                <div class="overflow-x-auto border-t border-black/5 dark:border-white/5">
-                    <table class="w-full text-left text-sm">
-                        <thead class="bg-slate-50 dark:bg-slate-800/60">
-                            <tr>
-                                <th class="px-4 py-3 font-medium text-slate-500 dark:text-slate-400">{{ __('common.name') }}</th>
-                                <th class="px-4 py-3 font-medium text-slate-500 dark:text-slate-400">{{ __('common.account') }}</th>
-                                <th class="px-4 py-3 font-medium text-slate-500 dark:text-slate-400">{{ __('analytics.total_reach') }}</th>
-                                <th class="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400">Views</th>
-                                <th class="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400">Likes</th>
-                                <th class="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400">Post / Video</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-900">
-                            @if ($groupedPersonRows !== null)
-                                @foreach ($groupedPersonRows as $unionKey => $unionGroup)
-                                    @if ($isNasionalView)
-                                        <x-analytics-group-row
-                                            :label="$unionGroup['label']"
-                                            :count="$unionGroup['conferences']->sum(fn ($c) => $c['rows']->count())"
-                                            :colspan="6"
-                                            :toggle-id="'person-union-'.$unionKey"
-                                        />
-                                    @endif
-                                    @foreach ($unionGroup['conferences'] as $conferenceKey => $conferenceGroup)
-                                        <x-analytics-group-row
-                                            :label="$conferenceGroup['label']"
-                                            :count="$conferenceGroup['rows']->count()"
-                                            :colspan="6"
-                                            :toggle-id="'person-conf-'.$unionKey.'-'.$conferenceKey"
-                                            :ancestors="$isNasionalView ? 'person-union-'.$unionKey : null"
-                                        />
-                                        @foreach ($conferenceGroup['rows'] as $row)
-                                            @include('partials.analytics-person-row', [
-                                                'row' => $row,
-                                                'maxReach' => $maxPersonReach,
-                                                'ancestors' => ($isNasionalView ? 'person-union-'.$unionKey.' ' : '').'person-conf-'.$unionKey.'-'.$conferenceKey,
-                                            ])
-                                        @endforeach
-                                    @endforeach
-                                @endforeach
-                            @else
-                                @foreach ($personRows as $row)
-                                    @include('partials.analytics-person-row', ['row' => $row, 'maxReach' => $maxPersonReach])
-                                @endforeach
-                            @endif
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <script>
-                (function () {
-                    var checkbox = document.getElementById('hide-empty-people');
-                    if (! checkbox) return;
-
-                    checkbox.addEventListener('change', function () {
-                        document.querySelectorAll('[data-person-row]').forEach(function (row) {
                             var isEmpty = row.hasAttribute('data-empty-row');
                             row.classList.toggle('hidden', checkbox.checked && isEmpty);
                         });
@@ -1090,11 +1166,13 @@
                                             :colspan="6"
                                             :toggle-id="'institution-conf-'.$unionKey.'-'.$conferenceKey"
                                             :ancestors="$isNasionalView ? 'institution-union-'.$unionKey : null"
+                                            :depth="1"
                                         />
                                         @foreach ($conferenceGroup['rows'] as $row)
                                             @include('partials.analytics-institution-row', [
                                                 'row' => $row,
                                                 'maxReach' => $maxInstitutionReach,
+                                                'depth' => 2,
                                                 'ancestors' => ($isNasionalView ? 'institution-union-'.$unionKey.' ' : '').'institution-conf-'.$unionKey.'-'.$conferenceKey,
                                             ])
                                         @endforeach
@@ -1126,8 +1204,320 @@
         @endif
     </div>
 
+    {{-- ===================== TAB: PERSONAL ===================== --}}
+    <div data-tab-panel="personal">
+        <div class="mb-6 flex flex-wrap items-start justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <a
+                    href="{{ route('people.metric-comparison') }}"
+                    class="inline-flex items-center gap-1.5 rounded-lg border border-black/10 bg-white px-4 py-2 text-sm font-medium shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:hover:bg-slate-700"
+                >
+                    <x-icon name="globe-alt" class="h-4 w-4" />
+                    {{ __('analytics.metric_comparison_personal') }}
+                </a>
+                <a
+                    href="{{ route('people.platform-comparison', $selectedPlatform ?: null) }}"
+                    class="inline-flex items-center gap-1.5 rounded-lg border border-black/10 bg-white px-4 py-2 text-sm font-medium shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:hover:bg-slate-700"
+                >
+                    <x-icon name="arrow-trending-up" class="h-4 w-4" />
+                    {{ __('analytics.platform_comparison_personal') }}
+                </a>
+            </div>
+            @can('browse-directory-analytics')
+                <x-export-button :url="route('export.personal-analytics.preview', array_filter(['person_id' => $selectedPersonId, 'platform' => $selectedPlatform]))" />
+            @endcan
+        </div>
+
+        {{-- Filters --}}
+        <x-filter-card>
+            <form method="GET" id="personal-filter-form" class="flex flex-wrap items-center gap-3">
+                <input type="hidden" name="tab" value="personal">
+
+                @include('partials.analytics-region-filter', [
+                    'prefix' => 'person',
+                    'formId' => 'personal-filter-form',
+                    'isNasionalView' => $isNasionalView,
+                    'isUniView' => $isUniView,
+                    'unionOptions' => $unionOptions,
+                    'conferenceOptions' => $conferenceOptions,
+                    'selectedUnionId' => $selectedUnionId,
+                    'selectedConferenceId' => $selectedConferenceId,
+                ])
+
+                @include('partials.analytics-entity-filter', [
+                    'prefix' => 'person',
+                    'formId' => 'personal-filter-form',
+                    'fieldName' => 'person_id',
+                    'icon' => 'user',
+                    'placeholder' => __('analytics.all_personal'),
+                    'selectedId' => $selectedPersonId,
+                    'options' => $people->map(fn ($p) => ['id' => $p->id, 'label' => $p->name])->values(),
+                ])
+
+                <label class="relative">
+                    <x-icon name="globe-alt" class="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <select
+                        name="platform"
+                        onchange="this.form.submit()"
+                        class="appearance-none rounded-full border border-black/10 bg-slate-50 py-2.5 pr-10 pl-9 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-100 dark:border-white/10 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                    >
+                        <option value="">{{ __('common.all_social_media') }}</option>
+                        @foreach ($platformLabels as $value => $label)
+                            <option value="{{ $value }}" @selected($selectedPlatform === $value)>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                    <x-icon name="chevron-down" class="pointer-events-none absolute top-1/2 right-3.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                </label>
+
+                @include('partials.analytics-date-range-filter', [
+                    'prefix' => 'person',
+                    'selectedStartDate' => $selectedStartDate,
+                    'selectedEndDate' => $selectedEndDate,
+                ])
+
+                @if ($selectedPersonId || $selectedPlatform || $selectedConferenceId || $selectedStartDate || $selectedEndDate || ($isNasionalView && $selectedUnionId))
+                    <a href="{{ route('churches.analytics', ['tab' => 'personal']) }}" class="text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
+                        {{ __('common.reset_filter') }}
+                    </a>
+                @endif
+            </form>
+        </x-filter-card>
+
+        {{-- Hero KPI --}}
+        <div class="mb-6 flex flex-wrap items-center gap-6 rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/5 dark:bg-slate-900">
+            <span class="inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 shadow-sm dark:bg-blue-950/50 dark:text-blue-300">
+                <x-icon name="arrow-trending-up" class="h-7 w-7" />
+            </span>
+
+            <div class="min-w-[180px]">
+                <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('analytics.total_reach_current') }}</p>
+                <p class="text-3xl font-bold tabular-nums text-slate-900 dark:text-white">
+                    {{ number_format($latestPointPersonal->total_reach ?? 0) }}
+                </p>
+            </div>
+
+            @if ($reachGrowthPercentPersonal !== null)
+                <div class="flex items-center gap-2 rounded-full border px-4 py-2 {{ $reachGrowthPercentPersonal >= 0 ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950' : 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950' }}">
+                    <x-icon :name="$reachGrowthPercentPersonal > 0 ? 'arrow-trending-up' : ($reachGrowthPercentPersonal < 0 ? 'arrow-trending-down' : 'minus-small')" class="h-4 w-4 {{ $reachGrowthPercentPersonal >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400' }}" />
+                    <span class="text-sm font-semibold tabular-nums {{ $reachGrowthPercentPersonal >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400' }}">
+                        {{ $reachGrowthPercentPersonal > 0 ? '+' : '' }}{{ number_format($reachGrowthPercentPersonal, 2) }}%
+                    </span>
+                    <span class="text-xs text-slate-400 dark:text-slate-500">{{ __('common.this_week') }}</span>
+                </div>
+            @endif
+        </div>
+
+        <div class="mb-8 grid gap-6 sm:grid-cols-2">
+            <div class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
+                <p class="font-bold text-slate-900 dark:text-white">{{ __('analytics.growth_reach_title') }}</p>
+                <p class="mb-4 text-sm text-slate-500 dark:text-slate-400">{{ $reachSubtitlePersonal }}{{ __('analytics.per_week') }}</p>
+                <x-growth-chart :values="$growthOverTimePersonal->pluck('total_reach')" :labels="$growthLabelsPersonal" />
+            </div>
+
+            <div class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
+                <p class="font-bold text-slate-900 dark:text-white">{{ __('analytics.growth_views_title') }}</p>
+                <p class="mb-4 text-sm text-slate-500 dark:text-slate-400">{{ $viewsSubtitlePersonal }}{{ __('analytics.per_week') }}</p>
+                <x-growth-chart :values="$growthOverTimePersonal->pluck('total_views')" :labels="$growthLabelsPersonal" />
+            </div>
+
+            <div class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
+                <p class="font-bold text-slate-900 dark:text-white">{{ __('analytics.growth_likes_title') }}</p>
+                <p class="mb-4 text-sm text-slate-500 dark:text-slate-400">{{ $likesSubtitlePersonal }}{{ __('analytics.per_week') }}</p>
+                <x-growth-chart :values="$growthOverTimePersonal->pluck('total_likes')" :labels="$growthLabelsPersonal" />
+            </div>
+
+            <div class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
+                <p class="font-bold text-slate-900 dark:text-white">{{ __('analytics.growth_posts_title') }}</p>
+                <p class="mb-4 text-sm text-slate-500 dark:text-slate-400">{{ $postsSubtitlePersonal }}{{ __('analytics.per_week') }}</p>
+                <x-growth-chart :values="$growthOverTimePersonal->pluck('total_posts')" :labels="$growthLabelsPersonal" />
+            </div>
+        </div>
+
+        @if ($filteredPeople->isEmpty())
+            <div class="rounded-2xl border border-dashed border-slate-300 p-12 text-center dark:border-slate-700">
+                <p class="text-slate-500 dark:text-slate-400">
+                    {{ $people->isEmpty() ? __('analytics.no_personal_data') : __('analytics.no_personal_match_filter') }}
+                </p>
+            </div>
+        @else
+            @php
+                $allDisplaySocialsPersonal = $filteredPeople->flatMap(
+                    fn ($person) => $selectedPlatform
+                        ? $person->socials->filter(fn ($s) => $s->platform->value === $selectedPlatform)
+                        : $person->socials
+                );
+                $grandByPlatformPersonal = $allDisplaySocialsPersonal->groupBy(fn ($s) => $s->platform->value);
+                $grandReachPersonal = $allDisplaySocialsPersonal->sum(fn ($s) => $s->latestStat?->{$countField[$s->platform->value]} ?? 0);
+                $grandViewsPersonal = $allDisplaySocialsPersonal->sum(fn ($s) => $s->latestStat?->views_count ?? 0);
+                $grandLikesPersonal = $allDisplaySocialsPersonal->sum(fn ($s) => $s->latestStat?->likes_count ?? 0);
+                $grandPostsPersonal = $allDisplaySocialsPersonal->sum(
+                    fn ($s) => isset($postField[$s->platform->value]) ? ($s->latestStat?->{$postField[$s->platform->value]} ?? 0) : 0
+                );
+
+                $personRows = $filteredPeople->map(function ($person) use ($selectedPlatform, $countField, $postField) {
+                    $displaySocials = $selectedPlatform
+                        ? $person->socials->filter(fn ($s) => $s->platform->value === $selectedPlatform)
+                        : $person->socials;
+
+                    return [
+                        'person' => $person,
+                        'socials' => $displaySocials,
+                        'reach' => $displaySocials->sum(fn ($s) => $s->latestStat?->{$countField[$s->platform->value]} ?? 0),
+                        'views' => $displaySocials->sum(fn ($s) => $s->latestStat?->views_count ?? 0),
+                        'likes' => $displaySocials->sum(fn ($s) => $s->latestStat?->likes_count ?? 0),
+                        'posts' => $displaySocials->sum(
+                            fn ($s) => isset($postField[$s->platform->value]) ? ($s->latestStat?->{$postField[$s->platform->value]} ?? 0) : 0
+                        ),
+                    ];
+                });
+
+                $maxPersonReach = $personRows->max('reach') ?: 1;
+                $groupedPersonRows = ($isNasionalView || $isUniView) ? $groupEntityRows($personRows, fn ($row) => $row['person']) : null;
+            @endphp
+
+            <div class="mb-6 overflow-x-auto rounded-2xl border border-black/5 dark:border-white/5">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-slate-50 dark:bg-slate-800/60">
+                        <tr>
+                            <th class="px-4 py-3 font-medium text-slate-500 dark:text-slate-400">{{ __('analytics.grand_total') }}</th>
+                            <th class="px-4 py-3 font-medium text-slate-500 dark:text-slate-400">{{ __('common.account') }}</th>
+                            <th class="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400">{{ __('analytics.total_reach') }}</th>
+                            <th class="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400">{{ __('analytics.total_views') }}</th>
+                            <th class="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400">{{ __('analytics.total_likes') }}</th>
+                            <th class="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400">{{ __('analytics.total_posts') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white dark:bg-slate-900">
+                        <tr>
+                            <td class="px-4 py-3 font-semibold">{{ __('analytics.personal_count', ['count' => $filteredPeople->count()]) }}</td>
+                            <td class="px-4 py-3">
+                                @if ($grandByPlatformPersonal->isEmpty())
+                                    <span class="text-slate-300 dark:text-slate-600">—</span>
+                                @else
+                                    <p class="mb-1 text-xs text-slate-400 dark:text-slate-500">{{ __('analytics.account_count') }}</p>
+                                    <div class="mb-2 flex flex-wrap gap-1.5">
+                                        @foreach ($grandByPlatformPersonal as $platformValue => $group)
+                                            <span class="inline-flex items-center gap-1.5 rounded-full border border-black/5 bg-slate-50 py-1 pr-2.5 pl-1 dark:border-white/5 dark:bg-slate-800">
+                                                <x-platform-icon :platform="$platformValue" class="h-4.5 w-4.5" />
+                                                <span class="font-semibold tabular-nums">{{ $group->count() }}</span>
+                                            </span>
+                                        @endforeach
+                                    </div>
+
+                                    <p class="mb-1 text-xs text-slate-400 dark:text-slate-500">{{ __('analytics.total_followers_subscribers') }}</p>
+                                    <div class="flex flex-wrap gap-1.5">
+                                        @foreach ($grandByPlatformPersonal as $platformValue => $group)
+                                            <span class="inline-flex items-center gap-1.5 rounded-full border border-black/5 bg-slate-50 py-1 pr-2.5 pl-1 dark:border-white/5 dark:bg-slate-800">
+                                                <x-platform-icon :platform="$platformValue" class="h-4.5 w-4.5" />
+                                                <span class="font-semibold tabular-nums">
+                                                    {{ number_format($group->sum(fn ($s) => $s->latestStat?->{$countField[$platformValue]} ?? 0)) }}
+                                                </span>
+                                            </span>
+                                        @endforeach
+                                    </div>
+                                @endif
+                            </td>
+                            <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ number_format($grandReachPersonal) }}</td>
+                            <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ $grandViewsPersonal ? number_format($grandViewsPersonal) : '—' }}</td>
+                            <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ $grandLikesPersonal ? number_format($grandLikesPersonal) : '—' }}</td>
+                            <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ $grandPostsPersonal ? number_format($grandPostsPersonal) : '—' }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="rounded-2xl border border-black/5 bg-white shadow-sm dark:border-white/5 dark:bg-slate-900">
+                <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-4">
+                    <h2 class="text-lg font-bold text-slate-900 dark:text-white">{{ __('analytics.data_per_personal') }}</h2>
+                    <div class="flex flex-wrap items-center gap-4">
+                        @if ($groupedPersonRows !== null)
+                            <label class="relative w-full sm:w-auto">
+                                <x-icon name="magnifying-glass" class="pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                                <input
+                                    type="text"
+                                    data-group-search-scope="person"
+                                    placeholder="{{ __('analytics.group_search_placeholder') }}"
+                                    class="w-full sm:w-52 rounded-full border border-black/10 bg-slate-50 py-1.5 pr-3 pl-8 text-sm shadow-sm focus:border-blue-500 focus:bg-white focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:focus:bg-slate-900"
+                                >
+                            </label>
+                        @endif
+                        <label class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                            <input type="checkbox" id="hide-empty-people" class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800">
+                            {{ __('analytics.hide_empty_personal') }}
+                        </label>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto border-t border-black/5 dark:border-white/5">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-slate-50 dark:bg-slate-800/60">
+                            <tr>
+                                <th class="px-4 py-3 font-medium text-slate-500 dark:text-slate-400">{{ __('common.name') }}</th>
+                                <th class="px-4 py-3 font-medium text-slate-500 dark:text-slate-400">{{ __('common.account') }}</th>
+                                <th class="px-4 py-3 font-medium text-slate-500 dark:text-slate-400">{{ __('analytics.total_reach') }}</th>
+                                <th class="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400">Views</th>
+                                <th class="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400">Likes</th>
+                                <th class="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400">Post / Video</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-900">
+                            @if ($groupedPersonRows !== null)
+                                @foreach ($groupedPersonRows as $unionKey => $unionGroup)
+                                    @if ($isNasionalView)
+                                        <x-analytics-group-row
+                                            :label="$unionGroup['label']"
+                                            :count="$unionGroup['conferences']->sum(fn ($c) => $c['rows']->count())"
+                                            :colspan="6"
+                                            :toggle-id="'person-union-'.$unionKey"
+                                        />
+                                    @endif
+                                    @foreach ($unionGroup['conferences'] as $conferenceKey => $conferenceGroup)
+                                        <x-analytics-group-row
+                                            :label="$conferenceGroup['label']"
+                                            :count="$conferenceGroup['rows']->count()"
+                                            :colspan="6"
+                                            :toggle-id="'person-conf-'.$unionKey.'-'.$conferenceKey"
+                                            :ancestors="$isNasionalView ? 'person-union-'.$unionKey : null"
+                                            :depth="1"
+                                        />
+                                        @foreach ($conferenceGroup['rows'] as $row)
+                                            @include('partials.analytics-person-row', [
+                                                'row' => $row,
+                                                'maxReach' => $maxPersonReach,
+                                                'depth' => 2,
+                                                'ancestors' => ($isNasionalView ? 'person-union-'.$unionKey.' ' : '').'person-conf-'.$unionKey.'-'.$conferenceKey,
+                                            ])
+                                        @endforeach
+                                    @endforeach
+                                @endforeach
+                            @else
+                                @foreach ($personRows as $row)
+                                    @include('partials.analytics-person-row', ['row' => $row, 'maxReach' => $maxPersonReach])
+                                @endforeach
+                            @endif
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <script>
+                (function () {
+                    var checkbox = document.getElementById('hide-empty-people');
+                    if (! checkbox) return;
+
+                    checkbox.addEventListener('change', function () {
+                        document.querySelectorAll('[data-person-row]').forEach(function (row) {
+                            var isEmpty = row.hasAttribute('data-empty-row');
+                            row.classList.toggle('hidden', checkbox.checked && isEmpty);
+                        });
+                    });
+                })();
+            </script>
+        @endif
+    </div>
+
     @include('partials.tab-script', ['activeTab' => $activeTab])
-    @if ($groupedChurchRows !== null || $groupedPersonRows !== null || $groupedInstitutionRows !== null)
+    @if ($groupedChurchRows !== null || $groupedPersonRows !== null || $groupedInstitutionRows !== null || $groupedOrganizationRows !== null)
         @include('partials.analytics-group-toggle')
     @endif
 @endsection

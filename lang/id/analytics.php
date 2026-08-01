@@ -8,6 +8,8 @@ return [
     'platform_comparison_personal' => 'Perbandingan Platform Personal',
     'metric_comparison_institution' => 'Perbandingan Metrik Institusi',
     'platform_comparison_institution' => 'Perbandingan Platform Institusi',
+    'metric_comparison_organization' => 'Perbandingan Metrik Uni/Daerah',
+    'platform_comparison_organization' => 'Perbandingan Platform Uni/Daerah',
     'all_churches' => 'Semua Gereja',
     'date_range_filter_hint' => 'Hanya mempersempit grafik pertumbuhan mingguan di bawah — ringkasan KPI dan tabel data tetap menampilkan angka terkini.',
     'preset_this_month' => 'Bulan Ini',
@@ -19,6 +21,7 @@ return [
     'preset_last_year' => 'Tahun Lalu',
     'all_personal' => 'Semua Personal',
     'all_institutions' => 'Semua Institusi',
+    'all_organizations' => 'Semua Uni/Daerah',
 
     'reach_subtitle_youtube' => 'Subscriber YouTube',
     'reach_subtitle_platform' => 'Followers :platform',
@@ -26,6 +29,7 @@ return [
     'suffix_all_churches' => ', semua gereja',
     'suffix_all_personal' => ', semua personal',
     'suffix_all_institutions' => ', semua institusi',
+    'suffix_all_organizations' => ', semua Uni/Daerah',
     'suffix_entity' => ' — :name',
     'views_subtitle' => 'Total views video YouTube',
     'likes_subtitle' => 'Total likes TikTok',
@@ -45,6 +49,8 @@ return [
     'no_personal_match_filter' => 'Tidak ada akun personal yang cocok dengan filter ini.',
     'no_institution_data' => 'Belum ada data institusi.',
     'no_institution_match_filter' => 'Tidak ada institusi yang cocok dengan filter ini.',
+    'no_organization_data' => 'Belum ada data akun Uni/Daerah.',
+    'no_organization_match_filter' => 'Tidak ada Uni/Daerah yang cocok dengan filter ini.',
 
     'grand_total' => 'Grand Total',
     'total_reach' => 'Total Jangkauan',
@@ -56,6 +62,7 @@ return [
     'churches_count' => ':count gereja',
     'personal_count' => ':count personal',
     'institutions_count' => ':count institusi',
+    'organizations_count' => ':count Uni/Daerah',
 
     'data_per_church' => 'Data Per Gereja',
     'group_national' => 'Nasional',
@@ -63,7 +70,11 @@ return [
     'group_search_placeholder' => 'Cari nama…',
     'data_per_personal' => 'Data Per Personal',
     'data_per_institution' => 'Data Per Institusi',
+    'data_per_organization' => 'Data Per Uni/Daerah',
     'hide_empty_churches' => 'Sembunyikan gereja tanpa data',
     'hide_empty_personal' => 'Sembunyikan personal tanpa data',
     'hide_empty_institutions' => 'Sembunyikan institusi tanpa data',
+    'hide_empty_organizations' => 'Sembunyikan Uni/Daerah tanpa data',
+    'organization_level_union' => 'Tingkat Uni',
+    'organization_level_conference' => 'Tingkat Daerah',
 ];

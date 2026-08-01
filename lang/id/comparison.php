@@ -3,7 +3,13 @@
 return [
     'title_suffix_personal' => ' Personal',
     'title_suffix_institution' => ' Institusi',
+    'title_suffix_organization' => ' Uni/Daerah',
     'leaderboard_back_analytics' => 'Kembali ke analitik & grafik',
+    'organization_label' => 'Uni/Daerah',
+    'organization_noun' => 'Uni/Daerah',
+    'organization_name_label' => 'Nama Uni/Daerah',
+    'for_all_organizations' => 'semua Uni/Daerah',
+    'scope_organization' => 'Uni/Daerah',
 
     'sort_all' => 'Semua',
     'leaderboard_subtitle_value' => 'Seluruh akun:noun diurutkan berdasarkan nilai saat ini. :subtitle.',

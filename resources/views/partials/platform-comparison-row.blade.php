@@ -5,12 +5,24 @@
     Expected: $row (['label' => ..., 'value' => ..., 'delta' => ..., $scope->rowKey() => entity]),
     $index, $scope, $ancestors (optional).
 --}}
+@php
+    $namePaddingClass = match ($depth ?? 0) {
+        1 => 'pl-8',
+        2 => 'pl-12',
+        default => 'pl-4',
+    };
+@endphp
 <tr @if ($ancestors ?? null) data-group-ancestors="{{ $ancestors }}" @endif>
-    <td class="px-4 py-2.5 text-slate-400 dark:text-slate-500">{{ $index + 1 }}</td>
+    <td class="{{ $namePaddingClass }} py-2.5 text-slate-400 dark:text-slate-500">{{ $index + 1 }}</td>
     <td class="px-4 py-2.5">
-        <a href="{{ $scope->showUrl($row[$scope->rowKey()]) }}" class="font-medium hover:text-blue-600 dark:hover:text-blue-400">
-            {{ $row['label'] }}
-        </a>
+        @php $entityUrl = $scope->showUrl($row[$scope->rowKey()]); @endphp
+        @if ($entityUrl)
+            <a href="{{ $entityUrl }}" class="font-medium hover:text-blue-600 dark:hover:text-blue-400">
+                {{ $row['label'] }}
+            </a>
+        @else
+            <span class="font-medium">{{ $row['label'] }}</span>
+        @endif
     </td>
     <td class="px-4 py-2.5 text-right font-medium tabular-nums">{{ number_format($row['value']) }}</td>
     <td class="px-4 py-2.5 text-right tabular-nums">

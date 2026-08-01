@@ -32,7 +32,9 @@
             </p>
         </div>
         @can('browse-directory-analytics')
-            <x-export-button :url="$scope->exportPlatformComparisonUrl(array_filter(['platform' => $platform, 'metric' => $metric, 'sort' => $sort === 'value' ? 'value' : null]))" />
+            @unless ($scope->isOrganization())
+                <x-export-button :url="$scope->exportPlatformComparisonUrl(array_filter(['platform' => $platform, 'metric' => $metric, 'sort' => $sort === 'value' ? 'value' : null]))" />
+            @endunless
         @endcan
     </div>
 
@@ -104,11 +106,20 @@
                             @if ($isNasionalView)
                                 <x-analytics-group-row
                                     :label="$unionGroup['label']"
-                                    :count="$unionGroup['conferences']->sum(fn ($c) => $c['rows']->count())"
+                                    :count="$unionGroup['conferences']->sum(fn ($c) => $c['rows']->count()) + $unionGroup['rows']->count()"
                                     :colspan="4"
                                     :toggle-id="'platform-detail-union-'.$unionKey"
                                 />
                             @endif
+                            @foreach ($unionGroup['rows'] as $i => $row)
+                                @include('partials.platform-comparison-row', [
+                                    'row' => $row,
+                                    'index' => $i,
+                                    'depth' => 1,
+                                    'scope' => $scope,
+                                    'ancestors' => $isNasionalView ? 'platform-detail-union-'.$unionKey : null,
+                                ])
+                            @endforeach
                             @foreach ($unionGroup['conferences'] as $conferenceKey => $conferenceGroup)
                                 <x-analytics-group-row
                                     :label="$conferenceGroup['label']"
@@ -116,11 +127,13 @@
                                     :colspan="4"
                                     :toggle-id="'platform-detail-conf-'.$unionKey.'-'.$conferenceKey"
                                     :ancestors="$isNasionalView ? 'platform-detail-union-'.$unionKey : null"
+                                    :depth="1"
                                 />
                                 @foreach ($conferenceGroup['rows'] as $i => $row)
                                     @include('partials.platform-comparison-row', [
                                         'row' => $row,
                                         'index' => $i,
+                                        'depth' => 2,
                                         'scope' => $scope,
                                         'ancestors' => ($isNasionalView ? 'platform-detail-union-'.$unionKey.' ' : '').'platform-detail-conf-'.$unionKey.'-'.$conferenceKey,
                                     ])

@@ -50,11 +50,19 @@
                             @if ($isNasionalView)
                                 <x-analytics-group-row
                                     :label="$unionGroup['label']"
-                                    :count="$unionGroup['conferences']->sum(fn ($c) => $c['rows']->count())"
+                                    :count="$unionGroup['conferences']->sum(fn ($c) => $c['rows']->count()) + $unionGroup['rows']->count()"
                                     :colspan="5"
                                     :toggle-id="$groupPrefix.'-union-'.$unionKey"
                                 />
                             @endif
+                            @foreach ($unionGroup['rows'] as $i => $row)
+                                @include('partials.leaderboard-row', [
+                                    'row' => $row,
+                                    'index' => $i,
+                                    'depth' => 1,
+                                    'ancestors' => $isNasionalView ? $groupPrefix.'-union-'.$unionKey : null,
+                                ])
+                            @endforeach
                             @foreach ($unionGroup['conferences'] as $conferenceKey => $conferenceGroup)
                                 <x-analytics-group-row
                                     :label="$conferenceGroup['label']"
@@ -62,11 +70,13 @@
                                     :colspan="5"
                                     :toggle-id="$groupPrefix.'-conf-'.$unionKey.'-'.$conferenceKey"
                                     :ancestors="$isNasionalView ? $groupPrefix.'-union-'.$unionKey : null"
+                                    :depth="1"
                                 />
                                 @foreach ($conferenceGroup['rows'] as $i => $row)
                                     @include('partials.leaderboard-row', [
                                         'row' => $row,
                                         'index' => $i,
+                                        'depth' => 2,
                                         'ancestors' => ($isNasionalView ? $groupPrefix.'-union-'.$unionKey.' ' : '').$groupPrefix.'-conf-'.$unionKey.'-'.$conferenceKey,
                                     ])
                                 @endforeach

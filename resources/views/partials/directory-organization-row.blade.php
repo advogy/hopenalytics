@@ -1,8 +1,8 @@
 {{--
-    One row of the Direktori Akun "Personal" tab table — extracted so its flat and Uni/Daerah-
-    grouped rendering branches share the same markup.
+    One row of the Direktori Akun "Uni/Daerah" tab table — same shape as
+    directory-institution-row.blade.php, except $organization is a Union OR a Conference model.
 
-    Expected: $person, $ancestors (optional, space-separated group ids this row is nested under).
+    Expected: $organization, $ancestors (optional, space-separated group ids this row is nested under).
 --}}
 @php
     $namePaddingClass = match ($depth ?? 0) {
@@ -15,14 +15,19 @@
     <td class="{{ $namePaddingClass }} pr-4 py-3">
         <div class="flex items-center gap-3">
             <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#f7cd9a] text-xs font-bold text-blue-600 dark:bg-violet-950/60 dark:text-[#f7cd9a]">
-                {{ mb_substr($person->name, 0, 1) }}
+                {{ mb_substr($organization->name, 0, 1) }}
             </span>
-            <p class="min-w-0 font-medium">{{ $person->name }}</p>
+            <div class="min-w-0">
+                <p class="font-medium">{{ $organization->name }}</p>
+                <p class="text-xs text-slate-400 dark:text-slate-500">
+                    {{ $organization instanceof \App\Models\Union ? __('analytics.organization_level_union') : __('analytics.organization_level_conference') }}
+                </p>
+            </div>
         </div>
     </td>
     <td class="px-4 py-3">
         <div class="space-y-1.5">
-            @forelse ($person->socials as $social)
+            @forelse ($organization->socials as $social)
                 @php $externalUrl = $social->externalUrl(); @endphp
                 <div class="flex items-center gap-2">
                     @if ($externalUrl)

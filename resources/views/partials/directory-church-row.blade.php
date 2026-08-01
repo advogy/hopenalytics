@@ -4,9 +4,16 @@
 
     Expected: $church, $ancestors (optional, space-separated group ids this row is nested under).
 --}}
-@php $socialsByCategory = $church->socials->groupBy(fn ($s) => $s->category->value); @endphp
+@php
+    $socialsByCategory = $church->socials->groupBy(fn ($s) => $s->category->value);
+    $namePaddingClass = match ($depth ?? 0) {
+        1 => 'pl-8',
+        2 => 'pl-12',
+        default => 'pl-4',
+    };
+@endphp
 <tr class="align-top hover:bg-slate-50 dark:hover:bg-slate-800/40" @if ($ancestors ?? null) data-group-ancestors="{{ $ancestors }}" @endif>
-    <td class="px-4 py-3">
+    <td class="{{ $namePaddingClass }} pr-4 py-3">
         <div class="flex items-center gap-3">
             <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#f7cd9a] text-xs font-bold text-blue-600 dark:bg-violet-950/60 dark:text-[#f7cd9a]">
                 {{ mb_substr($church->name, 0, 1) }}

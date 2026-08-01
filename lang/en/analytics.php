@@ -8,6 +8,8 @@ return [
     'platform_comparison_personal' => 'Personal Platform Comparison',
     'metric_comparison_institution' => 'Institution Metric Comparison',
     'platform_comparison_institution' => 'Institution Platform Comparison',
+    'metric_comparison_organization' => 'Union/Conference Metric Comparison',
+    'platform_comparison_organization' => 'Union/Conference Platform Comparison',
     'all_churches' => 'All Churches',
     'date_range_filter_hint' => 'Only narrows the weekly growth chart below — the KPI summary and data table still show the latest figures.',
     'preset_this_month' => 'This Month',
@@ -19,6 +21,7 @@ return [
     'preset_last_year' => 'Last Year',
     'all_personal' => 'All Personal Accounts',
     'all_institutions' => 'All Institutions',
+    'all_organizations' => 'All Unions/Conferences',
 
     'reach_subtitle_youtube' => 'YouTube Subscribers',
     'reach_subtitle_platform' => ':platform Followers',
@@ -26,6 +29,7 @@ return [
     'suffix_all_churches' => ', all churches',
     'suffix_all_personal' => ', all personal accounts',
     'suffix_all_institutions' => ', all institutions',
+    'suffix_all_organizations' => ', all Unions/Conferences',
     'suffix_entity' => ' — :name',
     'views_subtitle' => 'Total YouTube video views',
     'likes_subtitle' => 'Total TikTok likes',
@@ -45,6 +49,8 @@ return [
     'no_personal_match_filter' => 'No personal accounts match this filter.',
     'no_institution_data' => 'No institution data yet.',
     'no_institution_match_filter' => 'No institutions match this filter.',
+    'no_organization_data' => 'No Union/Conference account data yet.',
+    'no_organization_match_filter' => 'No Unions/Conferences match this filter.',
 
     'grand_total' => 'Grand Total',
     'total_reach' => 'Total Reach',
@@ -56,6 +62,7 @@ return [
     'churches_count' => ':count churches',
     'personal_count' => ':count personal',
     'institutions_count' => ':count institutions',
+    'organizations_count' => ':count Unions/Conferences',
 
     'data_per_church' => 'Data Per Church',
     'group_national' => 'National',
@@ -63,7 +70,11 @@ return [
     'group_search_placeholder' => 'Search name…',
     'data_per_personal' => 'Data Per Personal',
     'data_per_institution' => 'Data Per Institution',
+    'data_per_organization' => 'Data Per Union/Conference',
     'hide_empty_churches' => 'Hide churches with no data',
     'hide_empty_personal' => 'Hide personal accounts with no data',
     'hide_empty_institutions' => 'Hide institutions with no data',
+    'hide_empty_organizations' => 'Hide Unions/Conferences with no data',
+    'organization_level_union' => 'Union level',
+    'organization_level_conference' => 'Conference level',
 ];

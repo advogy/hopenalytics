@@ -20,7 +20,9 @@
             </p>
         </div>
         @can('browse-directory-analytics')
-            <x-export-button :url="$scope->exportPlatformOverviewUrl(['platform' => $platform])" />
+            @unless ($scope->isOrganization())
+                <x-export-button :url="$scope->exportPlatformOverviewUrl(['platform' => $platform])" />
+            @endunless
         @endcan
     </div>
 
@@ -125,9 +127,14 @@
                                     <tr>
                                         <td class="py-2 pr-2 text-slate-400 dark:text-slate-500">{{ $i + 1 }}</td>
                                         <td class="py-2 pr-2">
-                                            <a href="{{ $scope->showUrl($row[$scope->rowKey()]) }}" class="font-medium hover:text-blue-600 dark:hover:text-blue-400">
-                                                {{ $row['label'] }}
-                                            </a>
+                                            @php $entityUrl = $scope->showUrl($row[$scope->rowKey()]); @endphp
+                                            @if ($entityUrl)
+                                                <a href="{{ $entityUrl }}" class="font-medium hover:text-blue-600 dark:hover:text-blue-400">
+                                                    {{ $row['label'] }}
+                                                </a>
+                                            @else
+                                                <span class="font-medium">{{ $row['label'] }}</span>
+                                            @endif
                                         </td>
                                         <td class="py-2 pr-2 text-right font-medium tabular-nums">{{ number_format($row['value']) }}</td>
                                         <td class="py-2 text-right tabular-nums">

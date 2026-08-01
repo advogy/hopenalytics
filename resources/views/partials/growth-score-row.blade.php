@@ -3,11 +3,26 @@
     grouped rendering branches share the same markup instead of duplicating it.
 
     Expected: $row, $index (0-based position — restarts per Uni/Daerah group when grouped, same
-    as an ungrouped list numbering 1..N), $showMetrics, $metricLabels, $ancestors (optional).
+    as an ungrouped list numbering 1..N), $showMetrics, $metricLabels, $ancestors (optional),
+    $scope (optional — omitted by the Dashboard's Top5/Bottom5 widgets, which are always
+    church-scoped; passed by metric-comparison.blade.php, which can be any of the four scopes —
+    see ComparisonScope::showUrl(), null for organisasi since Union/Conference have no public
+    "show" page of their own).
 --}}
-@php $entity = $row['entity']; $score = $row['score']; @endphp
+@php
+    $entity = $row['entity'];
+    $score = $row['score'];
+    $entityUrl = isset($scope) && $scope
+        ? $scope->showUrl($entity)
+        : ($entity instanceof \App\Models\Church ? route('churches.show', $entity) : route('people.show', $entity));
+    $indentClass = match ($depth ?? 0) {
+        1 => 'pl-6',
+        2 => 'pl-10',
+        default => '',
+    };
+@endphp
 <div
-    class="flex items-center gap-4 py-3 first:pt-0 last:pb-0"
+    class="flex items-center gap-4 py-3 first:pt-0 last:pb-0 {{ $indentClass }}"
     @if ($ancestors ?? null) data-group-ancestors="{{ $ancestors }}" @endif
 >
     <span class="w-6 shrink-0 text-right text-sm font-semibold text-slate-400 dark:text-slate-500">{{ $index + 1 }}</span>
@@ -17,12 +32,13 @@
     </span>
 
     <div class="min-w-0 flex-1">
-        <a
-            href="{{ $entity instanceof \App\Models\Church ? route('churches.show', $entity) : route('people.show', $entity) }}"
-            class="block truncate font-medium hover:text-blue-600 dark:hover:text-blue-400"
-        >
-            {{ $entity->name }}
-        </a>
+        @if ($entityUrl)
+            <a href="{{ $entityUrl }}" class="block truncate font-medium hover:text-blue-600 dark:hover:text-blue-400">
+                {{ $entity->name }}
+            </a>
+        @else
+            <p class="truncate font-medium">{{ $entity->name }}</p>
+        @endif
         <p class="truncate text-xs text-slate-500 dark:text-slate-400">
             @if ($entity->city)
                 {{ $entity->city }} &middot;

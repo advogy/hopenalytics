@@ -5,22 +5,32 @@
     Expected: $row, $index (0-based position — restarts per Uni/Daerah group when grouped), $ancestors (optional).
 --}}
 @php
-    $entity = $row['social']->church ?? $row['social']->person ?? $row['social']->institution;
+    // A Union/Conference-owned social (organisasi scope) has no dedicated public "show" page —
+    // see ComparisonScope::showUrl() — so its name renders as plain text instead of a link.
+    $entity = $row['social']->church ?? $row['social']->person ?? $row['social']->institution
+        ?? $row['social']->union ?? $row['social']->conference;
     $entityUrl = match (true) {
         (bool) $row['social']->church => route('churches.show', $entity),
         (bool) $row['social']->person => route('people.show', $entity),
-        default => route('institutions.show', $entity),
+        (bool) $row['social']->institution => route('institutions.show', $entity),
+        default => null,
+    };
+    $namePaddingClass = match ($depth ?? 0) {
+        1 => 'pl-8',
+        2 => 'pl-12',
+        default => 'pl-0',
     };
 @endphp
 <tr @if ($ancestors ?? null) data-group-ancestors="{{ $ancestors }}" @endif>
-    <td class="py-2 pr-2 text-slate-400 dark:text-slate-500">{{ $index + 1 }}</td>
+    <td class="{{ $namePaddingClass }} py-2 pr-2 text-slate-400 dark:text-slate-500">{{ $index + 1 }}</td>
     <td class="py-2 pr-2">
-        <a
-            href="{{ $entityUrl }}"
-            class="font-medium hover:text-blue-600 dark:hover:text-blue-400"
-        >
-            {{ $row['social']->display_name }}
-        </a>
+        @if ($entityUrl)
+            <a href="{{ $entityUrl }}" class="font-medium hover:text-blue-600 dark:hover:text-blue-400">
+                {{ $row['social']->display_name }}
+            </a>
+        @else
+            <span class="font-medium">{{ $row['social']->display_name }}</span>
+        @endif
     </td>
     <td class="py-2 pr-2">
         <span class="inline-flex items-center gap-1.5 whitespace-nowrap">

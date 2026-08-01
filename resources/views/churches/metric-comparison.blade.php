@@ -15,7 +15,9 @@
             </p>
         </div>
         @can('browse-directory-analytics')
-            <x-export-button :url="$scope->exportMetricComparisonUrl()" />
+            @unless ($scope->isOrganization())
+                <x-export-button :url="$scope->exportMetricComparisonUrl()" />
+            @endunless
         @endcan
     </div>
 
@@ -68,6 +70,7 @@
         :grouped-rows="$groupedScoreRows"
         group-prefix="church-metric"
         :is-nasional-view="$isNasionalView"
+        :scope="$scope"
     />
 
     @if ($groupedScoreRows !== null)

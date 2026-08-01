@@ -2,6 +2,11 @@
     $person = $row['person'];
     $percent = $maxReach > 0 ? round($row['reach'] / $maxReach * 100, 1) : 0;
     $isEmpty = $row['reach'] == 0 && $row['views'] == 0 && $row['likes'] == 0 && $row['posts'] == 0;
+    $namePaddingClass = match ($depth ?? 0) {
+        1 => 'pl-8',
+        2 => 'pl-12',
+        default => 'pl-4',
+    };
 @endphp
 <tr
     class="hover:bg-slate-50 dark:hover:bg-slate-800/40"
@@ -9,7 +14,7 @@
     @if ($isEmpty) data-empty-row @endif
     @if ($ancestors ?? null) data-group-ancestors="{{ $ancestors }}" @endif
 >
-    <td class="px-4 py-3">
+    <td class="{{ $namePaddingClass }} pr-4 py-3">
         <div class="flex items-center gap-3">
             <span class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#f7cd9a] text-xs font-bold text-blue-600 dark:bg-violet-950/60 dark:text-[#f7cd9a]">
                 {{ mb_substr($person->name, 0, 1) }}

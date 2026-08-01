@@ -3,7 +3,13 @@
 return [
     'title_suffix_personal' => ' Personal',
     'title_suffix_institution' => ' Institution',
+    'title_suffix_organization' => ' Union/Conference',
     'leaderboard_back_analytics' => 'Back to analytics & charts',
+    'organization_label' => 'Union/Conference',
+    'organization_noun' => 'Union/Conference',
+    'organization_name_label' => 'Union/Conference Name',
+    'for_all_organizations' => 'all Unions/Conferences',
+    'scope_organization' => 'Unions/Conferences',
 
     'sort_all' => 'All',
     'leaderboard_subtitle_value' => 'All:noun accounts ranked by current value. :subtitle.',
