@@ -230,6 +230,7 @@
                     personalLabel: @json(__('common.personal')),
                     institutionLabel: @json(__('common.institution')),
                     officeLabel: @json(__('dashboard.map_office_label')),
+                    editCoordinatesLabel: @json(__('dashboard.map_edit_coordinates_label')),
                 };
 
                 {{--
@@ -426,6 +427,30 @@
                     }).bindPopup('<p class="font-semibold">' + mapI18n.officeLabel + ' ' + region.name + '</p>');
                 }
 
+                // The individual church points a region's outline is built from — shown as their
+                // own small dots (not full detail, that's the Gereja tab's job) specifically so a
+                // wrongly-placed one is identifiable and fixable: the popup names the church and,
+                // for whoever's allowed to, links straight to its coordinate fields.
+                function buildChurchPointMarker(item, color) {
+                    var popup = '<p class="font-semibold">' + item.name + '</p>' +
+                        (item.city ? '<p class="text-xs text-slate-500">' + item.city + '</p>' : '') +
+                        (item.editUrl ? '<a href="' + item.editUrl + '" class="text-xs text-blue-600">' + mapI18n.editCoordinatesLabel + '</a>' : '');
+
+                    return L.circleMarker([item.lat, item.lng], {
+                        radius: 3,
+                        color: '#ffffff',
+                        weight: 1,
+                        fillColor: color,
+                        fillOpacity: 0.9,
+                    }).bindPopup(popup);
+                }
+
+                function buildChurchPointMarkers(items, color) {
+                    return items
+                        .filter(function (item) { return item.type === 'gereja'; })
+                        .map(function (item) { return buildChurchPointMarker(item, color); });
+                }
+
                 var unionRegionLayers = mapUnions.map(function (u) {
                     return buildRegionLayer(organizationItems.filter(function (item) { return item.unionId === u.id; }), u.name, unionColorById[u.id]);
                 }).filter(function (layer) { return layer !== null; });
@@ -433,6 +458,13 @@
                 var unionOfficeMarkers = mapUnions.map(function (u) {
                     return buildOfficeMarker(u, unionColorById[u.id]);
                 }).filter(function (marker) { return marker !== null; });
+
+                var unionChurchPointMarkers = [];
+                mapUnions.forEach(function (u) {
+                    unionChurchPointMarkers = unionChurchPointMarkers.concat(
+                        buildChurchPointMarkers(organizationItems.filter(function (item) { return item.unionId === u.id; }), unionColorById[u.id])
+                    );
+                });
 
                 var conferenceRegionLayers = mapConferences.map(function (c) {
                     return buildRegionLayer(organizationItems.filter(function (item) { return item.conferenceId === c.id; }), c.name, conferenceColorById[c.id]);
@@ -442,8 +474,15 @@
                     return buildOfficeMarker(c, conferenceColorById[c.id]);
                 }).filter(function (marker) { return marker !== null; });
 
-                var unionLayer = L.layerGroup(unionRegionLayers.concat(unionOfficeMarkers));
-                var conferenceLayer = L.layerGroup(conferenceRegionLayers.concat(conferenceOfficeMarkers));
+                var conferenceChurchPointMarkers = [];
+                mapConferences.forEach(function (c) {
+                    conferenceChurchPointMarkers = conferenceChurchPointMarkers.concat(
+                        buildChurchPointMarkers(organizationItems.filter(function (item) { return item.conferenceId === c.id; }), conferenceColorById[c.id])
+                    );
+                });
+
+                var unionLayer = L.layerGroup(unionRegionLayers.concat(unionOfficeMarkers).concat(unionChurchPointMarkers));
+                var conferenceLayer = L.layerGroup(conferenceRegionLayers.concat(conferenceOfficeMarkers).concat(conferenceChurchPointMarkers));
                 var ORGANIZATION_ZOOM_THRESHOLD = 9;
 
                 var legendEl = document.getElementById('church-map-union-legend');

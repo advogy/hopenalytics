@@ -57,11 +57,22 @@ class ChurchDashboardController extends Controller
             ? Church::query()->where('is_active', true)->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat'), 'conference.union'])->get()
             : $churches;
 
+        // One batched query instead of ChurchPolicy::update()'s own per-church visibleTo() query
+        // run once per map pin — its ability check is otherwise identical (a read-only role can
+        // never edit, full stop), so replicating that half in-memory keeps this to O(1) queries.
+        $editableChurchIds = (auth()->user()->role === null || auth()->user()->role->isReadOnly())
+            ? []
+            : Church::whereIn('id', $mapChurchSource->pluck('id'))->visibleTo(auth()->user())->pluck('id')->all();
+
         $mapChurches = $mapChurchSource->filter(fn ($church) => $church->latitude !== null && $church->longitude !== null)
             ->map(fn ($church) => [
                 'name' => $church->name,
                 'city' => $church->city,
                 'url' => route('churches.show', $church),
+                // Only offered to whoever can actually fix it — the Uni/Daerah map tab's own
+                // church-point markers link here so a wrongly-placed pin can be corrected right
+                // from the map instead of hunting the church down in Kelola Akun first.
+                'editUrl' => in_array($church->id, $editableChurchIds, true) ? route('churches.edit', $church) : null,
                 'lat' => $church->latitude,
                 'lng' => $church->longitude,
                 'reach' => $church->socials->sum(fn ($social) => $social->latestStat?->{$reachCountField($social)} ?? 0),
