@@ -136,7 +136,7 @@
             <select
                 name="sort_uni"
                 onchange="this.form.submit()"
-                class="rounded-full border border-black/10 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none dark:border-white/10 dark:bg-slate-800"
+                class="rounded-full border border-black/10 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm focus:border-blue-500 focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:text-slate-200"
             >
                 <option value="name_asc" @selected($sortUni === 'name_asc')>{{ __('accounts.sort_name_asc') }}</option>
                 <option value="name_desc" @selected($sortUni === 'name_desc')>{{ __('accounts.sort_name_desc') }}</option>
@@ -217,7 +217,7 @@
             <select
                 name="sort_daerah"
                 onchange="this.form.submit()"
-                class="rounded-full border border-black/10 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none dark:border-white/10 dark:bg-slate-800"
+                class="rounded-full border border-black/10 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm focus:border-blue-500 focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:text-slate-200"
             >
                 <option value="name_asc" @selected($sortDaerah === 'name_asc')>{{ __('accounts.sort_name_asc') }}</option>
                 <option value="name_desc" @selected($sortDaerah === 'name_desc')>{{ __('accounts.sort_name_desc') }}</option>
@@ -300,7 +300,7 @@
             <select
                 name="sort_gereja"
                 onchange="this.form.submit()"
-                class="rounded-full border border-black/10 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none dark:border-white/10 dark:bg-slate-800"
+                class="rounded-full border border-black/10 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm focus:border-blue-500 focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:text-slate-200"
             >
                 <option value="name_asc" @selected($sortGereja === 'name_asc')>{{ __('accounts.sort_name_asc') }}</option>
                 <option value="name_desc" @selected($sortGereja === 'name_desc')>{{ __('accounts.sort_name_desc') }}</option>
@@ -392,7 +392,7 @@
             <select
                 name="sort_institusi"
                 onchange="this.form.submit()"
-                class="rounded-full border border-black/10 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none dark:border-white/10 dark:bg-slate-800"
+                class="rounded-full border border-black/10 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm focus:border-blue-500 focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:text-slate-200"
             >
                 <option value="name_asc" @selected($sortInstitusi === 'name_asc')>{{ __('accounts.sort_name_asc') }}</option>
                 <option value="name_desc" @selected($sortInstitusi === 'name_desc')>{{ __('accounts.sort_name_desc') }}</option>
@@ -484,7 +484,7 @@
             <select
                 name="sort_personal"
                 onchange="this.form.submit()"
-                class="rounded-full border border-black/10 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none dark:border-white/10 dark:bg-slate-800"
+                class="rounded-full border border-black/10 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm focus:border-blue-500 focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:text-slate-200"
             >
                 <option value="name_asc" @selected($sortPersonal === 'name_asc')>{{ __('accounts.sort_name_asc') }}</option>
                 <option value="name_desc" @selected($sortPersonal === 'name_desc')>{{ __('accounts.sort_name_desc') }}</option>
