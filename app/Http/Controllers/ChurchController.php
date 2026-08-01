@@ -86,7 +86,10 @@ class ChurchController extends Controller
 
         AuditLogger::log('church.updated', $church, "Memperbarui Gereja \"{$church->name}\".");
 
-        return redirect()->route('churches.show', $church)->with('status', "Gereja \"{$church->name}\" berhasil diperbarui.");
+        // churches.edit is only ever reached from Kelola Akun (see admin.accounts.partials.
+        // row-actions) — same destination as this form's own Back/Cancel links, so a successful
+        // save lands back where the admin actually came from instead of the public show page.
+        return redirect()->route('admin.accounts.index', ['tab' => 'gereja'])->with('status', "Gereja \"{$church->name}\" berhasil diperbarui.");
     }
 
     /**
