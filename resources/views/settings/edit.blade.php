@@ -84,6 +84,22 @@
             />
         </div>
 
+        <div class="mb-6 border-t border-black/5 pt-6 dark:border-white/5">
+            <h2 class="mb-1 font-bold text-slate-900 dark:text-white">{{ __('settings.apify_title') }}</h2>
+            <p class="mb-4 text-sm text-slate-500 dark:text-slate-400">{{ __('settings.apify_subtitle') }}</p>
+
+            <div class="flex items-center gap-2">
+                <input
+                    type="checkbox" id="apify_fallback_to_manual" name="apify_fallback_to_manual" value="1"
+                    @checked(old('apify_fallback_to_manual', $settings->apify_fallback_to_manual))
+                    class="h-4 w-4 rounded border-black/20 text-blue-600 focus:ring-blue-500"
+                >
+                <label for="apify_fallback_to_manual" class="text-sm font-medium">
+                    {{ __('settings.apify_fallback_to_manual') }}
+                </label>
+            </div>
+        </div>
+
         <button type="submit" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700">
             {{ __('settings.save_settings') }}
         </button>

@@ -109,12 +109,6 @@ class ChurchRefreshController extends Controller
 
         try {
             FetchSingleChurchData::dispatchSync($social);
-
-            $message = "Akun {$social->display_handle} berhasil diperbarui.";
-
-            return $request->wantsJson()
-                ? response()->json(['success' => true, 'message' => $message])
-                : back()->with('status', $message);
         } catch (Throwable $e) {
             $message = "Gagal memperbarui {$social->display_handle}: {$e->getMessage()}";
 
@@ -122,5 +116,24 @@ class ChurchRefreshController extends Controller
                 ? response()->json(['success' => false, 'message' => $message], 500)
                 : back()->with('error', $message);
         }
+
+        // Checked from the persisted row rather than inferred purely from whether dispatchSync()
+        // threw — an Apify-credits-exhausted failure calls $this->fail() instead of throwing (see
+        // FetchSingleChurchData), so it still needs to be caught here.
+        $social->refresh();
+
+        if ($social->last_fetch_status === 'failed') {
+            $message = "Gagal memperbarui {$social->display_handle}: {$social->last_fetch_error}";
+
+            return $request->wantsJson()
+                ? response()->json(['success' => false, 'message' => $message], 500)
+                : back()->with('error', $message);
+        }
+
+        $message = "Akun {$social->display_handle} berhasil diperbarui.";
+
+        return $request->wantsJson()
+            ? response()->json(['success' => true, 'message' => $message])
+            : back()->with('status', $message);
     }
 }

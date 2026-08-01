@@ -40,9 +40,11 @@ class SettingsController extends Controller
             'auto_fetch_time' => ['required', 'date_format:H:i'],
             'cs_whatsapp_number' => ['nullable', 'string', 'max:32'],
             'cs_whatsapp_group_link' => ['nullable', 'url', 'max:2048'],
+            'apify_fallback_to_manual' => ['nullable', 'boolean'],
         ]);
 
         $data['auto_fetch_enabled'] = $request->boolean('auto_fetch_enabled');
+        $data['apify_fallback_to_manual'] = $request->boolean('apify_fallback_to_manual');
 
         AppSetting::current()->update($data);
 

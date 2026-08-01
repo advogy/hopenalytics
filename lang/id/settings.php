@@ -18,4 +18,8 @@ return [
     'cs_whatsapp_number_hint' => 'Format internasional tanpa "+" atau angka 0 di depan, contoh: 628123456789. Kosongkan untuk menyembunyikan tautan ini.',
     'cs_whatsapp_group_link' => 'Tautan Grup WhatsApp Nasional',
     'cs_whatsapp_group_link_hint' => 'Tautan undangan grup WhatsApp (chat.whatsapp.com/…). Kosongkan untuk menyembunyikan tautan ini.',
+
+    'apify_title' => 'Fallback Pengambilan Data',
+    'apify_subtitle' => 'Instagram, TikTok, dan Facebook diambil lewat layanan pihak ketiga (Apify) yang memakai kredit berbayar. YouTube tidak terpengaruh — datanya diambil lewat API resmi YouTube yang gratis.',
+    'apify_fallback_to_manual' => 'Jika kredit Apify habis, otomatis tandai akun untuk isi data manual',
 ];

@@ -18,4 +18,8 @@ return [
     'cs_whatsapp_number_hint' => 'International format, no "+" or leading 0, e.g. 628123456789. Leave blank to hide this link.',
     'cs_whatsapp_group_link' => 'National WhatsApp Group Link',
     'cs_whatsapp_group_link_hint' => 'The WhatsApp group invite link (chat.whatsapp.com/…). Leave blank to hide this link.',
+
+    'apify_title' => 'Data Fetch Fallback',
+    'apify_subtitle' => 'Instagram, TikTok, and Facebook are fetched through a paid third-party service (Apify) that uses credits. YouTube is unaffected — it uses the free official YouTube API.',
+    'apify_fallback_to_manual' => 'If Apify credits run out, automatically mark the account for manual data entry',
 ];

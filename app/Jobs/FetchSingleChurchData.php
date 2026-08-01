@@ -3,8 +3,10 @@
 namespace App\Jobs;
 
 use App\Enums\SocialPlatform;
+use App\Models\AppSetting;
 use App\Models\ChurchSocial;
 use App\Models\ChurchStat;
+use App\Services\SocialStats\ApifyCreditsExhaustedException;
 use App\Services\SocialStats\FacebookStatsFetcher;
 use App\Services\SocialStats\InstagramStatsFetcher;
 use App\Services\SocialStats\TikTokStatsFetcher;
@@ -76,6 +78,31 @@ class FetchSingleChurchData implements ShouldQueue
                 'last_fetch_status' => 'success',
                 'last_fetch_error' => null,
             ]);
+        } catch (ApifyCreditsExhaustedException $e) {
+            // Retrying won't help — the credit shortfall won't resolve itself within a few
+            // seconds — so this skips FetchSingleChurchData's own retries via fail() (still
+            // counts toward the batch's failed total, same "let it finish at 100%" behavior as
+            // any other unrecoverable account) rather than throw(), which would just burn two
+            // more attempts against an integration that's already known to be out of budget.
+            $fallbackToManual = AppSetting::current()->apify_fallback_to_manual;
+
+            $this->churchSocial->update([
+                'last_fetched_at' => now(),
+                'last_fetch_status' => 'failed',
+                'last_fetch_error' => $fallbackToManual
+                    ? 'Kredit Apify habis — auto-fetch dinonaktifkan, isi data secara manual.'
+                    : 'Kredit Apify habis.',
+                'is_auto_fetch' => $fallbackToManual ? false : $this->churchSocial->is_auto_fetch,
+            ]);
+
+            Log::warning('Apify credits exhausted while fetching church social stats', [
+                'church_social_id' => $this->churchSocial->id,
+                'platform' => $this->churchSocial->platform->value,
+                'fell_back_to_manual' => $fallbackToManual,
+                'error' => $e->getMessage(),
+            ]);
+
+            $this->fail($e);
         } catch (Throwable $e) {
             $this->churchSocial->update([
                 'last_fetched_at' => now(),

@@ -242,7 +242,7 @@
                     </div>
                 </div>
 
-                <div id="mobile-menu" class="hidden border-t border-black/5 pb-4 lg:hidden dark:border-white/5">
+                <div id="mobile-menu" class="hidden overflow-y-auto overscroll-contain border-t border-black/5 pb-4 lg:hidden dark:border-white/5">
                     <div class="flex flex-col gap-1 pt-3">
                         @can('view-directory')
                             <a href="{{ route('churches.directory') }}" class="rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
@@ -446,6 +446,34 @@
 
                 var iconOpen = toggle.querySelector('[data-menu-icon-open]');
                 var iconClose = toggle.querySelector('[data-menu-icon-close]');
+                var savedScrollY = 0;
+
+                // The menu lives inline inside the sticky header rather than as a fixed overlay,
+                // so with no height cap the browser just grows the page to fit it — the menu
+                // itself never scrolls, the whole page does. This caps it to whatever viewport
+                // space is actually left below it, so it scrolls internally instead.
+                function updateMaxHeight() {
+                    menu.style.maxHeight = (window.innerHeight - menu.getBoundingClientRect().top) + 'px';
+                }
+
+                // iOS Safari still rubber-band-scrolls the page behind an `overflow-hidden` body,
+                // so the background is locked in place via `position: fixed` (restoring the exact
+                // scroll offset on close) instead of relying on overflow alone.
+                function lockBodyScroll() {
+                    savedScrollY = window.scrollY;
+                    document.body.style.position = 'fixed';
+                    document.body.style.top = '-' + savedScrollY + 'px';
+                    document.body.style.left = '0';
+                    document.body.style.right = '0';
+                }
+
+                function unlockBodyScroll() {
+                    document.body.style.position = '';
+                    document.body.style.top = '';
+                    document.body.style.left = '';
+                    document.body.style.right = '';
+                    window.scrollTo(0, savedScrollY);
+                }
 
                 toggle.addEventListener('click', function () {
                     var isOpen = menu.classList.toggle('hidden') === false;
@@ -454,6 +482,19 @@
                     iconOpen.classList.toggle('block', !isOpen);
                     iconClose.classList.toggle('hidden', !isOpen);
                     iconClose.classList.toggle('block', isOpen);
+
+                    if (isOpen) {
+                        updateMaxHeight();
+                        lockBodyScroll();
+                    } else {
+                        menu.style.maxHeight = '';
+                        unlockBodyScroll();
+                    }
+                });
+
+                // Recompute on rotation/on-screen-keyboard changes while the menu is open.
+                window.addEventListener('resize', function () {
+                    if (! menu.classList.contains('hidden')) updateMaxHeight();
                 });
 
                 // Collapse the menu automatically if the viewport grows past the lg breakpoint.
