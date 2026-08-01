@@ -100,7 +100,16 @@
                             </div>
                         </div>
                     @endcan
-                @else
+                @endif
+
+                {{--
+                    Shown whenever manual entry is actually reachable (see SocialStatController's
+                    matching abort_unless()) — always true for a manual-only account (is_auto_fetch
+                    off, e.g. Facebook typically is), and now also true for an auto-fetch account
+                    whose last attempt failed, so a stuck scraper doesn't block recording that
+                    day's numbers by hand while it's sorted out.
+                --}}
+                @if (! $social->is_auto_fetch || $social->last_fetch_status === 'failed')
                     @can('update', $social)
                         <a
                             href="{{ route('socials.stats.create', $social) }}"
