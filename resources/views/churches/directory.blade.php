@@ -1,5 +1,8 @@
 @php
     $platformLabels = ['youtube' => 'YouTube', 'instagram' => 'Instagram', 'tiktok' => 'TikTok', 'facebook' => 'Facebook'];
+    $hasDirectoryFilters = $selectedPlatform || $search || $autoFetch || $hideEmptyChurches || $hideEmptyPeople || $hideEmptyInstitutions || $hideEmptyOrganizations || $selectedUnionId || $selectedConferenceId || $sortGereja !== 'name_asc' || $sortInstitusi !== 'name_asc' || $sortPersonal !== 'name_asc' || $sortOrganisasi !== 'name_asc';
+    $filterActiveClass = 'border-blue-600 bg-blue-50 text-blue-900 dark:border-blue-500 dark:bg-blue-950/40 dark:text-blue-200';
+    $filterInactiveClass = 'border-black/10 bg-slate-50 text-slate-700 hover:bg-slate-100 dark:border-white/10 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700';
 @endphp
 
 @extends('layouts.app')
@@ -31,9 +34,21 @@
         </button>
     </div>
 
-    <x-filter-card>
-        <form id="directory-filter-form" method="GET" class="flex flex-wrap items-center gap-3">
+    <x-filter-card :clear-url="$hasDirectoryFilters ? route('churches.directory', ['tab' => $activeTab]) : null">
+        <form id="directory-filter-form" method="GET" class="flex flex-wrap items-stretch gap-3">
             <input type="hidden" name="tab" data-tab-hidden-field value="{{ $activeTab }}">
+
+            <label class="relative flex-1 min-w-[200px]">
+                <x-icon name="magnifying-glass" class="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                    type="text"
+                    name="search"
+                    value="{{ $search }}"
+                    placeholder="{{ __('directory.search_placeholder_'.$activeTab) }}"
+                    data-tab-placeholder="{{ json_encode(['gereja' => __('directory.search_placeholder_gereja'), 'personal' => __('directory.search_placeholder_personal'), 'institusi' => __('directory.search_placeholder_institusi'), 'organisasi' => __('directory.search_placeholder_organisasi')]) }}"
+                    class="w-full rounded-full border py-2.5 pr-4 pl-9 text-sm font-medium shadow-sm transition placeholder:font-normal placeholder:text-slate-400 focus:bg-white focus:outline-none dark:placeholder:text-slate-500 dark:focus:bg-slate-800 {{ $search !== '' ? $filterActiveClass : $filterInactiveClass }}"
+                >
+            </label>
 
             {{--
                 The directory is a public, unscoped listing (see directory()'s comment) — every
@@ -50,26 +65,75 @@
                 'conferenceOptions' => $conferenceOptions,
                 'selectedUnionId' => $selectedUnionId,
                 'selectedConferenceId' => $selectedConferenceId,
+                'wrapperClass' => 'flex-1 min-w-[180px]',
+                'inputWidthClass' => 'w-full',
             ])
 
-            <label class="relative w-full sm:w-auto">
-                <x-icon name="magnifying-glass" class="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input
-                    type="text"
-                    name="search"
-                    value="{{ $search }}"
-                    placeholder="{{ __('directory.search_placeholder_'.$activeTab) }}"
-                    data-tab-placeholder="{{ json_encode(['gereja' => __('directory.search_placeholder_gereja'), 'personal' => __('directory.search_placeholder_personal'), 'institusi' => __('directory.search_placeholder_institusi'), 'organisasi' => __('directory.search_placeholder_organisasi')]) }}"
-                    class="w-full sm:w-56 rounded-full border border-black/10 bg-slate-50 py-2.5 pr-4 pl-9 text-sm font-medium text-slate-700 shadow-sm transition placeholder:font-normal placeholder:text-slate-400 hover:bg-slate-100 focus:bg-white focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500 dark:hover:bg-slate-700 dark:focus:bg-slate-800"
+            {{-- One <select> per tab (each reuses [data-tab-panel] so partials/tab-script.blade.php's
+                 existing show/hide-per-tab logic drives these too) — sortable columns differ per
+                 entity type, so a single shared control couldn't offer the right options for
+                 whichever tab is currently active. --}}
+            <label class="relative flex-1 min-w-[180px]" data-tab-panel="organisasi">
+                <select
+                    name="sort_organisasi"
+                    onchange="this.form.submit()"
+                    class="w-full appearance-none rounded-full border py-2.5 pr-10 pl-4 text-sm font-medium shadow-sm focus:border-blue-500 focus:outline-none {{ $sortOrganisasi !== 'name_asc' ? $filterActiveClass : $filterInactiveClass }}"
                 >
+                    <option value="name_asc" @selected($sortOrganisasi === 'name_asc')>{{ __('accounts.sort_name_asc') }}</option>
+                    <option value="name_desc" @selected($sortOrganisasi === 'name_desc')>{{ __('accounts.sort_name_desc') }}</option>
+                </select>
+                <x-icon name="chevron-down" class="pointer-events-none absolute top-1/2 right-3.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+            </label>
+            <label class="relative flex-1 min-w-[180px]" data-tab-panel="gereja">
+                <select
+                    name="sort_gereja"
+                    onchange="this.form.submit()"
+                    class="w-full appearance-none rounded-full border py-2.5 pr-10 pl-4 text-sm font-medium shadow-sm focus:border-blue-500 focus:outline-none {{ $sortGereja !== 'name_asc' ? $filterActiveClass : $filterInactiveClass }}"
+                >
+                    <option value="name_asc" @selected($sortGereja === 'name_asc')>{{ __('accounts.sort_name_asc') }}</option>
+                    <option value="name_desc" @selected($sortGereja === 'name_desc')>{{ __('accounts.sort_name_desc') }}</option>
+                    <option value="city_asc" @selected($sortGereja === 'city_asc')>{{ __('accounts.sort_city_asc') }}</option>
+                    <option value="city_desc" @selected($sortGereja === 'city_desc')>{{ __('accounts.sort_city_desc') }}</option>
+                    <option value="daerah_asc" @selected($sortGereja === 'daerah_asc')>{{ __('accounts.sort_daerah_asc') }}</option>
+                    <option value="daerah_desc" @selected($sortGereja === 'daerah_desc')>{{ __('accounts.sort_daerah_desc') }}</option>
+                </select>
+                <x-icon name="chevron-down" class="pointer-events-none absolute top-1/2 right-3.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+            </label>
+            <label class="relative flex-1 min-w-[180px]" data-tab-panel="institusi">
+                <select
+                    name="sort_institusi"
+                    onchange="this.form.submit()"
+                    class="w-full appearance-none rounded-full border py-2.5 pr-10 pl-4 text-sm font-medium shadow-sm focus:border-blue-500 focus:outline-none {{ $sortInstitusi !== 'name_asc' ? $filterActiveClass : $filterInactiveClass }}"
+                >
+                    <option value="name_asc" @selected($sortInstitusi === 'name_asc')>{{ __('accounts.sort_name_asc') }}</option>
+                    <option value="name_desc" @selected($sortInstitusi === 'name_desc')>{{ __('accounts.sort_name_desc') }}</option>
+                    <option value="region_asc" @selected($sortInstitusi === 'region_asc')>{{ __('accounts.sort_region_asc') }}</option>
+                    <option value="region_desc" @selected($sortInstitusi === 'region_desc')>{{ __('accounts.sort_region_desc') }}</option>
+                </select>
+                <x-icon name="chevron-down" class="pointer-events-none absolute top-1/2 right-3.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+            </label>
+            <label class="relative flex-1 min-w-[180px]" data-tab-panel="personal">
+                <select
+                    name="sort_personal"
+                    onchange="this.form.submit()"
+                    class="w-full appearance-none rounded-full border py-2.5 pr-10 pl-4 text-sm font-medium shadow-sm focus:border-blue-500 focus:outline-none {{ $sortPersonal !== 'name_asc' ? $filterActiveClass : $filterInactiveClass }}"
+                >
+                    <option value="name_asc" @selected($sortPersonal === 'name_asc')>{{ __('accounts.sort_name_asc') }}</option>
+                    <option value="name_desc" @selected($sortPersonal === 'name_desc')>{{ __('accounts.sort_name_desc') }}</option>
+                    <option value="city_asc" @selected($sortPersonal === 'city_asc')>{{ __('accounts.sort_city_asc') }}</option>
+                    <option value="city_desc" @selected($sortPersonal === 'city_desc')>{{ __('accounts.sort_city_desc') }}</option>
+                    <option value="scope_asc" @selected($sortPersonal === 'scope_asc')>{{ __('accounts.sort_scope_asc') }}</option>
+                    <option value="scope_desc" @selected($sortPersonal === 'scope_desc')>{{ __('accounts.sort_scope_desc') }}</option>
+                </select>
+                <x-icon name="chevron-down" class="pointer-events-none absolute top-1/2 right-3.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
             </label>
 
-            <label class="relative">
+            <label class="relative flex-1 min-w-[180px]">
                 <x-icon name="globe-alt" class="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <select
                     name="platform"
                     onchange="this.form.submit()"
-                    class="appearance-none rounded-full border border-black/10 bg-slate-50 py-2.5 pr-10 pl-9 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-100 dark:border-white/10 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                    class="w-full appearance-none rounded-full border py-2.5 pr-10 pl-9 text-sm font-medium shadow-sm focus:border-blue-500 focus:outline-none {{ $selectedPlatform ? $filterActiveClass : $filterInactiveClass }}"
                 >
                     <option value="">{{ __('common.all_social_media') }}</option>
                     @foreach ($platformLabels as $value => $label)
@@ -79,15 +143,9 @@
                 <x-icon name="chevron-down" class="pointer-events-none absolute top-1/2 right-3.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
             </label>
 
-            <button type="submit" class="rounded-full bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700">
+            <button type="submit" class="shrink-0 rounded-full bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700">
                 {{ __('common.search') }}
             </button>
-
-            @if ($selectedPlatform || $search || $autoFetch || $hideEmptyChurches || $hideEmptyPeople || $hideEmptyInstitutions || $hideEmptyOrganizations || $selectedUnionId || $selectedConferenceId)
-                <a href="{{ route('churches.directory', ['tab' => $activeTab]) }}" class="text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
-                    {{ __('common.reset_filter') }}
-                </a>
-            @endif
         </form>
     </x-filter-card>
 
@@ -355,6 +413,6 @@
         </div>
     </div>
 
-    @include('partials.analytics-group-toggle')
+    @include('partials.analytics-group-toggle', ['expandGroupsByDefault' => $hasDirectoryFilters])
     @include('partials.tab-script', ['activeTab' => $activeTab])
 @endsection

@@ -49,6 +49,50 @@ class AccountController extends Controller
         $sortInstitusi = $request->query('sort_institusi', 'name_asc');
         $sortPersonal = $request->query('sort_personal', 'name_asc');
 
+        // Region filter — one per tab (Uni gets none, it's the top tier already), since every
+        // tab here is already independently searched/sorted/paginated; the shared region-filter
+        // partial's field-name override (see its own doc comment) keeps each tab's own
+        // union_id/conference_id from colliding when several of them sit on the same page.
+        // regionFilterOptions() (from BuildsLeaderboards, shared with Analitik & Grafik etc.)
+        // scopes the pickers themselves to what the viewer may pick from — unlike the public,
+        // unscoped Direktori Akun, this management page should only ever offer the viewer's own
+        // region.
+        $selectedUnionIdDaerah = $request->query('union_id_daerah');
+        $selectedUnionIdGereja = $request->query('union_id_gereja');
+        $selectedConferenceIdGereja = $request->query('conference_id_gereja');
+        $selectedUnionIdInstitusi = $request->query('union_id_institusi');
+        $selectedConferenceIdInstitusi = $request->query('conference_id_institusi');
+        $selectedUnionIdPersonal = $request->query('union_id_personal');
+        $selectedConferenceIdPersonal = $request->query('conference_id_personal');
+
+        [$unionOptionsDaerah] = $this->regionFilterOptions(null);
+        [$unionOptionsGereja, $conferenceOptionsGereja] = $this->regionFilterOptions($selectedUnionIdGereja);
+        [$unionOptionsInstitusi, $conferenceOptionsInstitusi] = $this->regionFilterOptions($selectedUnionIdInstitusi);
+        [$unionOptionsPersonal, $conferenceOptionsPersonal] = $this->regionFilterOptions($selectedUnionIdPersonal);
+
+        // Church has no union_id column of its own — only conference_id — hence the
+        // whereHas('conference') branch for a union-only (no conference chosen) filter. Same
+        // shape as ChurchDashboardController::directory()'s equivalents.
+        $applyChurchRegionFilter = fn ($query) => $query
+            ->when($selectedConferenceIdGereja, fn ($q) => $q->where('conference_id', $selectedConferenceIdGereja))
+            ->when($selectedUnionIdGereja && ! $selectedConferenceIdGereja, fn ($q) => $q->whereHas(
+                'conference', fn ($q2) => $q2->where('union_id', $selectedUnionIdGereja)
+            ));
+
+        $applyInstitutionRegionFilter = fn ($query) => $query
+            ->when($selectedConferenceIdInstitusi, fn ($q) => $q->where('conference_id', $selectedConferenceIdInstitusi))
+            ->when($selectedUnionIdInstitusi && ! $selectedConferenceIdInstitusi, fn ($q) => $q->where(fn ($q2) => $q2
+                ->where('union_id', $selectedUnionIdInstitusi)
+                ->orWhereHas('conference', fn ($q3) => $q3->where('union_id', $selectedUnionIdInstitusi))
+            ));
+
+        $applyPersonRegionFilter = fn ($query) => $query
+            ->when($selectedConferenceIdPersonal, fn ($q) => $q->where('conference_id', $selectedConferenceIdPersonal))
+            ->when($selectedUnionIdPersonal && ! $selectedConferenceIdPersonal, fn ($q) => $q->where(fn ($q2) => $q2
+                ->where('union_id', $selectedUnionIdPersonal)
+                ->orWhereHas('conference', fn ($q3) => $q3->where('union_id', $selectedUnionIdPersonal))
+            ));
+
         // Tab switching is client-side only (no page reload — see partials/tab-script.blade.php),
         // so a pagination link built from the *current* request's query string would still
         // carry whatever tab was active on page load, not whatever tab the visitor is actually
@@ -66,6 +110,7 @@ class AccountController extends Controller
         $conferences = Conference::with('union')->withCount(['churches', 'people', 'users'])
             ->visibleTo($request->user())
             ->when($searchDaerah, fn ($q) => $q->where('name', 'like', "%{$searchDaerah}%"))
+            ->when($selectedUnionIdDaerah, fn ($q) => $q->where('union_id', $selectedUnionIdDaerah))
             ->tap(fn ($q) => match ($sortDaerah) {
                 'name_desc' => $q->orderByDesc('name'),
                 'union_asc' => $q->orderBy(Union::select('name')->whereColumn('unions.id', 'conferences.union_id'))->orderBy('name'),
@@ -84,6 +129,7 @@ class AccountController extends Controller
         $churches = Church::with('conference.union')->withCount('users')
             ->visibleTo($request->user())
             ->when($searchGereja, fn ($q) => $q->where('name', 'like', "%{$searchGereja}%"))
+            ->tap($applyChurchRegionFilter)
             ->tap(fn ($q) => match ($sortGereja) {
                 'name_desc' => $q->orderByDesc('name'),
                 'city_asc' => $q->orderBy('city')->orderBy('name'),
@@ -101,6 +147,7 @@ class AccountController extends Controller
         $institutions = Institution::with('conference.union', 'union')->withCount('users')
             ->manageableBy($request->user())
             ->when($searchInstitusi, fn ($q) => $q->where('name', 'like', "%{$searchInstitusi}%"))
+            ->tap($applyInstitutionRegionFilter)
             ->tap(fn ($q) => match ($sortInstitusi) {
                 'name_desc' => $q->orderByDesc('name'),
                 'region_asc' => $q->orderBy($this->institutionRegionOrderExpression())->orderBy('name'),
@@ -123,6 +170,7 @@ class AccountController extends Controller
                 ->where('name', 'like', "%{$searchPersonal}%")
                 ->orWhere('city', 'like', "%{$searchPersonal}%"),
             ))
+            ->tap($applyPersonRegionFilter)
             ->tap(fn ($q) => match ($sortPersonal) {
                 'name_desc' => $q->orderByDesc('name'),
                 'city_asc' => $q->orderBy('city')->orderBy('name'),
@@ -165,6 +213,22 @@ class AccountController extends Controller
             'sortGereja' => $sortGereja,
             'sortInstitusi' => $sortInstitusi,
             'sortPersonal' => $sortPersonal,
+            'isNasionalView' => $this->isNasionalView(),
+            'isUniView' => $this->isUniView(),
+            'unionOptionsDaerah' => $unionOptionsDaerah,
+            'unionOptionsGereja' => $unionOptionsGereja,
+            'conferenceOptionsGereja' => $conferenceOptionsGereja,
+            'unionOptionsInstitusi' => $unionOptionsInstitusi,
+            'conferenceOptionsInstitusi' => $conferenceOptionsInstitusi,
+            'unionOptionsPersonal' => $unionOptionsPersonal,
+            'conferenceOptionsPersonal' => $conferenceOptionsPersonal,
+            'selectedUnionIdDaerah' => $selectedUnionIdDaerah,
+            'selectedUnionIdGereja' => $selectedUnionIdGereja,
+            'selectedConferenceIdGereja' => $selectedConferenceIdGereja,
+            'selectedUnionIdInstitusi' => $selectedUnionIdInstitusi,
+            'selectedConferenceIdInstitusi' => $selectedConferenceIdInstitusi,
+            'selectedUnionIdPersonal' => $selectedUnionIdPersonal,
+            'selectedConferenceIdPersonal' => $selectedConferenceIdPersonal,
             'visibleTabs' => $visibleTabs,
         ]);
     }

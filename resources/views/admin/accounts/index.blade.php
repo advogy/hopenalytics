@@ -1,3 +1,17 @@
+@php
+    // Shared pill styling for every filter field on this page (search boxes, sort selects, the
+    // region-filter partial's own comboboxes) — highlighted once it's holding a non-default
+    // value, same visual language as the reference design: active filters read as "chosen",
+    // everything else stays neutral until touched.
+    $filterActiveClass = 'border-blue-600 bg-blue-50 text-blue-900 dark:border-blue-500 dark:bg-blue-950/40 dark:text-blue-200';
+    $filterInactiveClass = 'border-black/10 bg-slate-50 text-slate-700 hover:bg-slate-100 dark:border-white/10 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700';
+
+    $hasUniFilters = $searchUni !== '' || $sortUni !== 'name_asc';
+    $hasDaerahFilters = $searchDaerah !== '' || $sortDaerah !== 'name_asc' || $selectedUnionIdDaerah;
+    $hasGerejaFilters = $searchGereja !== '' || $sortGereja !== 'name_asc' || $selectedUnionIdGereja || $selectedConferenceIdGereja;
+    $hasInstitusiFilters = $searchInstitusi !== '' || $sortInstitusi !== 'name_asc' || $selectedUnionIdInstitusi || $selectedConferenceIdInstitusi;
+    $hasPersonalFilters = $searchPersonal !== '' || $sortPersonal !== 'name_asc' || $selectedUnionIdPersonal || $selectedConferenceIdPersonal;
+@endphp
 @extends('layouts.app')
 
 @section('title', __('nav.manage_accounts') . ' — ' . config('app.name'))
@@ -117,36 +131,39 @@
     </div>
 
     @if ($visibleTabs['uni'])
-    <div data-tab-panel="uni" class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
+    <div data-tab-panel="uni">
+        <x-filter-card :clear-url="$hasUniFilters ? route('admin.accounts.index', ['tab' => 'uni']) : null">
+            <form method="GET" class="flex flex-wrap items-stretch gap-3">
+                <input type="hidden" name="tab" data-tab-hidden-field value="{{ $activeTab }}">
+                <label class="relative flex-1 min-w-[200px]">
+                    <x-icon name="magnifying-glass" class="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                        type="search"
+                        name="search_uni"
+                        value="{{ $searchUni }}"
+                        placeholder="{{ __('accounts.search_uni_placeholder') }}"
+                        class="w-full rounded-full border py-2.5 pr-4 pl-9 text-sm font-medium shadow-sm transition placeholder:font-normal placeholder:text-slate-400 focus:bg-white focus:outline-none dark:placeholder:text-slate-500 dark:focus:bg-slate-800 {{ $searchUni !== '' ? $filterActiveClass : $filterInactiveClass }}"
+                    >
+                </label>
+                <label class="relative flex-1 min-w-[180px]">
+                    <select
+                        name="sort_uni"
+                        onchange="this.form.submit()"
+                        class="w-full appearance-none rounded-full border py-2.5 pr-10 pl-4 text-sm font-medium shadow-sm focus:border-blue-500 focus:outline-none {{ $sortUni !== 'name_asc' ? $filterActiveClass : $filterInactiveClass }}"
+                    >
+                        <option value="name_asc" @selected($sortUni === 'name_asc')>{{ __('accounts.sort_name_asc') }}</option>
+                        <option value="name_desc" @selected($sortUni === 'name_desc')>{{ __('accounts.sort_name_desc') }}</option>
+                        <option value="status_active" @selected($sortUni === 'status_active')>{{ __('accounts.sort_status_active') }}</option>
+                        <option value="status_inactive" @selected($sortUni === 'status_inactive')>{{ __('accounts.sort_status_inactive') }}</option>
+                    </select>
+                    <x-icon name="chevron-down" class="pointer-events-none absolute top-1/2 right-3.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                </label>
+            </form>
+        </x-filter-card>
+
+        <div class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
         <p class="mb-1 font-bold text-slate-900 dark:text-white">{{ __('accounts.uni_list_title') }}</p>
         <p class="mb-4 border-b border-black/5 pb-4 text-sm text-slate-500 dark:border-white/5 dark:text-slate-400">{{ __('accounts.uni_list_subtitle') }}</p>
-
-        <form method="GET" class="mb-4 flex flex-wrap items-center gap-2">
-            <input type="hidden" name="tab" data-tab-hidden-field value="{{ $activeTab }}">
-            <label class="relative block w-full max-w-sm">
-                <x-icon name="magnifying-glass" class="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input
-                    type="search"
-                    name="search_uni"
-                    value="{{ $searchUni }}"
-                    placeholder="{{ __('accounts.search_uni_placeholder') }}"
-                    class="w-full rounded-full border border-black/10 bg-slate-50 py-2.5 pr-4 pl-9 text-sm font-medium text-slate-700 shadow-sm transition placeholder:font-normal placeholder:text-slate-400 hover:bg-slate-100 focus:bg-white focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500 dark:hover:bg-slate-700 dark:focus:bg-slate-800"
-                >
-            </label>
-            <label class="relative">
-                <select
-                    name="sort_uni"
-                    onchange="this.form.submit()"
-                    class="appearance-none rounded-full border border-black/10 bg-white py-2.5 pr-10 pl-4 text-sm font-medium text-slate-700 shadow-sm focus:border-blue-500 focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:text-slate-200"
-                >
-                    <option value="name_asc" @selected($sortUni === 'name_asc')>{{ __('accounts.sort_name_asc') }}</option>
-                    <option value="name_desc" @selected($sortUni === 'name_desc')>{{ __('accounts.sort_name_desc') }}</option>
-                    <option value="status_active" @selected($sortUni === 'status_active')>{{ __('accounts.sort_status_active') }}</option>
-                    <option value="status_inactive" @selected($sortUni === 'status_inactive')>{{ __('accounts.sort_status_inactive') }}</option>
-                </select>
-                <x-icon name="chevron-down" class="pointer-events-none absolute top-1/2 right-3.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-            </label>
-        </form>
 
         @if ($unions->isEmpty())
             <p class="py-6 text-center text-sm text-slate-400 dark:text-slate-500">{{ $searchUni ? __('accounts.no_match', ['entity' => __('common.union')]) : __('accounts.no_yet', ['entity' => __('common.union')]) }}</p>
@@ -197,42 +214,62 @@
 
             <x-pagination :paginator="$unions" />
         @endif
+        </div>
     </div>
     @endif
 
     @if ($visibleTabs['daerah'])
-    <div data-tab-panel="daerah" class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
+    <div data-tab-panel="daerah">
+        <x-filter-card :clear-url="$hasDaerahFilters ? route('admin.accounts.index', ['tab' => 'daerah']) : null">
+            <form method="GET" id="daerah-filter-form" class="flex flex-wrap items-stretch gap-3">
+                <input type="hidden" name="tab" data-tab-hidden-field value="{{ $activeTab }}">
+                <label class="relative flex-1 min-w-[200px]">
+                    <x-icon name="magnifying-glass" class="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                        type="search"
+                        name="search_daerah"
+                        value="{{ $searchDaerah }}"
+                        placeholder="{{ __('accounts.search_daerah_placeholder') }}"
+                        class="w-full rounded-full border py-2.5 pr-4 pl-9 text-sm font-medium shadow-sm transition placeholder:font-normal placeholder:text-slate-400 focus:bg-white focus:outline-none dark:placeholder:text-slate-500 dark:focus:bg-slate-800 {{ $searchDaerah !== '' ? $filterActiveClass : $filterInactiveClass }}"
+                    >
+                </label>
+                @if ($unionOptionsDaerah->isNotEmpty())
+                    <label class="relative flex-1 min-w-[180px]">
+                        <x-icon name="globe-alt" class="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                        <select
+                            name="union_id_daerah"
+                            onchange="this.form.submit()"
+                            class="w-full appearance-none rounded-full border py-2.5 pr-10 pl-9 text-sm font-medium shadow-sm focus:border-blue-500 focus:outline-none {{ $selectedUnionIdDaerah ? $filterActiveClass : $filterInactiveClass }}"
+                        >
+                            <option value="">{{ __('accounts.filter_all_uni') }}</option>
+                            @foreach ($unionOptionsDaerah as $unionOption)
+                                <option value="{{ $unionOption->id }}" @selected((string) $selectedUnionIdDaerah === (string) $unionOption->id)>{{ $unionOption->name }}</option>
+                            @endforeach
+                        </select>
+                        <x-icon name="chevron-down" class="pointer-events-none absolute top-1/2 right-3.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                    </label>
+                @endif
+                <label class="relative flex-1 min-w-[180px]">
+                    <select
+                        name="sort_daerah"
+                        onchange="this.form.submit()"
+                        class="w-full appearance-none rounded-full border py-2.5 pr-10 pl-4 text-sm font-medium shadow-sm focus:border-blue-500 focus:outline-none {{ $sortDaerah !== 'name_asc' ? $filterActiveClass : $filterInactiveClass }}"
+                    >
+                        <option value="name_asc" @selected($sortDaerah === 'name_asc')>{{ __('accounts.sort_name_asc') }}</option>
+                        <option value="name_desc" @selected($sortDaerah === 'name_desc')>{{ __('accounts.sort_name_desc') }}</option>
+                        <option value="union_asc" @selected($sortDaerah === 'union_asc')>{{ __('accounts.sort_union_asc') }}</option>
+                        <option value="union_desc" @selected($sortDaerah === 'union_desc')>{{ __('accounts.sort_union_desc') }}</option>
+                        <option value="status_active" @selected($sortDaerah === 'status_active')>{{ __('accounts.sort_status_active') }}</option>
+                        <option value="status_inactive" @selected($sortDaerah === 'status_inactive')>{{ __('accounts.sort_status_inactive') }}</option>
+                    </select>
+                    <x-icon name="chevron-down" class="pointer-events-none absolute top-1/2 right-3.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                </label>
+            </form>
+        </x-filter-card>
+
+        <div class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
         <p class="mb-1 font-bold text-slate-900 dark:text-white">{{ __('accounts.daerah_list_title') }}</p>
         <p class="mb-4 border-b border-black/5 pb-4 text-sm text-slate-500 dark:border-white/5 dark:text-slate-400">{{ __('accounts.daerah_list_subtitle') }}</p>
-
-        <form method="GET" class="mb-4 flex flex-wrap items-center gap-2">
-            <input type="hidden" name="tab" data-tab-hidden-field value="{{ $activeTab }}">
-            <label class="relative block w-full max-w-sm">
-                <x-icon name="magnifying-glass" class="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input
-                    type="search"
-                    name="search_daerah"
-                    value="{{ $searchDaerah }}"
-                    placeholder="{{ __('accounts.search_daerah_placeholder') }}"
-                    class="w-full rounded-full border border-black/10 bg-slate-50 py-2.5 pr-4 pl-9 text-sm font-medium text-slate-700 shadow-sm transition placeholder:font-normal placeholder:text-slate-400 hover:bg-slate-100 focus:bg-white focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500 dark:hover:bg-slate-700 dark:focus:bg-slate-800"
-                >
-            </label>
-            <label class="relative">
-                <select
-                    name="sort_daerah"
-                    onchange="this.form.submit()"
-                    class="appearance-none rounded-full border border-black/10 bg-white py-2.5 pr-10 pl-4 text-sm font-medium text-slate-700 shadow-sm focus:border-blue-500 focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:text-slate-200"
-                >
-                    <option value="name_asc" @selected($sortDaerah === 'name_asc')>{{ __('accounts.sort_name_asc') }}</option>
-                    <option value="name_desc" @selected($sortDaerah === 'name_desc')>{{ __('accounts.sort_name_desc') }}</option>
-                    <option value="union_asc" @selected($sortDaerah === 'union_asc')>{{ __('accounts.sort_union_asc') }}</option>
-                    <option value="union_desc" @selected($sortDaerah === 'union_desc')>{{ __('accounts.sort_union_desc') }}</option>
-                    <option value="status_active" @selected($sortDaerah === 'status_active')>{{ __('accounts.sort_status_active') }}</option>
-                    <option value="status_inactive" @selected($sortDaerah === 'status_inactive')>{{ __('accounts.sort_status_inactive') }}</option>
-                </select>
-                <x-icon name="chevron-down" class="pointer-events-none absolute top-1/2 right-3.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-            </label>
-        </form>
 
         @if ($conferences->isEmpty())
             <p class="py-6 text-center text-sm text-slate-400 dark:text-slate-500">{{ $searchDaerah ? __('accounts.no_match', ['entity' => __('common.conference')]) : __('accounts.no_yet', ['entity' => __('common.conference')]) }}</p>
@@ -283,44 +320,62 @@
 
             <x-pagination :paginator="$conferences" />
         @endif
+        </div>
     </div>
     @endif
 
     @if ($visibleTabs['gereja'])
-    <div data-tab-panel="gereja" class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
+    <div data-tab-panel="gereja">
+        <x-filter-card :clear-url="$hasGerejaFilters ? route('admin.accounts.index', ['tab' => 'gereja']) : null">
+            <form method="GET" id="gereja-filter-form" class="flex flex-wrap items-stretch gap-3">
+                <input type="hidden" name="tab" data-tab-hidden-field value="{{ $activeTab }}">
+                <label class="relative flex-1 min-w-[200px]">
+                    <x-icon name="magnifying-glass" class="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                        type="search"
+                        name="search_gereja"
+                        value="{{ $searchGereja }}"
+                        placeholder="{{ __('accounts.search_gereja_placeholder') }}"
+                        class="w-full rounded-full border py-2.5 pr-4 pl-9 text-sm font-medium shadow-sm transition placeholder:font-normal placeholder:text-slate-400 focus:bg-white focus:outline-none dark:placeholder:text-slate-500 dark:focus:bg-slate-800 {{ $searchGereja !== '' ? $filterActiveClass : $filterInactiveClass }}"
+                    >
+                </label>
+                @include('partials.analytics-region-filter', [
+                    'prefix' => 'accounts-gereja',
+                    'formId' => 'gereja-filter-form',
+                    'isNasionalView' => $isNasionalView,
+                    'isUniView' => $isUniView,
+                    'unionOptions' => $unionOptionsGereja,
+                    'conferenceOptions' => $conferenceOptionsGereja,
+                    'selectedUnionId' => $selectedUnionIdGereja,
+                    'selectedConferenceId' => $selectedConferenceIdGereja,
+                    'unionFieldName' => 'union_id_gereja',
+                    'conferenceFieldName' => 'conference_id_gereja',
+                    'wrapperClass' => 'flex-1 min-w-[180px]',
+                    'inputWidthClass' => 'w-full',
+                ])
+                <label class="relative flex-1 min-w-[180px]">
+                    <select
+                        name="sort_gereja"
+                        onchange="this.form.submit()"
+                        class="w-full appearance-none rounded-full border py-2.5 pr-10 pl-4 text-sm font-medium shadow-sm focus:border-blue-500 focus:outline-none {{ $sortGereja !== 'name_asc' ? $filterActiveClass : $filterInactiveClass }}"
+                    >
+                        <option value="name_asc" @selected($sortGereja === 'name_asc')>{{ __('accounts.sort_name_asc') }}</option>
+                        <option value="name_desc" @selected($sortGereja === 'name_desc')>{{ __('accounts.sort_name_desc') }}</option>
+                        <option value="city_asc" @selected($sortGereja === 'city_asc')>{{ __('accounts.sort_city_asc') }}</option>
+                        <option value="city_desc" @selected($sortGereja === 'city_desc')>{{ __('accounts.sort_city_desc') }}</option>
+                        <option value="daerah_asc" @selected($sortGereja === 'daerah_asc')>{{ __('accounts.sort_daerah_asc') }}</option>
+                        <option value="daerah_desc" @selected($sortGereja === 'daerah_desc')>{{ __('accounts.sort_daerah_desc') }}</option>
+                        <option value="status_active" @selected($sortGereja === 'status_active')>{{ __('accounts.sort_status_active') }}</option>
+                        <option value="status_inactive" @selected($sortGereja === 'status_inactive')>{{ __('accounts.sort_status_inactive') }}</option>
+                    </select>
+                    <x-icon name="chevron-down" class="pointer-events-none absolute top-1/2 right-3.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                </label>
+            </form>
+        </x-filter-card>
+
+        <div class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
         <p class="mb-1 font-bold text-slate-900 dark:text-white">{{ __('accounts.gereja_list_title') }}</p>
         <p class="mb-4 border-b border-black/5 pb-4 text-sm text-slate-500 dark:border-white/5 dark:text-slate-400">{{ __('accounts.gereja_list_subtitle') }}</p>
-
-        <form method="GET" class="mb-4 flex flex-wrap items-center gap-2">
-            <input type="hidden" name="tab" data-tab-hidden-field value="{{ $activeTab }}">
-            <label class="relative block w-full max-w-sm">
-                <x-icon name="magnifying-glass" class="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input
-                    type="search"
-                    name="search_gereja"
-                    value="{{ $searchGereja }}"
-                    placeholder="{{ __('accounts.search_gereja_placeholder') }}"
-                    class="w-full rounded-full border border-black/10 bg-slate-50 py-2.5 pr-4 pl-9 text-sm font-medium text-slate-700 shadow-sm transition placeholder:font-normal placeholder:text-slate-400 hover:bg-slate-100 focus:bg-white focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500 dark:hover:bg-slate-700 dark:focus:bg-slate-800"
-                >
-            </label>
-            <label class="relative">
-                <select
-                    name="sort_gereja"
-                    onchange="this.form.submit()"
-                    class="appearance-none rounded-full border border-black/10 bg-white py-2.5 pr-10 pl-4 text-sm font-medium text-slate-700 shadow-sm focus:border-blue-500 focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:text-slate-200"
-                >
-                    <option value="name_asc" @selected($sortGereja === 'name_asc')>{{ __('accounts.sort_name_asc') }}</option>
-                    <option value="name_desc" @selected($sortGereja === 'name_desc')>{{ __('accounts.sort_name_desc') }}</option>
-                    <option value="city_asc" @selected($sortGereja === 'city_asc')>{{ __('accounts.sort_city_asc') }}</option>
-                    <option value="city_desc" @selected($sortGereja === 'city_desc')>{{ __('accounts.sort_city_desc') }}</option>
-                    <option value="daerah_asc" @selected($sortGereja === 'daerah_asc')>{{ __('accounts.sort_daerah_asc') }}</option>
-                    <option value="daerah_desc" @selected($sortGereja === 'daerah_desc')>{{ __('accounts.sort_daerah_desc') }}</option>
-                    <option value="status_active" @selected($sortGereja === 'status_active')>{{ __('accounts.sort_status_active') }}</option>
-                    <option value="status_inactive" @selected($sortGereja === 'status_inactive')>{{ __('accounts.sort_status_inactive') }}</option>
-                </select>
-                <x-icon name="chevron-down" class="pointer-events-none absolute top-1/2 right-3.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-            </label>
-        </form>
 
         @if ($churches->isEmpty())
             <p class="py-6 text-center text-sm text-slate-400 dark:text-slate-500">{{ $searchGereja ? __('accounts.no_match', ['entity' => __('common.church')]) : __('accounts.no_yet', ['entity' => __('common.church')]) }}</p>
@@ -378,42 +433,60 @@
 
             <x-pagination :paginator="$churches" />
         @endif
+        </div>
     </div>
     @endif
 
     @if ($visibleTabs['institusi'])
-    <div data-tab-panel="institusi" class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
+    <div data-tab-panel="institusi">
+        <x-filter-card :clear-url="$hasInstitusiFilters ? route('admin.accounts.index', ['tab' => 'institusi']) : null">
+            <form method="GET" id="institusi-filter-form" class="flex flex-wrap items-stretch gap-3">
+                <input type="hidden" name="tab" data-tab-hidden-field value="{{ $activeTab }}">
+                <label class="relative flex-1 min-w-[200px]">
+                    <x-icon name="magnifying-glass" class="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                        type="search"
+                        name="search_institusi"
+                        value="{{ $searchInstitusi }}"
+                        placeholder="{{ __('accounts.search_institusi_placeholder') }}"
+                        class="w-full rounded-full border py-2.5 pr-4 pl-9 text-sm font-medium shadow-sm transition placeholder:font-normal placeholder:text-slate-400 focus:bg-white focus:outline-none dark:placeholder:text-slate-500 dark:focus:bg-slate-800 {{ $searchInstitusi !== '' ? $filterActiveClass : $filterInactiveClass }}"
+                    >
+                </label>
+                @include('partials.analytics-region-filter', [
+                    'prefix' => 'accounts-institusi',
+                    'formId' => 'institusi-filter-form',
+                    'isNasionalView' => $isNasionalView,
+                    'isUniView' => $isUniView,
+                    'unionOptions' => $unionOptionsInstitusi,
+                    'conferenceOptions' => $conferenceOptionsInstitusi,
+                    'selectedUnionId' => $selectedUnionIdInstitusi,
+                    'selectedConferenceId' => $selectedConferenceIdInstitusi,
+                    'unionFieldName' => 'union_id_institusi',
+                    'conferenceFieldName' => 'conference_id_institusi',
+                    'wrapperClass' => 'flex-1 min-w-[180px]',
+                    'inputWidthClass' => 'w-full',
+                ])
+                <label class="relative flex-1 min-w-[180px]">
+                    <select
+                        name="sort_institusi"
+                        onchange="this.form.submit()"
+                        class="w-full appearance-none rounded-full border py-2.5 pr-10 pl-4 text-sm font-medium shadow-sm focus:border-blue-500 focus:outline-none {{ $sortInstitusi !== 'name_asc' ? $filterActiveClass : $filterInactiveClass }}"
+                    >
+                        <option value="name_asc" @selected($sortInstitusi === 'name_asc')>{{ __('accounts.sort_name_asc') }}</option>
+                        <option value="name_desc" @selected($sortInstitusi === 'name_desc')>{{ __('accounts.sort_name_desc') }}</option>
+                        <option value="region_asc" @selected($sortInstitusi === 'region_asc')>{{ __('accounts.sort_region_asc') }}</option>
+                        <option value="region_desc" @selected($sortInstitusi === 'region_desc')>{{ __('accounts.sort_region_desc') }}</option>
+                        <option value="status_active" @selected($sortInstitusi === 'status_active')>{{ __('accounts.sort_status_active') }}</option>
+                        <option value="status_inactive" @selected($sortInstitusi === 'status_inactive')>{{ __('accounts.sort_status_inactive') }}</option>
+                    </select>
+                    <x-icon name="chevron-down" class="pointer-events-none absolute top-1/2 right-3.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                </label>
+            </form>
+        </x-filter-card>
+
+        <div class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
         <p class="mb-1 font-bold text-slate-900 dark:text-white">{{ __('accounts.institusi_list_title') }}</p>
         <p class="mb-4 border-b border-black/5 pb-4 text-sm text-slate-500 dark:border-white/5 dark:text-slate-400">{{ __('accounts.institusi_list_subtitle') }}</p>
-
-        <form method="GET" class="mb-4 flex flex-wrap items-center gap-2">
-            <input type="hidden" name="tab" data-tab-hidden-field value="{{ $activeTab }}">
-            <label class="relative block w-full max-w-sm">
-                <x-icon name="magnifying-glass" class="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input
-                    type="search"
-                    name="search_institusi"
-                    value="{{ $searchInstitusi }}"
-                    placeholder="{{ __('accounts.search_institusi_placeholder') }}"
-                    class="w-full rounded-full border border-black/10 bg-slate-50 py-2.5 pr-4 pl-9 text-sm font-medium text-slate-700 shadow-sm transition placeholder:font-normal placeholder:text-slate-400 hover:bg-slate-100 focus:bg-white focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500 dark:hover:bg-slate-700 dark:focus:bg-slate-800"
-                >
-            </label>
-            <label class="relative">
-                <select
-                    name="sort_institusi"
-                    onchange="this.form.submit()"
-                    class="appearance-none rounded-full border border-black/10 bg-white py-2.5 pr-10 pl-4 text-sm font-medium text-slate-700 shadow-sm focus:border-blue-500 focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:text-slate-200"
-                >
-                    <option value="name_asc" @selected($sortInstitusi === 'name_asc')>{{ __('accounts.sort_name_asc') }}</option>
-                    <option value="name_desc" @selected($sortInstitusi === 'name_desc')>{{ __('accounts.sort_name_desc') }}</option>
-                    <option value="region_asc" @selected($sortInstitusi === 'region_asc')>{{ __('accounts.sort_region_asc') }}</option>
-                    <option value="region_desc" @selected($sortInstitusi === 'region_desc')>{{ __('accounts.sort_region_desc') }}</option>
-                    <option value="status_active" @selected($sortInstitusi === 'status_active')>{{ __('accounts.sort_status_active') }}</option>
-                    <option value="status_inactive" @selected($sortInstitusi === 'status_inactive')>{{ __('accounts.sort_status_inactive') }}</option>
-                </select>
-                <x-icon name="chevron-down" class="pointer-events-none absolute top-1/2 right-3.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-            </label>
-        </form>
 
         @if ($institutions->isEmpty())
             <p class="py-6 text-center text-sm text-slate-400 dark:text-slate-500">{{ $searchInstitusi ? __('accounts.no_match', ['entity' => __('common.institution')]) : __('accounts.no_yet', ['entity' => __('common.institution')]) }}</p>
@@ -473,44 +546,62 @@
 
             <x-pagination :paginator="$institutions" />
         @endif
+        </div>
     </div>
     @endif
 
     @if ($visibleTabs['personal'])
-    <div data-tab-panel="personal" class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
+    <div data-tab-panel="personal">
+        <x-filter-card :clear-url="$hasPersonalFilters ? route('admin.accounts.index', ['tab' => 'personal']) : null">
+            <form method="GET" id="personal-filter-form" class="flex flex-wrap items-stretch gap-3">
+                <input type="hidden" name="tab" data-tab-hidden-field value="{{ $activeTab }}">
+                <label class="relative flex-1 min-w-[200px]">
+                    <x-icon name="magnifying-glass" class="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                        type="search"
+                        name="search_personal"
+                        value="{{ $searchPersonal }}"
+                        placeholder="{{ __('accounts.search_personal_placeholder') }}"
+                        class="w-full rounded-full border py-2.5 pr-4 pl-9 text-sm font-medium shadow-sm transition placeholder:font-normal placeholder:text-slate-400 focus:bg-white focus:outline-none dark:placeholder:text-slate-500 dark:focus:bg-slate-800 {{ $searchPersonal !== '' ? $filterActiveClass : $filterInactiveClass }}"
+                    >
+                </label>
+                @include('partials.analytics-region-filter', [
+                    'prefix' => 'accounts-personal',
+                    'formId' => 'personal-filter-form',
+                    'isNasionalView' => $isNasionalView,
+                    'isUniView' => $isUniView,
+                    'unionOptions' => $unionOptionsPersonal,
+                    'conferenceOptions' => $conferenceOptionsPersonal,
+                    'selectedUnionId' => $selectedUnionIdPersonal,
+                    'selectedConferenceId' => $selectedConferenceIdPersonal,
+                    'unionFieldName' => 'union_id_personal',
+                    'conferenceFieldName' => 'conference_id_personal',
+                    'wrapperClass' => 'flex-1 min-w-[180px]',
+                    'inputWidthClass' => 'w-full',
+                ])
+                <label class="relative flex-1 min-w-[180px]">
+                    <select
+                        name="sort_personal"
+                        onchange="this.form.submit()"
+                        class="w-full appearance-none rounded-full border py-2.5 pr-10 pl-4 text-sm font-medium shadow-sm focus:border-blue-500 focus:outline-none {{ $sortPersonal !== 'name_asc' ? $filterActiveClass : $filterInactiveClass }}"
+                    >
+                        <option value="name_asc" @selected($sortPersonal === 'name_asc')>{{ __('accounts.sort_name_asc') }}</option>
+                        <option value="name_desc" @selected($sortPersonal === 'name_desc')>{{ __('accounts.sort_name_desc') }}</option>
+                        <option value="city_asc" @selected($sortPersonal === 'city_asc')>{{ __('accounts.sort_city_asc') }}</option>
+                        <option value="city_desc" @selected($sortPersonal === 'city_desc')>{{ __('accounts.sort_city_desc') }}</option>
+                        <option value="scope_asc" @selected($sortPersonal === 'scope_asc')>{{ __('accounts.sort_scope_asc') }}</option>
+                        <option value="scope_desc" @selected($sortPersonal === 'scope_desc')>{{ __('accounts.sort_scope_desc') }}</option>
+                        <option value="status_active" @selected($sortPersonal === 'status_active')>{{ __('accounts.sort_status_active') }}</option>
+                        <option value="status_inactive" @selected($sortPersonal === 'status_inactive')>{{ __('accounts.sort_status_inactive') }}</option>
+                    </select>
+                    <x-icon name="chevron-down" class="pointer-events-none absolute top-1/2 right-3.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                </label>
+            </form>
+        </x-filter-card>
+
+        <div class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
         <p class="mb-1 font-bold text-slate-900 dark:text-white">{{ __('accounts.personal_list_title') }}</p>
         <p class="mb-4 border-b border-black/5 pb-4 text-sm text-slate-500 dark:border-white/5 dark:text-slate-400">{{ __('accounts.personal_list_subtitle') }}</p>
-
-        <form method="GET" class="mb-4 flex flex-wrap items-center gap-2">
-            <input type="hidden" name="tab" data-tab-hidden-field value="{{ $activeTab }}">
-            <label class="relative block w-full max-w-sm">
-                <x-icon name="magnifying-glass" class="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input
-                    type="search"
-                    name="search_personal"
-                    value="{{ $searchPersonal }}"
-                    placeholder="{{ __('accounts.search_personal_placeholder') }}"
-                    class="w-full rounded-full border border-black/10 bg-slate-50 py-2.5 pr-4 pl-9 text-sm font-medium text-slate-700 shadow-sm transition placeholder:font-normal placeholder:text-slate-400 hover:bg-slate-100 focus:bg-white focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500 dark:hover:bg-slate-700 dark:focus:bg-slate-800"
-                >
-            </label>
-            <label class="relative">
-                <select
-                    name="sort_personal"
-                    onchange="this.form.submit()"
-                    class="appearance-none rounded-full border border-black/10 bg-white py-2.5 pr-10 pl-4 text-sm font-medium text-slate-700 shadow-sm focus:border-blue-500 focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:text-slate-200"
-                >
-                    <option value="name_asc" @selected($sortPersonal === 'name_asc')>{{ __('accounts.sort_name_asc') }}</option>
-                    <option value="name_desc" @selected($sortPersonal === 'name_desc')>{{ __('accounts.sort_name_desc') }}</option>
-                    <option value="city_asc" @selected($sortPersonal === 'city_asc')>{{ __('accounts.sort_city_asc') }}</option>
-                    <option value="city_desc" @selected($sortPersonal === 'city_desc')>{{ __('accounts.sort_city_desc') }}</option>
-                    <option value="scope_asc" @selected($sortPersonal === 'scope_asc')>{{ __('accounts.sort_scope_asc') }}</option>
-                    <option value="scope_desc" @selected($sortPersonal === 'scope_desc')>{{ __('accounts.sort_scope_desc') }}</option>
-                    <option value="status_active" @selected($sortPersonal === 'status_active')>{{ __('accounts.sort_status_active') }}</option>
-                    <option value="status_inactive" @selected($sortPersonal === 'status_inactive')>{{ __('accounts.sort_status_inactive') }}</option>
-                </select>
-                <x-icon name="chevron-down" class="pointer-events-none absolute top-1/2 right-3.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-            </label>
-        </form>
 
         @if ($people->isEmpty())
             <p class="py-6 text-center text-sm text-slate-400 dark:text-slate-500">{{ $searchPersonal ? __('accounts.no_match', ['entity' => __('common.personal')]) : __('accounts.no_yet', ['entity' => __('common.personal')]) }}</p>
@@ -581,6 +672,7 @@
 
             <x-pagination :paginator="$people" />
         @endif
+        </div>
     </div>
     @endif
 

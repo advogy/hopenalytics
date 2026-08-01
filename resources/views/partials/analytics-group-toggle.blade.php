@@ -4,7 +4,11 @@
     ancestor group ids being expanded — not just its immediate parent — since a deeply nested
     entity row and a mid-tier Daerah header are both plain sibling <tr>s in the same <tbody>, with
     no real DOM nesting for hidden-ness to cascade through on its own. Everything starts collapsed
-    (the `expanded` map starts empty, so any row with ancestors starts hidden).
+    (the `expanded` map starts empty, so any row with ancestors starts hidden) — UNLESS
+    $expandGroupsByDefault (optional, default false) is on, which expands every group right away.
+    Pass that whenever the page just reloaded with a server-side filter/sort/search actually
+    applied (a plain GET, not the client-side live-filter below) — otherwise the visible effect of
+    that filter is invisible behind still-collapsed groups, indistinguishable from "did nothing".
 
     Each table's search box (data-group-search-scope="church"/"person"/"institution", next to its
     title) filters that table's entity rows by name and auto-expands every ancestor group of a
@@ -14,9 +18,16 @@
     `hidden` attribute above or the "hide empty" checkbox's .hidden class, so all three can each
     hide a row independently without one undoing another.
 --}}
+@php $expandGroupsByDefault ??= false; @endphp
 <script>
     (function () {
         var expanded = {};
+
+        if (@json($expandGroupsByDefault)) {
+            document.querySelectorAll('[data-group-toggle]').forEach(function (header) {
+                expanded[header.dataset.groupToggle] = true;
+            });
+        }
 
         function isVisible(row) {
             var ancestors = (row.dataset.groupAncestors || '').split(' ').filter(Boolean);

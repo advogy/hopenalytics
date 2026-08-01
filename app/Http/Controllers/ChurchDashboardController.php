@@ -14,6 +14,7 @@ use App\Models\Union;
 use App\Support\ComparisonScope;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class ChurchDashboardController extends Controller
 {
@@ -1055,6 +1056,15 @@ class ChurchDashboardController extends Controller
         $hideEmptyOrganizations = $request->boolean('hide_empty_organizations');
         $activeTab = in_array($request->query('tab'), ['institusi', 'personal', 'gereja'], true) ? $request->query('tab') : 'organisasi';
 
+        // Sort — per tab, same options as Kelola Akun's equivalent tabs minus "status" (the
+        // directory only ever shows active entities to begin with, so there's nothing to sort
+        // by there). Changes the within-group order (see groupByRegion() below) since the
+        // Uni/Daerah grouping itself always stays alphabetical.
+        $sortGereja = $request->query('sort_gereja', 'name_asc');
+        $sortInstitusi = $request->query('sort_institusi', 'name_asc');
+        $sortPersonal = $request->query('sort_personal', 'name_asc');
+        $sortOrganisasi = $request->query('sort_organisasi', 'name_asc');
+
         // The directory is public and unscoped (see below), so — unlike every other
         // region-filterable page — the Uni/Daerah picker isn't narrowed to the viewer's own
         // admin region: everyone gets the full nasional picker, regardless of role.
@@ -1125,7 +1135,14 @@ class ChurchDashboardController extends Controller
             ->tap($applyChurchRegionFilter)
             ->when($hideEmptyChurches, fn ($q) => $q->whereHas('socials', $socialsFilter))
             ->with(['socials' => $socialsFilter, 'conference.union'])
-            ->orderBy('name')
+            ->tap(fn ($q) => match ($sortGereja) {
+                'name_desc' => $q->orderByDesc('name'),
+                'city_asc' => $q->orderBy('city')->orderBy('name'),
+                'city_desc' => $q->orderByDesc('city')->orderBy('name'),
+                'daerah_asc' => $q->orderBy(Conference::select('name')->whereColumn('conferences.id', 'churches.conference_id'))->orderBy('name'),
+                'daerah_desc' => $q->orderByDesc(Conference::select('name')->whereColumn('conferences.id', 'churches.conference_id'))->orderBy('name'),
+                default => $q->orderBy('name'),
+            })
             ->get();
         $groupedChurches = $this->groupByRegion($churches, fn ($church) => $church);
 
@@ -1138,7 +1155,14 @@ class ChurchDashboardController extends Controller
             ->tap($applyPersonOrInstitutionRegionFilter)
             ->when($hideEmptyPeople, fn ($q) => $q->whereHas('socials', $socialsFilter))
             ->with(['socials' => $socialsFilter, 'conference.union', 'union'])
-            ->orderBy('name')
+            ->tap(fn ($q) => match ($sortPersonal) {
+                'name_desc' => $q->orderByDesc('name'),
+                'city_asc' => $q->orderBy('city')->orderBy('name'),
+                'city_desc' => $q->orderByDesc('city')->orderBy('name'),
+                'scope_asc' => $q->orderBy($this->directoryScopeOrderExpression('people'))->orderBy('name'),
+                'scope_desc' => $q->orderByDesc($this->directoryScopeOrderExpression('people'))->orderBy('name'),
+                default => $q->orderBy('name'),
+            })
             ->get();
         $groupedPeople = $this->groupByRegion($people, fn ($person) => $person);
 
@@ -1148,7 +1172,12 @@ class ChurchDashboardController extends Controller
             ->tap($applyPersonOrInstitutionRegionFilter)
             ->when($hideEmptyInstitutions, fn ($q) => $q->whereHas('socials', $socialsFilter))
             ->with(['socials' => $socialsFilter, 'conference.union', 'union'])
-            ->orderBy('name')
+            ->tap(fn ($q) => match ($sortInstitusi) {
+                'name_desc' => $q->orderByDesc('name'),
+                'region_asc' => $q->orderBy($this->directoryScopeOrderExpression('institutions'))->orderBy('name'),
+                'region_desc' => $q->orderByDesc($this->directoryScopeOrderExpression('institutions'))->orderBy('name'),
+                default => $q->orderBy('name'),
+            })
             ->get();
         $groupedInstitutions = $this->groupByRegion($institutions, fn ($institution) => $institution);
 
@@ -1158,7 +1187,7 @@ class ChurchDashboardController extends Controller
             ->tap($applyUnionRegionFilter)
             ->when($hideEmptyOrganizations, fn ($q) => $q->whereHas('socials', $socialsFilter))
             ->with(['socials' => $socialsFilter])
-            ->orderBy('name')
+            ->orderBy('name', $sortOrganisasi === 'name_desc' ? 'desc' : 'asc')
             ->get();
 
         $conferences = Conference::query()
@@ -1167,7 +1196,7 @@ class ChurchDashboardController extends Controller
             ->tap($applyConferenceRegionFilter)
             ->when($hideEmptyOrganizations, fn ($q) => $q->whereHas('socials', $socialsFilter))
             ->with(['socials' => $socialsFilter, 'union'])
-            ->orderBy('name')
+            ->orderBy('name', $sortOrganisasi === 'name_desc' ? 'desc' : 'asc')
             ->get();
 
         $organizations = $unions->concat($conferences)->values();
@@ -1194,7 +1223,28 @@ class ChurchDashboardController extends Controller
             'conferenceOptions' => $conferenceOptions,
             'selectedUnionId' => $selectedUnionId,
             'selectedConferenceId' => $selectedConferenceId,
+            'sortGereja' => $sortGereja,
+            'sortInstitusi' => $sortInstitusi,
+            'sortPersonal' => $sortPersonal,
+            'sortOrganisasi' => $sortOrganisasi,
         ]);
+    }
+
+    /**
+     * An institution/person's "region"/"scope" column (see churches.directory) shows its
+     * Conference name if it has one, else its Union name, else "Nasional"/"Independent" — this
+     * mirrors that same fallback chain as a single orderable expression, since Eloquent's
+     * orderBy() can't sort by "whichever of these two relations happens to be set" any other
+     * way. Same pattern as AccountController's institutionRegionOrderExpression()/
+     * personScopeOrderExpression(), just parameterized over the table name since both entity
+     * types share this exact shape here.
+     */
+    private function directoryScopeOrderExpression(string $table)
+    {
+        return DB::raw("COALESCE(
+            (SELECT name FROM conferences WHERE conferences.id = {$table}.conference_id),
+            (SELECT name FROM unions WHERE unions.id = {$table}.union_id)
+        )");
     }
 
     public function metricComparison(Request $request)

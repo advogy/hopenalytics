@@ -51,6 +51,8 @@ return [
     'sort_status_active' => 'Status (Active first)',
     'sort_status_inactive' => 'Status (Inactive first)',
 
+    'filter_all_uni' => 'All Unions',
+
     'count_daerah' => 'Conference Count',
     'count_person' => 'Person Count',
     'count_gereja' => 'Church Count',

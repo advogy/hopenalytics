@@ -51,6 +51,8 @@ return [
     'sort_status_active' => 'Status (Aktif dulu)',
     'sort_status_inactive' => 'Status (Nonaktif dulu)',
 
+    'filter_all_uni' => 'Semua Uni',
+
     'count_daerah' => 'Jumlah Daerah',
     'count_person' => 'Jumlah Person',
     'count_gereja' => 'Jumlah Gereja',
