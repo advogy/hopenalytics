@@ -103,23 +103,20 @@
                 @endif
 
                 {{--
-                    Shown whenever manual entry is actually reachable (see SocialStatController's
-                    matching abort_unless()) — always true for a manual-only account (is_auto_fetch
-                    off, e.g. Facebook typically is), and now also true for an auto-fetch account
-                    whose last attempt failed, so a stuck scraper doesn't block recording that
-                    day's numbers by hand while it's sorted out.
+                    Always available alongside the refresh button above (not just once auto-fetch
+                    is off or has failed) — an admin can choose manual or automatic at any time,
+                    whichever suits, rather than being forced to wait for auto-fetch or a failure
+                    before a data point can be entered by hand.
                 --}}
-                @if (! $social->is_auto_fetch || $social->last_fetch_status === 'failed')
-                    @can('update', $social)
-                        <a
-                            href="{{ route('socials.stats.create', $social) }}"
-                            title="{{ __('entity.manual_stat_link') }}"
-                            class="inline-flex h-6 w-6 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-blue-600 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-blue-400"
-                        >
-                            <x-icon name="plus" class="h-3.5 w-3.5" />
-                        </a>
-                    @endcan
-                @endif
+                @can('update', $social)
+                    <a
+                        href="{{ route('socials.stats.create', $social) }}"
+                        title="{{ __('entity.manual_stat_link') }}"
+                        class="inline-flex h-6 w-6 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-blue-600 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-blue-400"
+                    >
+                        <x-icon name="plus" class="h-3.5 w-3.5" />
+                    </a>
+                @endcan
             </div>
         </div>
     </div>

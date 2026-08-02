@@ -6,8 +6,7 @@
     as an ungrouped list numbering 1..N), $showMetrics, $metricLabels, $ancestors (optional),
     $scope (optional — omitted by the Dashboard's Top5/Bottom5 widgets, which are always
     church-scoped; passed by metric-comparison.blade.php, which can be any of the four scopes —
-    see ComparisonScope::showUrl(), null for organisasi since Union/Conference have no public
-    "show" page of their own).
+    see ComparisonScope::showUrl()).
 --}}
 @php
     $entity = $row['entity'];

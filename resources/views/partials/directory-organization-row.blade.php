@@ -5,6 +5,9 @@
     Expected: $organization, $ancestors (optional, space-separated group ids this row is nested under).
 --}}
 @php
+    $organizationUrl = $organization instanceof \App\Models\Union
+        ? route('unions.show', $organization)
+        : route('conferences.show', $organization);
     $namePaddingClass = match ($depth ?? 0) {
         1 => 'pl-8',
         2 => 'pl-12',
@@ -18,7 +21,7 @@
                 {{ mb_substr($organization->name, 0, 1) }}
             </span>
             <div class="min-w-0">
-                <p class="font-medium">{{ $organization->name }}</p>
+                <a href="{{ $organizationUrl }}" class="font-medium hover:text-blue-600 dark:hover:text-blue-400">{{ $organization->name }}</a>
                 <p class="text-xs text-slate-400 dark:text-slate-500">
                     {{ $organization instanceof \App\Models\Union ? __('analytics.organization_level_union') : __('analytics.organization_level_conference') }}
                 </p>

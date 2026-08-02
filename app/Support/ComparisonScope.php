@@ -200,21 +200,18 @@ class ComparisonScope
         };
     }
 
-    /**
-     * Union/Conference have no public read-only "show" page of their own (unlike Church/Person/
-     * Institution) — only the admin-gated socials-management page, which not every viewer who
-     * can see a leaderboard/comparison row is guaranteed to have access to. Callers on the
-     * organisasi scope should check can('update', $entity) before linking anywhere with this,
-     * or just not link the name at all (see partials/leaderboard-row.blade.php /
-     * growth-score-row.blade.php, which do exactly that).
-     */
+    /** Union/Conference's own read-only "show" page — see ChurchDashboardController::showUnion()/showConference(). */
     public function showUrl($entity): ?string
     {
         return match ($this->type) {
             'gereja' => route('churches.show', $entity),
             'personal' => route('people.show', $entity),
             'institusi' => route('institutions.show', $entity),
-            'organisasi' => null,
+            'organisasi' => match (true) {
+                $entity instanceof \App\Models\Union => route('unions.show', $entity),
+                $entity instanceof \App\Models\Conference => route('conferences.show', $entity),
+                default => null,
+            },
         };
     }
 

@@ -5,14 +5,14 @@
     Expected: $row, $index (0-based position — restarts per Uni/Daerah group when grouped), $ancestors (optional).
 --}}
 @php
-    // A Union/Conference-owned social (organisasi scope) has no dedicated public "show" page —
-    // see ComparisonScope::showUrl() — so its name renders as plain text instead of a link.
     $entity = $row['social']->church ?? $row['social']->person ?? $row['social']->institution
         ?? $row['social']->union ?? $row['social']->conference;
     $entityUrl = match (true) {
         (bool) $row['social']->church => route('churches.show', $entity),
         (bool) $row['social']->person => route('people.show', $entity),
         (bool) $row['social']->institution => route('institutions.show', $entity),
+        (bool) $row['social']->union => route('unions.show', $entity),
+        (bool) $row['social']->conference => route('conferences.show', $entity),
         default => null,
     };
     $namePaddingClass = match ($depth ?? 0) {

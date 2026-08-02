@@ -11,15 +11,13 @@ use Illuminate\Http\Request;
 class SocialStatController extends Controller
 {
     /**
-     * Manual accounts (is_auto_fetch off) never get touched by FetchSingleChurchData, so this is
-     * the only way their numbers ever get recorded — also opened up for an auto-fetch account
-     * whose last attempt failed, so a stuck/broken scraper doesn't leave an admin with no way to
-     * record that day's numbers while waiting for it to start working again.
+     * Always reachable for whoever can manage the account (see the route's own can:update,social
+     * middleware) — an admin can fill in or override a data point by hand whenever they want,
+     * whether that's a manual-only account (is_auto_fetch off — the only way its numbers ever
+     * get recorded at all) or an auto-fetch one they'd rather not wait on right now.
      */
     public function create(ChurchSocial $social)
     {
-        abort_unless(! $social->is_auto_fetch || $social->last_fetch_status === 'failed', 404);
-
         $latest = $social->stats()->first();
 
         return view('socials.stat-form', [
@@ -30,8 +28,6 @@ class SocialStatController extends Controller
 
     public function store(Request $request, ChurchSocial $social): RedirectResponse
     {
-        abort_unless(! $social->is_auto_fetch || $social->last_fetch_status === 'failed', 404);
-
         $rules = [
             'recorded_at' => ['required', 'date', 'before_or_equal:today'],
             'followers_count' => ['nullable', 'integer', 'min:0'],

@@ -1,11 +1,13 @@
 {{--
     One row of the Organisasi tab's "Data Per Organisasi" table — same shape as
     analytics-institution-row.blade.php, except $row['organization'] is a Union OR a Conference
-    model (never a fourth "show" page of its own — see ComparisonScope::showUrl() — so the name
-    is plain text here, not a link).
+    model, each with its own "show" page (see ComparisonScope::showUrl()).
 --}}
 @php
     $organization = $row['organization'];
+    $organizationUrl = $organization instanceof \App\Models\Union
+        ? route('unions.show', $organization)
+        : route('conferences.show', $organization);
     $percent = $maxReach > 0 ? round($row['reach'] / $maxReach * 100, 1) : 0;
     $isEmpty = $row['reach'] == 0 && $row['views'] == 0 && $row['likes'] == 0 && $row['posts'] == 0;
     $namePaddingClass = match ($depth ?? 0) {
@@ -26,7 +28,7 @@
                 {{ mb_substr($organization->name, 0, 1) }}
             </span>
             <div class="min-w-0">
-                <p class="font-medium">{{ $organization->name }}</p>
+                <a href="{{ $organizationUrl }}" class="font-medium hover:text-blue-600 dark:hover:text-blue-400">{{ $organization->name }}</a>
                 <p class="text-xs text-slate-400 dark:text-slate-500">
                     {{ $organization instanceof \App\Models\Union ? __('analytics.organization_level_union') : __('analytics.organization_level_conference') }}
                 </p>

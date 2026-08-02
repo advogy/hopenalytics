@@ -144,6 +144,8 @@ Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group
     Route::get('/organisasi/metrik', [ChurchDashboardController::class, 'organizationMetricComparison'])->name('organizations.metric-comparison')->middleware('can:view-analytics');
     Route::get('/organisasi/metrik/{metric}', [ChurchDashboardController::class, 'organizationLeaderboard'])->name('organizations.leaderboard')->middleware('can:view-analytics');
     Route::get('/organisasi/platform/{platform?}', [ChurchDashboardController::class, 'organizationPlatformComparison'])->name('organizations.platform-comparison')->middleware('can:view-analytics');
+    Route::get('/organisasi/uni/{union:slug}', [ChurchDashboardController::class, 'showUnion'])->name('unions.show')->middleware('can:view,union');
+    Route::get('/organisasi/daerah/{conference:slug}', [ChurchDashboardController::class, 'showConference'])->name('conferences.show')->middleware('can:view,conference');
     Route::get('/institusi/{institution:slug}', [ChurchDashboardController::class, 'showInstitution'])->name('institutions.show')->middleware('can:view,institution');
     Route::middleware('can:create,App\Models\Person')->group(function () {
         Route::get('/personal/create', [PersonController::class, 'create'])->name('people.create');

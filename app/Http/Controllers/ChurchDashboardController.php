@@ -1633,4 +1633,44 @@ class ChurchDashboardController extends Controller
             'ownStats' => $ownStats,
         ]);
     }
+
+    /**
+     * Same shape as show()/showInstitution() — no $ownStats special case, since Union/Conference
+     * have no "this is my own single entity" viewer concept the way a gereja-level or
+     * admin_institusi viewer does (they manage their whole region via Kelola Akun instead).
+     */
+    public function showUnion(Union $union)
+    {
+        $union->load(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat')]);
+
+        $history = $union->socials->mapWithKeys(
+            fn ($social) => [$social->id => $social->stats()->limit(30)->get()]
+        );
+
+        $scoreHistory = $this->growthScoreHistory($union->socials);
+
+        return view('organizations.show', [
+            'organization' => $union,
+            'history' => $history,
+            'scoreHistory' => $scoreHistory,
+        ]);
+    }
+
+    /** Same as showUnion(), for Conference instead of Union. */
+    public function showConference(Conference $conference)
+    {
+        $conference->load(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat')]);
+
+        $history = $conference->socials->mapWithKeys(
+            fn ($social) => [$social->id => $social->stats()->limit(30)->get()]
+        );
+
+        $scoreHistory = $this->growthScoreHistory($conference->socials);
+
+        return view('organizations.show', [
+            'organization' => $conference,
+            'history' => $history,
+            'scoreHistory' => $scoreHistory,
+        ]);
+    }
 }
