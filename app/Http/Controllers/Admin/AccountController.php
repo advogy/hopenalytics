@@ -100,6 +100,7 @@ class AccountController extends Controller
         // links to always point back to its own tab, regardless of what was in the URL when
         // the page was first rendered.
         $unions = Union::withCount(['conferences', 'people', 'users'])
+            ->with('users:id,name,union_id')
             ->visibleTo($request->user())
             ->when($searchUni, fn ($q) => $q->where('name', 'like', "%{$searchUni}%"))
             ->tap(fn ($q) => $this->applyNameOrStatusSort($q, $sortUni))
@@ -107,7 +108,7 @@ class AccountController extends Controller
             ->withQueryString()
             ->appends(['tab' => 'uni']);
 
-        $conferences = Conference::with('union')->withCount(['churches', 'people', 'users'])
+        $conferences = Conference::with('union', 'users:id,name,conference_id')->withCount(['churches', 'people', 'users'])
             ->visibleTo($request->user())
             ->when($searchDaerah, fn ($q) => $q->where('name', 'like', "%{$searchDaerah}%"))
             ->when($selectedUnionIdDaerah, fn ($q) => $q->where('union_id', $selectedUnionIdDaerah))
@@ -126,7 +127,7 @@ class AccountController extends Controller
         // No is_active filter here (unlike the rest of the app's church queries): this is the
         // management view, so a deactivated church still needs to show up — otherwise there'd
         // be no way to find it again and toggle it back on.
-        $churches = Church::with('conference.union')->withCount('users')
+        $churches = Church::with('conference.union', 'users:id,name,church_id')->withCount('users')
             ->visibleTo($request->user())
             ->when($searchGereja, fn ($q) => $q->where('name', 'like', "%{$searchGereja}%"))
             ->tap($applyChurchRegionFilter)
@@ -144,7 +145,7 @@ class AccountController extends Controller
             ->withQueryString()
             ->appends(['tab' => 'gereja']);
 
-        $institutions = Institution::with('conference.union', 'union')->withCount('users')
+        $institutions = Institution::with('conference.union', 'union', 'users:id,name,institution_id')->withCount('users')
             ->manageableBy($request->user())
             ->when($searchInstitusi, fn ($q) => $q->where('name', 'like', "%{$searchInstitusi}%"))
             ->tap($applyInstitutionRegionFilter)

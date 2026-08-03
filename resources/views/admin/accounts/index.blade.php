@@ -209,7 +209,9 @@
                                         'deleteRoute' => 'admin.unions.destroy',
                                         'name' => $union->name,
                                         'canDelete' => $union->conferences_count === 0 && $union->users_count === 0,
-                                        'blockedReason' => __('accounts.blocked_uni'),
+                                        'blockedReason' => $union->users->isEmpty()
+                                            ? __('accounts.blocked_uni')
+                                            : __('accounts.blocked_uni') . ' (' . $union->users->pluck('name')->implode(', ') . ')',
                                     ])
                                 </td>
                             </tr>
@@ -315,7 +317,9 @@
                                         'deleteRoute' => 'admin.conferences.destroy',
                                         'name' => $conference->name,
                                         'canDelete' => $conference->churches_count === 0 && $conference->users_count === 0,
-                                        'blockedReason' => __('accounts.blocked_daerah'),
+                                        'blockedReason' => $conference->users->isEmpty()
+                                            ? __('accounts.blocked_daerah')
+                                            : __('accounts.blocked_daerah') . ' (' . $conference->users->pluck('name')->implode(', ') . ')',
                                     ])
                                 </td>
                             </tr>
@@ -428,7 +432,9 @@
                                         'deleteRoute' => 'churches.destroy',
                                         'name' => $church->name,
                                         'canDelete' => $church->users_count === 0,
-                                        'blockedReason' => __('accounts.blocked_gereja'),
+                                        'blockedReason' => $church->users->isEmpty()
+                                            ? __('accounts.blocked_gereja')
+                                            : __('accounts.blocked_gereja') . ' (' . $church->users->pluck('name')->implode(', ') . ')',
                                     ])
                                 </td>
                             </tr>
@@ -541,7 +547,9 @@
                                         'deleteRoute' => 'admin.institutions.destroy',
                                         'name' => $institution->name,
                                         'canDelete' => $institution->users_count === 0,
-                                        'blockedReason' => __('accounts.blocked_institusi'),
+                                        'blockedReason' => $institution->users->isEmpty()
+                                            ? __('accounts.blocked_institusi')
+                                            : __('accounts.blocked_institusi') . ' (' . $institution->users->pluck('name')->implode(', ') . ')',
                                     ])
                                 </td>
                             </tr>
