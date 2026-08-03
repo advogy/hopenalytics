@@ -181,8 +181,12 @@ trait BuildsLeaderboards
 
     /**
      * Which platforms each growth metric applies to — views only exist for YouTube,
-     * likes only for TikTok, posts don't apply to Facebook, reach applies everywhere.
-     * "semua" (every applicable platform combined) is always offered first.
+     * likes only for TikTok, reach applies everywhere. Posts now includes Facebook too, via
+     * recent_posts_count (see FacebookStatsFetcher) — a recent-~10-post sample rather than a
+     * lifetime total the way YouTube's videos_count/Instagram-TikTok's posts_count are, since
+     * Facebook exposes no lifetime post count via scraping; per the user's explicit call to
+     * fold it into this metric anyway rather than leave Facebook without a posts comparison at
+     * all. "semua" (every applicable platform combined) is always offered first.
      */
     protected function metricPlatforms(): array
     {
@@ -190,7 +194,7 @@ trait BuildsLeaderboards
             'reach' => ['semua', 'youtube', 'instagram', 'tiktok', 'facebook'],
             'views' => ['semua', 'youtube'],
             'likes' => ['semua', 'tiktok'],
-            'posts' => ['semua', 'youtube', 'instagram', 'tiktok'],
+            'posts' => ['semua', 'youtube', 'instagram', 'tiktok', 'facebook'],
         ];
     }
 
@@ -421,8 +425,12 @@ trait BuildsLeaderboards
                 fn () => 'likes_count',
             ],
             'posts' => [
-                $activeSocials->reject(fn ($social) => $social->platform === SocialPlatform::Facebook),
-                fn ($social) => $social->platform === SocialPlatform::YouTube ? 'videos_count' : 'posts_count',
+                $activeSocials,
+                fn ($social) => match ($social->platform) {
+                    SocialPlatform::YouTube => 'videos_count',
+                    SocialPlatform::Facebook => 'recent_posts_count',
+                    default => 'posts_count',
+                },
             ],
         };
     }

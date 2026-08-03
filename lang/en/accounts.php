@@ -69,6 +69,8 @@ return [
     'blocked_gereja' => 'Still has a user assigned to this church.',
     'blocked_institusi' => 'Still has a user assigned to this institution.',
     'delete_warning_personal' => 'All of their social media accounts and history will also be deleted.',
+    'release_blocking_users' => 'Release unassigned users (:names) so this can be deleted',
+    'release_blocking_users_confirm' => 'Release region data from :names? They stay regular members — only their Union/Conference/Church data is cleared.',
 
     'deactivate' => 'Deactivate',
     'activate' => 'Activate',

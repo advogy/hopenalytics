@@ -27,6 +27,9 @@ return [
     'col_scope' => 'Scope',
     'revoke_confirm' => 'Revoke ":name"\'s role? They will go back to being a regular member.',
     'revoke' => 'Revoke',
+    'release_region' => 'Release Region',
+    'release_region_confirm' => 'Release ":name"\'s region data (Union/Conference/Church)?',
+    'release_region_confirm_active_role' => 'Release ":name"\'s region data? Their :role role will lose its working scope until reassigned.',
 
     'pemimpin_all_title' => 'All Leaders',
     'pemimpin_level_title' => ':level Leaders',

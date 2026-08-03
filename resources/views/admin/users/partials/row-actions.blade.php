@@ -22,6 +22,29 @@
             <x-icon name="pencil-square" class="h-5 w-5" />
         </a>
 
+        @can('releaseRegion', $user)
+            @if ($user->union_id || $user->conference_id || $user->church_id)
+                @php
+                    $hasScopedActiveRole = $user->role !== null && in_array($user->role->level(), ['uni', 'daerah', 'gereja'], true);
+                    $releaseRegionConfirm = $hasScopedActiveRole
+                        ? __('users.release_region_confirm_active_role', ['name' => $user->name, 'role' => $user->role->label()])
+                        : __('users.release_region_confirm', ['name' => $user->name]);
+                @endphp
+                <form method="POST" action="{{ route('admin.users.release-region', $user) }}" data-confirm="{{ $releaseRegionConfirm }}">
+                    @csrf
+                    <input type="hidden" name="tab" value="{{ $tab }}">
+                    <button
+                        type="submit"
+                        title="{{ __('users.release_region') }}"
+                        aria-label="{{ __('users.release_region') }}"
+                        class="shrink-0 text-slate-500 hover:text-amber-600 dark:text-slate-400 dark:hover:text-amber-400"
+                    >
+                        <x-icon name="x-mark" class="h-5 w-5" />
+                    </button>
+                </form>
+            @endif
+        @endcan
+
         @unless ($user->hasVerifiedEmail())
             <form method="POST" action="{{ route('admin.users.resend-otp', $user) }}" data-disable-on-submit>
                 @csrf

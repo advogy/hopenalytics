@@ -21,6 +21,7 @@ return [
     'as_of' => 'as of :date',
     'recent_reels' => 'Recent reels (:count posts)',
     'recent_videos' => 'Recent videos (:count videos)',
+    'recent_posts' => 'Recent posts (:count posts)',
     'no_stats_yet' => 'No statistics yet.',
     'history_heading' => ':platform History',
 

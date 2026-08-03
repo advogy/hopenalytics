@@ -212,6 +212,7 @@
                                         'blockedReason' => $union->users->isEmpty()
                                             ? __('accounts.blocked_uni')
                                             : __('accounts.blocked_uni') . ' (' . $union->users->pluck('name')->implode(', ') . ')',
+                                        'blockingUsers' => $union->users,
                                     ])
                                 </td>
                             </tr>
@@ -320,6 +321,7 @@
                                         'blockedReason' => $conference->users->isEmpty()
                                             ? __('accounts.blocked_daerah')
                                             : __('accounts.blocked_daerah') . ' (' . $conference->users->pluck('name')->implode(', ') . ')',
+                                        'blockingUsers' => $conference->users,
                                     ])
                                 </td>
                             </tr>
@@ -435,6 +437,7 @@
                                         'blockedReason' => $church->users->isEmpty()
                                             ? __('accounts.blocked_gereja')
                                             : __('accounts.blocked_gereja') . ' (' . $church->users->pluck('name')->implode(', ') . ')',
+                                        'blockingUsers' => $church->users,
                                     ])
                                 </td>
                             </tr>
@@ -550,6 +553,7 @@
                                         'blockedReason' => $institution->users->isEmpty()
                                             ? __('accounts.blocked_institusi')
                                             : __('accounts.blocked_institusi') . ' (' . $institution->users->pluck('name')->implode(', ') . ')',
+                                        'blockingUsers' => $institution->users,
                                     ])
                                 </td>
                             </tr>

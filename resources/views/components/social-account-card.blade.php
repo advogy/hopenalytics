@@ -182,6 +182,21 @@
                 </p>
             </div>
         @endif
+
+        @if ($showRecentContent && $social->platform->value === 'facebook' && $latest->recent_posts_count)
+            <div class="mt-3 rounded-lg bg-slate-50 p-3 dark:bg-slate-800/60">
+                <p class="mb-1 text-xs text-slate-500 dark:text-slate-400">
+                    {{ __('entity.recent_posts', ['count' => $latest->recent_posts_count]) }}
+                </p>
+                <p class="text-sm">
+                    <span class="font-semibold tabular-nums">{{ number_format($latest->recent_posts_likes) }}</span>
+                    <span class="text-slate-500 dark:text-slate-400">likes</span>
+                    &middot;
+                    <span class="font-semibold tabular-nums">{{ number_format($latest->recent_posts_shares) }}</span>
+                    <span class="text-slate-500 dark:text-slate-400">shares</span>
+                </p>
+            </div>
+        @endif
     @else
         <p class="text-sm text-slate-400 dark:text-slate-500">{{ __('entity.no_stats_yet') }}</p>
     @endif

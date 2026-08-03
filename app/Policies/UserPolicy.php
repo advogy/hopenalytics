@@ -89,6 +89,19 @@ class UserPolicy
         return $this->manageable($actor, $target);
     }
 
+    /**
+     * Clearing a target's union_id/conference_id/church_id — same scoping as the other row
+     * actions, and deliberately not restricted to unassigned (role === null) targets the way
+     * revoke() is: an active Admin/Pimpinan's region is the same field, per the user's explicit
+     * call this can be released independently of (and without) revoking their role, e.g. to
+     * clean up a bogus self-reported church without touching their assignment. See
+     * UserAssignmentController::releaseRegion().
+     */
+    public function releaseRegion(User $actor, User $target): bool
+    {
+        return $this->manageable($actor, $target);
+    }
+
     private function manageable(User $actor, User $target): bool
     {
         if ($actor->is($target)) {

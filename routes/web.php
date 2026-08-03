@@ -243,6 +243,8 @@ Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group
         Route::put('/{target}', [UserAssignmentController::class, 'update'])->name('update');
         Route::post('/{target}/promote', [UserAssignmentController::class, 'promote'])->name('promote');
         Route::post('/{target}/revoke', [UserAssignmentController::class, 'revoke'])->name('revoke');
+        Route::post('/{target}/release-region', [UserAssignmentController::class, 'releaseRegion'])->name('release-region');
+        Route::post('/release-region-bulk', [UserAssignmentController::class, 'releaseRegionBulk'])->name('release-region-bulk');
         Route::post('/{target}/toggle-active', [UserAssignmentController::class, 'toggleActive'])->name('toggle-active');
         Route::post('/{target}/resend-otp', [UserAssignmentController::class, 'resendOtp'])->name('resend-otp');
         Route::delete('/{target}', [UserAssignmentController::class, 'destroy'])->name('destroy');

@@ -15,6 +15,7 @@ class ChurchStat extends Model
         'following_count', 'likes_count', 'views_count', 'videos_count', 'posts_count',
         'recent_reels_count', 'recent_reels_views',
         'recent_video_count', 'recent_video_plays', 'recent_video_shares',
+        'recent_posts_count', 'recent_posts_likes', 'recent_posts_shares',
         'raw_payload',
     ];
 

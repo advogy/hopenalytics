@@ -27,6 +27,9 @@ return [
     'col_scope' => 'Cakupan',
     'revoke_confirm' => 'Cabut peran ":name"? Mereka akan kembali menjadi anggota biasa.',
     'revoke' => 'Cabut',
+    'release_region' => 'Lepas Wilayah',
+    'release_region_confirm' => 'Lepas data wilayah (Uni/Daerah/Gereja) dari ":name"?',
+    'release_region_confirm_active_role' => 'Lepas data wilayah dari ":name"? Peran :role akan kehilangan cakupan wilayah kerja sampai ditugaskan ulang.',
 
     'pemimpin_all_title' => 'Semua Pemimpin',
     'pemimpin_level_title' => 'Pemimpin :level',

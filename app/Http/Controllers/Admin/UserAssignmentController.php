@@ -218,6 +218,67 @@ class UserAssignmentController extends Controller
             ->with('status', "Peran \"{$target->name}\" telah dicabut.");
     }
 
+    /**
+     * Clears union_id/conference_id/church_id only — role and institution_id are left alone,
+     * unlike revoke() above. Lets an admin detach a bogus or unwanted region link (e.g. a
+     * church someone typed their own name into via Lengkapi Profil — see
+     * CompleteProfileController::findOrCreateChurch()) without also stripping an active
+     * Admin/Pimpinan's role. Deliberately allowed on an active role-holder too, per the user's
+     * explicit call — this can leave a uni/daerah/gereja-level role without a working scope
+     * until reassigned; the confirm dialog (see admin.users.index) warns about exactly that.
+     */
+    public function releaseRegion(Request $request, User $target): RedirectResponse
+    {
+        Gate::authorize('releaseRegion', $target);
+
+        $regionLabel = collect([$target->union?->name, $target->conference?->name, $target->church?->name])
+            ->filter()
+            ->implode(', ');
+
+        $target->update(['union_id' => null, 'conference_id' => null, 'church_id' => null]);
+
+        AuditLogger::log('user.region_released', $target, "Melepas wilayah \"{$regionLabel}\" dari \"{$target->name}\".");
+
+        return $this->redirectToTab($request)->with('status', "Wilayah \"{$target->name}\" telah dilepas.");
+    }
+
+    /**
+     * The other half of the "kenapa gereja ini tidak bisa dihapus" loop: Kelola Akun's blocked-
+     * delete tooltip (see AccountController::index()) already names the blocking user(s), but
+     * hunting them down in Kelola Pengguna's easy-to-miss "Belum Ditugaskan" tab one at a time
+     * was still the only way to actually clear them. This does the same union_id/conference_id/
+     * church_id release as releaseRegion() above, but for a whole batch of ids submitted
+     * straight from that Kelola Akun row — and deliberately restricted to role === null targets
+     * only: an active Admin/Pimpinan losing their working scope should stay a deliberate,
+     * one-at-a-time decision (see releaseRegion()'s confirm-dialog warning), not something a
+     * single bulk click on an unrelated entity's row can do in passing.
+     */
+    public function releaseRegionBulk(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'user_ids' => ['required', 'array'],
+            'user_ids.*' => ['integer'],
+        ]);
+
+        $targets = User::whereIn('id', $data['user_ids'])->whereNull('role')->get();
+
+        foreach ($targets as $target) {
+            Gate::authorize('releaseRegion', $target);
+        }
+
+        $names = $targets->pluck('name')->implode(', ');
+
+        User::whereIn('id', $targets->pluck('id'))->update(['union_id' => null, 'conference_id' => null, 'church_id' => null]);
+
+        foreach ($targets as $target) {
+            AuditLogger::log('user.region_released', $target, "Melepas wilayah dari \"{$target->name}\" (aksi massal dari Kelola Akun).");
+        }
+
+        return back()->with('status', $targets->isEmpty()
+            ? 'Tidak ada pengguna belum ditugaskan yang dilepas.'
+            : "Wilayah dari {$targets->count()} pengguna belum ditugaskan telah dilepas ({$names}).");
+    }
+
     public function destroy(Request $request, User $target): RedirectResponse
     {
         Gate::authorize('delete', $target);

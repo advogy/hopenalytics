@@ -21,6 +21,7 @@ return [
     'as_of' => 'per :date',
     'recent_reels' => 'Reels terbaru (:count post)',
     'recent_videos' => 'Video terbaru (:count video)',
+    'recent_posts' => 'Post terbaru (:count post)',
     'no_stats_yet' => 'Belum ada data statistik.',
     'history_heading' => 'Riwayat :platform',
 

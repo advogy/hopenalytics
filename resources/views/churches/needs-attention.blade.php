@@ -7,8 +7,8 @@
 @section('title', __('needs_attention.title') . ' — ' . config('app.name'))
 
 @section('content')
-    <a href="{{ route('churches.index') }}" class="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
-        &larr; {{ __('common.back_to_dashboard') }}
+    <a href="{{ route('admin.accounts.index') }}" class="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
+        &larr; {{ __('nav.manage_accounts') }}
     </a>
 
     <div class="mb-6">

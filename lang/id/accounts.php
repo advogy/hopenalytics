@@ -69,6 +69,8 @@ return [
     'blocked_gereja' => 'Masih ada pengguna yang ditugaskan ke gereja ini.',
     'blocked_institusi' => 'Masih ada pengguna yang ditugaskan ke institusi ini.',
     'delete_warning_personal' => 'Seluruh akun media sosial dan riwayat datanya juga akan terhapus.',
+    'release_blocking_users' => 'Lepas pengguna belum ditugaskan (:names) agar bisa dihapus',
+    'release_blocking_users_confirm' => 'Lepas data wilayah dari :names? Mereka tetap jadi anggota biasa, hanya data Uni/Daerah/Gereja-nya yang dikosongkan.',
 
     'deactivate' => 'Nonaktifkan',
     'activate' => 'Aktifkan',

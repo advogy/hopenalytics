@@ -8,6 +8,13 @@
     delete cascades away more than just the row itself (e.g. Person's social accounts).
     Optional prop: $viewRoute — an entity's own social-account management list (add/edit); only
     Church/Union/Conference/Institution have one of these today, so it's opt-in.
+    Optional prop: $blockingUsers — the actual users blocking deletion (only meaningful when
+    !$canDelete because of a user assignment, not a child-entity count like Union's Daerah).
+    Whichever of them are role === null (self-reported via Lengkapi Profil, never promoted —
+    see CompleteProfileController) get an inline "release" shortcut next to the locked trash
+    icon, so clearing them doesn't require a separate trip to Kelola Pengguna's easy-to-miss
+    "Belum Ditugaskan" tab. Active Admin/Pimpinan blockers deliberately don't get this shortcut
+    — see UserAssignmentController::releaseRegionBulk()'s doc comment for why.
 
     Edit/Toggle/Kelola-Akun are gated by can:update on $item, and Hapus by can:delete — most
     entity types' list query (visibleTo()) matches their update() policy exactly, so this is
@@ -17,7 +24,10 @@
     would see fully-clickable Edit/Kelola Akun/Hapus icons on a row they can't actually act on,
     landing on a 403. A row the viewer can't update renders no actions at all, not disabled ones.
 --}}
-@php $deleteWarning = $deleteWarning ?? ''; @endphp
+@php
+    $deleteWarning = $deleteWarning ?? '';
+    $releasableUsers = isset($blockingUsers) ? $blockingUsers->where('role', null) : collect();
+@endphp
 <div class="flex flex-nowrap items-center justify-end gap-3">
     @can('update', $item)
         @isset($viewRoute)
@@ -77,6 +87,26 @@
                 </button>
             </form>
         @else
+            @if ($releasableUsers->isNotEmpty())
+                <form
+                    method="POST"
+                    action="{{ route('admin.users.release-region-bulk') }}"
+                    data-confirm="{{ __('accounts.release_blocking_users_confirm', ['names' => $releasableUsers->pluck('name')->implode(', ')]) }}"
+                >
+                    @csrf
+                    @foreach ($releasableUsers as $releasableUser)
+                        <input type="hidden" name="user_ids[]" value="{{ $releasableUser->id }}">
+                    @endforeach
+                    <button
+                        type="submit"
+                        title="{{ __('accounts.release_blocking_users', ['names' => $releasableUsers->pluck('name')->implode(', ')]) }}"
+                        aria-label="{{ __('accounts.release_blocking_users', ['names' => $releasableUsers->pluck('name')->implode(', ')]) }}"
+                        class="shrink-0 text-amber-500 hover:text-amber-600 dark:text-amber-400 dark:hover:text-amber-300"
+                    >
+                        <x-icon name="x-mark" class="h-5 w-5" />
+                    </button>
+                </form>
+            @endif
             <span title="{{ $blockedReason }}" aria-label="{{ $blockedReason }}" class="shrink-0 cursor-not-allowed text-slate-300 dark:text-slate-700">
                 <x-icon name="trash" class="h-5 w-5" />
             </span>
