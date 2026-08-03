@@ -12,6 +12,8 @@ return [
     'filter' => 'Filter',
     'search' => 'Search',
     'view_all' => 'View all →',
+    'expand_all' => 'Expand All',
+    'collapse_all' => 'Collapse All',
     'export' => 'Export',
     'current' => 'Current',
     'this_week' => 'this week',

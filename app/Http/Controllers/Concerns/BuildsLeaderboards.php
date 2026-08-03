@@ -645,26 +645,56 @@ trait BuildsLeaderboards
     }
 
     /**
+     * Restricts a ChurchSocial query to whatever the current viewer's analytics scope may see,
+     * across all five owner types at once — combines analyticsChurchScope()/analyticsPersonScope()/
+     * analyticsInstitutionScope()/analyticsOrganizationScope(), which the activeSocials*()
+     * methods above apply one owner type at a time, into a single OR for queries (needs-
+     * attention, the auto-fetch accounts list) that span every owner type together.
+     */
+    private function analyticsAnyOwnerScope($query)
+    {
+        return $query->where(fn ($q) => $q
+            ->whereHas('church', fn ($q2) => $this->analyticsChurchScope($q2))
+            ->orWhereHas('person', fn ($q2) => $this->analyticsPersonScope($q2))
+            ->orWhereHas('institution', fn ($q2) => $this->analyticsInstitutionScope($q2))
+            ->orWhere(fn ($q2) => $this->analyticsOrganizationScope(
+                $q2->where(fn ($q3) => $q3->whereNotNull('union_id')->orWhereNotNull('conference_id'))
+            )));
+    }
+
+    /**
      * Active, auto-fetchable accounts whose last fetch attempt failed — the same eligibility
      * check "Dapatkan Data Terbaru" uses, so this always reflects accounts that button would
      * refresh but are currently broken. Shared by ChurchDashboardController (the "Akun perlu
      * perhatian" stat card + its detail page) and Admin\AccountController (the same stat card
-     * on Kelola Akun), so both always agree on what counts as "needs attention".
+     * on Kelola Akun), so both always agree on what counts as "needs attention". Covers every
+     * owner type (church/person/institution/union/conference) — see ChurchSocial::scopeOwnerActive().
      */
     protected function accountsNeedingAttentionQuery()
     {
-        return ChurchSocial::query()
-            ->where('is_active', true)
-            ->where('is_auto_fetch', true)
-            ->where('last_fetch_status', 'failed')
-            ->where(fn ($q) => $q
-                ->whereHas('church', fn ($q2) => $q2->where('is_active', true))
-                ->orWhereHas('person', fn ($q2) => $q2->where('is_active', true)),
-            )
-            ->where(fn ($q) => $q
-                ->whereHas('church', fn ($q2) => $this->analyticsChurchScope($q2))
-                ->orWhereHas('person', fn ($q2) => $this->analyticsPersonScope($q2)),
-            );
+        return $this->analyticsAnyOwnerScope(
+            ChurchSocial::query()
+                ->where('is_active', true)
+                ->where('is_auto_fetch', true)
+                ->where('last_fetch_status', 'failed')
+                ->ownerActive()
+        );
+    }
+
+    /**
+     * Every active, auto-fetchable account across all five owner types, scoped to what the
+     * viewer may see — same shape as accountsNeedingAttentionQuery() minus the failed-only
+     * filter, so an admin can audit every automatic account's last update (not just the ones
+     * currently broken) on the "Akun Otomatis" list.
+     */
+    protected function autoFetchAccountsQuery()
+    {
+        return $this->analyticsAnyOwnerScope(
+            ChurchSocial::query()
+                ->where('is_active', true)
+                ->where('is_auto_fetch', true)
+                ->ownerActive()
+        );
     }
 
     /**

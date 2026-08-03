@@ -23,10 +23,7 @@ class ChurchRefreshController extends Controller
         $socials = ChurchSocial::query()
             ->where('is_active', true)
             ->where('is_auto_fetch', true)
-            ->where(fn ($q) => $q
-                ->whereHas('church', fn ($q2) => $q2->where('is_active', true))
-                ->orWhereHas('person', fn ($q2) => $q2->where('is_active', true)),
-            )
+            ->ownerActive()
             ->visibleTo($request->user())
             ->get();
 

@@ -486,6 +486,7 @@
                                     class="w-full sm:w-52 rounded-full border border-black/10 bg-slate-50 py-1.5 pr-3 pl-8 text-sm shadow-sm focus:border-blue-500 focus:bg-white focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:focus:bg-slate-900"
                                 >
                             </label>
+                            <x-group-toggle-all-button scope="organization" />
                         @endif
                         <label class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                             <input type="checkbox" id="hide-empty-organizations" class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800">
@@ -815,6 +816,7 @@
                                     class="w-full sm:w-52 rounded-full border border-black/10 bg-slate-50 py-1.5 pr-3 pl-8 text-sm shadow-sm focus:border-blue-500 focus:bg-white focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:focus:bg-slate-900"
                                 >
                             </label>
+                            <x-group-toggle-all-button scope="church" />
                         @endif
                         <label class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                             <input type="checkbox" id="hide-empty-churches" class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800">
@@ -1128,6 +1130,7 @@
                                     class="w-full sm:w-52 rounded-full border border-black/10 bg-slate-50 py-1.5 pr-3 pl-8 text-sm shadow-sm focus:border-blue-500 focus:bg-white focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:focus:bg-slate-900"
                                 >
                             </label>
+                            <x-group-toggle-all-button scope="institution" />
                         @endif
                         <label class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                             <input type="checkbox" id="hide-empty-institutions" class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800">
@@ -1440,6 +1443,7 @@
                                     class="w-full sm:w-52 rounded-full border border-black/10 bg-slate-50 py-1.5 pr-3 pl-8 text-sm shadow-sm focus:border-blue-500 focus:bg-white focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:focus:bg-slate-900"
                                 >
                             </label>
+                            <x-group-toggle-all-button scope="person" />
                         @endif
                         <label class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                             <input type="checkbox" id="hide-empty-people" class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800">

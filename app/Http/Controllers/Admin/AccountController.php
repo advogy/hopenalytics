@@ -186,6 +186,7 @@ class AccountController extends Controller
             ->appends(['tab' => 'personal']);
 
         $accountsNeedingAttention = $this->accountsNeedingAttentionQuery()->count();
+        $autoFetchAccountsCount = $this->autoFetchAccountsQuery()->count();
 
         // Active entities the current user manages that have never had a single social account
         // added — summed across the three entity types for the stat card; the detail page
@@ -197,6 +198,7 @@ class AccountController extends Controller
         return view('admin.accounts.index', [
             'activeTab' => $activeTab,
             'accountsNeedingAttention' => $accountsNeedingAttention,
+            'autoFetchAccountsCount' => $autoFetchAccountsCount,
             'entitiesWithoutSocials' => $entitiesWithoutSocials,
             'unions' => $unions,
             'conferences' => $conferences,

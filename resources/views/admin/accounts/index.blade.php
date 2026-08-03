@@ -87,7 +87,7 @@
         </div>
     </div>
 
-    <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+    <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <x-stat-card
             :href="route('churches.needs-attention')"
             icon="x-circle"
@@ -99,6 +99,12 @@
             icon="information-circle"
             :label="__('accounts.stat_no_socials')"
             :value="$entitiesWithoutSocials"
+        />
+        <x-stat-card
+            :href="route('churches.auto-fetch-accounts')"
+            icon="arrow-path"
+            :label="__('auto_fetch_accounts.title')"
+            :value="$autoFetchAccountsCount"
         />
     </div>
 

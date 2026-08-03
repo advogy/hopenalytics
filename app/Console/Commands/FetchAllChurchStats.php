@@ -10,7 +10,7 @@ class FetchAllChurchStats extends Command
 {
     protected $signature = 'church-stats:fetch-all';
 
-    protected $description = 'Dispatch stat-fetching jobs for every active church social account';
+    protected $description = 'Dispatch stat-fetching jobs for every active, auto-fetchable social account (church, personal, institution, union, or conference)';
 
     public function handle(): int
     {
@@ -19,7 +19,7 @@ class FetchAllChurchStats extends Command
         ChurchSocial::query()
             ->where('is_active', true)
             ->where('is_auto_fetch', true)
-            ->whereHas('church', fn ($q) => $q->where('is_active', true))
+            ->ownerActive()
             ->chunkById(50, function ($churchSocials) use (&$delaySeconds) {
                 foreach ($churchSocials as $churchSocial) {
                     FetchSingleChurchData::dispatch($churchSocial)

@@ -48,11 +48,16 @@
             <span>{{ $valueHeader }}</span>
         </div>
 
-        <x-sort-toggle
-            :sort="$sort"
-            :delta-url="$scope->platformComparisonUrl(array_filter(['platform' => $platformParam, 'metric' => $metric]))"
-            :value-url="$scope->platformComparisonUrl(array_filter(['platform' => $platformParam, 'metric' => $metric, 'sort' => 'value']))"
-        />
+        <div class="flex flex-wrap items-center gap-3">
+            @if ($groupedRows !== null)
+                <x-group-toggle-all-button scope="platform-detail" />
+            @endif
+            <x-sort-toggle
+                :sort="$sort"
+                :delta-url="$scope->platformComparisonUrl(array_filter(['platform' => $platformParam, 'metric' => $metric]))"
+                :value-url="$scope->platformComparisonUrl(array_filter(['platform' => $platformParam, 'metric' => $metric, 'sort' => 'value']))"
+            />
+        </div>
     </div>
 
     @if ($isNasionalView || $isUniView)

@@ -17,6 +17,13 @@
     also carry data-group-ancestors) via inline style.display — a separate mechanism from the
     `hidden` attribute above or the "hide empty" checkbox's .hidden class, so all three can each
     hide a row independently without one undoing another.
+
+    Each table also gets one data-group-toggle-all="<scope>" button (see components/group-toggle-
+    all-button.blade.php) that expands or collapses every group whose toggle id starts with
+    "<scope>-" in one click, instead of requiring one click per Uni/Daerah header. Its own label
+    flips between "Buka Semua"/"Tutup Semua" to reflect whether that table is currently fully
+    expanded — computed fresh on every refresh() rather than tracked as separate state, so it
+    can never drift out of sync with the headers it represents.
 --}}
 @php $expandGroupsByDefault ??= false; @endphp
 <script>
@@ -34,6 +41,12 @@
             return ancestors.every(function (id) { return expanded[id]; });
         }
 
+        function headersInScope(scope) {
+            return Array.prototype.filter.call(document.querySelectorAll('[data-group-toggle]'), function (header) {
+                return header.dataset.groupToggle.indexOf(scope + '-') === 0;
+            });
+        }
+
         function refresh() {
             document.querySelectorAll('[data-group-ancestors]').forEach(function (row) {
                 row.hidden = ! isVisible(row);
@@ -42,14 +55,30 @@
                 var chevron = header.querySelector('[data-group-chevron]');
                 if (chevron) chevron.classList.toggle('-rotate-90', ! expanded[header.dataset.groupToggle]);
             });
+            document.querySelectorAll('[data-group-toggle-all]').forEach(function (btn) {
+                var headers = headersInScope(btn.dataset.groupToggleAll);
+                var allExpanded = headers.length > 0 && headers.every(function (h) { return expanded[h.dataset.groupToggle]; });
+                btn.textContent = allExpanded ? btn.dataset.labelCollapse : btn.dataset.labelExpand;
+                btn.disabled = headers.length === 0;
+                btn.classList.toggle('opacity-50', headers.length === 0);
+            });
         }
 
         document.addEventListener('click', function (e) {
             var header = e.target.closest('[data-group-toggle]');
-            if (! header) return;
+            if (header) {
+                var id = header.dataset.groupToggle;
+                expanded[id] = ! expanded[id];
+                refresh();
+                return;
+            }
 
-            var id = header.dataset.groupToggle;
-            expanded[id] = ! expanded[id];
+            var toggleAllBtn = e.target.closest('[data-group-toggle-all]');
+            if (! toggleAllBtn) return;
+
+            var headers = headersInScope(toggleAllBtn.dataset.groupToggleAll);
+            var allExpanded = headers.length > 0 && headers.every(function (h) { return expanded[h.dataset.groupToggle]; });
+            headers.forEach(function (h) { expanded[h.dataset.groupToggle] = ! allExpanded; });
             refresh();
         });
 

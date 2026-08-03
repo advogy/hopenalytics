@@ -80,6 +80,23 @@ class ChurchSocial extends Model
     }
 
     /**
+     * Restrict to accounts whose owning entity — whichever of the five it is — is itself
+     * active. Previously several callers (the weekly auto-fetch dispatch, bulk refresh, "needs
+     * attention") each re-wrote this checking church/person only, silently skipping every
+     * institution/union/conference-owned account even when it was flagged is_auto_fetch — see
+     * FetchAllChurchStats.
+     */
+    public function scopeOwnerActive(Builder $query): Builder
+    {
+        return $query->where(fn (Builder $q) => $q
+            ->whereHas('church', fn (Builder $q2) => $q2->where('is_active', true))
+            ->orWhereHas('person', fn (Builder $q2) => $q2->where('is_active', true))
+            ->orWhereHas('institution', fn (Builder $q2) => $q2->where('is_active', true))
+            ->orWhereHas('union', fn (Builder $q2) => $q2->where('is_active', true))
+            ->orWhereHas('conference', fn (Builder $q2) => $q2->where('is_active', true)));
+    }
+
+    /**
      * Handle for display, e.g. "@handle" — normalizes handles that were already stored with a leading @.
      */
     public function getDisplayHandleAttribute(): string
@@ -94,6 +111,23 @@ class ChurchSocial extends Model
     {
         return $this->church?->name ?? $this->person?->name ?? $this->union?->name
             ?? $this->conference?->name ?? $this->institution?->name ?? '—';
+    }
+
+    /**
+     * Label for whichever of the five owner columns is actually populated — "Gereja"/"Personal"/
+     * "Uni"/"Daerah"/"Institusi", used wherever a list mixes owner types together (e.g. the
+     * "Akun Otomatis" list) and needs to say which is which alongside the name itself.
+     */
+    public function getOwnerTypeLabelAttribute(): string
+    {
+        return match (true) {
+            $this->church_id !== null => __('common.church'),
+            $this->person_id !== null => __('common.personal'),
+            $this->union_id !== null => __('common.union'),
+            $this->conference_id !== null => __('common.conference'),
+            $this->institution_id !== null => __('common.institution'),
+            default => '—',
+        };
     }
 
     /**

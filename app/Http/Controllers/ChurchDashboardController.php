@@ -336,11 +336,29 @@ class ChurchDashboardController extends Controller
     public function needsAttention()
     {
         $socials = $this->accountsNeedingAttentionQuery()
-            ->with(['church', 'person'])
+            ->with(['church', 'person', 'institution', 'union', 'conference'])
             ->orderByDesc('last_fetched_at')
             ->get();
 
         return view('churches.needs-attention', ['socials' => $socials]);
+    }
+
+    /**
+     * "Akun Otomatis" — every active, auto-fetchable account across all five owner types, so an
+     * admin can audit when each one last actually pulled data instead of only finding out once
+     * it's already broken (see needsAttention() above, which only shows the failed ones).
+     * Ordered with never-fetched accounts first (nulls sort first ascending), then oldest
+     * last_fetched_at — the two situations most worth an admin's attention first.
+     */
+    public function autoFetchAccounts()
+    {
+        $socials = $this->autoFetchAccountsQuery()
+            ->with(['church', 'person', 'institution', 'union', 'conference'])
+            ->orderByRaw('last_fetched_at IS NULL DESC')
+            ->orderBy('last_fetched_at')
+            ->get();
+
+        return view('churches.auto-fetch-accounts', ['socials' => $socials]);
     }
 
     public function personalMetricComparison(Request $request)

@@ -152,7 +152,8 @@
     {{-- ===================== TAB: ORGANISASI ===================== --}}
     <div data-tab-panel="organisasi">
         <div class="rounded-2xl border border-black/5 bg-white shadow-sm dark:border-white/5 dark:bg-slate-900">
-            <div class="flex items-center justify-end gap-3 px-4 py-3">
+            <div class="flex items-center justify-between gap-3 px-4 py-3">
+                <x-group-toggle-all-button scope="directory-organization" />
                 <label class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                     <input
                         type="checkbox"
@@ -223,7 +224,8 @@
     {{-- ===================== TAB: GEREJA ===================== --}}
     <div data-tab-panel="gereja">
         <div class="rounded-2xl border border-black/5 bg-white shadow-sm dark:border-white/5 dark:bg-slate-900">
-            <div class="flex items-center justify-end gap-3 px-4 py-3">
+            <div class="flex items-center justify-between gap-3 px-4 py-3">
+                <x-group-toggle-all-button scope="directory-church" />
                 <label class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                     <input
                         type="checkbox"
@@ -288,7 +290,8 @@
     {{-- ===================== TAB: INSTITUSI ===================== --}}
     <div data-tab-panel="institusi">
         <div class="rounded-2xl border border-black/5 bg-white shadow-sm dark:border-white/5 dark:bg-slate-900">
-            <div class="flex items-center justify-end gap-3 px-4 py-3">
+            <div class="flex items-center justify-between gap-3 px-4 py-3">
+                <x-group-toggle-all-button scope="directory-institution" />
                 <label class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                     <input
                         type="checkbox"
@@ -352,7 +355,8 @@
     {{-- ===================== TAB: PERSONAL ===================== --}}
     <div data-tab-panel="personal">
         <div class="rounded-2xl border border-black/5 bg-white shadow-sm dark:border-white/5 dark:bg-slate-900">
-            <div class="flex items-center justify-end gap-3 px-4 py-3">
+            <div class="flex items-center justify-between gap-3 px-4 py-3">
+                <x-group-toggle-all-button scope="directory-person" />
                 <label class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                     <input
                         type="checkbox"

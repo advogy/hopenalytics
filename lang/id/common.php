@@ -12,6 +12,8 @@ return [
     'filter' => 'Filter',
     'search' => 'Cari',
     'view_all' => 'Lihat semua →',
+    'expand_all' => 'Buka Semua',
+    'collapse_all' => 'Tutup Semua',
     'export' => 'Export',
     'current' => 'Saat ini',
     'this_week' => 'minggu ini',

@@ -14,6 +14,9 @@
     <div class="mb-1 flex items-start justify-between gap-2">
         <p class="font-bold text-slate-900 dark:text-white">{{ $title }}</p>
         <div class="flex shrink-0 items-center gap-3 text-sm">
+            @if ($groupedRows !== null)
+                <x-group-toggle-all-button :scope="$groupPrefix" />
+            @endif
             @if ($exportUrl)
                 <a href="{{ $exportUrl }}" data-export-trigger class="text-blue-600 hover:underline dark:text-blue-400">
                     {{ __('common.export') }}
