@@ -249,19 +249,13 @@ class ComparisonScope
         };
     }
 
-    /**
-     * Organisasi has no export support yet (no ExportController methods exist for it) — every
-     * export* method below returns null for it instead of routing anywhere, and every
-     * <x-export-button> call site on an organisasi-scoped view is wrapped in an isOrganization()
-     * check that skips rendering the button at all, so this is never actually dereferenced.
-     */
     public function exportMetricComparisonUrl(array $params = []): ?string
     {
         return match ($this->type) {
             'gereja' => route('export.metric-comparison.preview', $params),
             'personal' => route('export.personal-metric-comparison.preview', $params),
             'institusi' => route('export.institution-metric-comparison.preview', $params),
-            'organisasi' => null,
+            'organisasi' => route('export.organization-metric-comparison.preview', $params),
         };
     }
 
@@ -271,7 +265,7 @@ class ComparisonScope
             'gereja' => route('export.leaderboard.preview', $params),
             'personal' => route('export.personal-leaderboard.preview', $params),
             'institusi' => route('export.institution-leaderboard.preview', $params),
-            'organisasi' => null,
+            'organisasi' => route('export.organization-leaderboard.preview', $params),
         };
     }
 
@@ -281,7 +275,7 @@ class ComparisonScope
             'gereja' => route('export.platform.preview', $params),
             'personal' => route('export.personal-platform.preview', $params),
             'institusi' => route('export.institution-platform.preview', $params),
-            'organisasi' => null,
+            'organisasi' => route('export.organization-platform.preview', $params),
         };
     }
 
@@ -291,7 +285,7 @@ class ComparisonScope
             'gereja' => route('export.platform-overview.preview', $params),
             'personal' => route('export.personal-platform-overview.preview', $params),
             'institusi' => route('export.institution-platform-overview.preview', $params),
-            'organisasi' => null,
+            'organisasi' => route('export.organization-platform-overview.preview', $params),
         };
     }
 }

@@ -20,9 +20,7 @@
             </p>
         </div>
         @can('browse-directory-analytics')
-            @unless ($scope->isOrganization())
-                <x-export-button :url="$scope->exportPlatformOverviewUrl(['platform' => $platform])" />
-            @endunless
+            <x-export-button :url="$scope->exportPlatformOverviewUrl(['platform' => $platform])" />
         @endcan
     </div>
 

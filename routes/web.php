@@ -223,6 +223,21 @@ Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group
 
         Route::get('/export/institusi/analytics/preview', [ExportController::class, 'analyticsInstitutionPreview'])->name('export.institution-analytics.preview');
         Route::get('/export/institusi/analytics/{format}', [ExportController::class, 'analyticsInstitutionDownload'])->name('export.institution-analytics.download');
+
+        Route::get('/export/organisasi/leaderboard/{metric}/preview', [ExportController::class, 'organizationLeaderboardPreview'])->name('export.organization-leaderboard.preview');
+        Route::get('/export/organisasi/leaderboard/{metric}/{format}', [ExportController::class, 'organizationLeaderboardDownload'])->name('export.organization-leaderboard.download');
+
+        Route::get('/export/organisasi/metrik/preview', [ExportController::class, 'organizationMetricComparisonPreview'])->name('export.organization-metric-comparison.preview');
+        Route::get('/export/organisasi/metrik/{format}', [ExportController::class, 'organizationMetricComparisonDownload'])->name('export.organization-metric-comparison.download');
+
+        Route::get('/export/organisasi/platform/{platform}/overview/preview', [ExportController::class, 'organizationPlatformOverviewPreview'])->name('export.organization-platform-overview.preview');
+        Route::get('/export/organisasi/platform/{platform}/overview/{format}', [ExportController::class, 'organizationPlatformOverviewDownload'])->name('export.organization-platform-overview.download');
+
+        Route::get('/export/organisasi/platform/{platform}/preview', [ExportController::class, 'organizationPlatformComparisonPreview'])->name('export.organization-platform.preview');
+        Route::get('/export/organisasi/platform/{platform}/{format}', [ExportController::class, 'organizationPlatformComparisonDownload'])->name('export.organization-platform.download');
+
+        Route::get('/export/organisasi/analytics/preview', [ExportController::class, 'analyticsOrganizationPreview'])->name('export.organization-analytics.preview');
+        Route::get('/export/organisasi/analytics/{format}', [ExportController::class, 'analyticsOrganizationDownload'])->name('export.organization-analytics.download');
     });
 
     Route::get('/export/church/{church:slug}/preview', [ExportController::class, 'churchPreview'])->name('export.church.preview')->middleware('can:export,church');

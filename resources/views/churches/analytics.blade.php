@@ -269,6 +269,9 @@
                     {{ __('analytics.platform_comparison_organization') }}
                 </a>
             </div>
+            @can('browse-directory-analytics')
+                <x-export-button :url="route('export.organization-analytics.preview', array_filter(['organization_id' => $selectedOrganizationKey, 'platform' => $selectedPlatform]))" />
+            @endcan
         </div>
 
         {{-- Filters --}}

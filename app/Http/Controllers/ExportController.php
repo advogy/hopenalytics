@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Concerns\BuildsLeaderboards;
 use App\Models\Church;
 use App\Models\ChurchSocial;
+use App\Models\Conference;
 use App\Models\Institution;
 use App\Models\Person;
+use App\Models\Union;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Response;
 use Illuminate\Support\Carbon;
@@ -203,6 +205,112 @@ class ExportController extends Controller
         $filename = 'analitik-institusi'.($institutionId ? "-{$institutionId}" : '').($platform ? "-{$platform}" : '');
 
         return $this->download($this->analyticsDatasetInstitution($institutionId, $platform), $format, $filename);
+    }
+
+    public function organizationLeaderboardPreview(string $metric)
+    {
+        $sort = request()->query('sort') === 'value' ? 'value' : 'delta';
+        $dataset = $this->leaderboardDatasetOrganization($metric, $sort);
+
+        $downloadUrl = route('export.organization-leaderboard.download', array_filter(['metric' => $metric, 'format' => 'pdf', 'sort' => $sort === 'value' ? 'value' : null]));
+
+        return $this->preview($dataset, $downloadUrl);
+    }
+
+    public function organizationLeaderboardDownload(string $metric, string $format): BinaryFileResponse|Response
+    {
+        $sort = request()->query('sort') === 'value' ? 'value' : 'delta';
+
+        return $this->download($this->leaderboardDatasetOrganization($metric, $sort), $format, 'leaderboard-organisasi-'.$metric);
+    }
+
+    public function organizationMetricComparisonPreview()
+    {
+        $sort = request()->query('sort') === 'value' ? 'value' : 'delta';
+        $dataset = $this->metricComparisonDatasetOrganization($sort);
+
+        $downloadUrl = route('export.organization-metric-comparison.download', array_filter(['format' => 'pdf', 'sort' => $sort === 'value' ? 'value' : null]));
+
+        return $this->preview($dataset, $downloadUrl);
+    }
+
+    public function organizationMetricComparisonDownload(string $format): BinaryFileResponse|Response
+    {
+        $sort = request()->query('sort') === 'value' ? 'value' : 'delta';
+
+        return $this->download($this->metricComparisonDatasetOrganization($sort), $format, 'perbandingan-metrik-organisasi');
+    }
+
+    public function organizationPlatformComparisonPreview(string $platform)
+    {
+        abort_unless(isset($this->platformLabels[$platform]), 404);
+
+        $metric = request()->query('metric', 'reach');
+        abort_unless(isset($this->metricLabels[$metric]), 404);
+
+        $sort = request()->query('sort') === 'value' ? 'value' : 'delta';
+        $dataset = $this->platformComparisonDatasetOrganization($platform, $metric, $sort);
+
+        $downloadUrl = route('export.organization-platform.download', array_filter([
+            'platform' => $platform,
+            'format' => 'pdf',
+            'metric' => $metric === 'reach' ? null : $metric,
+            'sort' => $sort === 'value' ? 'value' : null,
+        ]));
+
+        return $this->preview($dataset, $downloadUrl);
+    }
+
+    public function organizationPlatformComparisonDownload(string $platform, string $format): BinaryFileResponse|Response
+    {
+        abort_unless(isset($this->platformLabels[$platform]), 404);
+
+        $metric = request()->query('metric', 'reach');
+        abort_unless(isset($this->metricLabels[$metric]), 404);
+
+        $sort = request()->query('sort') === 'value' ? 'value' : 'delta';
+
+        return $this->download($this->platformComparisonDatasetOrganization($platform, $metric, $sort), $format, "perbandingan-organisasi-{$platform}-{$metric}");
+    }
+
+    public function organizationPlatformOverviewPreview(string $platform)
+    {
+        abort_unless(isset($this->platformLabels[$platform]), 404);
+
+        $dataset = $this->platformOverviewDatasetOrganization($platform);
+
+        $downloadUrl = route('export.organization-platform-overview.download', ['platform' => $platform, 'format' => 'pdf']);
+
+        return $this->preview($dataset, $downloadUrl);
+    }
+
+    public function organizationPlatformOverviewDownload(string $platform, string $format): BinaryFileResponse|Response
+    {
+        abort_unless(isset($this->platformLabels[$platform]), 404);
+
+        return $this->download($this->platformOverviewDatasetOrganization($platform), $format, "ringkasan-perbandingan-organisasi-{$platform}");
+    }
+
+    public function analyticsOrganizationPreview()
+    {
+        $organizationKey = request()->query('organization_id');
+        $platform = request()->query('platform');
+
+        $dataset = $this->analyticsDatasetOrganization($organizationKey, $platform);
+
+        $downloadUrl = route('export.organization-analytics.download', array_filter(['format' => 'pdf', 'organization_id' => $organizationKey, 'platform' => $platform]));
+
+        return $this->preview($dataset, $downloadUrl);
+    }
+
+    public function analyticsOrganizationDownload(string $format): BinaryFileResponse|Response
+    {
+        $organizationKey = request()->query('organization_id');
+        $platform = request()->query('platform');
+
+        $filename = 'analitik-organisasi'.($organizationKey ? '-'.Str::slug($organizationKey) : '').($platform ? "-{$platform}" : '');
+
+        return $this->download($this->analyticsDatasetOrganization($organizationKey, $platform), $format, $filename);
     }
 
     public function institutionPreview(Institution $institution)
@@ -596,6 +704,232 @@ class ExportController extends Controller
             'title' => 'Perbandingan Metrik Institusi',
             'subtitle' => $subtitle,
             'headers' => ['Metrik', '#', 'Institusi', 'Platform', 'Akun', 'Pertumbuhan', 'Saat Ini'],
+            'rows' => $rows,
+        ];
+    }
+
+    /**
+     * Same shape as leaderboardDataset()/leaderboardDatasetInstitution() — a row's owner is a
+     * Union or a Conference (never both), so the name is read off whichever relation is
+     * actually populated rather than a single fixed owner column.
+     */
+    private function leaderboardDatasetOrganization(string $metric, string $sortBy = 'delta'): array
+    {
+        $titles = $this->leaderboardTitles();
+
+        abort_unless(isset($titles[$metric]), 404);
+
+        [$socials, $field] = $this->metricDefinition($metric, $this->activeSocialsOrganization());
+        $rows = $this->buildLeaderboard($socials, $field, null, $sortBy);
+
+        $title = $sortBy === 'value' ? $titles[$metric]['title'] : 'Pertumbuhan '.$titles[$metric]['title'];
+
+        return [
+            'title' => "{$title} Uni/Daerah",
+            'subtitle' => $sortBy === 'value' ? 'Diurutkan berdasarkan nilai saat ini' : $titles[$metric]['subtitle'],
+            'headers' => ['#', 'Uni/Daerah', 'Platform', 'Akun', 'Pertumbuhan', 'Saat Ini'],
+            'rows' => $rows->values()->map(fn ($row, $i) => [
+                $i + 1,
+                $row['social']->union?->name ?? $row['social']->conference?->name,
+                $this->platformLabels[$row['social']->platform->value],
+                $row['social']->display_handle,
+                ($row['delta'] > 0 ? '+' : '').number_format($row['delta']),
+                number_format($row['latest']),
+            ])->all(),
+        ];
+    }
+
+    private function metricComparisonDatasetOrganization(string $sortBy = 'delta'): array
+    {
+        $titles = $this->leaderboardTitles();
+        $activeSocials = $this->activeSocialsOrganization();
+
+        $rows = [];
+
+        foreach ($titles as $metric => $title) {
+            [$socials, $field] = $this->metricDefinition($metric, $activeSocials);
+
+            foreach ($this->buildLeaderboard($socials, $field, null, $sortBy)->values() as $i => $row) {
+                $rows[] = [
+                    $title['title'],
+                    $i + 1,
+                    $row['social']->union?->name ?? $row['social']->conference?->name,
+                    $this->platformLabels[$row['social']->platform->value],
+                    $row['social']->display_handle,
+                    ($row['delta'] > 0 ? '+' : '').number_format($row['delta']),
+                    number_format($row['latest']),
+                ];
+            }
+        }
+
+        $subtitle = $sortBy === 'value'
+            ? 'Peringkat akun media sosial berdasarkan nilai saat ini — subscriber/followers, views, likes, dan post, untuk semua Uni/Daerah'
+            : 'Peringkat akun media sosial berdasarkan pertumbuhan mingguan tertinggi — subscriber/followers, views, likes, dan post, untuk semua Uni/Daerah';
+
+        return [
+            'title' => 'Perbandingan Metrik Uni/Daerah',
+            'subtitle' => $subtitle,
+            'headers' => ['Metrik', '#', 'Uni/Daerah', 'Platform', 'Akun', 'Pertumbuhan', 'Saat Ini'],
+            'rows' => $rows,
+        ];
+    }
+
+    /**
+     * [type, id] composite key ("union-3"/"conference-5") for a Union/Conference row — same
+     * format as BuildsLeaderboards::parseOrganizationKey() expects, used here just to
+     * disambiguate Union #3 from Conference #3 when keying a collection by id alone would
+     * collide (they're different tables, so nothing stops both from having the same id).
+     */
+    private function organizationKey(Union|Conference $organization): string
+    {
+        return $organization instanceof Union ? "union-{$organization->id}" : "conference-{$organization->id}";
+    }
+
+    private function platformOverviewDatasetOrganization(string $platform): array
+    {
+        $applicableMetrics = collect($this->metricPlatforms())
+            ->filter(fn ($platforms) => in_array($platform, $platforms, true))
+            ->keys();
+
+        $rowsByMetric = $applicableMetrics->mapWithKeys(fn ($metric) => [
+            $metric => $this->metricComparisonRowsOrganization($metric, $platform)->keyBy(fn ($row) => $this->organizationKey($row['organization'])),
+        ]);
+
+        $organizations = $rowsByMetric
+            ->flatMap(fn ($rows) => $rows->pluck('organization'))
+            ->unique(fn ($org) => $this->organizationKey($org))
+            ->sortBy('name')
+            ->values();
+
+        $headers = ['Uni/Daerah'];
+        foreach ($applicableMetrics as $metric) {
+            $valueHeader = match (true) {
+                $metric !== 'reach' => $this->metricLabels[$metric],
+                $platform === 'youtube' => 'Subscribers',
+                $platform === 'semua' => 'Jangkauan',
+                default => 'Followers',
+            };
+            $headers[] = $valueHeader;
+            $headers[] = "Pertumbuhan {$valueHeader}";
+        }
+
+        $rows = $organizations->map(function ($organization) use ($applicableMetrics, $rowsByMetric) {
+            $key = $this->organizationKey($organization);
+            $row = [$organization->name];
+
+            foreach ($applicableMetrics as $metric) {
+                $entry = $rowsByMetric[$metric]->get($key);
+                $row[] = $entry ? number_format($entry['value']) : '—';
+                $row[] = ($entry && $entry['delta'] !== null) ? (($entry['delta'] > 0 ? '+' : '').number_format($entry['delta'])) : '—';
+            }
+
+            return $row;
+        })->all();
+
+        $platformLabel = $this->platformLabels[$platform];
+        $metricNames = $applicableMetrics->map(fn ($m) => $this->metricLabels[$m])->implode(', ');
+
+        return [
+            'title' => "Ringkasan Perbandingan {$platformLabel} Uni/Daerah",
+            'subtitle' => "{$metricNames} — semua Uni/Daerah, diurutkan berdasarkan nama.",
+            'headers' => $headers,
+            'rows' => $rows,
+        ];
+    }
+
+    private function platformComparisonDatasetOrganization(string $platform, string $metric, string $sortBy = 'delta'): array
+    {
+        $rows = $this->metricComparisonRowsOrganization($metric, $platform, $sortBy);
+        $platformLabel = $this->platformLabels[$platform];
+        $valueHeader = match (true) {
+            $metric !== 'reach' => $this->metricLabels[$metric],
+            $platform === 'youtube' => 'Subscribers',
+            $platform === 'semua' => 'Jangkauan',
+            default => 'Followers',
+        };
+
+        $subtitle = $sortBy === 'delta'
+            ? "Peringkat Uni/Daerah berdasarkan pertumbuhan mingguan {$valueHeader} {$platformLabel}"
+            : "Peringkat Uni/Daerah berdasarkan {$valueHeader} {$platformLabel} saat ini";
+
+        return [
+            'title' => "Perbandingan {$valueHeader} {$platformLabel} Uni/Daerah",
+            'subtitle' => $subtitle,
+            'headers' => ['#', 'Uni/Daerah', $valueHeader, 'Pertumbuhan Mingguan'],
+            'rows' => $rows->values()->map(fn ($row, $i) => [
+                $i + 1,
+                $row['label'],
+                number_format($row['value']),
+                $row['delta'] === null ? '—' : ($row['delta'] > 0 ? '+' : '').number_format($row['delta']),
+            ])->all(),
+        ];
+    }
+
+    /**
+     * Same shape as analyticsDatasetInstitution(), except the entity list has to come from two
+     * separate models (Union + Conference) concatenated together — see
+     * ChurchDashboardController::analytics()'s own Organisasi-tab section, which this mirrors
+     * exactly (same analyticsUnionScope()/analyticsConferenceScope() region scoping, same
+     * "union-ID"/"conference-ID" composite $organizationKey filter via parseOrganizationKey()).
+     */
+    private function analyticsDatasetOrganization(?string $organizationKey, ?string $platform): array
+    {
+        [$selectedType, $selectedId] = $this->parseOrganizationKey($organizationKey);
+
+        $unions = $this->analyticsUnionScope(Union::query()->where('is_active', true))
+            ->with(['socials' => fn ($q) => $q->where('is_active', true)->with('latestStat')])
+            ->get();
+
+        $conferences = $this->analyticsConferenceScope(Conference::query()->where('is_active', true))
+            ->with(['socials' => fn ($q) => $q->where('is_active', true)->with('latestStat')])
+            ->get();
+
+        $organizations = $unions->concat($conferences)
+            ->sortBy('name')
+            ->values()
+            ->when($organizationKey, fn ($collection) => $collection->filter(fn ($org) => match ($selectedType) {
+                'union' => $org instanceof Union && (string) $org->id === (string) $selectedId,
+                'conference' => $org instanceof Conference && (string) $org->id === (string) $selectedId,
+                default => true,
+            }))
+            ->when($platform, fn ($collection) => $collection->filter(
+                fn ($org) => $org->socials->contains(fn ($social) => $social->platform->value === $platform)
+            ));
+
+        $rows = $organizations->map(function ($organization) use ($platform) {
+            $displaySocials = $platform
+                ? $organization->socials->filter(fn ($s) => $s->platform->value === $platform)
+                : $organization->socials;
+
+            $reach = $displaySocials->sum(fn ($s) => $s->latestStat?->{$this->countField[$s->platform->value]} ?? 0);
+            $views = $displaySocials->sum(fn ($s) => $s->latestStat?->views_count ?? 0);
+            $likes = $displaySocials->sum(fn ($s) => $s->latestStat?->likes_count ?? 0);
+            $posts = $displaySocials->sum(
+                fn ($s) => isset($this->postField[$s->platform->value]) ? ($s->latestStat?->{$this->postField[$s->platform->value]} ?? 0) : 0
+            );
+
+            return [
+                $organization->name,
+                $organization instanceof Union ? 'Uni' : 'Daerah',
+                $displaySocials->count(),
+                number_format($reach),
+                $views ? number_format($views) : '—',
+                $likes ? number_format($likes) : '—',
+                $posts ? number_format($posts) : '—',
+            ];
+        })->all();
+
+        $filterParts = array_filter([
+            $organizationKey ? $organizations->first()?->name : null,
+            $platform ? ($this->platformLabels[$platform] ?? null) : null,
+        ]);
+
+        $subtitle = $filterParts ? 'Filter: '.implode(', ', $filterParts) : 'Semua Uni/Daerah, semua media sosial';
+
+        return [
+            'title' => 'Analitik & Grafik Uni/Daerah',
+            'subtitle' => $subtitle,
+            'headers' => ['Uni/Daerah', 'Level', 'Jumlah Akun', 'Total Jangkauan', 'Total Views', 'Total Likes', 'Total Post'],
             'rows' => $rows,
         ];
     }
