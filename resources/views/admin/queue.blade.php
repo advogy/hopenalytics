@@ -178,12 +178,21 @@
         @if ($failedJobs->isEmpty())
             <p class="py-6 text-center text-sm text-slate-400 dark:text-slate-500">{{ __('queue.failed_empty') }}</p>
         @else
+            {{--
+                table-fixed + explicit widths on every column except Error (which takes
+                whatever's left) — the error column's content is arbitrary-length text (and
+                sometimes an unbroken URL), so without a fixed layout the browser was letting it
+                grow the whole table past its container, forcing the horizontal scroll that
+                dragged the Hapus button out of reach with it. With a fixed layout there's
+                nothing to scroll: Error just wraps (break-words) within its own share of the
+                row instead of expanding it, so Hapus stays in the same place at all times.
+            --}}
             <div class="overflow-x-auto">
-                <table class="w-full text-left text-sm">
+                <table class="w-full table-fixed text-left text-sm">
                     <thead>
                         <tr class="text-slate-500 dark:text-slate-400">
-                            <th class="py-2 pr-2 font-medium">{{ __('queue.failed_queue_col') }}</th>
-                            <th class="py-2 pr-2 font-medium">{{ __('queue.failed_date_col') }}</th>
+                            <th class="w-20 py-2 pr-2 font-medium">{{ __('queue.failed_queue_col') }}</th>
+                            <th class="w-36 py-2 pr-2 font-medium">{{ __('queue.failed_date_col') }}</th>
                             <th class="py-2 pr-2 font-medium">{{ __('queue.failed_error_col') }}</th>
                             <th class="w-16 py-2"></th>
                         </tr>
@@ -191,12 +200,12 @@
                     <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
                         @foreach ($failedJobs as $job)
                             <tr>
-                                <td class="py-2 pr-2 align-top font-medium whitespace-nowrap">{{ $job['queue'] }}</td>
-                                <td class="py-2 pr-2 align-top whitespace-nowrap tabular-nums text-slate-500 dark:text-slate-400">
+                                <td class="truncate py-2 pr-2 align-top font-medium">{{ $job['queue'] }}</td>
+                                <td class="truncate py-2 pr-2 align-top tabular-nums text-slate-500 dark:text-slate-400">
                                     {{ \Illuminate\Support\Carbon::parse($job['failedAt'])->translatedFormat('d M Y, H:i') }}
                                 </td>
-                                <td class="max-w-md py-2 pr-2 align-top break-words text-red-600 dark:text-red-400">{{ $job['message'] }}</td>
-                                <td class="w-16 py-2 align-top text-right">
+                                <td class="py-2 pr-2 align-top break-words text-red-600 dark:text-red-400">{{ $job['message'] }}</td>
+                                <td class="py-2 align-top text-right">
                                     <form method="POST" action="{{ route('queue.delete-failed', $job['id']) }}" data-confirm="{{ __('queue.delete_failed_confirm') }}">
                                         @csrf
                                         <button type="submit" class="text-xs font-medium text-red-600 hover:underline dark:text-red-400 whitespace-nowrap">

@@ -116,8 +116,37 @@ class FetchSingleChurchData implements ShouldQueue
                 'error' => $e->getMessage(),
             ]);
 
+            // "Not found"/misconfigured-account errors are permanent — the page/handle/channel
+            // genuinely doesn't exist right now, or the account was never given an ID/URL to
+            // fetch — so the default retry (tries=3, 10s backoff apiece) can only ever fail the
+            // same way again. Failing immediately here instead means a bulk batch's progress
+            // isn't held up waiting out retries that were never going to succeed — per the
+            // user's explicit call, "100% done" should track every account having been
+            // attempted, not stall on the ones doomed to fail regardless of how many tries.
+            if ($this->isPermanentFailure($e)) {
+                $this->fail($e);
+
+                return;
+            }
+
             throw $e;
         }
+    }
+
+    /**
+     * Matches the specific "this will never succeed without a human fixing the data first"
+     * messages this app's own fetchers throw (see app/Services/SocialStats/*.php) — anything
+     * else (rate limits, a temporary Apify hiccup, a YouTube API 5xx) stays on the normal retry
+     * path, since those genuinely might succeed on a second or third attempt.
+     */
+    private function isPermanentFailure(Throwable $e): bool
+    {
+        $message = $e->getMessage();
+
+        return str_contains($message, 'not found')
+            || str_contains($message, 'returned no data')
+            || str_contains($message, 'Missing YouTube channel ID or handle')
+            || str_contains($message, 'Missing Facebook page URL');
     }
 
     private function fetchYouTube(YouTubeStatsFetcher $fetcher): array
