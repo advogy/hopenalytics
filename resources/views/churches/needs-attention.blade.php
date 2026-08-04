@@ -48,7 +48,16 @@
                                     {{ $platformLabels[$social->platform->value] }}
                                 </div>
                             </td>
-                            <td class="px-4 py-3">{{ $social->display_handle }}</td>
+                            <td class="px-4 py-3">
+                                @php $externalUrl = $social->externalUrl(); @endphp
+                                @if ($externalUrl)
+                                    <a href="{{ $externalUrl }}" target="_blank" rel="noopener" class="hover:text-blue-600 dark:hover:text-blue-400">
+                                        {{ $social->display_handle }}
+                                    </a>
+                                @else
+                                    {{ $social->display_handle }}
+                                @endif
+                            </td>
                             <td class="px-4 py-3 max-w-xs text-red-600 dark:text-red-400">{{ $social->last_fetch_error ?? '—' }}</td>
                             <td class="px-4 py-3 text-slate-500 dark:text-slate-400">
                                 {{ $social->last_fetched_at?->translatedFormat('d M Y H:i') ?? '—' }}

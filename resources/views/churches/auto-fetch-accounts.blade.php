@@ -50,7 +50,16 @@
                                     {{ $platformLabels[$social->platform->value] }}
                                 </div>
                             </td>
-                            <td class="px-4 py-3">{{ $social->display_handle }}</td>
+                            <td class="px-4 py-3">
+                                @php $externalUrl = $social->externalUrl(); @endphp
+                                @if ($externalUrl)
+                                    <a href="{{ $externalUrl }}" target="_blank" rel="noopener" class="hover:text-blue-600 dark:hover:text-blue-400">
+                                        {{ $social->display_handle }}
+                                    </a>
+                                @else
+                                    {{ $social->display_handle }}
+                                @endif
+                            </td>
                             <td class="px-4 py-3">
                                 @if (is_null($social->last_fetched_at))
                                     <span class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
