@@ -52,4 +52,9 @@ return [
     'views_subtitle' => 'Highest YouTube views growth, this week',
     'likes_subtitle' => 'Highest TikTok likes growth, this week',
     'posts_subtitle' => 'Highest content (post/video) growth, this week',
+
+    'distribution_channels' => 'Distribution Channels',
+    'distribution_channels_subtitle' => 'How reach (followers/subscribers) is spread across each social media platform.',
+    'stat_total_social_accounts' => 'Total social media accounts',
+    'platform_reach' => 'Reach: :value of :total',
 ];

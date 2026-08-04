@@ -52,4 +52,9 @@ return [
     'views_subtitle' => 'Pertumbuhan views YouTube tertinggi, minggu ini',
     'likes_subtitle' => 'Pertumbuhan likes TikTok tertinggi, minggu ini',
     'posts_subtitle' => 'Pertumbuhan konten (post/video) tertinggi, minggu ini',
+
+    'distribution_channels' => 'Distribusi Platform',
+    'distribution_channels_subtitle' => 'Sebaran jangkauan (followers/subscriber) di tiap platform media sosial.',
+    'stat_total_social_accounts' => 'Total akun media sosial',
+    'platform_reach' => 'Jangkauan: :value dari :total',
 ];

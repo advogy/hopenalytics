@@ -201,9 +201,47 @@ class ChurchDashboardController extends Controller
         $topGrowthScores = $allGrowthScores->take(5)->map($mapScoreRow);
         $bottomGrowthScores = $allGrowthScores->sortBy('score')->take(5)->values()->map($mapScoreRow);
 
-        $platformScoreRows = $this->growthScoreRowsByPlatform($this->activeSocials(scoped: ! $isGerejaLevel));
+        // growthScoreRowsByPlatform() only returns a row for a platform that has at least one
+        // account with 2+ weekly stat snapshots to diff — Facebook accounts frequently don't
+        // have that yet, so it silently drops out instead of showing up with "no data". Backfill
+        // any missing platform as a null-score placeholder row so every platform this app tracks
+        // always shows up here, per the user's explicit call.
+        $platformScoreSocials = $this->activeSocials(scoped: ! $isGerejaLevel);
+        $platformScoreRows = $this->growthScoreRowsByPlatform($platformScoreSocials);
+        $missingPlatformScoreRows = collect(SocialPlatform::cases())
+            ->reject(fn ($platform) => $platformScoreRows->contains('platform', $platform->value))
+            ->map(fn ($platform) => [
+                'platform' => $platform->value,
+                'score' => null,
+                'metrics' => ['reach' => null, 'views' => null, 'likes' => null, 'posts' => null],
+                'accountCount' => $platformScoreSocials->where('platform', $platform)->count(),
+            ]);
+        $platformScoreRows = $platformScoreRows->concat($missingPlatformScoreRows);
 
-        $goalRows = $this->goalProgressRows($allSocials, $institutionSocials);
+        // Union/Conference-owned ("Organisasi") accounts, scoped to the viewer's own region —
+        // shared by the Goal card and Distribution Channels below so their totals stay in sync
+        // with each other, per the user's explicit call.
+        $organizationSocials = $this->activeSocialsOrganization();
+
+        $goalRows = $this->goalProgressRows($allSocials, $institutionSocials, $personalSocials, $organizationSocials);
+
+        // Distribution Channels widget — church+personal+institution+organisasi, matching the
+        // Goal card's "current" total above. Always one row per platform, in
+        // SocialPlatform::cases() order, even a platform with zero accounts — the icon row
+        // needs to show every platform's count, not just the ones in use.
+        $platformLabels = ['youtube' => 'YouTube', 'instagram' => 'Instagram', 'tiktok' => 'TikTok', 'facebook' => 'Facebook'];
+        $allPlatformSocials = $allSocials->merge($personalSocials)->merge($institutionSocials)->merge($organizationSocials);
+        $totalSocialAccounts = $allPlatformSocials->count();
+        $distributionChannels = collect(SocialPlatform::cases())->map(function ($platform) use ($allPlatformSocials, $reachCountField, $platformLabels) {
+            $platformSocials = $allPlatformSocials->where('platform', $platform);
+
+            return [
+                'platform' => $platform,
+                'label' => $platformLabels[$platform->value],
+                'count' => $platformSocials->count(),
+                'reach' => $platformSocials->sum(fn ($social) => $social->latestStat?->{$reachCountField($social)} ?? 0),
+            ];
+        });
 
         // "Pertumbuhan minggu ini" combines church and personal accounts (unlike the leaderboard above,
         // which stays church-only since it ranks churches against each other).
@@ -255,6 +293,8 @@ class ChurchDashboardController extends Controller
             'platformScoreRows' => $platformScoreRows,
             'platformLabels' => ['youtube' => 'YouTube', 'instagram' => 'Instagram', 'tiktok' => 'TikTok', 'facebook' => 'Facebook'],
             'goalRows' => $goalRows,
+            'distributionChannels' => $distributionChannels,
+            'totalSocialAccounts' => $totalSocialAccounts,
         ]);
     }
 
@@ -274,7 +314,7 @@ class ChurchDashboardController extends Controller
      * computed for the KPI cards above (via analyticsChurchScope()/analyticsInstitutionScope()),
      * reused here so the "current" total matches the viewer's own scope without re-querying.
      */
-    private function goalProgressRows(Collection $churchSocials, Collection $institutionSocials): Collection
+    private function goalProgressRows(Collection $churchSocials, Collection $institutionSocials, Collection $personalSocials, Collection $organizationSocials): Collection
     {
         $user = auth()->user();
         $level = $user->role?->level();
@@ -298,7 +338,11 @@ class ChurchDashboardController extends Controller
             default => __('goals.scope_daerah', ['name' => $conference?->name ?? '—']),
         };
 
-        $combinedSocials = $churchSocials->merge($institutionSocials);
+        // Personal and Organisasi (union/conference-owned) accounts count toward "current" too,
+        // so this total matches the Distribution Channels widget's total reach — union/daerah
+        // target splitting above is unaffected, it only divides $goal->target_value, never
+        // re-derives it from this total.
+        $combinedSocials = $churchSocials->merge($institutionSocials)->merge($personalSocials)->merge($organizationSocials);
 
         return collect(Goal::METRICS)->map(function ($metric) use ($combinedSocials, $isNasional, $isUni, $unionCount, $conference, $scopeLabel) {
             $goal = Goal::forMetric($metric);

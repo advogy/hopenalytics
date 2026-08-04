@@ -58,9 +58,15 @@
                         </div>
                     @endif
 
-                    <span class="w-20 shrink-0 text-right text-lg font-bold tabular-nums {{ $score > 0 ? 'text-emerald-600 dark:text-emerald-400' : ($score < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-400 dark:text-slate-500') }}">
-                        {{ $score > 0 ? '+' : '' }}{{ number_format($score, 1) }}%
-                    </span>
+                    @if ($score === null)
+                        <span class="w-20 shrink-0 text-right text-xs text-slate-400 dark:text-slate-500">
+                            {{ __('common.no_data_yet') }}
+                        </span>
+                    @else
+                        <span class="w-20 shrink-0 text-right text-lg font-bold tabular-nums {{ $score > 0 ? 'text-emerald-600 dark:text-emerald-400' : ($score < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-400 dark:text-slate-500') }}">
+                            {{ $score > 0 ? '+' : '' }}{{ number_format($score, 1) }}%
+                        </span>
+                    @endif
                 </div>
             @endforeach
         </div>

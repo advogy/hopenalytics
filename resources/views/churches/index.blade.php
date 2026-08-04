@@ -138,17 +138,46 @@
             :view-all-url="route('churches.metric-comparison')"
             :show-metrics="false"
         />
-        <div class="lg:col-span-2">
-            <x-platform-score-card
-                :title="__('comparison.platform_score_title')"
-                :subtitle="__('dashboard.platform_score_subtitle')"
-                :rows="$platformScoreRows"
-                :platform-labels="$platformLabels"
-                :scope="\App\Support\ComparisonScope::church()"
-                :view-all-url="\App\Support\ComparisonScope::church()->platformComparisonUrl()"
-                :show-metrics="false"
-            />
+    </div>
+
+    <div class="mb-8 rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-4">
+                <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 shadow-sm dark:bg-blue-950/50 dark:text-blue-300">
+                    <x-icon name="users" class="h-5 w-5" />
+                </span>
+                <div>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('dashboard.stat_total_social_accounts') }}</p>
+                    <p class="text-3xl font-bold tabular-nums text-slate-900 dark:text-white">{{ number_format($totalSocialAccounts) }}</p>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-6">
+                @foreach ($distributionChannels as $row)
+                    <div class="flex items-center gap-2">
+                        <x-platform-icon :platform="$row['platform']" class="h-10 w-10" />
+                        <span class="text-2xl font-bold tabular-nums text-slate-900 dark:text-white">{{ $row['count'] }}</span>
+                    </div>
+                @endforeach
+            </div>
         </div>
+    </div>
+
+    <div class="mb-8 grid gap-6 lg:grid-cols-2">
+        <x-platform-score-card
+            :title="__('comparison.platform_score_title')"
+            :subtitle="__('dashboard.platform_score_subtitle')"
+            :rows="$platformScoreRows"
+            :platform-labels="$platformLabels"
+            :scope="\App\Support\ComparisonScope::church()"
+            :view-all-url="\App\Support\ComparisonScope::church()->platformComparisonUrl()"
+            :show-metrics="false"
+        />
+        <x-distribution-channels-card
+            :rows="$distributionChannels"
+            :scope="\App\Support\ComparisonScope::church()"
+            :view-all-url="\App\Support\ComparisonScope::church()->platformComparisonUrl()"
+        />
     </div>
 
     <div class="mb-8 rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
