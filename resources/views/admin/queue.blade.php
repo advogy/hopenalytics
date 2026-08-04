@@ -185,7 +185,7 @@
                             <th class="py-2 pr-2 font-medium">{{ __('queue.failed_queue_col') }}</th>
                             <th class="py-2 pr-2 font-medium">{{ __('queue.failed_date_col') }}</th>
                             <th class="py-2 pr-2 font-medium">{{ __('queue.failed_error_col') }}</th>
-                            <th class="py-2"></th>
+                            <th class="w-16 py-2"></th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
@@ -195,8 +195,8 @@
                                 <td class="py-2 pr-2 align-top whitespace-nowrap tabular-nums text-slate-500 dark:text-slate-400">
                                     {{ \Illuminate\Support\Carbon::parse($job['failedAt'])->translatedFormat('d M Y, H:i') }}
                                 </td>
-                                <td class="py-2 pr-2 align-top text-red-600 dark:text-red-400">{{ $job['message'] }}</td>
-                                <td class="py-2 align-top text-right">
+                                <td class="max-w-md py-2 pr-2 align-top break-words text-red-600 dark:text-red-400">{{ $job['message'] }}</td>
+                                <td class="w-16 py-2 align-top text-right">
                                     <form method="POST" action="{{ route('queue.delete-failed', $job['id']) }}" data-confirm="{{ __('queue.delete_failed_confirm') }}">
                                         @csrf
                                         <button type="submit" class="text-xs font-medium text-red-600 hover:underline dark:text-red-400 whitespace-nowrap">

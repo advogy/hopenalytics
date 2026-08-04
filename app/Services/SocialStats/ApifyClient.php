@@ -60,11 +60,14 @@ class ApifyClient
     }
 
     /**
-     * Apify returns 402 Payment Required once an account is out of usage credits or has hit its
-     * plan's monthly usage limit — everything else (actor errors, bad input, rate limiting) comes
-     * back as a different status. The error-type substring check is a fallback in case Apify ever
-     * reports this condition under a different status code; adjust if a real exhausted-account
-     * response is observed not to match either check.
+     * Apify returns 402 Payment Required once an account is out of usage credits — but a
+     * monthly *plan* limit (as opposed to running out of prepaid credits) instead comes back as
+     * 403 with error.type "platform-feature-disabled" and a "Monthly usage hard limit exceeded"
+     * message (observed in production 2026-08-02: every Instagram fetch failed as a plain
+     * RuntimeException all day instead of tripping the fallback-to-manual handling this
+     * exception exists for, because neither the 402 check nor the old error-type substring
+     * check recognized this shape). The message-text check is deliberately narrow — a 403 can
+     * mean plenty of other, unrelated things — rather than treating every 403 as exhaustion.
      */
     private function isCreditsExhausted(Response $response): bool
     {
@@ -74,6 +77,12 @@ class ApifyClient
 
         $errorType = (string) ($response->json('error.type') ?? '');
 
-        return str_contains($errorType, 'usage-hard-limit') || str_contains($errorType, 'insufficient-funds');
+        if (str_contains($errorType, 'usage-hard-limit') || str_contains($errorType, 'insufficient-funds')) {
+            return true;
+        }
+
+        $errorMessage = (string) ($response->json('error.message') ?? '');
+
+        return $response->status() === 403 && str_contains(strtolower($errorMessage), 'usage hard limit');
     }
 }

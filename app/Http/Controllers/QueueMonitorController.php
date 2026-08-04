@@ -48,7 +48,7 @@ class QueueMonitorController extends Controller
                 'id' => $row->id,
                 'queue' => $row->queue,
                 'failedAt' => $row->failed_at,
-                'message' => Str::limit(strtok($row->exception, "\n"), 200),
+                'message' => $this->humanizeFailedJobMessage(strtok($row->exception, "\n")),
             ]);
 
         $completedBatches = DB::table('job_batches')
@@ -74,6 +74,46 @@ class QueueMonitorController extends Controller
             'totalFailed' => $totalFailed,
             'completedBatches' => $completedBatches,
         ]);
+    }
+
+    /**
+     * Translates the first line of a stored failed_jobs.exception (Laravel's default
+     * Throwable::__toString() shape: "ExceptionClass: message in /full/server/path:line") into
+     * something a non-technical admin can actually act on — the raw form leaks server file
+     * paths and PHP exception class names, which meant nothing to anyone but a developer. Only
+     * recognizes the specific messages this app's own fetchers/jobs throw (see
+     * app/Services/SocialStats/*.php and FetchSingleChurchData) — anything else falls back to a
+     * generic line rather than guessing at an unfamiliar shape.
+     */
+    private function humanizeFailedJobMessage(string $rawFirstLine): string
+    {
+        if (! preg_match('/^[\w\\\\]+: (.*) in \/.*:\d+$/s', $rawFirstLine, $m)) {
+            return 'Gagal memproses job ini.';
+        }
+
+        $message = trim($m[1]);
+
+        return match (true) {
+            str_starts_with($message, 'Facebook page not found: ') =>
+                'Halaman Facebook tidak ditemukan: '.substr($message, strlen('Facebook page not found: ')),
+            str_starts_with($message, 'TikTok profile not found: ') =>
+                'Akun TikTok tidak ditemukan: '.substr($message, strlen('TikTok profile not found: ')),
+            str_starts_with($message, 'YouTube channel not found: ') =>
+                'Channel YouTube tidak ditemukan: '.substr($message, strlen('YouTube channel not found: ')),
+            str_contains($message, 'Missing YouTube channel ID or handle') =>
+                'Akun YouTube ini belum diisi ID channel atau handle-nya.',
+            str_contains($message, 'Missing Facebook page URL') =>
+                'Akun Facebook ini belum diisi link halamannya.',
+            str_contains(strtolower($message), 'usage hard limit') || str_contains(strtolower($message), 'insufficient-funds') =>
+                'Kredit Apify habis untuk bulan ini.',
+            str_contains($message, 'returned no data') =>
+                'Tidak ada data ditemukan untuk akun ini — cek lagi handle/link-nya.',
+            str_starts_with($message, 'YouTube API error') =>
+                'Gagal mengambil data dari YouTube, coba lagi nanti.',
+            str_starts_with($message, 'Apify actor') =>
+                'Gagal mengambil data dari Apify, coba lagi nanti.',
+            default => Str::limit($message, 150),
+        };
     }
 
     /**

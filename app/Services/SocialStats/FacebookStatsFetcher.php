@@ -25,6 +25,8 @@ class FacebookStatsFetcher
 
     public function fetch(string $pageUrl): array
     {
+        $pageUrl = $this->normalizeUrl($pageUrl);
+
         $item = $this->apify->runActorSync(self::ACTOR_ID, [
             'startUrls' => [['url' => $pageUrl]],
         ]);
@@ -72,5 +74,36 @@ class FacebookStatsFetcher
             'recent_posts_likes' => (int) $posts->sum('likes'),
             'recent_posts_shares' => (int) $posts->sum('shares'),
         ];
+    }
+
+    /**
+     * Strips share-link tracking noise off a pasted Facebook URL before it ever reaches Apify.
+     * Mobile "Share" buttons produce URLs like profile.php?id=X&rdid=...&share_url=...# — the
+     * extra params (rdid, a URL-encoded share_url nested inside the query string, a trailing
+     * bare #) are enough to make both actors fail with "page not found" even though the id=X is
+     * right there and perfectly valid on its own. Only profile.php?id=X and a plain
+     * facebook.com/pagename path are normalized; anything else (e.g. a facebook.com/share/...
+     * short link, which needs a login-gated redirect to resolve to a real page) is passed
+     * through unchanged rather than guessed at.
+     */
+    private function normalizeUrl(string $url): string
+    {
+        $parts = parse_url(trim($url));
+
+        if (! isset($parts['host'], $parts['path']) || ! str_contains($parts['host'], 'facebook.com')) {
+            return $url;
+        }
+
+        if (str_ends_with($parts['path'], 'profile.php')) {
+            parse_str($parts['query'] ?? '', $query);
+
+            if (isset($query['id'])) {
+                return "https://www.facebook.com/profile.php?id={$query['id']}";
+            }
+
+            return $url;
+        }
+
+        return 'https://www.facebook.com'.rtrim($parts['path'], '/');
     }
 }
