@@ -35,8 +35,13 @@
                 </thead>
                 <tbody class="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-900">
                     @foreach ($socials as $social)
+                        @php [$showRouteName, $showRouteEntity] = $social->showRoute(); @endphp
                         <tr class="align-top hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                            <td class="px-4 py-3 font-medium">{{ $social->display_name }}</td>
+                            <td class="px-4 py-3 font-medium">
+                                <a href="{{ route($showRouteName, $showRouteEntity) }}" class="hover:text-blue-600 dark:hover:text-blue-400">
+                                    {{ $social->display_name }}
+                                </a>
+                            </td>
                             <td class="px-4 py-3">
                                 <div class="flex items-center gap-2">
                                     <x-platform-icon :platform="$social->platform" class="h-4.5 w-4.5" />
