@@ -8,15 +8,15 @@ use App\Models\User;
 class InstitutionPolicy
 {
     /**
-     * Broader than update() below — a nasional (unscoped) institution is visible to everyone
-     * for context/read access, same as a Uni is visible to the Daerah beneath it, even though
-     * only nasional-level can actually edit it (see update()). Also widened beyond
-     * Institution::scopeVisibleTo() for two viewer types the Institusi analytics tab now opens
-     * up to, mirroring ChurchPolicy::view()'s exact same reasoning: a plain member (role ===
-     * null) sees every institution — Analytics is meant to inform everyone, they have no region
-     * — and a gereja-level admin sees their whole Daerah/Konferens's institutions instead of
-     * none at all (scopeVisibleTo() has no gereja-level branch, since Institution management
-     * never delegates to gereja-level — see UserRole::level()'s doc comment). Mirrors
+     * Widened beyond Institution::scopeVisibleTo() for two viewer types the Institusi analytics
+     * tab opens up to, mirroring ChurchPolicy::view()'s exact same reasoning: a plain member
+     * (role === null) sees every institution — Analytics is meant to inform everyone, they have
+     * no region — and a gereja-level admin sees their whole Daerah/Konferens's institutions
+     * instead of none at all (scopeVisibleTo() has no gereja-level branch, since Institution
+     * management never delegates to gereja-level — see UserRole::level()'s doc comment). Every
+     * other role (uni/daerah/institusi/nasional) falls straight through to
+     * Institution::scopeVisibleTo(), which is strictly region-scoped — no nasional-institution
+     * carve-out for them, per the user's explicit call. Mirrors
      * BuildsLeaderboards::analyticsInstitutionScope() exactly.
      */
     public function view(User $user, Institution $institution): bool
@@ -45,11 +45,13 @@ class InstitutionPolicy
 
     /**
      * Editing requires actually owning the institution's specific scope, not just having read
-     * visibility into it: a nasional (unscoped) institution stays nasional-only to edit even
-     * though admin_uni/admin_daerah can see it; admin_uni may edit anything under their own
-     * union (both Uni-level and any Daerah-level institution nested under it, since
-     * conference_id always implies union_id — see Institution::scopeVisibleTo()); admin_daerah
-     * only their own Daerah's; admin_institusi only the one institution they're bound to.
+     * visibility into it — for a plain member or gereja-level admin, view() is widened beyond
+     * scopeVisibleTo() (see above), but neither ever reaches update() at all (isReadOnly()/no
+     * role short-circuits first). A nasional (unscoped) institution stays nasional-only to edit;
+     * admin_uni may edit anything under their own union (both Uni-level and any Daerah-level
+     * institution nested under it, since conference_id always implies union_id — see
+     * Institution::scopeVisibleTo()); admin_daerah only their own Daerah's; admin_institusi only
+     * the one institution they're bound to.
      */
     public function update(User $user, Institution $institution): bool
     {
