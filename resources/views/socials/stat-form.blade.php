@@ -2,8 +2,8 @@
     $platformLabels = ['youtube' => 'YouTube', 'instagram' => 'Instagram', 'tiktok' => 'TikTok', 'facebook' => 'Facebook'];
     $isYoutube = $social->platform->value === 'youtube';
     $isFacebook = $social->platform->value === 'facebook';
-    $owner = $social->person ?? $social->church;
-    $backRoute = $social->person_id ? route('people.show', $social->person) : route('churches.show', $social->church);
+    [$backRouteName, $owner] = $social->showRoute();
+    $backRoute = route($backRouteName, $owner);
 @endphp
 
 @extends('layouts.app')

@@ -147,6 +147,24 @@ class ChurchSocial extends Model
     }
 
     /**
+     * [routeName, entity] for the owner's own public "show"/history page — used by
+     * SocialStatController's manual-entry form and its redirect-on-save, which are likewise
+     * shared across all five owner types via the single /socials/{social}/stats/* routes.
+     * Same owner-column match as manageRoute() above, just pointed at each type's read-only
+     * show page (unions.show/conferences.show) instead of its socials-management page.
+     */
+    public function showRoute(): array
+    {
+        return match (true) {
+            $this->church_id !== null => ['churches.show', $this->church],
+            $this->person_id !== null => ['people.show', $this->person],
+            $this->union_id !== null => ['unions.show', $this->union],
+            $this->conference_id !== null => ['conferences.show', $this->conference],
+            $this->institution_id !== null => ['institutions.show', $this->institution],
+        };
+    }
+
+    /**
      * The public profile URL for this account, if one can be determined.
      * Facebook has no reliable handle-based URL pattern, so it requires profile_url to be set.
      */

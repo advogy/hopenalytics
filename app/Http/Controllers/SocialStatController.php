@@ -56,8 +56,7 @@ class SocialStatController extends Controller
 
         $social->update(['last_fetched_at' => now(), 'last_fetch_status' => 'success', 'last_fetch_error' => null]);
 
-        $redirectRoute = $social->person_id ? 'people.show' : 'churches.show';
-        $redirectEntity = $social->person_id ? $social->person : $social->church;
+        [$redirectRoute, $redirectEntity] = $social->showRoute();
 
         return redirect()->route($redirectRoute, $redirectEntity)
             ->with('status', "Data manual untuk {$social->display_handle} berhasil disimpan.");
