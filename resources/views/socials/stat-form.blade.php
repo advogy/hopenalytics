@@ -60,7 +60,9 @@
         @if ($isYoutube)
             <x-form-field name="views_count" label="Views" type="number" min="0" :value="old('views_count', $latest?->views_count)" />
             <x-form-field name="videos_count" label="Videos" type="number" min="0" :value="old('videos_count', $latest?->videos_count)" />
-        @elseif (! $isFacebook)
+        @elseif ($isFacebook)
+            <x-form-field name="recent_posts_count" label="Posts" type="number" min="0" :value="old('recent_posts_count', $latest?->recent_posts_count)" />
+        @else
             <x-form-field name="posts_count" label="Posts" type="number" min="0" :value="old('posts_count', $latest?->posts_count)" />
         @endif
 

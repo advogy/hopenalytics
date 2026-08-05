@@ -36,6 +36,7 @@ class SocialStatController extends Controller
             'views_count' => ['nullable', 'integer', 'min:0'],
             'videos_count' => ['nullable', 'integer', 'min:0'],
             'likes_count' => ['nullable', 'integer', 'min:0'],
+            'recent_posts_count' => ['nullable', 'integer', 'min:0'],
         ];
 
         $data = $request->validate($rules);
