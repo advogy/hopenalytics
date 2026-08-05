@@ -29,7 +29,7 @@ class ExportController extends Controller
 
     private array $countField = ['youtube' => 'subscribers_count', 'instagram' => 'followers_count', 'tiktok' => 'followers_count', 'facebook' => 'followers_count'];
 
-    private array $postField = ['youtube' => 'videos_count', 'instagram' => 'posts_count', 'tiktok' => 'posts_count'];
+    private array $postField = ['youtube' => 'videos_count', 'instagram' => 'posts_count', 'tiktok' => 'posts_count', 'facebook' => 'recent_posts_count'];
 
     private array $metricLabels = ['reach' => 'Followers/Subscribers', 'views' => 'Views', 'likes' => 'Likes', 'posts' => 'Post / Video'];
 
@@ -1042,7 +1042,7 @@ class ExportController extends Controller
                 $social->display_handle,
                 $latest ? number_format($latest->{$field} ?? 0) : '—',
                 $latest ? number_format($latest->following_count ?? 0) : '—',
-                $latest ? number_format($latest->posts_count ?? $latest->videos_count ?? 0) : '—',
+                $latest ? number_format($latest->posts_count ?? $latest->videos_count ?? $latest->recent_posts_count ?? 0) : '—',
                 $latest && $latest->views_count ? number_format($latest->views_count) : '—',
                 $latest && $latest->likes_count ? number_format($latest->likes_count) : '—',
                 $status,
@@ -1076,7 +1076,7 @@ class ExportController extends Controller
                 $social->display_handle,
                 $latest ? number_format($latest->{$field} ?? 0) : '—',
                 $latest ? number_format($latest->following_count ?? 0) : '—',
-                $latest ? number_format($latest->posts_count ?? $latest->videos_count ?? 0) : '—',
+                $latest ? number_format($latest->posts_count ?? $latest->videos_count ?? $latest->recent_posts_count ?? 0) : '—',
                 $latest && $latest->views_count ? number_format($latest->views_count) : '—',
                 $latest && $latest->likes_count ? number_format($latest->likes_count) : '—',
                 $status,
@@ -1110,7 +1110,7 @@ class ExportController extends Controller
                 $social->display_handle,
                 $latest ? number_format($latest->{$field} ?? 0) : '—',
                 $latest ? number_format($latest->following_count ?? 0) : '—',
-                $latest ? number_format($latest->posts_count ?? $latest->videos_count ?? 0) : '—',
+                $latest ? number_format($latest->posts_count ?? $latest->videos_count ?? $latest->recent_posts_count ?? 0) : '—',
                 $latest && $latest->views_count ? number_format($latest->views_count) : '—',
                 $latest && $latest->likes_count ? number_format($latest->likes_count) : '—',
                 $status,
@@ -1134,7 +1134,7 @@ class ExportController extends Controller
             $stat->recorded_at->translatedFormat('d M Y'),
             number_format($stat->{$field} ?? 0),
             number_format($stat->following_count ?? 0),
-            number_format($stat->posts_count ?? $stat->videos_count ?? 0),
+            number_format($stat->posts_count ?? $stat->videos_count ?? $stat->recent_posts_count ?? 0),
             $stat->views_count ? number_format($stat->views_count) : '—',
             $stat->likes_count ? number_format($stat->likes_count) : '—',
         ])->all();

@@ -12,7 +12,7 @@
         'youtube' => ['views_count' => 'Views', 'videos_count' => 'Videos'],
         'instagram' => ['following_count' => 'Following', 'posts_count' => 'Posts'],
         'tiktok' => ['following_count' => 'Following', 'likes_count' => 'Likes', 'posts_count' => 'Posts'],
-        'facebook' => [],
+        'facebook' => ['recent_posts_count' => 'Posts'],
     ];
 @endphp
 
