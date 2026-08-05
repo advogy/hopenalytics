@@ -269,17 +269,21 @@ class ChurchDashboardController extends Controller
 
         // Reach-by-category pie chart — replaces the three separate reach stat-cards (their raw
         // numbers now ride along as each row's "detail" line) with a single visualization of the
-        // same church/institution/personal totals as a share of combined reach, per the user's
-        // explicit call. Colors match the map's own per-category marker colors above
-        // (buildClusterGroup() in the inline map script below) for visual consistency across the
-        // dashboard — validated via the dataviz skill's validate_palette.js, passes clean in both
-        // light and dark with no per-mode adjustment needed.
-        $totalReachAll = $totalReachChurch + $totalReachInstitution + $totalReachPersonal;
+        // church/institution/personal/organisasi totals as a share of combined reach, per the
+        // user's explicit call. Church/institution/personal colors match the map's own
+        // per-category marker colors above (buildClusterGroup() in the inline map script below)
+        // for visual consistency across the dashboard; organisasi's green has no map equivalent
+        // to match (the map colors Union/Daerah per-region, not as one single category) so it's
+        // a new 4th hue — validated together via the dataviz skill's validate_palette.js, passes
+        // clean in both light and dark with no per-mode adjustment needed.
+        $totalReachOrganisasi = $organizationSocials->sum(fn ($social) => $social->latestStat?->{$reachCountField($social)} ?? 0);
+        $totalReachAll = $totalReachChurch + $totalReachInstitution + $totalReachPersonal + $totalReachOrganisasi;
         $reachPercent = fn ($value) => $totalReachAll > 0 ? round($value / $totalReachAll * 100, 1) : 0;
         $reachByOwnerType = [
             ['label' => __('common.church'), 'value' => $reachPercent($totalReachChurch), 'detail' => number_format($totalReachChurch), 'color' => '#2563eb'],
             ['label' => __('common.institution'), 'value' => $reachPercent($totalReachInstitution), 'detail' => number_format($totalReachInstitution), 'color' => '#d97706'],
             ['label' => __('common.personal'), 'value' => $reachPercent($totalReachPersonal), 'detail' => number_format($totalReachPersonal), 'color' => '#7c3aed'],
+            ['label' => __('dashboard.owner_type_organisasi'), 'value' => $reachPercent($totalReachOrganisasi), 'detail' => number_format($totalReachOrganisasi), 'color' => '#059669'],
         ];
         $distributionChannels = collect(SocialPlatform::cases())->map(function ($platform) use ($allPlatformSocials, $reachCountField, $platformLabels) {
             $platformSocials = $allPlatformSocials->where('platform', $platform);
