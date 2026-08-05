@@ -232,6 +232,55 @@ class ChurchDashboardController extends Controller
         $platformLabels = ['youtube' => 'YouTube', 'instagram' => 'Instagram', 'tiktok' => 'TikTok', 'facebook' => 'Facebook'];
         $allPlatformSocials = $allSocials->merge($personalSocials)->merge($institutionSocials)->merge($organizationSocials);
         $totalSocialAccounts = $allPlatformSocials->count();
+        // Owner-type breakdown for the Total Akun card — replaces the old separate "Akun sosial
+        // gereja/institusi/personal" stat cards above, which showed the same counts split across
+        // three cards instead of one, per the user's explicit call.
+        $accountsByOwnerType = [
+            ['icon' => 'building-office', 'label' => __('dashboard.owner_type_organisasi'), 'count' => $organizationSocials->count()],
+            ['icon' => 'building-office', 'label' => __('dashboard.owner_type_gereja'), 'count' => $allSocials->count()],
+            ['icon' => 'building-office', 'label' => __('dashboard.owner_type_institusi'), 'count' => $institutionSocials->count()],
+            ['icon' => 'user', 'label' => __('dashboard.owner_type_personal'), 'count' => $personalSocials->count()],
+        ];
+
+        // Short scope label ("Nasional"/"Uni :name"/etc., same style as the Goals section header)
+        // for every section on this dashboard that shares $allSocials/$institutionSocials/
+        // $personalSocials's own scoping — Ringkasan, Pertumbuhan, Total Akun, Jangkauan. A
+        // gereja-level viewer gets the Daerah label since that's the actual breadth of those
+        // collections (see analyticsChurchScope()), not their single church.
+        $scopeUser = auth()->user();
+        $scopeConference = $scopeUser->conference ?? $scopeUser->church?->conference;
+        $regionScopeLabel = match (true) {
+            $scopeUser->role === null || ($scopeUser->role?->hasNasionalAccess() ?? false) || $scopeUser->role?->level() === 'nasional'
+                => __('goals.scope_nasional'),
+            $scopeUser->role?->level() === 'uni'
+                => __('goals.scope_uni', ['name' => $scopeUser->union?->name ?? '—']),
+            $scopeUser->role?->level() === 'daerah' || $isGerejaLevel
+                => __('goals.scope_daerah', ['name' => $scopeConference?->name ?? '—']),
+            $scopeUser->role?->level() === 'institusi'
+                => __('dashboard.scope_institusi', ['name' => $scopeUser->institution?->name ?? '—']),
+            default => __('goals.scope_nasional'),
+        };
+
+        // Peta (and, elsewhere in this method, Skor Performa Platform) stay fully unscoped for a
+        // gereja-level viewer — see the block comment at the top of this method — so its header
+        // needs "Nasional" instead of $regionScopeLabel's Daerah label for that one role; every
+        // other role sees the same breadth on both, so the label is identical.
+        $mapScopeLabel = $isGerejaLevel ? __('goals.scope_nasional') : $regionScopeLabel;
+
+        // Reach-by-category pie chart — replaces the three separate reach stat-cards (their raw
+        // numbers now ride along as each row's "detail" line) with a single visualization of the
+        // same church/institution/personal totals as a share of combined reach, per the user's
+        // explicit call. Colors match the map's own per-category marker colors above
+        // (buildClusterGroup() in the inline map script below) for visual consistency across the
+        // dashboard — validated via the dataviz skill's validate_palette.js, passes clean in both
+        // light and dark with no per-mode adjustment needed.
+        $totalReachAll = $totalReachChurch + $totalReachInstitution + $totalReachPersonal;
+        $reachPercent = fn ($value) => $totalReachAll > 0 ? round($value / $totalReachAll * 100, 1) : 0;
+        $reachByOwnerType = [
+            ['label' => __('common.church'), 'value' => $reachPercent($totalReachChurch), 'detail' => number_format($totalReachChurch), 'color' => '#2563eb'],
+            ['label' => __('common.institution'), 'value' => $reachPercent($totalReachInstitution), 'detail' => number_format($totalReachInstitution), 'color' => '#d97706'],
+            ['label' => __('common.personal'), 'value' => $reachPercent($totalReachPersonal), 'detail' => number_format($totalReachPersonal), 'color' => '#7c3aed'],
+        ];
         $distributionChannels = collect(SocialPlatform::cases())->map(function ($platform) use ($allPlatformSocials, $reachCountField, $platformLabels) {
             $platformSocials = $allPlatformSocials->where('platform', $platform);
 
@@ -272,12 +321,7 @@ class ChurchDashboardController extends Controller
             'totalChurches' => $churches->count(),
             'totalSocials' => $allSocials->count(),
             'totalPeople' => $people->count(),
-            'totalPersonalSocials' => $personalSocials->count(),
             'totalInstitutions' => $institutions->count(),
-            'totalInstitutionSocials' => $institutionSocials->count(),
-            'totalReachChurch' => $totalReachChurch,
-            'totalReachPersonal' => $totalReachPersonal,
-            'totalReachInstitution' => $totalReachInstitution,
             'weeklyGrowth' => $weeklyGrowth,
             'mapUnions' => $mapUnions,
             'mapConferences' => $mapConferences,
@@ -294,7 +338,11 @@ class ChurchDashboardController extends Controller
             'platformLabels' => ['youtube' => 'YouTube', 'instagram' => 'Instagram', 'tiktok' => 'TikTok', 'facebook' => 'Facebook'],
             'goalRows' => $goalRows,
             'distributionChannels' => $distributionChannels,
+            'regionScopeLabel' => $regionScopeLabel,
             'totalSocialAccounts' => $totalSocialAccounts,
+            'accountsByOwnerType' => $accountsByOwnerType,
+            'mapScopeLabel' => $mapScopeLabel,
+            'reachByOwnerType' => $reachByOwnerType,
         ]);
     }
 

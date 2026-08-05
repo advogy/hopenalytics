@@ -16,6 +16,7 @@ return [
     'collapse_all' => 'Tutup Semua',
     'export' => 'Export',
     'current' => 'Saat ini',
+    'total' => 'Total',
     'this_week' => 'minggu ini',
     'no_data_yet' => 'Belum ada data.',
     'church' => 'Gereja',

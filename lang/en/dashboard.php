@@ -3,6 +3,10 @@
 return [
     'title' => 'Churches',
     'subtitle' => 'Social media growth summary across all churches.',
+
+    'section_overview' => 'Overview',
+    'section_growth' => 'Growth',
+    'section_total_accounts_reach' => 'Total Social Media Accounts and Reach',
     'refresh_confirm' => 'Refreshing all accounts (:count accounts) will use up third-party service credits. Continue?',
     'refresh_button' => 'Fetch Latest Data',
     'refresh_in_progress' => 'Refreshing social accounts…',
@@ -14,12 +18,6 @@ return [
     'stat_churches' => 'Registered churches',
     'stat_institutions' => 'Registered institutions',
     'stat_people' => 'Registered personal accounts',
-    'stat_church_socials' => 'Church social accounts',
-    'stat_institution_socials' => 'Institution social accounts',
-    'stat_personal_socials' => 'Personal social accounts',
-    'stat_church_reach' => 'Church reach',
-    'stat_institution_reach' => 'Institution reach',
-    'stat_personal_reach' => 'Personal reach',
     'stat_weekly_growth' => 'Growth this week',
     'stat_needs_attention' => 'Accounts needing attention',
 
@@ -49,12 +47,18 @@ return [
     'bottom_growth_subtitle' => 'Churches with the lowest weekly growth score — may need extra attention.',
     'platform_score_subtitle' => 'Performance of each social platform, based on composite weekly growth score.',
     'reach_subtitle' => 'Highest growth across all platforms, this week',
+    'reach_by_category_title' => 'Reach Comparison by Category',
     'views_subtitle' => 'Highest YouTube views growth, this week',
     'likes_subtitle' => 'Highest TikTok likes growth, this week',
     'posts_subtitle' => 'Highest content (post/video) growth, this week',
 
     'distribution_channels' => 'Distribution Channels',
     'distribution_channels_subtitle' => 'How reach (followers/subscribers) is spread across each social media platform.',
+    'scope_institusi' => ':name Institution',
     'stat_total_social_accounts' => 'Total social media accounts',
+    'owner_type_organisasi' => 'Union/Conference',
+    'owner_type_gereja' => 'Church',
+    'owner_type_institusi' => 'Institution',
+    'owner_type_personal' => 'Personal',
     'platform_reach' => 'Reach: :value of :total',
 ];

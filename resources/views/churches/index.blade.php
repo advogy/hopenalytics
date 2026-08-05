@@ -31,7 +31,12 @@
         @endcan
     </div>
 
-    <div class="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+    <div class="mb-3 flex items-center justify-between">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white">{{ __('dashboard.section_overview') }}</h2>
+        <p class="text-sm text-slate-500 dark:text-slate-400">{{ $regionScopeLabel }}</p>
+    </div>
+
+    <div class="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <x-stat-card
             :href="route('churches.directory', ['tab' => 'gereja'])"
             icon="building-office"
@@ -49,48 +54,6 @@
             icon="user"
             :label="__('dashboard.stat_people')"
             :value="$totalPeople"
-        />
-    </div>
-
-    <div class="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <x-stat-card
-            :href="route('churches.directory', ['tab' => 'gereja'])"
-            icon="globe-alt"
-            :label="__('dashboard.stat_church_socials')"
-            :value="$totalSocials"
-        />
-        <x-stat-card
-            :href="route('churches.directory', ['tab' => 'institusi'])"
-            icon="globe-alt"
-            :label="__('dashboard.stat_institution_socials')"
-            :value="$totalInstitutionSocials"
-        />
-        <x-stat-card
-            :href="route('churches.directory', ['tab' => 'personal'])"
-            icon="globe-alt"
-            :label="__('dashboard.stat_personal_socials')"
-            :value="$totalPersonalSocials"
-        />
-    </div>
-
-    <div class="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <x-stat-card
-            :href="route('churches.leaderboard', ['metric' => 'reach', 'sort' => 'value'])"
-            icon="arrow-trending-up"
-            :label="__('dashboard.stat_church_reach')"
-            :value="number_format($totalReachChurch)"
-        />
-        <x-stat-card
-            :href="route('institutions.leaderboard', ['metric' => 'reach', 'sort' => 'value'])"
-            icon="arrow-trending-up"
-            :label="__('dashboard.stat_institution_reach')"
-            :value="number_format($totalReachInstitution)"
-        />
-        <x-stat-card
-            :href="route('people.leaderboard', ['metric' => 'reach', 'sort' => 'value'])"
-            icon="arrow-trending-up"
-            :label="__('dashboard.stat_personal_reach')"
-            :value="number_format($totalReachPersonal)"
         />
     </div>
 
@@ -113,6 +76,11 @@
             </div>
         </div>
     @endif
+
+    <div class="mb-3 flex items-center justify-between">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white">{{ __('dashboard.section_growth') }}</h2>
+        <p class="text-sm text-slate-500 dark:text-slate-400">{{ $regionScopeLabel }}</p>
+    </div>
 
     <div class="mb-8 grid grid-cols-1 gap-4">
         <x-stat-card
@@ -140,26 +108,52 @@
         />
     </div>
 
-    <div class="mb-8 rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
-        <div class="flex flex-wrap items-center justify-between gap-4">
-            <div class="flex items-center gap-4">
-                <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 shadow-sm dark:bg-blue-950/50 dark:text-blue-300">
-                    <x-icon name="users" class="h-5 w-5" />
-                </span>
-                <div>
-                    <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('dashboard.stat_total_social_accounts') }}</p>
-                    <p class="text-3xl font-bold tabular-nums text-slate-900 dark:text-white">{{ number_format($totalSocialAccounts) }}</p>
+    <div class="mb-3 flex items-center justify-between">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white">{{ __('dashboard.section_total_accounts_reach') }}</h2>
+        <p class="text-sm text-slate-500 dark:text-slate-400">{{ $regionScopeLabel }}</p>
+    </div>
+
+    <div class="mb-8 grid gap-6 lg:grid-cols-2">
+        <div class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center gap-4">
+                    <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 shadow-sm dark:bg-blue-950/50 dark:text-blue-300">
+                        <x-icon name="users" class="h-5 w-5" />
+                    </span>
+                    <div>
+                        <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('common.total') }}</p>
+                        <p class="text-3xl font-bold tabular-nums text-slate-900 dark:text-white">{{ number_format($totalSocialAccounts) }}</p>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-4">
+                    @foreach ($distributionChannels as $row)
+                        <div class="flex items-center gap-1.5">
+                            <x-platform-icon :platform="$row['platform']" class="h-9 w-9" />
+                            <span class="text-2xl font-bold tabular-nums text-slate-900 dark:text-white">{{ $row['count'] }}</span>
+                        </div>
+                    @endforeach
                 </div>
             </div>
 
-            <div class="flex flex-wrap items-center gap-6">
-                @foreach ($distributionChannels as $row)
-                    <div class="flex items-center gap-2">
-                        <x-platform-icon :platform="$row['platform']" class="h-10 w-10" />
-                        <span class="text-2xl font-bold tabular-nums text-slate-900 dark:text-white">{{ $row['count'] }}</span>
+            <div class="mt-5 flex flex-wrap items-center gap-6 border-t border-black/5 pt-5 dark:border-white/5">
+                @foreach ($accountsByOwnerType as $row)
+                    <div class="flex items-center gap-3">
+                        <span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-50 text-slate-400 dark:bg-slate-800 dark:text-slate-500">
+                            <x-icon :name="$row['icon']" class="h-4 w-4" />
+                        </span>
+                        <div>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">{{ $row['label'] }}</p>
+                            <p class="text-xl font-bold tabular-nums text-slate-900 dark:text-white">{{ number_format($row['count']) }}</p>
+                        </div>
                     </div>
                 @endforeach
             </div>
+        </div>
+
+        <div class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
+            <p class="mb-4 font-bold text-slate-900 dark:text-white">{{ __('dashboard.reach_by_category_title') }}</p>
+            <x-pie-chart :rows="$reachByOwnerType" />
         </div>
     </div>
 
@@ -180,10 +174,14 @@
         />
     </div>
 
+    <div class="mb-3 flex items-center justify-between">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white">{{ __('dashboard.map_title') }}</h2>
+        <p class="text-sm text-slate-500 dark:text-slate-400">{{ $mapScopeLabel }}</p>
+    </div>
+
     <div class="mb-8 rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
         <div class="mb-4 flex flex-wrap items-start justify-between gap-2">
             <div>
-                <h2 class="font-bold text-slate-900 dark:text-white">{{ __('dashboard.map_title') }}</h2>
                 <p class="text-sm text-slate-500 dark:text-slate-400" data-map-summary="organisasi">
                     {{ __('dashboard.map_summary_organization', ['count' => $mapOrganizationCount, 'unionCount' => $mapUnions->count()]) }}
                 </p>

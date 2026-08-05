@@ -3,6 +3,10 @@
 return [
     'title' => 'Gereja',
     'subtitle' => 'Ringkasan pertumbuhan media sosial semua gereja.',
+
+    'section_overview' => 'Ringkasan',
+    'section_growth' => 'Pertumbuhan',
+    'section_total_accounts_reach' => 'Total Akun Media Sosial dan Jangkauan',
     'refresh_confirm' => 'Refresh semua akun (:count akun) akan mengurangi kredit layanan pihak ketiga. Lanjutkan?',
     'refresh_button' => 'Dapatkan Data Terbaru',
     'refresh_in_progress' => 'Memperbarui data akun sosial…',
@@ -14,12 +18,6 @@ return [
     'stat_churches' => 'Gereja terdaftar',
     'stat_institutions' => 'Institusi terdaftar',
     'stat_people' => 'Personal terdaftar',
-    'stat_church_socials' => 'Akun sosial gereja',
-    'stat_institution_socials' => 'Akun sosial institusi',
-    'stat_personal_socials' => 'Akun sosial personal',
-    'stat_church_reach' => 'Jangkauan gereja',
-    'stat_institution_reach' => 'Jangkauan institusi',
-    'stat_personal_reach' => 'Jangkauan personal',
     'stat_weekly_growth' => 'Pertumbuhan minggu ini',
     'stat_needs_attention' => 'Akun perlu perhatian',
 
@@ -49,12 +47,18 @@ return [
     'bottom_growth_subtitle' => 'Gereja dengan skor pertumbuhan mingguan terendah — perlu perhatian lebih.',
     'platform_score_subtitle' => 'Performa tiap platform media sosial, berdasarkan skor komposit pertumbuhan mingguan.',
     'reach_subtitle' => 'Pertumbuhan tertinggi semua platform, minggu ini',
+    'reach_by_category_title' => 'Perbandingan Jangkauan per Kategori',
     'views_subtitle' => 'Pertumbuhan views YouTube tertinggi, minggu ini',
     'likes_subtitle' => 'Pertumbuhan likes TikTok tertinggi, minggu ini',
     'posts_subtitle' => 'Pertumbuhan konten (post/video) tertinggi, minggu ini',
 
     'distribution_channels' => 'Distribusi Platform',
     'distribution_channels_subtitle' => 'Sebaran jangkauan (followers/subscriber) di tiap platform media sosial.',
+    'scope_institusi' => 'Institusi :name',
     'stat_total_social_accounts' => 'Total akun media sosial',
+    'owner_type_organisasi' => 'Uni/Daerah',
+    'owner_type_gereja' => 'Gereja',
+    'owner_type_institusi' => 'Institusi',
+    'owner_type_personal' => 'Personal',
     'platform_reach' => 'Jangkauan: :value dari :total',
 ];

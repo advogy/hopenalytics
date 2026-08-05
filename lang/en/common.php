@@ -16,6 +16,7 @@ return [
     'collapse_all' => 'Collapse All',
     'export' => 'Export',
     'current' => 'Current',
+    'total' => 'Total',
     'this_week' => 'this week',
     'no_data_yet' => 'No data yet.',
     'church' => 'Church',
