@@ -19,7 +19,14 @@ return [
     'cs_whatsapp_group_link' => 'National WhatsApp Group Link',
     'cs_whatsapp_group_link_hint' => 'The WhatsApp group invite link (chat.whatsapp.com/…). Leave blank to hide this link.',
 
-    'apify_title' => 'Data Fetch Fallback',
-    'apify_subtitle' => 'Instagram, TikTok, and Facebook are fetched through a paid third-party service (Apify) that uses credits. YouTube is unaffected — it uses the free official YouTube API.',
+    'apify_title' => 'API Credentials & Weekly Auto-Fetch',
+    'apify_subtitle' => 'Instagram, TikTok, and Facebook are fetched through a paid third-party service (Apify). YouTube uses its own free official API, but still needs its own API key.',
+    'apify_token' => 'Apify API Token',
+    'apify_token_hint_set' => 'A token is already set. Leave this field blank to keep the current token.',
+    'apify_token_hint_unset' => "Not set yet — currently using the server's .env APIFY_TOKEN (if any). Fill this in to manage it from this page instead, no .env changes needed.",
     'apify_fallback_to_manual' => 'If Apify credits run out, automatically mark the account for manual data entry',
+
+    'youtube_api_key' => 'YouTube API Key',
+    'youtube_api_key_hint_set' => 'A key is already set. Leave this field blank to keep the current key.',
+    'youtube_api_key_hint_unset' => "Not set yet — currently using the server's .env YOUTUBE_API_KEY (if any). Fill this in to manage it from this page instead, no .env changes needed.",
 ];

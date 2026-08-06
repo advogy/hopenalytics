@@ -41,10 +41,22 @@ class SettingsController extends Controller
             'cs_whatsapp_number' => ['nullable', 'string', 'max:32'],
             'cs_whatsapp_group_link' => ['nullable', 'url', 'max:2048'],
             'apify_fallback_to_manual' => ['nullable', 'boolean'],
+            'apify_token' => ['nullable', 'string', 'max:255'],
+            'youtube_api_key' => ['nullable', 'string', 'max:255'],
         ]);
 
         $data['auto_fetch_enabled'] = $request->boolean('auto_fetch_enabled');
         $data['apify_fallback_to_manual'] = $request->boolean('apify_fallback_to_manual');
+
+        // Both key fields always render blank (see settings/edit.blade.php) so an existing
+        // secret never round-trips to the browser — an empty submission therefore means "didn't
+        // touch it", not "clear it", so each is dropped from the update rather than nulling out
+        // an already-configured key.
+        foreach (['apify_token', 'youtube_api_key'] as $secretField) {
+            if (! $request->filled($secretField)) {
+                unset($data[$secretField]);
+            }
+        }
 
         AppSetting::current()->update($data);
 

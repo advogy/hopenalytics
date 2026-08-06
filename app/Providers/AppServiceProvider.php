@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Enums\UserRole;
+use App\Models\AppSetting;
 use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\Facades\Gate;
@@ -25,6 +26,24 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // DB-stored credentials (set via Pengaturan → Apify & Auto-Fetch, see
+        // SettingsController) take priority over their .env counterparts — these are the one
+        // and only read path ApifyClient/YouTubeStatsFetcher fall back to
+        // (config('services.apify.token')/config('services.youtube.api_key'), see each class's
+        // constructor), so overriding them here means either key can be rotated from the UI
+        // without touching .env or redeploying, per the user's explicit call. Only overrides
+        // when a DB value is actually set, so a fresh install (or one where nobody's used the
+        // settings UI yet) keeps working off .env exactly as before.
+        $appSettings = AppSetting::current();
+
+        if ($appSettings->apify_token) {
+            config(['services.apify.token' => $appSettings->apify_token]);
+        }
+
+        if ($appSettings->youtube_api_key) {
+            config(['services.youtube.api_key' => $appSettings->youtube_api_key]);
+        }
+
         // Keyed by identity + IP (Laravel's standard login-throttling shape) rather than IP
         // alone, so brute-forcing one account isn't merely a matter of rotating IPs against a
         // wide-open endpoint, while a shared IP (office/NAT) doesn't lock out unrelated users.

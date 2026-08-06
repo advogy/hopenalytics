@@ -9,7 +9,7 @@ class AppSetting extends Model
     protected $fillable = [
         'auto_fetch_enabled', 'auto_fetch_day', 'auto_fetch_time',
         'cs_whatsapp_number', 'cs_whatsapp_group_link',
-        'apify_fallback_to_manual',
+        'apify_fallback_to_manual', 'apify_token', 'youtube_api_key',
     ];
 
     protected $casts = [
