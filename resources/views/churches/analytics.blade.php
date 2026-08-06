@@ -253,7 +253,7 @@
     {{-- ===================== TAB: ORGANISASI ===================== --}}
     <div data-tab-panel="organisasi">
         <div class="mb-6 flex flex-wrap items-start justify-between gap-3">
-            <div class="flex items-center gap-3">
+            <div class="flex flex-wrap items-center gap-3">
                 <a
                     href="{{ route('organizations.metric-comparison') }}"
                     class="inline-flex items-center gap-1.5 rounded-lg border border-black/10 bg-white px-4 py-2 text-sm font-medium shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:hover:bg-slate-700"
@@ -577,7 +577,7 @@
     {{-- ===================== TAB: GEREJA ===================== --}}
     <div data-tab-panel="gereja">
         <div class="mb-6 flex flex-wrap items-start justify-between gap-3">
-            <div class="flex items-center gap-3">
+            <div class="flex flex-wrap items-center gap-3">
                 <a
                     href="{{ route('churches.metric-comparison') }}"
                     class="inline-flex items-center gap-1.5 rounded-lg border border-black/10 bg-white px-4 py-2 text-sm font-medium shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:hover:bg-slate-700"
@@ -900,7 +900,7 @@
     {{-- ===================== TAB: INSTITUSI ===================== --}}
     <div data-tab-panel="institusi">
         <div class="mb-6 flex flex-wrap items-start justify-between gap-3">
-            <div class="flex items-center gap-3">
+            <div class="flex flex-wrap items-center gap-3">
                 <a
                     href="{{ route('institutions.metric-comparison') }}"
                     class="inline-flex items-center gap-1.5 rounded-lg border border-black/10 bg-white px-4 py-2 text-sm font-medium shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:hover:bg-slate-700"
@@ -1213,7 +1213,7 @@
     {{-- ===================== TAB: PERSONAL ===================== --}}
     <div data-tab-panel="personal">
         <div class="mb-6 flex flex-wrap items-start justify-between gap-3">
-            <div class="flex items-center gap-3">
+            <div class="flex flex-wrap items-center gap-3">
                 <a
                     href="{{ route('people.metric-comparison') }}"
                     class="inline-flex items-center gap-1.5 rounded-lg border border-black/10 bg-white px-4 py-2 text-sm font-medium shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:hover:bg-slate-700"

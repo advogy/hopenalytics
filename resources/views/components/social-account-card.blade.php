@@ -123,7 +123,7 @@
 
     @if ($latest)
         <div class="flex items-end justify-between gap-3">
-            <div>
+            <div class="min-w-0">
                 <p class="text-3xl font-semibold tracking-tight">
                     {{ number_format($latest->{$field} ?? 0) }}
                 </p>
@@ -132,7 +132,7 @@
                 </p>
             </div>
 
-            <x-sparkline :values="$sparklineValues" class="h-7 w-[88px] text-slate-300 dark:text-slate-600" />
+            <x-sparkline :values="$sparklineValues" class="h-7 w-[88px] shrink-0 text-slate-300 dark:text-slate-600" />
         </div>
 
         <div class="mt-2 flex items-center gap-3 text-sm">

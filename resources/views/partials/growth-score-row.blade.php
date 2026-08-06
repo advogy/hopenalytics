@@ -21,7 +21,7 @@
     };
 @endphp
 <div
-    class="flex items-center gap-4 py-3 first:pt-0 last:pb-0 {{ $indentClass }}"
+    class="flex items-center gap-2 py-3 first:pt-0 last:pb-0 sm:gap-4 {{ $indentClass }}"
     @if ($ancestors ?? null) data-group-ancestors="{{ $ancestors }}" @endif
 >
     <span class="w-6 shrink-0 text-right text-sm font-semibold text-slate-400 dark:text-slate-500">{{ $index + 1 }}</span>

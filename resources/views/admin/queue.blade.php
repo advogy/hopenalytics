@@ -72,7 +72,7 @@
                 @foreach ($activeBatches as $batch)
                     <div class="py-3 first:pt-0 last:pb-0">
                         <div class="mb-1 flex items-center justify-between gap-2 text-sm">
-                            <span class="font-medium">{{ $batch['name'] }}</span>
+                            <span class="min-w-0 truncate font-medium">{{ $batch['name'] }}</span>
                             <div class="flex shrink-0 items-center gap-3">
                                 <span class="text-slate-500 dark:text-slate-400">
                                     {{ __('queue.batches_progress', ['processed' => $batch['processed'], 'total' => $batch['total'], 'percent' => $batch['percent']]) }}

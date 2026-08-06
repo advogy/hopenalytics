@@ -114,13 +114,13 @@
     </div>
 
     <div class="mb-8 grid gap-6 lg:grid-cols-2">
-        <div class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
+        <div class="min-w-0 rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
             <div class="flex flex-wrap items-center justify-between gap-4">
                 <div class="flex items-center gap-4">
                     <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 shadow-sm dark:bg-blue-950/50 dark:text-blue-300">
                         <x-icon name="users" class="h-5 w-5" />
                     </span>
-                    <div>
+                    <div class="min-w-0">
                         <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('common.total') }}</p>
                         <p class="text-3xl font-bold tabular-nums text-slate-900 dark:text-white">{{ number_format($totalSocialAccounts) }}</p>
                     </div>
@@ -151,7 +151,7 @@
             </div>
         </div>
 
-        <div class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
+        <div class="min-w-0 rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
             <p class="mb-4 font-bold text-slate-900 dark:text-white">{{ __('dashboard.reach_by_category_title') }}</p>
             <x-pie-chart :rows="$reachByOwnerType" />
         </div>
@@ -232,12 +232,12 @@
         </div>
 
         @if ($mapChurches->isEmpty() && $mapPeople->isEmpty() && $mapInstitutions->isEmpty())
-            <div class="flex h-[650px] items-center justify-center rounded-xl border border-dashed border-slate-200 text-sm text-slate-400 dark:border-slate-700 dark:text-slate-500">
+            <div class="flex h-[350px] items-center justify-center rounded-xl border border-dashed border-slate-200 text-sm text-slate-400 sm:h-[450px] lg:h-[650px] dark:border-slate-700 dark:text-slate-500">
                 {{ __('dashboard.map_empty') }}
             </div>
         @else
             <div id="church-map-union-legend" class="mb-3 flex flex-wrap gap-x-4 gap-y-1.5"></div>
-            <div id="church-map" class="relative z-0 h-[650px] w-full rounded-xl"></div>
+            <div id="church-map" class="relative z-0 h-[350px] w-full rounded-xl sm:h-[450px] lg:h-[650px]"></div>
         @endif
     </div>
 

@@ -54,9 +54,9 @@
                     class="-mx-2 flex items-center gap-3 rounded-lg px-2 py-1 text-sm transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60"
                 >
                     <span class="h-2.5 w-2.5 shrink-0 rounded-full" style="background: {{ $row['color'] }}"></span>
-                    <span class="font-medium text-slate-700 dark:text-slate-200">{{ $row['label'] }}</span>
+                    <span class="min-w-0 flex-1 truncate font-medium text-slate-700 dark:text-slate-200">{{ $row['label'] }}</span>
                     @if (($row['detail'] ?? null) !== null)
-                        <span class="text-slate-400 dark:text-slate-500">{{ $row['detail'] }}</span>
+                        <span class="shrink-0 text-slate-400 dark:text-slate-500">{{ $row['detail'] }}</span>
                     @endif
                     <span class="ml-auto shrink-0 font-semibold tabular-nums text-slate-900 dark:text-white">{{ number_format($row['value'], 1) }}%</span>
                 </li>

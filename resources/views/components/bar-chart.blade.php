@@ -13,7 +13,7 @@
         @foreach ($rows as $row)
             <div>
                 <div class="mb-1 flex items-center justify-between gap-3 text-sm">
-                    <span class="truncate font-medium">{{ $row['label'] }}</span>
+                    <span class="min-w-0 flex-1 truncate font-medium">{{ $row['label'] }}</span>
                     <span class="shrink-0 tabular-nums">
                         {{ number_format($row['value']) }}
                         @if (($row['delta'] ?? null) !== null)

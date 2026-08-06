@@ -5,7 +5,7 @@
     <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 shadow-sm dark:bg-blue-950/50 dark:text-blue-300">
         <x-icon :name="$icon" class="h-5 w-5" />
     </span>
-    <div>
+    <div class="min-w-0">
         <p class="text-sm text-slate-500 dark:text-slate-400">{{ $label }}</p>
         <p class="text-3xl font-bold tabular-nums text-slate-900 dark:text-white">{{ $value }}</p>
     </div>
@@ -16,7 +16,7 @@
     <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 shadow-sm dark:bg-blue-950/50 dark:text-blue-300">
         <x-icon :name="$icon" class="h-5 w-5" />
     </span>
-    <div>
+    <div class="min-w-0">
         <p class="text-sm text-slate-500 dark:text-slate-400">{{ $label }}</p>
         <p class="text-3xl font-bold tabular-nums text-slate-900 dark:text-white">{{ $value }}</p>
     </div>

@@ -54,9 +54,9 @@
         .$palette[$segment['platform']].' '.$segment['start'].'deg '.$segment['end'].'deg, transparent '.$segment['end'].'deg 360deg)';
 @endphp
 
-<div data-donut-card="{{ $uid }}" class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
-    <div class="mb-1 flex items-start justify-between gap-2">
-        <p class="font-bold text-slate-900 dark:text-white">{{ __('dashboard.distribution_channels') }}</p>
+<div data-donut-card="{{ $uid }}" class="min-w-0 rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
+    <div class="mb-1 flex flex-wrap items-start justify-between gap-2">
+        <p class="min-w-0 flex-1 truncate font-bold text-slate-900 dark:text-white">{{ __('dashboard.distribution_channels') }}</p>
         @if ($viewAllUrl)
             <a href="{{ $viewAllUrl }}" class="shrink-0 text-sm text-blue-600 hover:underline dark:text-blue-400">
                 {{ __('common.view_all') }}

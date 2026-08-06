@@ -8,11 +8,11 @@
         $windowEnd = min($current + 1, $last);
     @endphp
 
-    <div class="mt-4 flex items-center justify-between text-sm">
+    <div class="mt-4 flex flex-wrap items-center justify-between gap-y-2 text-sm">
         <p class="text-slate-500 dark:text-slate-400">
             {{ __('common.pagination_summary', ['first' => $paginator->firstItem(), 'last' => $paginator->lastItem(), 'total' => $paginator->total()]) }}
         </p>
-        <div class="flex items-center gap-1.5">
+        <div class="flex flex-wrap items-center gap-1.5">
             @if ($paginator->onFirstPage())
                 <span class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-black/10 text-slate-300 dark:border-white/10 dark:text-slate-600">&larr;</span>
             @else
