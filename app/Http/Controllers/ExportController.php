@@ -31,14 +31,20 @@ class ExportController extends Controller
 
     private array $postField = ['youtube' => 'videos_count', 'instagram' => 'posts_count', 'tiktok' => 'posts_count', 'facebook' => 'recent_posts_count'];
 
+    // Instagram/TikTok are recent-sample view counts (last ~10-12 posts/videos), not a lifetime
+    // total like YouTube's views_count. Facebook has no view-count field scraped at all — a
+    // lookup miss falls through to 'views_count' (always null on a Facebook row) via ?? below.
+    private array $viewsField = ['youtube' => 'views_count', 'instagram' => 'recent_reels_views', 'tiktok' => 'recent_video_plays'];
+
     private array $metricLabels = ['reach' => 'Followers/Subscribers', 'views' => 'Views', 'likes' => 'Likes', 'posts' => 'Post / Video'];
 
     public function leaderboardPreview(string $metric)
     {
         $sort = request()->query('sort') === 'value' ? 'value' : 'delta';
-        $dataset = $this->leaderboardDataset($metric, $sort);
+        $category = request()->query('category');
+        $dataset = $this->leaderboardDataset($metric, $sort, $category);
 
-        $downloadUrl = route('export.leaderboard.download', array_filter(['metric' => $metric, 'format' => 'pdf', 'sort' => $sort === 'value' ? 'value' : null]));
+        $downloadUrl = route('export.leaderboard.download', array_filter(['metric' => $metric, 'format' => 'pdf', 'sort' => $sort === 'value' ? 'value' : null, 'category' => $category]));
 
         return $this->preview($dataset, $downloadUrl);
     }
@@ -46,16 +52,18 @@ class ExportController extends Controller
     public function leaderboardDownload(string $metric, string $format): BinaryFileResponse|Response
     {
         $sort = request()->query('sort') === 'value' ? 'value' : 'delta';
+        $category = request()->query('category');
 
-        return $this->download($this->leaderboardDataset($metric, $sort), $format, 'leaderboard-'.$metric);
+        return $this->download($this->leaderboardDataset($metric, $sort, $category), $format, 'leaderboard-'.$metric);
     }
 
     public function metricComparisonPreview()
     {
         $sort = request()->query('sort') === 'value' ? 'value' : 'delta';
-        $dataset = $this->metricComparisonDataset($sort);
+        $category = request()->query('category');
+        $dataset = $this->metricComparisonDataset($sort, $category);
 
-        $downloadUrl = route('export.metric-comparison.download', array_filter(['format' => 'pdf', 'sort' => $sort === 'value' ? 'value' : null]));
+        $downloadUrl = route('export.metric-comparison.download', array_filter(['format' => 'pdf', 'sort' => $sort === 'value' ? 'value' : null, 'category' => $category]));
 
         return $this->preview($dataset, $downloadUrl);
     }
@@ -63,8 +71,9 @@ class ExportController extends Controller
     public function metricComparisonDownload(string $format): BinaryFileResponse|Response
     {
         $sort = request()->query('sort') === 'value' ? 'value' : 'delta';
+        $category = request()->query('category');
 
-        return $this->download($this->metricComparisonDataset($sort), $format, 'perbandingan-metrik');
+        return $this->download($this->metricComparisonDataset($sort, $category), $format, 'perbandingan-metrik');
     }
 
     public function personalLeaderboardPreview(string $metric)
@@ -389,13 +398,15 @@ class ExportController extends Controller
         abort_unless(isset($this->metricLabels[$metric]), 404);
 
         $sort = request()->query('sort') === 'value' ? 'value' : 'delta';
-        $dataset = $this->platformComparisonDataset($platform, $metric, $sort);
+        $category = request()->query('category');
+        $dataset = $this->platformComparisonDataset($platform, $metric, $sort, $category);
 
         $downloadUrl = route('export.platform.download', array_filter([
             'platform' => $platform,
             'format' => 'pdf',
             'metric' => $metric === 'reach' ? null : $metric,
             'sort' => $sort === 'value' ? 'value' : null,
+            'category' => $category,
         ]));
 
         return $this->preview($dataset, $downloadUrl);
@@ -409,17 +420,19 @@ class ExportController extends Controller
         abort_unless(isset($this->metricLabels[$metric]), 404);
 
         $sort = request()->query('sort') === 'value' ? 'value' : 'delta';
+        $category = request()->query('category');
 
-        return $this->download($this->platformComparisonDataset($platform, $metric, $sort), $format, "perbandingan-{$platform}-{$metric}");
+        return $this->download($this->platformComparisonDataset($platform, $metric, $sort, $category), $format, "perbandingan-{$platform}-{$metric}");
     }
 
     public function platformOverviewPreview(string $platform)
     {
         abort_unless(isset($this->platformLabels[$platform]), 404);
 
-        $dataset = $this->platformOverviewDataset($platform);
+        $category = request()->query('category');
+        $dataset = $this->platformOverviewDataset($platform, $category);
 
-        $downloadUrl = route('export.platform-overview.download', ['platform' => $platform, 'format' => 'pdf']);
+        $downloadUrl = route('export.platform-overview.download', array_filter(['platform' => $platform, 'format' => 'pdf', 'category' => $category]));
 
         return $this->preview($dataset, $downloadUrl);
     }
@@ -428,7 +441,9 @@ class ExportController extends Controller
     {
         abort_unless(isset($this->platformLabels[$platform]), 404);
 
-        return $this->download($this->platformOverviewDataset($platform), $format, "ringkasan-perbandingan-{$platform}");
+        $category = request()->query('category');
+
+        return $this->download($this->platformOverviewDataset($platform, $category), $format, "ringkasan-perbandingan-{$platform}");
     }
 
     public function personalPlatformComparisonPreview(string $platform)
@@ -485,10 +500,11 @@ class ExportController extends Controller
     {
         $churchId = request()->query('church_id');
         $platform = request()->query('platform');
+        $category = request()->query('category');
 
-        $dataset = $this->analyticsDataset($churchId, $platform);
+        $dataset = $this->analyticsDataset($churchId, $platform, $category);
 
-        $downloadUrl = route('export.analytics.download', array_filter(['format' => 'pdf', 'church_id' => $churchId, 'platform' => $platform]));
+        $downloadUrl = route('export.analytics.download', array_filter(['format' => 'pdf', 'church_id' => $churchId, 'platform' => $platform, 'category' => $category]));
 
         return $this->preview($dataset, $downloadUrl);
     }
@@ -497,10 +513,11 @@ class ExportController extends Controller
     {
         $churchId = request()->query('church_id');
         $platform = request()->query('platform');
+        $category = request()->query('category');
 
-        $filename = 'analitik'.($churchId ? "-gereja-{$churchId}" : '').($platform ? "-{$platform}" : '');
+        $filename = 'analitik'.($churchId ? "-gereja-{$churchId}" : '').($platform ? "-{$platform}" : '').($category ? "-{$category}" : '');
 
-        return $this->download($this->analyticsDataset($churchId, $platform), $format, $filename);
+        return $this->download($this->analyticsDataset($churchId, $platform, $category), $format, $filename);
     }
 
     public function analyticsPersonalPreview()
@@ -525,13 +542,13 @@ class ExportController extends Controller
         return $this->download($this->analyticsDatasetPersonal($personId, $platform), $format, $filename);
     }
 
-    private function leaderboardDataset(string $metric, string $sortBy = 'delta'): array
+    private function leaderboardDataset(string $metric, string $sortBy = 'delta', ?string $category = null): array
     {
         $titles = $this->leaderboardTitles();
 
         abort_unless(isset($titles[$metric]), 404);
 
-        [$socials, $field] = $this->metricDefinition($metric, $this->activeSocials());
+        [$socials, $field] = $this->metricDefinition($metric, $this->activeSocials(category: $category));
         $rows = $this->buildLeaderboard($socials, $field, null, $sortBy);
 
         $title = $sortBy === 'value' ? $titles[$metric]['title'] : 'Pertumbuhan '.$titles[$metric]['title'];
@@ -548,6 +565,7 @@ class ExportController extends Controller
                 ($row['delta'] > 0 ? '+' : '').number_format($row['delta']),
                 number_format($row['latest']),
             ])->all(),
+            'summary' => [['label' => "Total {$titles[$metric]['title']}", 'value' => number_format($rows->sum('latest'))]],
         ];
     }
 
@@ -574,20 +592,24 @@ class ExportController extends Controller
                 ($row['delta'] > 0 ? '+' : '').number_format($row['delta']),
                 number_format($row['latest']),
             ])->all(),
+            'summary' => [['label' => "Total {$titles[$metric]['title']}", 'value' => number_format($rows->sum('latest'))]],
         ];
     }
 
-    private function metricComparisonDataset(string $sortBy = 'delta'): array
+    private function metricComparisonDataset(string $sortBy = 'delta', ?string $category = null): array
     {
         $titles = $this->leaderboardTitles();
-        $activeSocials = $this->activeSocials();
+        $activeSocials = $this->activeSocials(category: $category);
 
         $rows = [];
+        $totals = [];
 
         foreach ($titles as $metric => $title) {
             [$socials, $field] = $this->metricDefinition($metric, $activeSocials);
+            $metricRows = $this->buildLeaderboard($socials, $field, null, $sortBy);
+            $totals[$metric] = $metricRows->sum('latest');
 
-            foreach ($this->buildLeaderboard($socials, $field, null, $sortBy)->values() as $i => $row) {
+            foreach ($metricRows->values() as $i => $row) {
                 $rows[] = [
                     $title['title'],
                     $i + 1,
@@ -609,6 +631,7 @@ class ExportController extends Controller
             'subtitle' => $subtitle,
             'headers' => ['Metrik', '#', 'Gereja', 'Platform', 'Akun', 'Pertumbuhan', 'Saat Ini'],
             'rows' => $rows,
+            'summary' => collect($titles)->map(fn ($title, $metric) => ['label' => "Total {$title['title']}", 'value' => number_format($totals[$metric] ?? 0)])->values()->all(),
         ];
     }
 
@@ -618,11 +641,14 @@ class ExportController extends Controller
         $activeSocials = $this->activeSocialsPersonal();
 
         $rows = [];
+        $totals = [];
 
         foreach ($titles as $metric => $title) {
             [$socials, $field] = $this->metricDefinition($metric, $activeSocials);
+            $metricRows = $this->buildLeaderboard($socials, $field, null, $sortBy);
+            $totals[$metric] = $metricRows->sum('latest');
 
-            foreach ($this->buildLeaderboard($socials, $field, null, $sortBy)->values() as $i => $row) {
+            foreach ($metricRows->values() as $i => $row) {
                 $rows[] = [
                     $title['title'],
                     $i + 1,
@@ -644,6 +670,7 @@ class ExportController extends Controller
             'subtitle' => $subtitle,
             'headers' => ['Metrik', '#', 'Nama', 'Platform', 'Akun', 'Pertumbuhan', 'Saat Ini'],
             'rows' => $rows,
+            'summary' => collect($titles)->map(fn ($title, $metric) => ['label' => "Total {$title['title']}", 'value' => number_format($totals[$metric] ?? 0)])->values()->all(),
         ];
     }
 
@@ -670,6 +697,7 @@ class ExportController extends Controller
                 ($row['delta'] > 0 ? '+' : '').number_format($row['delta']),
                 number_format($row['latest']),
             ])->all(),
+            'summary' => [['label' => "Total {$titles[$metric]['title']}", 'value' => number_format($rows->sum('latest'))]],
         ];
     }
 
@@ -679,11 +707,14 @@ class ExportController extends Controller
         $activeSocials = $this->activeSocialsInstitution();
 
         $rows = [];
+        $totals = [];
 
         foreach ($titles as $metric => $title) {
             [$socials, $field] = $this->metricDefinition($metric, $activeSocials);
+            $metricRows = $this->buildLeaderboard($socials, $field, null, $sortBy);
+            $totals[$metric] = $metricRows->sum('latest');
 
-            foreach ($this->buildLeaderboard($socials, $field, null, $sortBy)->values() as $i => $row) {
+            foreach ($metricRows->values() as $i => $row) {
                 $rows[] = [
                     $title['title'],
                     $i + 1,
@@ -705,6 +736,7 @@ class ExportController extends Controller
             'subtitle' => $subtitle,
             'headers' => ['Metrik', '#', 'Institusi', 'Platform', 'Akun', 'Pertumbuhan', 'Saat Ini'],
             'rows' => $rows,
+            'summary' => collect($titles)->map(fn ($title, $metric) => ['label' => "Total {$title['title']}", 'value' => number_format($totals[$metric] ?? 0)])->values()->all(),
         ];
     }
 
@@ -736,6 +768,7 @@ class ExportController extends Controller
                 ($row['delta'] > 0 ? '+' : '').number_format($row['delta']),
                 number_format($row['latest']),
             ])->all(),
+            'summary' => [['label' => "Total {$titles[$metric]['title']}", 'value' => number_format($rows->sum('latest'))]],
         ];
     }
 
@@ -745,11 +778,14 @@ class ExportController extends Controller
         $activeSocials = $this->activeSocialsOrganization();
 
         $rows = [];
+        $totals = [];
 
         foreach ($titles as $metric => $title) {
             [$socials, $field] = $this->metricDefinition($metric, $activeSocials);
+            $metricRows = $this->buildLeaderboard($socials, $field, null, $sortBy);
+            $totals[$metric] = $metricRows->sum('latest');
 
-            foreach ($this->buildLeaderboard($socials, $field, null, $sortBy)->values() as $i => $row) {
+            foreach ($metricRows->values() as $i => $row) {
                 $rows[] = [
                     $title['title'],
                     $i + 1,
@@ -771,6 +807,7 @@ class ExportController extends Controller
             'subtitle' => $subtitle,
             'headers' => ['Metrik', '#', 'Uni/Daerah', 'Platform', 'Akun', 'Pertumbuhan', 'Saat Ini'],
             'rows' => $rows,
+            'summary' => collect($titles)->map(fn ($title, $metric) => ['label' => "Total {$title['title']}", 'value' => number_format($totals[$metric] ?? 0)])->values()->all(),
         ];
     }
 
@@ -802,6 +839,7 @@ class ExportController extends Controller
             ->values();
 
         $headers = ['Uni/Daerah'];
+        $valueHeaders = [];
         foreach ($applicableMetrics as $metric) {
             $valueHeader = match (true) {
                 $metric !== 'reach' => $this->metricLabels[$metric],
@@ -809,6 +847,7 @@ class ExportController extends Controller
                 $platform === 'semua' => 'Jangkauan',
                 default => 'Followers',
             };
+            $valueHeaders[$metric] = $valueHeader;
             $headers[] = $valueHeader;
             $headers[] = "Pertumbuhan {$valueHeader}";
         }
@@ -834,6 +873,7 @@ class ExportController extends Controller
             'subtitle' => "{$metricNames} — semua Uni/Daerah, diurutkan berdasarkan nama.",
             'headers' => $headers,
             'rows' => $rows,
+            'summary' => $applicableMetrics->map(fn ($metric) => ['label' => "Total {$valueHeaders[$metric]}", 'value' => number_format($rowsByMetric[$metric]->sum('value'))])->values()->all(),
         ];
     }
 
@@ -862,6 +902,7 @@ class ExportController extends Controller
                 number_format($row['value']),
                 $row['delta'] === null ? '—' : ($row['delta'] > 0 ? '+' : '').number_format($row['delta']),
             ])->all(),
+            'summary' => [['label' => "Total {$valueHeader} {$platformLabel}", 'value' => number_format($rows->sum('value'))]],
         ];
     }
 
@@ -902,7 +943,7 @@ class ExportController extends Controller
                 : $organization->socials;
 
             $reach = $displaySocials->sum(fn ($s) => $s->latestStat?->{$this->countField[$s->platform->value]} ?? 0);
-            $views = $displaySocials->sum(fn ($s) => $s->latestStat?->views_count ?? 0);
+            $views = $displaySocials->sum(fn ($s) => $s->latestStat?->{$this->viewsField[$s->platform->value] ?? 'views_count'} ?? 0);
             $likes = $displaySocials->sum(fn ($s) => $s->latestStat?->likes_count ?? 0);
             $posts = $displaySocials->sum(
                 fn ($s) => isset($this->postField[$s->platform->value]) ? ($s->latestStat?->{$this->postField[$s->platform->value]} ?? 0) : 0
@@ -1031,6 +1072,7 @@ class ExportController extends Controller
         $rows = $church->socials->map(function ($social) use ($statusLabels) {
             $latest = $social->latestStat;
             $field = $this->countField[$social->platform->value];
+            $viewsField = $this->viewsField[$social->platform->value] ?? 'views_count';
 
             $status = ! $social->is_auto_fetch
                 ? 'Manual'
@@ -1043,7 +1085,7 @@ class ExportController extends Controller
                 $latest ? number_format($latest->{$field} ?? 0) : '—',
                 $latest ? number_format($latest->following_count ?? 0) : '—',
                 $latest ? number_format($latest->posts_count ?? $latest->videos_count ?? $latest->recent_posts_count ?? 0) : '—',
-                $latest && $latest->views_count ? number_format($latest->views_count) : '—',
+                $latest && $latest->{$viewsField} ? number_format($latest->{$viewsField}) : '—',
                 $latest && $latest->likes_count ? number_format($latest->likes_count) : '—',
                 $status,
             ];
@@ -1066,6 +1108,7 @@ class ExportController extends Controller
         $rows = $person->socials->map(function ($social) use ($statusLabels) {
             $latest = $social->latestStat;
             $field = $this->countField[$social->platform->value];
+            $viewsField = $this->viewsField[$social->platform->value] ?? 'views_count';
 
             $status = ! $social->is_auto_fetch
                 ? 'Manual'
@@ -1077,7 +1120,7 @@ class ExportController extends Controller
                 $latest ? number_format($latest->{$field} ?? 0) : '—',
                 $latest ? number_format($latest->following_count ?? 0) : '—',
                 $latest ? number_format($latest->posts_count ?? $latest->videos_count ?? $latest->recent_posts_count ?? 0) : '—',
-                $latest && $latest->views_count ? number_format($latest->views_count) : '—',
+                $latest && $latest->{$viewsField} ? number_format($latest->{$viewsField}) : '—',
                 $latest && $latest->likes_count ? number_format($latest->likes_count) : '—',
                 $status,
             ];
@@ -1100,6 +1143,7 @@ class ExportController extends Controller
         $rows = $institution->socials->map(function ($social) use ($statusLabels) {
             $latest = $social->latestStat;
             $field = $this->countField[$social->platform->value];
+            $viewsField = $this->viewsField[$social->platform->value] ?? 'views_count';
 
             $status = ! $social->is_auto_fetch
                 ? 'Manual'
@@ -1111,7 +1155,7 @@ class ExportController extends Controller
                 $latest ? number_format($latest->{$field} ?? 0) : '—',
                 $latest ? number_format($latest->following_count ?? 0) : '—',
                 $latest ? number_format($latest->posts_count ?? $latest->videos_count ?? $latest->recent_posts_count ?? 0) : '—',
-                $latest && $latest->views_count ? number_format($latest->views_count) : '—',
+                $latest && $latest->{$viewsField} ? number_format($latest->{$viewsField}) : '—',
                 $latest && $latest->likes_count ? number_format($latest->likes_count) : '—',
                 $status,
             ];
@@ -1129,13 +1173,14 @@ class ExportController extends Controller
     {
         $owner = $social->church ?? $social->person;
         $field = $this->countField[$social->platform->value];
+        $viewsField = $this->viewsField[$social->platform->value] ?? 'views_count';
 
         $rows = $social->stats()->orderByDesc('recorded_at')->get()->map(fn ($stat) => [
             $stat->recorded_at->translatedFormat('d M Y'),
             number_format($stat->{$field} ?? 0),
             number_format($stat->following_count ?? 0),
             number_format($stat->posts_count ?? $stat->videos_count ?? $stat->recent_posts_count ?? 0),
-            $stat->views_count ? number_format($stat->views_count) : '—',
+            $stat->{$viewsField} ? number_format($stat->{$viewsField}) : '—',
             $stat->likes_count ? number_format($stat->likes_count) : '—',
         ])->all();
 
@@ -1147,14 +1192,14 @@ class ExportController extends Controller
         ];
     }
 
-    private function platformOverviewDataset(string $platform): array
+    private function platformOverviewDataset(string $platform, ?string $category = null): array
     {
         $applicableMetrics = collect($this->metricPlatforms())
             ->filter(fn ($platforms) => in_array($platform, $platforms, true))
             ->keys();
 
         $rowsByMetric = $applicableMetrics->mapWithKeys(fn ($metric) => [
-            $metric => $this->metricComparisonRows($metric, $platform)->keyBy(fn ($row) => $row['church']->id),
+            $metric => $this->metricComparisonRows($metric, $platform, category: $category)->keyBy(fn ($row) => $row['church']->id),
         ]);
 
         $churches = $rowsByMetric
@@ -1164,6 +1209,7 @@ class ExportController extends Controller
             ->values();
 
         $headers = ['Gereja'];
+        $valueHeaders = [];
         foreach ($applicableMetrics as $metric) {
             $valueHeader = match (true) {
                 $metric !== 'reach' => $this->metricLabels[$metric],
@@ -1171,6 +1217,7 @@ class ExportController extends Controller
                 $platform === 'semua' => 'Jangkauan',
                 default => 'Followers',
             };
+            $valueHeaders[$metric] = $valueHeader;
             $headers[] = $valueHeader;
             $headers[] = "Pertumbuhan {$valueHeader}";
         }
@@ -1195,12 +1242,13 @@ class ExportController extends Controller
             'subtitle' => "{$metricNames} — semua gereja, diurutkan berdasarkan nama.",
             'headers' => $headers,
             'rows' => $rows,
+            'summary' => $applicableMetrics->map(fn ($metric) => ['label' => "Total {$valueHeaders[$metric]}", 'value' => number_format($rowsByMetric[$metric]->sum('value'))])->values()->all(),
         ];
     }
 
-    private function platformComparisonDataset(string $platform, string $metric, string $sortBy = 'delta'): array
+    private function platformComparisonDataset(string $platform, string $metric, string $sortBy = 'delta', ?string $category = null): array
     {
-        $rows = $this->metricComparisonRows($metric, $platform, $sortBy);
+        $rows = $this->metricComparisonRows($metric, $platform, $sortBy, $category);
         $platformLabel = $this->platformLabels[$platform];
         $valueHeader = match (true) {
             $metric !== 'reach' => $this->metricLabels[$metric],
@@ -1223,6 +1271,7 @@ class ExportController extends Controller
                 number_format($row['value']),
                 $row['delta'] === null ? '—' : ($row['delta'] > 0 ? '+' : '').number_format($row['delta']),
             ])->all(),
+            'summary' => [['label' => "Total {$valueHeader} {$platformLabel}", 'value' => number_format($rows->sum('value'))]],
         ];
     }
 
@@ -1243,6 +1292,7 @@ class ExportController extends Controller
             ->values();
 
         $headers = ['Nama'];
+        $valueHeaders = [];
         foreach ($applicableMetrics as $metric) {
             $valueHeader = match (true) {
                 $metric !== 'reach' => $this->metricLabels[$metric],
@@ -1250,6 +1300,7 @@ class ExportController extends Controller
                 $platform === 'semua' => 'Jangkauan',
                 default => 'Followers',
             };
+            $valueHeaders[$metric] = $valueHeader;
             $headers[] = $valueHeader;
             $headers[] = "Pertumbuhan {$valueHeader}";
         }
@@ -1274,6 +1325,7 @@ class ExportController extends Controller
             'subtitle' => "{$metricNames} — semua akun personal, diurutkan berdasarkan nama.",
             'headers' => $headers,
             'rows' => $rows,
+            'summary' => $applicableMetrics->map(fn ($metric) => ['label' => "Total {$valueHeaders[$metric]}", 'value' => number_format($rowsByMetric[$metric]->sum('value'))])->values()->all(),
         ];
     }
 
@@ -1302,6 +1354,7 @@ class ExportController extends Controller
                 number_format($row['value']),
                 $row['delta'] === null ? '—' : ($row['delta'] > 0 ? '+' : '').number_format($row['delta']),
             ])->all(),
+            'summary' => [['label' => "Total {$valueHeader} {$platformLabel}", 'value' => number_format($rows->sum('value'))]],
         ];
     }
 
@@ -1322,6 +1375,7 @@ class ExportController extends Controller
             ->values();
 
         $headers = ['Institusi'];
+        $valueHeaders = [];
         foreach ($applicableMetrics as $metric) {
             $valueHeader = match (true) {
                 $metric !== 'reach' => $this->metricLabels[$metric],
@@ -1329,6 +1383,7 @@ class ExportController extends Controller
                 $platform === 'semua' => 'Jangkauan',
                 default => 'Followers',
             };
+            $valueHeaders[$metric] = $valueHeader;
             $headers[] = $valueHeader;
             $headers[] = "Pertumbuhan {$valueHeader}";
         }
@@ -1353,6 +1408,7 @@ class ExportController extends Controller
             'subtitle' => "{$metricNames} — semua institusi, diurutkan berdasarkan nama.",
             'headers' => $headers,
             'rows' => $rows,
+            'summary' => $applicableMetrics->map(fn ($metric) => ['label' => "Total {$valueHeaders[$metric]}", 'value' => number_format($rowsByMetric[$metric]->sum('value'))])->values()->all(),
         ];
     }
 
@@ -1381,6 +1437,7 @@ class ExportController extends Controller
                 number_format($row['value']),
                 $row['delta'] === null ? '—' : ($row['delta'] > 0 ? '+' : '').number_format($row['delta']),
             ])->all(),
+            'summary' => [['label' => "Total {$valueHeader} {$platformLabel}", 'value' => number_format($rows->sum('value'))]],
         ];
     }
 
@@ -1403,7 +1460,7 @@ class ExportController extends Controller
                 : $institution->socials;
 
             $reach = $displaySocials->sum(fn ($s) => $s->latestStat?->{$this->countField[$s->platform->value]} ?? 0);
-            $views = $displaySocials->sum(fn ($s) => $s->latestStat?->views_count ?? 0);
+            $views = $displaySocials->sum(fn ($s) => $s->latestStat?->{$this->viewsField[$s->platform->value] ?? 'views_count'} ?? 0);
             $likes = $displaySocials->sum(fn ($s) => $s->latestStat?->likes_count ?? 0);
             $posts = $displaySocials->sum(
                 fn ($s) => isset($this->postField[$s->platform->value]) ? ($s->latestStat?->{$this->postField[$s->platform->value]} ?? 0) : 0
@@ -1434,7 +1491,7 @@ class ExportController extends Controller
         ];
     }
 
-    private function analyticsDataset(?string $churchId, ?string $platform): array
+    private function analyticsDataset(?string $churchId, ?string $platform, ?string $category = null): array
     {
         $churches = Church::query()
             ->where('is_active', true)
@@ -1445,17 +1502,20 @@ class ExportController extends Controller
             ->get()
             ->when($platform, fn ($collection) => $collection->filter(
                 fn ($church) => $church->socials->contains(fn ($social) => $social->platform->value === $platform)
+            ))
+            ->when($category, fn ($collection) => $collection->filter(
+                fn ($church) => $church->socials->contains(fn ($social) => $social->category->value === $category)
             ));
 
-        $rows = $churches->map(function ($church) use ($platform) {
-            $displaySocials = $platform
-                ? $church->socials->filter(fn ($s) => $s->platform->value === $platform)
-                : $church->socials;
+        $rows = $churches->map(function ($church) use ($platform, $category) {
+            $displaySocials = $church->socials
+                ->when($platform, fn ($socials) => $socials->filter(fn ($s) => $s->platform->value === $platform))
+                ->when($category, fn ($socials) => $socials->filter(fn ($s) => $s->category->value === $category));
 
             $socialsByCategory = $displaySocials->groupBy(fn ($s) => $s->category->value);
 
             $reach = $displaySocials->sum(fn ($s) => $s->latestStat?->{$this->countField[$s->platform->value]} ?? 0);
-            $views = $displaySocials->sum(fn ($s) => $s->latestStat?->views_count ?? 0);
+            $views = $displaySocials->sum(fn ($s) => $s->latestStat?->{$this->viewsField[$s->platform->value] ?? 'views_count'} ?? 0);
             $likes = $displaySocials->sum(fn ($s) => $s->latestStat?->likes_count ?? 0);
             $posts = $displaySocials->sum(
                 fn ($s) => isset($this->postField[$s->platform->value]) ? ($s->latestStat?->{$this->postField[$s->platform->value]} ?? 0) : 0
@@ -1476,6 +1536,7 @@ class ExportController extends Controller
         $filterParts = array_filter([
             $churchId ? $churches->first()?->name : null,
             $platform ? ($this->platformLabels[$platform] ?? null) : null,
+            $category ? ($this->categoryLabels[$category] ?? null) : null,
         ]);
 
         $subtitle = $filterParts ? 'Filter: '.implode(', ', $filterParts) : 'Semua gereja, semua media sosial';
@@ -1507,7 +1568,7 @@ class ExportController extends Controller
                 : $person->socials;
 
             $reach = $displaySocials->sum(fn ($s) => $s->latestStat?->{$this->countField[$s->platform->value]} ?? 0);
-            $views = $displaySocials->sum(fn ($s) => $s->latestStat?->views_count ?? 0);
+            $views = $displaySocials->sum(fn ($s) => $s->latestStat?->{$this->viewsField[$s->platform->value] ?? 'views_count'} ?? 0);
             $likes = $displaySocials->sum(fn ($s) => $s->latestStat?->likes_count ?? 0);
             $posts = $displaySocials->sum(
                 fn ($s) => isset($this->postField[$s->platform->value]) ? ($s->latestStat?->{$this->postField[$s->platform->value]} ?? 0) : 0
@@ -1627,6 +1688,18 @@ class ExportController extends Controller
         if ($dataset['subtitle']) {
             $section->addText($dataset['subtitle'], ['size' => 10, 'color' => '666666']);
         }
+
+        if (! empty($dataset['summary'])) {
+            $summaryText = $section->addTextRun();
+            foreach ($dataset['summary'] as $i => $item) {
+                if ($i > 0) {
+                    $summaryText->addText('    ');
+                }
+                $summaryText->addText("{$item['label']}: ", ['size' => 9, 'color' => '666666']);
+                $summaryText->addText($item['value'], ['bold' => true, 'size' => 9]);
+            }
+        }
+
         $section->addTextBreak(1);
 
         $columnWidth = (int) (9000 / max(count($dataset['headers']), 1));
@@ -1659,17 +1732,27 @@ class ExportController extends Controller
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Data');
 
-        $sheet->fromArray($dataset['headers'], null, 'A1');
-        $sheet->fromArray($dataset['rows'], null, 'A2');
+        $headerRow = 1;
+
+        if (! empty($dataset['summary'])) {
+            foreach ($dataset['summary'] as $i => $item) {
+                $sheet->setCellValue('A'.($i + 1), "{$item['label']}: {$item['value']}");
+                $sheet->getStyle('A'.($i + 1))->getFont()->setBold(true);
+            }
+            $headerRow = count($dataset['summary']) + 2;
+        }
+
+        $sheet->fromArray($dataset['headers'], null, "A{$headerRow}");
+        $sheet->fromArray($dataset['rows'], null, 'A'.($headerRow + 1));
 
         $lastColumn = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(count($dataset['headers']));
-        $sheet->getStyle("A1:{$lastColumn}1")->getFont()->setBold(true);
+        $sheet->getStyle("A{$headerRow}:{$lastColumn}{$headerRow}")->getFont()->setBold(true);
 
         foreach (range('A', $lastColumn) as $column) {
             $sheet->getColumnDimension($column)->setAutoSize(true);
         }
 
-        $footerRow = count($dataset['rows']) + 3;
+        $footerRow = $headerRow + count($dataset['rows']) + 2;
         $sheet->setCellValue("A{$footerRow}", $footer);
         $sheet->getStyle("A{$footerRow}")->getFont()->setItalic(true)->setSize(9);
 

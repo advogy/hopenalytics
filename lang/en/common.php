@@ -37,6 +37,7 @@ return [
     'platform' => 'Platform',
     'date' => 'Date',
     'all_social_media' => 'All Social Media',
+    'all_categories' => 'All Categories',
     'pagination_summary' => ':first–:last of :total',
     'no_platform_data' => 'No data for this platform.',
     'sort_by' => 'Sort by:',

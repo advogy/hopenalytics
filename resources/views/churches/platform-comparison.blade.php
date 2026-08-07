@@ -32,7 +32,7 @@
             </p>
         </div>
         @can('browse-directory-analytics')
-            <x-export-button :url="$scope->exportPlatformComparisonUrl(array_filter(['platform' => $platform, 'metric' => $metric, 'sort' => $sort === 'value' ? 'value' : null]))" />
+            <x-export-button :url="$scope->exportPlatformComparisonUrl(array_filter(['platform' => $platform, 'metric' => $metric, 'sort' => $sort === 'value' ? 'value' : null, 'category' => $selectedCategory ?? null]))" />
         @endcan
     </div>
 
@@ -58,26 +58,38 @@
         </div>
     </div>
 
-    @if ($isNasionalView || $isUniView)
-        <x-filter-card>
+    @if ($isNasionalView || $isUniView || $scope->type === 'gereja')
+        <x-filter-card :clear-url="($selectedConferenceId || ($isNasionalView && $selectedUnionId) || ($selectedCategory ?? null)) ? $scope->platformComparisonUrl(array_filter(['platform' => $platformParam, 'metric' => $metric, 'sort' => $sort === 'value' ? 'value' : null])) : null">
             <form method="GET" action="{{ $scope->platformComparisonUrl(array_filter(['platform' => $platformParam, 'metric' => $metric])) }}" id="platform-detail-filter-form" class="flex flex-wrap items-center gap-3">
                 <input type="hidden" name="sort" value="{{ $sort }}">
 
-                @include('partials.analytics-region-filter', [
-                    'prefix' => 'platform-detail',
-                    'formId' => 'platform-detail-filter-form',
-                    'isNasionalView' => $isNasionalView,
-                    'isUniView' => $isUniView,
-                    'unionOptions' => $unionOptions,
-                    'conferenceOptions' => $conferenceOptions,
-                    'selectedUnionId' => $selectedUnionId,
-                    'selectedConferenceId' => $selectedConferenceId,
-                ])
+                @if ($isNasionalView || $isUniView)
+                    @include('partials.analytics-region-filter', [
+                        'prefix' => 'platform-detail',
+                        'formId' => 'platform-detail-filter-form',
+                        'isNasionalView' => $isNasionalView,
+                        'isUniView' => $isUniView,
+                        'unionOptions' => $unionOptions,
+                        'conferenceOptions' => $conferenceOptions,
+                        'selectedUnionId' => $selectedUnionId,
+                        'selectedConferenceId' => $selectedConferenceId,
+                    ])
+                @endif
 
-                @if ($selectedConferenceId || ($isNasionalView && $selectedUnionId))
-                    <a href="{{ $scope->platformComparisonUrl(array_filter(['platform' => $platformParam, 'metric' => $metric, 'sort' => $sort === 'value' ? 'value' : null])) }}" class="text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
-                        {{ __('common.reset_filter') }}
-                    </a>
+                @if ($scope->type === 'gereja')
+                    <label class="relative">
+                        <x-icon name="building-office" class="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                        <select
+                            name="category"
+                            onchange="this.form.submit()"
+                            class="appearance-none rounded-full border border-black/10 bg-slate-50 py-2.5 pr-10 pl-9 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-100 dark:border-white/10 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                        >
+                            <option value="">{{ __('common.all_categories') }}</option>
+                            <option value="gereja" @selected(($selectedCategory ?? null) === 'gereja')>{{ __('directory.church_accounts') }}</option>
+                            <option value="umum" @selected(($selectedCategory ?? null) === 'umum')>{{ __('directory.general_accounts') }}</option>
+                        </select>
+                        <x-icon name="chevron-down" class="pointer-events-none absolute top-1/2 right-3.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                    </label>
                 @endif
             </form>
         </x-filter-card>

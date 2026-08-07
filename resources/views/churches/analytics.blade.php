@@ -1,6 +1,10 @@
 @php
     $countField = ['youtube' => 'subscribers_count', 'instagram' => 'followers_count', 'tiktok' => 'followers_count', 'facebook' => 'followers_count'];
     $postField = ['youtube' => 'videos_count', 'instagram' => 'posts_count', 'tiktok' => 'posts_count', 'facebook' => 'recent_posts_count'];
+    // Instagram/TikTok are recent-sample view counts (last ~10-12 posts/videos), not a lifetime
+    // total like YouTube's views_count — Facebook has no view-count field at all, so it falls
+    // through to 'views_count' via the ?? below, which is always null on a Facebook row (0).
+    $viewsField = ['youtube' => 'views_count', 'instagram' => 'recent_reels_views', 'tiktok' => 'recent_video_plays'];
     $platformLabels = ['youtube' => 'YouTube', 'instagram' => 'Instagram', 'tiktok' => 'TikTok', 'facebook' => 'Facebook'];
 
     $activeTab = in_array(request()->query('tab'), ['personal', 'institusi', 'gereja'], true) ? request()->query('tab') : 'organisasi';
@@ -90,7 +94,7 @@
     $reachSubtitle .= $churchSuffix;
 
     $viewsSubtitle = __('analytics.views_subtitle');
-    $viewsSubtitle .= ($selectedPlatform && $selectedPlatform !== 'youtube') ? __('analytics.not_available_platform') : '';
+    $viewsSubtitle .= ($selectedPlatform && ! in_array($selectedPlatform, ['youtube', 'instagram', 'tiktok'], true)) ? __('analytics.not_available_platform') : '';
     $viewsSubtitle .= $churchSuffix;
 
     $likesSubtitle = __('analytics.likes_subtitle');
@@ -110,6 +114,20 @@
         $reachGrowthPercent = round((($latestPoint->total_reach - $previousPoint->total_reach) / $previousPoint->total_reach) * 100, 2);
     }
 
+    // NOT $latestPoint->total_reach — that's the SUM for whichever single recorded_at date
+    // happens to be latest among the *filtered* rows, and different accounts get fetched on
+    // different days, so a filter (category, platform, church_id...) that leaves only
+    // slower-to-update accounts can silently land on an older week's snapshot entirely, showing
+    // a stale/mismatched "current" total (caught via the new category filter: Akun Umum's
+    // latest recorded_at was a full week behind Akun Gereja's). This instead sums each filtered
+    // account's own latestStat directly — a true "right now" snapshot per account, same
+    // approach $grandReach below already uses for the per-church table.
+    $currentReachChurch = $filteredChurches->flatMap(
+        fn ($church) => $church->socials
+            ->when($selectedPlatform, fn ($socials) => $socials->filter(fn ($s) => $s->platform->value === $selectedPlatform))
+            ->when($selectedCategory, fn ($socials) => $socials->filter(fn ($s) => $s->category->value === $selectedCategory))
+    )->sum(fn ($s) => $s->latestStat?->{$countField[$s->platform->value]} ?? 0);
+
     // Personal tab
     $selectedPersonName = $selectedPersonId ? $people->firstWhere('id', (int) $selectedPersonId)?->name : null;
     $personSuffix = $selectedPersonName ? __('analytics.suffix_entity', ['name' => $selectedPersonName]) : __('analytics.suffix_all_personal');
@@ -120,7 +138,7 @@
     $reachSubtitlePersonal .= $personSuffix;
 
     $viewsSubtitlePersonal = __('analytics.views_subtitle');
-    $viewsSubtitlePersonal .= ($selectedPlatform && $selectedPlatform !== 'youtube') ? __('analytics.not_available_platform') : '';
+    $viewsSubtitlePersonal .= ($selectedPlatform && ! in_array($selectedPlatform, ['youtube', 'instagram', 'tiktok'], true)) ? __('analytics.not_available_platform') : '';
     $viewsSubtitlePersonal .= $personSuffix;
 
     $likesSubtitlePersonal = __('analytics.likes_subtitle');
@@ -150,7 +168,7 @@
     $reachSubtitleInstitution .= $institutionSuffix;
 
     $viewsSubtitleInstitution = __('analytics.views_subtitle');
-    $viewsSubtitleInstitution .= ($selectedPlatform && $selectedPlatform !== 'youtube') ? __('analytics.not_available_platform') : '';
+    $viewsSubtitleInstitution .= ($selectedPlatform && ! in_array($selectedPlatform, ['youtube', 'instagram', 'tiktok'], true)) ? __('analytics.not_available_platform') : '';
     $viewsSubtitleInstitution .= $institutionSuffix;
 
     $likesSubtitleInstitution = __('analytics.likes_subtitle');
@@ -184,7 +202,7 @@
     $reachSubtitleOrganization .= $organizationSuffix;
 
     $viewsSubtitleOrganization = __('analytics.views_subtitle');
-    $viewsSubtitleOrganization .= ($selectedPlatform && $selectedPlatform !== 'youtube') ? __('analytics.not_available_platform') : '';
+    $viewsSubtitleOrganization .= ($selectedPlatform && ! in_array($selectedPlatform, ['youtube', 'instagram', 'tiktok'], true)) ? __('analytics.not_available_platform') : '';
     $viewsSubtitleOrganization .= $organizationSuffix;
 
     $likesSubtitleOrganization = __('analytics.likes_subtitle');
@@ -275,7 +293,7 @@
         </div>
 
         {{-- Filters --}}
-        <x-filter-card>
+        <x-filter-card :clear-url="($selectedOrganizationKey || $selectedPlatform || $selectedConferenceId || $selectedStartDate || $selectedEndDate || ($isNasionalView && $selectedUnionId)) ? route('churches.analytics', ['tab' => 'organisasi']) : null">
             <form method="GET" id="organisasi-filter-form" class="flex flex-wrap items-center gap-3">
                 <input type="hidden" name="tab" value="organisasi">
 
@@ -324,11 +342,6 @@
                     'selectedEndDate' => $selectedEndDate,
                 ])
 
-                @if ($selectedOrganizationKey || $selectedPlatform || $selectedConferenceId || $selectedStartDate || $selectedEndDate || ($isNasionalView && $selectedUnionId))
-                    <a href="{{ route('churches.analytics', ['tab' => 'organisasi']) }}" class="text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
-                        {{ __('common.reset_filter') }}
-                    </a>
-                @endif
             </form>
         </x-filter-card>
 
@@ -397,13 +410,13 @@
                 );
                 $grandByPlatformOrganization = $allDisplaySocialsOrganization->groupBy(fn ($s) => $s->platform->value);
                 $grandReachOrganization = $allDisplaySocialsOrganization->sum(fn ($s) => $s->latestStat?->{$countField[$s->platform->value]} ?? 0);
-                $grandViewsOrganization = $allDisplaySocialsOrganization->sum(fn ($s) => $s->latestStat?->views_count ?? 0);
+                $grandViewsOrganization = $allDisplaySocialsOrganization->sum(fn ($s) => $s->latestStat?->{$viewsField[$s->platform->value] ?? 'views_count'} ?? 0);
                 $grandLikesOrganization = $allDisplaySocialsOrganization->sum(fn ($s) => $s->latestStat?->likes_count ?? 0);
                 $grandPostsOrganization = $allDisplaySocialsOrganization->sum(
                     fn ($s) => isset($postField[$s->platform->value]) ? ($s->latestStat?->{$postField[$s->platform->value]} ?? 0) : 0
                 );
 
-                $organizationRows = $filteredOrganizations->map(function ($org) use ($selectedPlatform, $countField, $postField) {
+                $organizationRows = $filteredOrganizations->map(function ($org) use ($selectedPlatform, $countField, $postField, $viewsField) {
                     $displaySocials = $selectedPlatform
                         ? $org->socials->filter(fn ($s) => $s->platform->value === $selectedPlatform)
                         : $org->socials;
@@ -412,7 +425,7 @@
                         'organization' => $org,
                         'socials' => $displaySocials,
                         'reach' => $displaySocials->sum(fn ($s) => $s->latestStat?->{$countField[$s->platform->value]} ?? 0),
-                        'views' => $displaySocials->sum(fn ($s) => $s->latestStat?->views_count ?? 0),
+                        'views' => $displaySocials->sum(fn ($s) => $s->latestStat?->{$viewsField[$s->platform->value] ?? 'views_count'} ?? 0),
                         'likes' => $displaySocials->sum(fn ($s) => $s->latestStat?->likes_count ?? 0),
                         'posts' => $displaySocials->sum(
                             fn ($s) => isset($postField[$s->platform->value]) ? ($s->latestStat?->{$postField[$s->platform->value]} ?? 0) : 0
@@ -594,12 +607,12 @@
                 </a>
             </div>
             @can('browse-directory-analytics')
-                <x-export-button :url="route('export.analytics.preview', array_filter(['church_id' => $selectedChurchId, 'platform' => $selectedPlatform]))" />
+                <x-export-button :url="route('export.analytics.preview', array_filter(['church_id' => $selectedChurchId, 'platform' => $selectedPlatform, 'category' => $selectedCategory]))" />
             @endcan
         </div>
 
         {{-- Filters --}}
-        <x-filter-card>
+        <x-filter-card :clear-url="($selectedChurchId || $selectedPlatform || $selectedCategory || $selectedConferenceId || $selectedStartDate || $selectedEndDate || ($isNasionalView && $selectedUnionId)) ? route('churches.analytics', ['tab' => 'gereja']) : null">
             <form method="GET" id="gereja-filter-form" class="flex flex-wrap items-center gap-3">
                 <input type="hidden" name="tab" value="gereja">
 
@@ -639,17 +652,26 @@
                     <x-icon name="chevron-down" class="pointer-events-none absolute top-1/2 right-3.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                 </label>
 
+                <label class="relative">
+                    <x-icon name="building-office" class="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <select
+                        name="category"
+                        onchange="this.form.submit()"
+                        class="appearance-none rounded-full border border-black/10 bg-slate-50 py-2.5 pr-10 pl-9 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-100 dark:border-white/10 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                    >
+                        <option value="">{{ __('common.all_categories') }}</option>
+                        <option value="gereja" @selected($selectedCategory === 'gereja')>{{ __('directory.church_accounts') }}</option>
+                        <option value="umum" @selected($selectedCategory === 'umum')>{{ __('directory.general_accounts') }}</option>
+                    </select>
+                    <x-icon name="chevron-down" class="pointer-events-none absolute top-1/2 right-3.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                </label>
+
                 @include('partials.analytics-date-range-filter', [
                     'prefix' => 'church',
                     'selectedStartDate' => $selectedStartDate,
                     'selectedEndDate' => $selectedEndDate,
                 ])
 
-                @if ($selectedChurchId || $selectedPlatform || $selectedConferenceId || $selectedStartDate || $selectedEndDate || ($isNasionalView && $selectedUnionId))
-                    <a href="{{ route('churches.analytics', ['tab' => 'gereja']) }}" class="text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
-                        {{ __('common.reset_filter') }}
-                    </a>
-                @endif
             </form>
         </x-filter-card>
 
@@ -662,7 +684,7 @@
             <div class="min-w-[180px]">
                 <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('analytics.total_reach_current') }}</p>
                 <p class="text-3xl font-bold tabular-nums text-slate-900 dark:text-white">
-                    {{ number_format($latestPoint->total_reach ?? 0) }}
+                    {{ number_format($currentReachChurch) }}
                 </p>
             </div>
 
@@ -712,9 +734,9 @@
         @else
             @php
                 $allDisplaySocials = $filteredChurches->flatMap(
-                    fn ($church) => $selectedPlatform
-                        ? $church->socials->filter(fn ($s) => $s->platform->value === $selectedPlatform)
-                        : $church->socials
+                    fn ($church) => $church->socials
+                        ->when($selectedPlatform, fn ($socials) => $socials->filter(fn ($s) => $s->platform->value === $selectedPlatform))
+                        ->when($selectedCategory, fn ($socials) => $socials->filter(fn ($s) => $s->category->value === $selectedCategory))
                 );
                 $grandByCategory = collect(['gereja', 'umum'])->mapWithKeys(
                     fn ($category) => [
@@ -724,22 +746,22 @@
                     ]
                 );
                 $grandReach = $allDisplaySocials->sum(fn ($s) => $s->latestStat?->{$countField[$s->platform->value]} ?? 0);
-                $grandViews = $allDisplaySocials->sum(fn ($s) => $s->latestStat?->views_count ?? 0);
+                $grandViews = $allDisplaySocials->sum(fn ($s) => $s->latestStat?->{$viewsField[$s->platform->value] ?? 'views_count'} ?? 0);
                 $grandLikes = $allDisplaySocials->sum(fn ($s) => $s->latestStat?->likes_count ?? 0);
                 $grandPosts = $allDisplaySocials->sum(
                     fn ($s) => isset($postField[$s->platform->value]) ? ($s->latestStat?->{$postField[$s->platform->value]} ?? 0) : 0
                 );
 
-                $churchRows = $filteredChurches->map(function ($church) use ($selectedPlatform, $countField, $postField) {
-                    $displaySocials = $selectedPlatform
-                        ? $church->socials->filter(fn ($s) => $s->platform->value === $selectedPlatform)
-                        : $church->socials;
+                $churchRows = $filteredChurches->map(function ($church) use ($selectedPlatform, $selectedCategory, $countField, $postField, $viewsField) {
+                    $displaySocials = $church->socials
+                        ->when($selectedPlatform, fn ($socials) => $socials->filter(fn ($s) => $s->platform->value === $selectedPlatform))
+                        ->when($selectedCategory, fn ($socials) => $socials->filter(fn ($s) => $s->category->value === $selectedCategory));
 
                     return [
                         'church' => $church,
                         'socialsByCategory' => $displaySocials->groupBy(fn ($s) => $s->category->value),
                         'reach' => $displaySocials->sum(fn ($s) => $s->latestStat?->{$countField[$s->platform->value]} ?? 0),
-                        'views' => $displaySocials->sum(fn ($s) => $s->latestStat?->views_count ?? 0),
+                        'views' => $displaySocials->sum(fn ($s) => $s->latestStat?->{$viewsField[$s->platform->value] ?? 'views_count'} ?? 0),
                         'likes' => $displaySocials->sum(fn ($s) => $s->latestStat?->likes_count ?? 0),
                         'posts' => $displaySocials->sum(
                             fn ($s) => isset($postField[$s->platform->value]) ? ($s->latestStat?->{$postField[$s->platform->value]} ?? 0) : 0
@@ -922,7 +944,7 @@
         </div>
 
         {{-- Filters --}}
-        <x-filter-card>
+        <x-filter-card :clear-url="($selectedInstitutionId || $selectedPlatform || $selectedConferenceId || $selectedStartDate || $selectedEndDate || ($isNasionalView && $selectedUnionId)) ? route('churches.analytics', ['tab' => 'institusi']) : null">
             <form method="GET" id="institusi-filter-form" class="flex flex-wrap items-center gap-3">
                 <input type="hidden" name="tab" value="institusi">
 
@@ -968,11 +990,6 @@
                     'selectedEndDate' => $selectedEndDate,
                 ])
 
-                @if ($selectedInstitutionId || $selectedPlatform || $selectedConferenceId || $selectedStartDate || $selectedEndDate || ($isNasionalView && $selectedUnionId))
-                    <a href="{{ route('churches.analytics', ['tab' => 'institusi']) }}" class="text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
-                        {{ __('common.reset_filter') }}
-                    </a>
-                @endif
             </form>
         </x-filter-card>
 
@@ -1041,13 +1058,13 @@
                 );
                 $grandByPlatformInstitution = $allDisplaySocialsInstitution->groupBy(fn ($s) => $s->platform->value);
                 $grandReachInstitution = $allDisplaySocialsInstitution->sum(fn ($s) => $s->latestStat?->{$countField[$s->platform->value]} ?? 0);
-                $grandViewsInstitution = $allDisplaySocialsInstitution->sum(fn ($s) => $s->latestStat?->views_count ?? 0);
+                $grandViewsInstitution = $allDisplaySocialsInstitution->sum(fn ($s) => $s->latestStat?->{$viewsField[$s->platform->value] ?? 'views_count'} ?? 0);
                 $grandLikesInstitution = $allDisplaySocialsInstitution->sum(fn ($s) => $s->latestStat?->likes_count ?? 0);
                 $grandPostsInstitution = $allDisplaySocialsInstitution->sum(
                     fn ($s) => isset($postField[$s->platform->value]) ? ($s->latestStat?->{$postField[$s->platform->value]} ?? 0) : 0
                 );
 
-                $institutionRows = $filteredInstitutions->map(function ($institution) use ($selectedPlatform, $countField, $postField) {
+                $institutionRows = $filteredInstitutions->map(function ($institution) use ($selectedPlatform, $countField, $postField, $viewsField) {
                     $displaySocials = $selectedPlatform
                         ? $institution->socials->filter(fn ($s) => $s->platform->value === $selectedPlatform)
                         : $institution->socials;
@@ -1056,7 +1073,7 @@
                         'institution' => $institution,
                         'socials' => $displaySocials,
                         'reach' => $displaySocials->sum(fn ($s) => $s->latestStat?->{$countField[$s->platform->value]} ?? 0),
-                        'views' => $displaySocials->sum(fn ($s) => $s->latestStat?->views_count ?? 0),
+                        'views' => $displaySocials->sum(fn ($s) => $s->latestStat?->{$viewsField[$s->platform->value] ?? 'views_count'} ?? 0),
                         'likes' => $displaySocials->sum(fn ($s) => $s->latestStat?->likes_count ?? 0),
                         'posts' => $displaySocials->sum(
                             fn ($s) => isset($postField[$s->platform->value]) ? ($s->latestStat?->{$postField[$s->platform->value]} ?? 0) : 0
@@ -1235,7 +1252,7 @@
         </div>
 
         {{-- Filters --}}
-        <x-filter-card>
+        <x-filter-card :clear-url="($selectedPersonId || $selectedPlatform || $selectedConferenceId || $selectedStartDate || $selectedEndDate || ($isNasionalView && $selectedUnionId)) ? route('churches.analytics', ['tab' => 'personal']) : null">
             <form method="GET" id="personal-filter-form" class="flex flex-wrap items-center gap-3">
                 <input type="hidden" name="tab" value="personal">
 
@@ -1281,11 +1298,6 @@
                     'selectedEndDate' => $selectedEndDate,
                 ])
 
-                @if ($selectedPersonId || $selectedPlatform || $selectedConferenceId || $selectedStartDate || $selectedEndDate || ($isNasionalView && $selectedUnionId))
-                    <a href="{{ route('churches.analytics', ['tab' => 'personal']) }}" class="text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
-                        {{ __('common.reset_filter') }}
-                    </a>
-                @endif
             </form>
         </x-filter-card>
 
@@ -1354,13 +1366,13 @@
                 );
                 $grandByPlatformPersonal = $allDisplaySocialsPersonal->groupBy(fn ($s) => $s->platform->value);
                 $grandReachPersonal = $allDisplaySocialsPersonal->sum(fn ($s) => $s->latestStat?->{$countField[$s->platform->value]} ?? 0);
-                $grandViewsPersonal = $allDisplaySocialsPersonal->sum(fn ($s) => $s->latestStat?->views_count ?? 0);
+                $grandViewsPersonal = $allDisplaySocialsPersonal->sum(fn ($s) => $s->latestStat?->{$viewsField[$s->platform->value] ?? 'views_count'} ?? 0);
                 $grandLikesPersonal = $allDisplaySocialsPersonal->sum(fn ($s) => $s->latestStat?->likes_count ?? 0);
                 $grandPostsPersonal = $allDisplaySocialsPersonal->sum(
                     fn ($s) => isset($postField[$s->platform->value]) ? ($s->latestStat?->{$postField[$s->platform->value]} ?? 0) : 0
                 );
 
-                $personRows = $filteredPeople->map(function ($person) use ($selectedPlatform, $countField, $postField) {
+                $personRows = $filteredPeople->map(function ($person) use ($selectedPlatform, $countField, $postField, $viewsField) {
                     $displaySocials = $selectedPlatform
                         ? $person->socials->filter(fn ($s) => $s->platform->value === $selectedPlatform)
                         : $person->socials;
@@ -1369,7 +1381,7 @@
                         'person' => $person,
                         'socials' => $displaySocials,
                         'reach' => $displaySocials->sum(fn ($s) => $s->latestStat?->{$countField[$s->platform->value]} ?? 0),
-                        'views' => $displaySocials->sum(fn ($s) => $s->latestStat?->views_count ?? 0),
+                        'views' => $displaySocials->sum(fn ($s) => $s->latestStat?->{$viewsField[$s->platform->value] ?? 'views_count'} ?? 0),
                         'likes' => $displaySocials->sum(fn ($s) => $s->latestStat?->likes_count ?? 0),
                         'posts' => $displaySocials->sum(
                             fn ($s) => isset($postField[$s->platform->value]) ? ($s->latestStat?->{$postField[$s->platform->value]} ?? 0) : 0

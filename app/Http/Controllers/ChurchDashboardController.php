@@ -986,12 +986,21 @@ class ChurchDashboardController extends Controller
 
         $selectedChurchId = $request->query('church_id');
 
-        $growthOverTimeChurch = $this->growthOverTime('church_id', 'churches', $selectedChurchId, $selectedPlatform, $churches->pluck('id'), $selectedStartDate, $selectedEndDate);
+        // Gereja-tab-only: a church-owned ChurchSocial's category is always either 'gereja' or
+        // 'umum' (ChurchSocialController's own validation forces every other owner type to a
+        // single fixed category), so this filter is meaningful only here — not threaded into
+        // the Personal/Institusi/Organisasi tabs below.
+        $selectedCategory = $request->query('category');
+
+        $growthOverTimeChurch = $this->growthOverTime('church_id', 'churches', $selectedChurchId, $selectedPlatform, $churches->pluck('id'), $selectedStartDate, $selectedEndDate, $selectedCategory);
 
         $filteredChurches = $churches
             ->when($selectedChurchId, fn ($collection) => $collection->where('id', (int) $selectedChurchId))
             ->when($selectedPlatform, fn ($collection) => $collection->filter(
                 fn ($church) => $church->socials->contains(fn ($social) => $social->platform->value === $selectedPlatform)
+            ))
+            ->when($selectedCategory, fn ($collection) => $collection->filter(
+                fn ($church) => $church->socials->contains(fn ($social) => $social->category->value === $selectedCategory)
             ));
 
         $people = $this->analyticsPersonScope(Person::query()->where('is_active', true))
@@ -1069,6 +1078,7 @@ class ChurchDashboardController extends Controller
             'filteredChurches' => $filteredChurches,
             'growthOverTime' => $growthOverTimeChurch,
             'selectedChurchId' => $selectedChurchId,
+            'selectedCategory' => $selectedCategory,
             'people' => $people,
             'filteredPeople' => $filteredPeople,
             'growthOverTimePersonal' => $growthOverTimePersonal,
@@ -1111,7 +1121,7 @@ class ChurchDashboardController extends Controller
      * role/scope may see (pre-resolved via Church::visibleTo()/Person::visibleTo()/
      * Institution::visibleTo(), rather than duplicating that hierarchy SQL here).
      */
-    private function growthOverTime(string $ownerColumn, string $ownerTable, ?string $ownerId, ?string $platform, Collection $visibleIds, ?string $startDate = null, ?string $endDate = null)
+    private function growthOverTime(string $ownerColumn, string $ownerTable, ?string $ownerId, ?string $platform, Collection $visibleIds, ?string $startDate = null, ?string $endDate = null, ?string $category = null)
     {
         return ChurchStat::query()
             ->join('church_socials', 'church_socials.id', '=', 'church_stats.church_social_id')
@@ -1121,12 +1131,22 @@ class ChurchDashboardController extends Controller
             ->whereIn("{$ownerTable}.id", $visibleIds)
             ->when($ownerId, fn ($query) => $query->where("{$ownerTable}.id", $ownerId))
             ->when($platform, fn ($query) => $query->where('church_socials.platform', $platform))
+            // Only the Gereja tab ever passes this — category only varies (gereja/umum) on
+            // church-owned socials; personal/institution/organisasi rows are always forced to a
+            // single fixed category by ChurchSocialController's own validation, so filtering by
+            // it there would be meaningless.
+            ->when($category, fn ($query) => $query->where('church_socials.category', $category))
             ->when($startDate, fn ($query) => $query->whereDate('church_stats.recorded_at', '>=', $startDate))
             ->when($endDate, fn ($query) => $query->whereDate('church_stats.recorded_at', '<=', $endDate))
             ->selectRaw(
                 "church_stats.recorded_at as recorded_at,
                 SUM(CASE WHEN church_socials.platform = 'youtube' THEN church_stats.subscribers_count ELSE church_stats.followers_count END) as total_reach,
-                SUM(church_stats.views_count) as total_views,
+                SUM(CASE
+                    WHEN church_socials.platform = 'youtube' THEN church_stats.views_count
+                    WHEN church_socials.platform = 'instagram' THEN church_stats.recent_reels_views
+                    WHEN church_socials.platform = 'tiktok' THEN church_stats.recent_video_plays
+                    ELSE 0
+                END) as total_views,
                 SUM(church_stats.likes_count) as total_likes,
                 SUM(CASE WHEN church_socials.platform = 'youtube' THEN church_stats.videos_count ELSE church_stats.posts_count END) as total_posts"
             )
@@ -1161,7 +1181,12 @@ class ChurchDashboardController extends Controller
             ->selectRaw(
                 "church_stats.recorded_at as recorded_at,
                 SUM(CASE WHEN church_socials.platform = 'youtube' THEN church_stats.subscribers_count ELSE church_stats.followers_count END) as total_reach,
-                SUM(church_stats.views_count) as total_views,
+                SUM(CASE
+                    WHEN church_socials.platform = 'youtube' THEN church_stats.views_count
+                    WHEN church_socials.platform = 'instagram' THEN church_stats.recent_reels_views
+                    WHEN church_socials.platform = 'tiktok' THEN church_stats.recent_video_plays
+                    ELSE 0
+                END) as total_views,
                 SUM(church_stats.likes_count) as total_likes,
                 SUM(CASE WHEN church_socials.platform = 'youtube' THEN church_stats.videos_count ELSE church_stats.posts_count END) as total_posts"
             )
@@ -1382,7 +1407,10 @@ class ChurchDashboardController extends Controller
         $matchesRegionFilter = $this->matchesRegionFilter($selectedUnionId, $selectedConferenceId);
         [$unionOptions, $conferenceOptions] = $this->regionFilterOptions($selectedUnionId);
 
-        $scoreRows = $this->growthScoreRows()
+        // Church-scope-only, same as the Analytics Gereja tab's filter — see activeSocials().
+        $selectedCategory = $request->query('category');
+
+        $scoreRows = $this->growthScoreRows(category: $selectedCategory)
             ->map(fn ($row) => [
                 'entity' => $row['church'],
                 'score' => $row['score'],
@@ -1407,6 +1435,7 @@ class ChurchDashboardController extends Controller
             'selectedConferenceId' => $selectedConferenceId,
             'isNasionalView' => $this->isNasionalView(),
             'isUniView' => $isUniView,
+            'selectedCategory' => $selectedCategory,
         ]);
     }
 
@@ -1419,13 +1448,16 @@ class ChurchDashboardController extends Controller
 
         $sort = $request->query('sort') === 'value' ? 'value' : 'delta';
 
+        // Church-scope-only, same as the Analytics Gereja tab's filter — see activeSocials().
+        $selectedCategory = $request->query('category');
+
         $isUniView = $this->isUniView();
         $selectedUnionId = $isUniView ? (string) $request->user()->union_id : $request->query('union_id');
         $selectedConferenceId = $request->query('conference_id');
         $matchesRegionFilter = $this->matchesRegionFilter($selectedUnionId, $selectedConferenceId);
         [$unionOptions, $conferenceOptions] = $this->regionFilterOptions($selectedUnionId);
 
-        [$socials, $field] = $this->metricDefinition($metric, $this->activeSocials());
+        [$socials, $field] = $this->metricDefinition($metric, $this->activeSocials(category: $selectedCategory));
 
         $rows = $this->buildLeaderboard($socials, $field, null, $sort)
             ->filter(fn ($row) => $matchesRegionFilter($row['social']->church))
@@ -1450,6 +1482,7 @@ class ChurchDashboardController extends Controller
             'selectedConferenceId' => $selectedConferenceId,
             'isNasionalView' => $this->isNasionalView(),
             'isUniView' => $isUniView,
+            'selectedCategory' => $selectedCategory,
         ]);
     }
 
@@ -1595,6 +1628,9 @@ class ChurchDashboardController extends Controller
         $sort = $request->query('sort') === 'value' ? 'value' : 'delta';
         $metric = $request->query('metric');
 
+        // Church-scope-only, same as the Analytics Gereja tab's filter — see activeSocials().
+        $selectedCategory = $request->query('category');
+
         $isNasionalView = $this->isNasionalView();
         $isUniView = $this->isUniView();
         $selectedUnionId = $isUniView ? (string) $request->user()->union_id : $request->query('union_id');
@@ -1608,6 +1644,7 @@ class ChurchDashboardController extends Controller
             'selectedConferenceId' => $selectedConferenceId,
             'isNasionalView' => $isNasionalView,
             'isUniView' => $isUniView,
+            'selectedCategory' => $selectedCategory,
         ];
 
         // No metric picked: show every metric that applies to this platform together on one page.
@@ -1617,14 +1654,14 @@ class ChurchDashboardController extends Controller
                 ->keys();
 
             $sections = $applicableMetrics->mapWithKeys(fn ($m) => [
-                $m => $this->metricComparisonRows($m, $platform, $sort)
+                $m => $this->metricComparisonRows($m, $platform, $sort, $selectedCategory)
                     ->filter(fn ($row) => $matchesRegionFilter($row['church']))
                     ->values(),
             ]);
 
             // "Semua" compares platforms against each other, so it gets a composite score
             // card instead of per-metric church leaderboards (which don't apply platform-vs-platform).
-            $platformScoreRows = $platform === 'semua' ? $this->growthScoreRowsByPlatform($this->activeSocials()) : null;
+            $platformScoreRows = $platform === 'semua' ? $this->growthScoreRowsByPlatform($this->activeSocials(category: $selectedCategory)) : null;
 
             return view('churches.platform-comparison-overview', array_merge([
                 'scope' => ComparisonScope::church(),
@@ -1647,10 +1684,11 @@ class ChurchDashboardController extends Controller
                 'platform' => $fallbackPlatform,
                 'metric' => $metric,
                 'sort' => $sort === 'value' ? 'value' : null,
+                'category' => $selectedCategory,
             ]));
         }
 
-        $rows = $this->metricComparisonRows($metric, $platform, $sort)
+        $rows = $this->metricComparisonRows($metric, $platform, $sort, $selectedCategory)
             ->filter(fn ($row) => $matchesRegionFilter($row['church']))
             ->values();
 

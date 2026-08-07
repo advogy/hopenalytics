@@ -192,7 +192,7 @@ trait BuildsLeaderboards
     {
         return [
             'reach' => ['semua', 'youtube', 'instagram', 'tiktok', 'facebook'],
-            'views' => ['semua', 'youtube'],
+            'views' => ['semua', 'youtube', 'instagram', 'tiktok'],
             'likes' => ['semua', 'tiktok'],
             'posts' => ['semua', 'youtube', 'instagram', 'tiktok', 'facebook'],
         ];
@@ -203,13 +203,18 @@ trait BuildsLeaderboards
      * general data no matter who (if anyone) happens to be logged in while viewing them —
      * never the viewer's own role/scope.
      */
-    protected function activeSocials(bool $scoped = true): Collection
+    // $category ('gereja'/'umum', see SocialCategory) is church-scope-only — the other
+    // owner-type variants below don't take it since their category is always a single fixed
+    // value per ChurchSocialController's own validation (see analytics.blade.php's Gereja tab
+    // for where this filter actually surfaces in the UI).
+    protected function activeSocials(bool $scoped = true, ?string $category = null): Collection
     {
         return ChurchSocial::query()
             ->with('church.conference.union')
             ->where('is_active', true)
             ->whereHas('church', fn ($q) => $q->where('is_active', true))
             ->when($scoped, fn ($q) => $q->whereHas('church', fn ($q2) => $this->analyticsChurchScope($q2)))
+            ->when($category, fn ($q) => $q->where('category', $category))
             ->get();
     }
 
@@ -416,9 +421,17 @@ trait BuildsLeaderboards
                 $activeSocials,
                 fn ($social) => $social->platform === SocialPlatform::YouTube ? 'subscribers_count' : 'followers_count',
             ],
+            // Instagram (recent_reels_views) and TikTok (recent_video_plays) are recent-sample
+            // aggregates (last ~10-12 posts/videos), not a lifetime total like YouTube's
+            // views_count — same asymmetry already accepted for the "posts" metric's Facebook
+            // inclusion below. Facebook has no view-count field scraped at all, so it stays out.
             'views' => [
-                $activeSocials->where('platform', SocialPlatform::YouTube),
-                fn () => 'views_count',
+                $activeSocials->whereIn('platform', [SocialPlatform::YouTube, SocialPlatform::Instagram, SocialPlatform::TikTok]),
+                fn ($social) => match ($social->platform) {
+                    SocialPlatform::Instagram => 'recent_reels_views',
+                    SocialPlatform::TikTok => 'recent_video_plays',
+                    default => 'views_count',
+                },
             ],
             'likes' => [
                 $activeSocials->where('platform', SocialPlatform::TikTok),
@@ -471,9 +484,9 @@ trait BuildsLeaderboards
      * $sortBy 'value' ranks by the metric's current total (highest first); 'delta' ranks
      * by weekly growth instead (highest first, churches with no growth data last).
      */
-    protected function metricComparisonRows(string $metric, ?string $platform, string $sortBy = 'delta'): Collection
+    protected function metricComparisonRows(string $metric, ?string $platform, string $sortBy = 'delta', ?string $category = null): Collection
     {
-        [$socials, $fieldResolver] = $this->metricDefinition($metric, $this->activeSocials());
+        [$socials, $fieldResolver] = $this->metricDefinition($metric, $this->activeSocials(category: $category));
 
         // "semua" means every applicable platform combined — no filtering, same as passing null.
         if ($platform && $platform !== 'semua') {
@@ -714,9 +727,9 @@ trait BuildsLeaderboards
      * views, likes, posts) that actually applies to that church's own accounts — a
      * church without a TikTok account, for example, simply isn't scored on likes.
      */
-    protected function growthScoreRows(bool $scoped = true): Collection
+    protected function growthScoreRows(bool $scoped = true, ?string $category = null): Collection
     {
-        $activeSocials = $this->activeSocials($scoped);
+        $activeSocials = $this->activeSocials($scoped, $category);
         $metrics = ['reach', 'views', 'likes', 'posts'];
 
         $percentBySocial = [];

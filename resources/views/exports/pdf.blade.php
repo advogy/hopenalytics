@@ -11,12 +11,24 @@
         th, td { border: 1px solid #e2e8f0; padding: 6px 8px; text-align: left; }
         th { background: #f1f5f9; font-weight: bold; }
         tr:nth-child(even) td { background: #f8fafc; }
+        .summary { margin: 4px 0 0 0; padding: 0; list-style: none; }
+        .summary li { display: inline-block; margin: 0 12px 0 0; padding: 4px 10px; border: 1px solid #e2e8f0; border-radius: 6px; }
+        .summary .label { color: #64748b; }
+        .summary .value { font-weight: bold; }
     </style>
 </head>
 <body>
     <h1>{{ $dataset['title'] }}</h1>
     @if ($dataset['subtitle'])
         <p class="subtitle">{{ $dataset['subtitle'] }}</p>
+    @endif
+
+    @if (! empty($dataset['summary']))
+        <ul class="summary">
+            @foreach ($dataset['summary'] as $item)
+                <li><span class="label">{{ $item['label'] }}:</span> <span class="value">{{ $item['value'] }}</span></li>
+            @endforeach
+        </ul>
     @endif
 
     @if (empty($dataset['rows']))

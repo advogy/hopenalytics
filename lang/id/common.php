@@ -37,6 +37,7 @@ return [
     'platform' => 'Platform',
     'date' => 'Tanggal',
     'all_social_media' => 'Semua Media Sosial',
+    'all_categories' => 'Semua Kategori',
     'pagination_summary' => ':first–:last dari :total',
     'no_platform_data' => 'Tidak ada data untuk platform ini.',
     'sort_by' => 'Urutkan:',

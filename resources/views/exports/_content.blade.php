@@ -5,6 +5,17 @@
             <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ $dataset['subtitle'] }}</p>
         @endif
         <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">{{ __('export.preview_row_count', ['count' => count($dataset['rows'])]) }}</p>
+
+        @if (! empty($dataset['summary']))
+            <div class="mt-3 flex flex-wrap gap-2">
+                @foreach ($dataset['summary'] as $item)
+                    <div class="rounded-lg border border-black/5 bg-white px-3 py-1.5 dark:border-white/5 dark:bg-slate-900">
+                        <span class="text-xs text-slate-500 dark:text-slate-400">{{ $item['label'] }}:</span>
+                        <span class="ml-1 text-sm font-semibold tabular-nums text-slate-900 dark:text-white">{{ $item['value'] }}</span>
+                    </div>
+                @endforeach
+            </div>
+        @endif
     </div>
 
     <div class="flex shrink-0 items-center gap-2">
