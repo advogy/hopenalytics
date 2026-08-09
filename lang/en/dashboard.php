@@ -14,6 +14,8 @@ return [
     'refresh_done_all_success' => 'Done! :success of :total accounts updated successfully.',
     'refresh_done_with_failures' => 'Done — :success succeeded, :failed failed, out of :total accounts.',
     'refresh_failed' => 'Failed to start refresh',
+    'last_updated_at' => 'Data last updated: :time',
+    'last_updated_never' => 'Data has never been updated',
 
     'stat_churches' => 'Registered churches',
     'stat_institutions' => 'Registered institutions',

@@ -10,7 +10,7 @@
         </div>
 
         @can('trigger-refresh')
-            <div class="flex items-center gap-3">
+            <div class="flex flex-col items-end gap-1.5">
                 <form
                     method="POST"
                     action="{{ route('socials.refresh-all') }}"
@@ -27,6 +27,9 @@
                         {{ __('dashboard.refresh_button') }}
                     </button>
                 </form>
+                <p class="text-xs text-slate-400 dark:text-slate-500">
+                    {{ $lastFetchedAt ? __('dashboard.last_updated_at', ['time' => $lastFetchedAt->translatedFormat('d M Y H:i')]) : __('dashboard.last_updated_never') }}
+                </p>
             </div>
         @endcan
     </div>

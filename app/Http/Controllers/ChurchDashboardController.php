@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\SocialPlatform;
 use App\Http\Controllers\Concerns\BuildsLeaderboards;
 use App\Models\Church;
+use App\Models\ChurchSocial;
 use App\Models\ChurchStat;
 use App\Models\Conference;
 use App\Models\Goal;
@@ -13,6 +14,7 @@ use App\Models\Person;
 use App\Models\Union;
 use App\Support\ComparisonScope;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -320,8 +322,19 @@ class ChurchDashboardController extends Controller
             default => __('dashboard.subtitle'),
         };
 
+        // Same scope as ChurchRefreshController::all() (the "Dapatkan Data Terbaru" button
+        // itself) — is_active + visibleTo($user), not is_auto_fetch-restricted, since a
+        // manually-entered account's last update is still relevant context for "how fresh is
+        // this data" even though the button itself only refreshes the auto-fetch ones.
+        // max() is a raw aggregate query — it returns the column's raw DB value, not run
+        // through ChurchSocial's own 'last_fetched_at' => 'datetime' cast, so it needs parsing
+        // into a Carbon instance here before the view can call translatedFormat() on it.
+        $lastFetchedAtRaw = ChurchSocial::where('is_active', true)->visibleTo($user)->max('last_fetched_at');
+        $lastFetchedAt = $lastFetchedAtRaw ? Carbon::parse($lastFetchedAtRaw) : null;
+
         return view('churches.index', [
             'scopeLabel' => $scopeLabel,
+            'lastFetchedAt' => $lastFetchedAt,
             'totalChurches' => $churches->count(),
             'totalSocials' => $allSocials->count(),
             'totalPeople' => $people->count(),

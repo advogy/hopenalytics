@@ -14,6 +14,8 @@ return [
     'refresh_done_all_success' => 'Selesai! :success dari :total akun berhasil diperbarui.',
     'refresh_done_with_failures' => 'Selesai — :success berhasil, :failed gagal, dari :total akun.',
     'refresh_failed' => 'Gagal memulai refresh',
+    'last_updated_at' => 'Data terakhir diperbarui: :time',
+    'last_updated_never' => 'Data belum pernah diperbarui',
 
     'stat_churches' => 'Gereja terdaftar',
     'stat_institutions' => 'Institusi terdaftar',
