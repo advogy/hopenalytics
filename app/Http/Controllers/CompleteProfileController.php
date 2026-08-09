@@ -60,7 +60,7 @@ class CompleteProfileController extends Controller
             'profile_step_completed_at' => now(),
         ])->save();
 
-        return redirect()->route('profile.edit', ['tab' => 'wilayah'])->with('status', 'Profil berhasil dilengkapi.');
+        return redirect()->route('profile.edit', ['tab' => 'wilayah'])->with('status', __('entity.profile_completed'));
     }
 
     public function skip(Request $request): RedirectResponse

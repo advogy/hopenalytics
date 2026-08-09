@@ -13,4 +13,18 @@ return [
     'no_match' => 'No matching log entries.',
     'no_logs_yet' => 'No audit log entries yet.',
     'system' => 'System',
+
+    'tab_actions' => 'Actions',
+    'tab_login' => 'Login',
+    'login_subtitle' => 'User login history — when they signed in, signed out, and how long the session lasted.',
+    'login_search_placeholder' => 'Search name or email…',
+    'col_user' => 'User',
+    'col_ip' => 'IP Address',
+    'col_login_at' => 'Signed In',
+    'col_logout_at' => 'Signed Out',
+    'col_duration' => 'Duration',
+    'duration_active' => 'Not signed out yet',
+    'no_login_match' => 'No matching login history.',
+    'no_login_logs_yet' => 'No login history yet.',
+    'deleted_user' => 'Deleted user',
 ];

@@ -42,7 +42,7 @@
                     <tr class="text-slate-500 dark:text-slate-400">
                         <th class="py-2 pr-2 font-medium">#</th>
                         <th class="py-2 pr-2 font-medium">{{ $nameLabel }}</th>
-                        <th class="py-2 pr-2 font-medium">Akun</th>
+                        <th class="py-2 pr-2 font-medium">{{ __('common.account') }}</th>
                         <th class="py-2 pr-2 text-right font-medium">{{ __('comparison.growth') }}</th>
                         <th class="py-2 text-right font-medium">{{ $valueLabel }}</th>
                     </tr>

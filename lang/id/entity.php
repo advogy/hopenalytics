@@ -22,6 +22,12 @@ return [
     'recent_reels' => 'Reels terbaru (:count post)',
     'recent_videos' => 'Video terbaru (:count video)',
     'recent_posts' => 'Post terbaru (:count post)',
+    // Kept as English loanwords — matches how these metric names already appear everywhere
+    // else in the app (see common.metric_views/metric_likes), never translated to Indonesian.
+    'metric_views' => 'views',
+    'metric_plays' => 'plays',
+    'metric_shares' => 'shares',
+    'metric_likes' => 'likes',
     'no_stats_yet' => 'Belum ada data statistik.',
     'history_heading' => 'Riwayat :platform',
 
@@ -46,6 +52,9 @@ return [
     'conference_unassigned' => 'Belum ditugaskan ke Daerah manapun',
     'search_uni_placeholder' => 'Cari Uni…',
     'search_daerah_placeholder' => 'Cari Daerah…',
+    'waiting_for_daerah' => 'Pilih Daerah terlebih dahulu…',
+    'search_or_create_church_placeholder' => 'Cari atau ketik nama gereja baru…',
+    'church_name_hint' => 'Kalau gereja Anda belum ada di sistem, ketik namanya — akan otomatis ditambahkan.',
     'own_church_reach' => 'Jangkau Gereja',
     'own_church_socials' => 'Akun Sosial Gereja',
     'own_personal_socials' => 'Akun Sosial Personal',
@@ -86,4 +95,38 @@ return [
     'auto_fetch_hint_person' => 'Matikan untuk akun yang datanya diisi manual.',
     'delete_account' => 'Hapus akun ini',
     'delete_account_confirm' => 'Hapus akun :handle? Riwayat data tetap tersimpan.',
+
+    // Flash messages — Person CRUD/link/unlink and social-account CRUD. Person's own messages
+    // don't get an entity-type word prefix (unlike accounts.entity_created etc. for Uni/Daerah/
+    // Gereja/Institusi) since that's already how these read today — just the name.
+    'person_created' => '":name" berhasil ditambahkan.',
+    'person_updated' => '":name" berhasil diperbarui.',
+    'person_status_changed' => '":name" telah :status.',
+    'person_deleted' => '":name" berhasil dihapus.',
+    'person_linked' => '":name" berhasil ditautkan ke akun ":user".',
+    'person_unlinked' => 'Tautan akun login untuk ":name" telah dilepas.',
+    'social_created' => 'Akun :handle berhasil ditambahkan.',
+    'social_updated' => 'Akun :handle berhasil diperbarui.',
+    'social_deleted' => 'Akun :handle dihapus.',
+    'social_already_tracked' => 'Akun ini sudah terdaftar di ":owner".',
+    'social_already_tracked_generic' => 'Akun ini sudah terdaftar.',
+    'manual_stat_saved' => 'Data manual untuk :handle berhasil disimpan.',
+
+    // Flash messages — Profil Saya (own-profile edit) and initial profile completion.
+    'profile_completed' => 'Profil berhasil dilengkapi.',
+    'profile_updated' => 'Profil berhasil diperbarui.',
+    'profile_name_updated_email_pending' => 'Nama diperbarui. Kode verifikasi telah dikirim ke :email untuk mengonfirmasi email baru.',
+    'password_updated' => 'Kata sandi berhasil diperbarui.',
+    'email_updated_verified' => 'Email berhasil diperbarui dan diverifikasi.',
+    'otp_resent' => 'Kode OTP baru telah dikirim.',
+    'email_change_cancelled' => 'Perubahan email dibatalkan.',
+
+    // Profil Saya page.
+    'profile_title' => 'Profil Saya',
+    'profile_subtitle' => 'Kelola info personal, username, dan kata sandi akun Anda.',
+    'profile_pending_email_notice' => 'Menunggu verifikasi perubahan email ke :email.',
+    'profile_verify_now' => 'Verifikasi sekarang',
+    'profile_cancel_email_change' => 'Batalkan',
+    'profile_own_socials_subtitle' => 'Akun media sosial pribadi Anda.',
+    'verify_new_email_title' => 'Verifikasi Email Baru',
 ];

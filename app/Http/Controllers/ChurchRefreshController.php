@@ -47,7 +47,7 @@ class ChurchRefreshController extends Controller
             ]);
         }
 
-        return back()->with('status', "Memperbarui {$socials->count()} akun di background — data akan muncul dalam beberapa menit.");
+        return back()->with('status', __('dashboard.refresh_started', ['count' => $socials->count()]));
     }
 
     /**

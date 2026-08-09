@@ -59,4 +59,17 @@ return [
     'delete_user_confirm' => 'Delete ":name"? This account will disappear from every list.',
     'verified' => 'Verified',
     'pending_verification' => 'Pending Verification',
+
+    // Flash messages.
+    'assigned' => '":name" was assigned successfully.',
+    'role_revoked' => 'The role for ":name" has been revoked.',
+    'region_released' => 'Region data for ":name" has been released.',
+    'region_released_bulk_none' => 'No unassigned users were released.',
+    'region_released_bulk' => 'Region data released for :count unassigned user(s) (:names).',
+    'user_deleted' => '":name" has been deleted.',
+    'user_restored' => '":name" was restored successfully.',
+    'user_force_deleted' => '":name" was permanently deleted successfully.',
+    'user_updated' => '":name" was updated successfully.',
+    'user_status_changed' => '":name" has been :status.',
+    'otp_resent_to' => 'A new OTP code has been sent to :email.',
 ];

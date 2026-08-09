@@ -4,8 +4,12 @@ namespace App\Providers;
 
 use App\Enums\UserRole;
 use App\Models\AppSetting;
+use App\Models\LoginLog;
 use App\Models\User;
+use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Events\Logout;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
@@ -43,6 +47,37 @@ class AppServiceProvider extends ServiceProvider
         if ($appSettings->youtube_api_key) {
             config(['services.youtube.api_key' => $appSettings->youtube_api_key]);
         }
+
+        // Feeds the Audit Log page's Login/Session tab (see AuditLogController) — Laravel
+        // fires these two events on every Auth::login()/logout() call regardless of whether
+        // anything listens, so this is the only hook needed to start recording history; nothing
+        // existed here before. A session that simply expires or is abandoned (browser closed,
+        // no explicit "Sign Out") never fires Logout, so that row's logged_out_at stays null
+        // forever — there's no reliable server-side signal for that case, so it's left honest
+        // rather than guessed at. latest()->first() closes the most recently opened still-open
+        // session for that user rather than tracking a specific session ID, which is a
+        // reasonable simplification for a single-session-per-user usage pattern but could
+        // misattribute which session closed if the same user is logged in on multiple devices
+        // at once.
+        Event::listen(Login::class, function (Login $event) {
+            LoginLog::create([
+                'user_id' => $event->user->id,
+                'ip_address' => request()->ip(),
+                'user_agent' => request()->userAgent(),
+            ]);
+        });
+
+        Event::listen(Logout::class, function (Logout $event) {
+            if (! $event->user) {
+                return;
+            }
+
+            LoginLog::where('user_id', $event->user->id)
+                ->whereNull('logged_out_at')
+                ->latest()
+                ->first()
+                ?->update(['logged_out_at' => now()]);
+        });
 
         // Keyed by identity + IP (Laravel's standard login-throttling shape) rather than IP
         // alone, so brute-forcing one account isn't merely a matter of rotating IPs against a

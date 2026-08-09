@@ -46,6 +46,17 @@ return [
     'no_growth_data' => 'Belum ada data pertumbuhan (butuh minimal 2 minggu pencatatan).',
     'coordinates' => 'Koordinat',
     'coordinates_hint' => '(opsional — otomatis terisi dari kota, isi manual untuk override)',
+    'latitude' => 'Lintang',
+    'longitude' => 'Bujur',
+    'toggle_password_visibility' => 'Tampilkan/sembunyikan kata sandi',
+    'growth_chart_no_data' => 'Grafik pertumbuhan akan muncul setelah data tercatat minimal 2 minggu.',
+    'growth_chart_aria_label' => 'Grafik pertumbuhan total jangkauan',
+    // Kept as English loanwords even in Indonesian — matches how these metric names already
+    // appear everywhere else in the app (e.g. ChurchDashboardController/ExportController's own
+    // $metricLabels arrays), never actually translated to Indonesian equivalents.
+    'metric_views' => 'Views',
+    'metric_likes' => 'Likes',
+    'metric_posts' => 'Post / Video',
     'back_to_top' => 'Kembali ke atas',
     'customer_service' => 'Customer Service',
     'cs_whatsapp_link_national' => 'Hubungi Koordinator Nasional',

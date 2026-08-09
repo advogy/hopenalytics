@@ -2,6 +2,7 @@
 
 return [
     'title' => 'Churches',
+    'heading' => 'Dashboard',
     'subtitle' => 'Social media growth summary across all churches.',
 
     'section_overview' => 'Overview',
@@ -16,6 +17,16 @@ return [
     'refresh_failed' => 'Failed to start refresh',
     'last_updated_at' => 'Data last updated: :time',
     'last_updated_never' => 'Data has never been updated',
+    'refresh_started' => 'Refreshing :count accounts in the background — data will appear in a few minutes.',
+
+    // Scope label shown under the dashboard title — see ChurchDashboardController::index().
+    'scope_nasional' => 'National overview — all Unions, Conferences/Districts, Churches, Institutions, and Personal accounts.',
+    'scope_uni' => ':name Union region.',
+    'scope_daerah' => ':name Conference region.',
+    'scope_gereja' => ':church — stat cards and Top 5/Bottom show your Conference/Union region; Map and Platform Score are shown nationally for comparison.',
+    'scope_gereja_fallback_name' => 'your church',
+    // scope_institusi already exists further below, reused by both this scopeLabel and
+    // goalProgressRows()'s $regionScopeLabel — not redefined here to avoid a duplicate key.
 
     'stat_churches' => 'Registered churches',
     'stat_institutions' => 'Registered institutions',

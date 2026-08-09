@@ -64,7 +64,7 @@ class InstitutionController extends Controller
 
         AuditLogger::log('institution.created', $institution, "Menambahkan Institusi \"{$institution->name}\".");
 
-        return redirect()->route('admin.accounts.index', ['tab' => 'institusi'])->with('status', "Institusi \"{$institution->name}\" berhasil ditambahkan.");
+        return redirect()->route('admin.accounts.index', ['tab' => 'institusi'])->with('status', __('accounts.entity_created', ['entity' => __('common.institution'), 'name' => $institution->name]));
     }
 
     public function edit(Request $request, Institution $institution)
@@ -98,7 +98,7 @@ class InstitutionController extends Controller
 
         AuditLogger::log('institution.updated', $institution, "Memperbarui Institusi \"{$institution->name}\".");
 
-        return redirect()->route('admin.accounts.index', ['tab' => 'institusi'])->with('status', "Institusi \"{$institution->name}\" berhasil diperbarui.");
+        return redirect()->route('admin.accounts.index', ['tab' => 'institusi'])->with('status', __('accounts.entity_updated', ['entity' => __('common.institution'), 'name' => $institution->name]));
     }
 
     /**
@@ -193,7 +193,7 @@ class InstitutionController extends Controller
     public function toggleActive(Institution $institution): RedirectResponse
     {
         $institution->update(['is_active' => ! $institution->is_active]);
-        $status = $institution->is_active ? 'diaktifkan kembali' : 'dinonaktifkan';
+        $status = $institution->is_active ? __('accounts.status_reactivated') : __('accounts.status_deactivated');
 
         AuditLogger::log(
             $institution->is_active ? 'institution.activated' : 'institution.deactivated',
@@ -201,7 +201,7 @@ class InstitutionController extends Controller
             ($institution->is_active ? 'Mengaktifkan kembali' : 'Menonaktifkan')." Institusi \"{$institution->name}\"."
         );
 
-        return redirect()->route('admin.accounts.index', ['tab' => 'institusi'])->with('status', "Institusi \"{$institution->name}\" telah {$status}.");
+        return redirect()->route('admin.accounts.index', ['tab' => 'institusi'])->with('status', __('accounts.entity_status_changed', ['entity' => __('common.institution'), 'name' => $institution->name, 'status' => $status]));
     }
 
     /**
@@ -218,7 +218,7 @@ class InstitutionController extends Controller
     {
         if ($institution->users()->withTrashed()->exists()) {
             return redirect()->route('admin.accounts.index', ['tab' => 'institusi'])
-                ->with('error', "Institusi \"{$institution->name}\" tidak bisa dihapus karena masih ada pengguna yang ditugaskan. Nonaktifkan saja, atau pindahkan penugasan pengguna terlebih dahulu.");
+                ->with('error', __('accounts.delete_blocked_institusi', ['name' => $institution->name]));
         }
 
         $name = $institution->name;
@@ -226,6 +226,6 @@ class InstitutionController extends Controller
 
         AuditLogger::log('institution.deleted', $institution, "Menghapus permanen Institusi \"{$name}\".");
 
-        return redirect()->route('admin.accounts.index', ['tab' => 'institusi'])->with('status', "Institusi \"{$name}\" berhasil dihapus.");
+        return redirect()->route('admin.accounts.index', ['tab' => 'institusi'])->with('status', __('accounts.entity_deleted', ['entity' => __('common.institution'), 'name' => $name]));
     }
 }

@@ -51,6 +51,8 @@ return [
     'forgot_password_subtitle' => 'Masukkan email Anda, kami akan mengirim kode verifikasi untuk mengatur ulang kata sandi.',
     'forgot_password_button' => 'Kirim Kode',
     'back_to_login' => 'Kembali ke halaman masuk',
+    'too_many_attempts_title' => 'Terlalu Banyak Percobaan',
+    'too_many_attempts_body' => 'Anda sudah mencoba beberapa kali dalam waktu singkat. Untuk keamanan, silakan tunggu beberapa menit sebelum mencoba lagi.',
     'no_pending_reset' => 'Tidak ada permintaan atur ulang kata sandi yang menunggu.',
 
     'reset_password_title' => 'Atur Ulang Kata Sandi',

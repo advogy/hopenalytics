@@ -60,6 +60,6 @@ class SocialStatController extends Controller
         [$redirectRoute, $redirectEntity] = $social->showRoute();
 
         return redirect()->route($redirectRoute, $redirectEntity)
-            ->with('status', "Data manual untuk {$social->display_handle} berhasil disimpan.");
+            ->with('status', __('entity.manual_stat_saved', ['handle' => $social->display_handle]));
     }
 }

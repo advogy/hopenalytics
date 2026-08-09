@@ -101,8 +101,8 @@ class ChurchSocialController extends Controller
 
         throw ValidationException::withMessages([
             'handle' => $owner
-                ? "Akun ini sudah terdaftar di \"{$owner->name}\"."
-                : 'Akun ini sudah terdaftar.',
+                ? __('entity.social_already_tracked', ['owner' => $owner->name])
+                : __('entity.social_already_tracked_generic'),
         ]);
     }
 
@@ -134,7 +134,7 @@ class ChurchSocialController extends Controller
         // newly-added account waits for the weekly schedule (see routes/console.php) or an
         // admin manually refreshing it, rather than pulling Apify data the moment it's typed
         // in (which was burning API calls on accounts that often turned out mistyped anyway).
-        return redirect()->route('churches.socials.index', $church)->with('status', "Akun {$social->display_handle} berhasil ditambahkan.");
+        return redirect()->route('churches.socials.index', $church)->with('status', __('entity.social_created', ['handle' => $social->display_handle]));
     }
 
     /**
@@ -171,7 +171,7 @@ class ChurchSocialController extends Controller
 
         $social->update($data);
 
-        return redirect($this->manageLocation($request, $social))->with('status', "Akun {$social->display_handle} berhasil diperbarui.");
+        return redirect($this->manageLocation($request, $social))->with('status', __('entity.social_updated', ['handle' => $social->display_handle]));
     }
 
     public function destroy(Request $request, ChurchSocial $social): RedirectResponse
@@ -181,7 +181,7 @@ class ChurchSocialController extends Controller
 
         $social->update(['is_active' => false]);
 
-        return redirect($location)->with('status', "Akun {$displayHandle} dihapus.");
+        return redirect($location)->with('status', __('entity.social_deleted', ['handle' => $displayHandle]));
     }
 
     /**

@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\AccountController;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\ConferenceController;
+use App\Http\Controllers\Admin\HashtagController;
 use App\Http\Controllers\Admin\InstitutionController;
 use App\Http\Controllers\Admin\OrganizationSocialController;
 use App\Http\Controllers\Admin\UnionController;
@@ -103,12 +104,20 @@ Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group
     Route::get('/akun-bermasalah', [ChurchDashboardController::class, 'needsAttention'])->name('churches.needs-attention')->middleware('can:view-analytics');
     Route::get('/akun-otomatis', [ChurchDashboardController::class, 'autoFetchAccounts'])->name('churches.auto-fetch-accounts')->middleware('can:view-analytics');
     Route::get('/gereja/platform/{platform?}', [ChurchDashboardController::class, 'platformComparison'])->name('churches.platform-comparison')->middleware('can:view-analytics');
+    Route::get('/gereja/hastag', [ChurchDashboardController::class, 'hashtagComparison'])->name('churches.hashtag-comparison')->middleware('can:view-analytics');
 
     Route::view('/about', 'about')->name('about');
 
     Route::middleware('can:manage-settings')->group(function () {
         Route::get('/settings', [SettingsController::class, 'edit'])->name('settings.edit');
         Route::put('/settings', [SettingsController::class, 'update'])->name('settings.update');
+    });
+
+    Route::middleware('can:manage-settings')->prefix('admin/hashtags')->name('admin.hashtags.')->group(function () {
+        Route::get('/', [HashtagController::class, 'index'])->name('index');
+        Route::post('/', [HashtagController::class, 'store'])->name('store');
+        Route::patch('/{hashtag}/toggle-active', [HashtagController::class, 'toggleActive'])->name('toggle-active');
+        Route::delete('/{hashtag}', [HashtagController::class, 'destroy'])->name('destroy');
     });
 
     Route::middleware('can:manage-goals')->group(function () {
@@ -140,14 +149,17 @@ Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group
     Route::get('/personal/metrik', [ChurchDashboardController::class, 'personalMetricComparison'])->name('people.metric-comparison')->middleware('can:view-analytics');
     Route::get('/personal/metrik/{metric}', [ChurchDashboardController::class, 'personalLeaderboard'])->name('people.leaderboard')->middleware('can:view-analytics');
     Route::get('/personal/platform/{platform?}', [ChurchDashboardController::class, 'personalPlatformComparison'])->name('people.platform-comparison')->middleware('can:view-analytics');
+    Route::get('/personal/hastag', [ChurchDashboardController::class, 'personalHashtagComparison'])->name('people.hashtag-comparison')->middleware('can:view-analytics');
 
     Route::get('/institusi/metrik', [ChurchDashboardController::class, 'institutionMetricComparison'])->name('institutions.metric-comparison')->middleware('can:view-analytics');
     Route::get('/institusi/metrik/{metric}', [ChurchDashboardController::class, 'institutionLeaderboard'])->name('institutions.leaderboard')->middleware('can:view-analytics');
     Route::get('/institusi/platform/{platform?}', [ChurchDashboardController::class, 'institutionPlatformComparison'])->name('institutions.platform-comparison')->middleware('can:view-analytics');
+    Route::get('/institusi/hastag', [ChurchDashboardController::class, 'institutionHashtagComparison'])->name('institutions.hashtag-comparison')->middleware('can:view-analytics');
 
     Route::get('/organisasi/metrik', [ChurchDashboardController::class, 'organizationMetricComparison'])->name('organizations.metric-comparison')->middleware('can:view-analytics');
     Route::get('/organisasi/metrik/{metric}', [ChurchDashboardController::class, 'organizationLeaderboard'])->name('organizations.leaderboard')->middleware('can:view-analytics');
     Route::get('/organisasi/platform/{platform?}', [ChurchDashboardController::class, 'organizationPlatformComparison'])->name('organizations.platform-comparison')->middleware('can:view-analytics');
+    Route::get('/organisasi/hastag', [ChurchDashboardController::class, 'organizationHashtagComparison'])->name('organizations.hashtag-comparison')->middleware('can:view-analytics');
     Route::get('/organisasi/uni/{union:slug}', [ChurchDashboardController::class, 'showUnion'])->name('unions.show')->middleware('can:view,union');
     Route::get('/organisasi/daerah/{conference:slug}', [ChurchDashboardController::class, 'showConference'])->name('conferences.show')->middleware('can:view,conference');
     Route::get('/institusi/{institution:slug}', [ChurchDashboardController::class, 'showInstitution'])->name('institutions.show')->middleware('can:view,institution');

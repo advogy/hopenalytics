@@ -128,10 +128,10 @@ class QueueMonitorController extends Controller
         if ($found) {
             $found->cancel();
 
-            return back()->with('status', "Batch \"{$found->name}\" dibatalkan.");
+            return back()->with('status', __('queue.batch_cancelled', ['name' => $found->name]));
         }
 
-        return back()->with('error', 'Batch tidak ditemukan (mungkin sudah selesai).');
+        return back()->with('error', __('queue.batch_not_found'));
     }
 
     /**
@@ -148,8 +148,8 @@ class QueueMonitorController extends Controller
             : DB::table('jobs')->delete();
 
         $message = $queue
-            ? "{$count} job pada antrean \"{$queue}\" dibersihkan."
-            : "{$count} job dibersihkan dari semua antrean.";
+            ? __('queue.queue_cleared_named', ['count' => $count, 'queue' => $queue])
+            : __('queue.queue_cleared_all', ['count' => $count]);
 
         return back()->with('status', $message);
     }
@@ -163,7 +163,7 @@ class QueueMonitorController extends Controller
     {
         $count = DB::table('failed_jobs')->delete();
 
-        return back()->with('status', "{$count} riwayat job gagal dibersihkan.");
+        return back()->with('status', __('queue.failed_cleared', ['count' => $count]));
     }
 
     /**
@@ -173,7 +173,7 @@ class QueueMonitorController extends Controller
     {
         DB::table('failed_jobs')->where('id', $id)->delete();
 
-        return back()->with('status', 'Riwayat job gagal dihapus.');
+        return back()->with('status', __('queue.failed_deleted'));
     }
 
     /**
@@ -185,7 +185,7 @@ class QueueMonitorController extends Controller
     {
         $count = DB::table('job_batches')->whereNotNull('finished_at')->delete();
 
-        return back()->with('status', "{$count} riwayat batch selesai dibersihkan.");
+        return back()->with('status', __('queue.completed_cleared', ['count' => $count]));
     }
 
     /**
@@ -195,6 +195,6 @@ class QueueMonitorController extends Controller
     {
         DB::table('job_batches')->where('id', $batch)->whereNotNull('finished_at')->delete();
 
-        return back()->with('status', 'Riwayat batch dihapus.');
+        return back()->with('status', __('queue.completed_deleted'));
     }
 }

@@ -51,6 +51,8 @@ return [
     'forgot_password_subtitle' => 'Enter your email and we\'ll send a verification code to reset your password.',
     'forgot_password_button' => 'Send Code',
     'back_to_login' => 'Back to sign in',
+    'too_many_attempts_title' => 'Too Many Attempts',
+    'too_many_attempts_body' => 'You\'ve tried several times in a short period. For security, please wait a few minutes before trying again.',
     'no_pending_reset' => 'There is no pending password reset to verify.',
 
     'reset_password_title' => 'Reset Password',

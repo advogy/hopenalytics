@@ -190,6 +190,23 @@ class ComparisonScope
         }, $params);
     }
 
+    /**
+     * Unlike metricComparisonUrl()/platformComparisonUrl() above, the underlying data here is
+     * the SAME globally across every scope — hashtag posts have no owner in this system (they're
+     * external posts found by keyword search, not accounts registered under a church/person/
+     * institution/union). This method exists purely so the page's "back to Analytics" link can
+     * return to whichever tab the admin came from, matching the rest of this class's convention.
+     */
+    public function hashtagComparisonUrl(array $params = []): string
+    {
+        return route(match ($this->type) {
+            'gereja' => 'churches.hashtag-comparison',
+            'personal' => 'people.hashtag-comparison',
+            'institusi' => 'institutions.hashtag-comparison',
+            'organisasi' => 'organizations.hashtag-comparison',
+        }, $params);
+    }
+
     public function analyticsUrl(): string
     {
         return match ($this->type) {

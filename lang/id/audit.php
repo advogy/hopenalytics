@@ -13,4 +13,18 @@ return [
     'no_match' => 'Tidak ada log yang cocok.',
     'no_logs_yet' => 'Belum ada log audit.',
     'system' => 'Sistem',
+
+    'tab_actions' => 'Aksi',
+    'tab_login' => 'Login',
+    'login_subtitle' => 'Riwayat masuk pengguna — kapan masuk, kapan keluar, dan berapa lama sesi berlangsung.',
+    'login_search_placeholder' => 'Cari nama atau email…',
+    'col_user' => 'Pengguna',
+    'col_ip' => 'Alamat IP',
+    'col_login_at' => 'Waktu Masuk',
+    'col_logout_at' => 'Waktu Keluar',
+    'col_duration' => 'Durasi',
+    'duration_active' => 'Belum keluar',
+    'no_login_match' => 'Tidak ada riwayat login yang cocok.',
+    'no_login_logs_yet' => 'Belum ada riwayat login.',
+    'deleted_user' => 'Pengguna terhapus',
 ];

@@ -8,7 +8,7 @@
 
 @if ($count < 2)
     <div class="flex h-56 items-center justify-center rounded-xl border border-dashed border-slate-200 px-6 text-center text-sm text-slate-400 dark:border-slate-700 dark:text-slate-500">
-        Grafik pertumbuhan akan muncul setelah data tercatat minimal 2 minggu.
+        {{ __('common.growth_chart_no_data') }}
     </div>
 @else
     @php
@@ -51,7 +51,7 @@
     @endphp
 
     <div class="overflow-x-auto">
-        <svg viewBox="0 0 {{ $width }} {{ $height }}" class="w-full" style="min-width: 320px" role="img" aria-label="Grafik pertumbuhan total jangkauan">
+        <svg viewBox="0 0 {{ $width }} {{ $height }}" class="w-full" style="min-width: 320px" role="img" aria-label="{{ __('common.growth_chart_aria_label') }}">
             @foreach ($ticks as $tick)
                 @php $y = $padTop + $plotHeight - ($niceMax > 0 ? ($tick / $niceMax) * $plotHeight : 0); @endphp
                 <line x1="{{ $padLeft }}" y1="{{ $y }}" x2="{{ $width - $padRight }}" y2="{{ $y }}" stroke-width="1" class="stroke-slate-100 dark:stroke-slate-800" />

@@ -200,6 +200,10 @@
                                                     <x-icon name="cog-6-tooth" class="h-4 w-4 shrink-0 text-slate-400" />
                                                     {{ __('nav.settings') }}
                                                 </a>
+                                                <a href="{{ route('admin.hashtags.index') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                                                    <x-icon name="hashtag" class="h-4 w-4 shrink-0 text-slate-400" />
+                                                    {{ __('nav.hashtags') }}
+                                                </a>
                                             @endcan
                                         @endcanany
 

@@ -22,6 +22,10 @@ return [
     'recent_reels' => 'Recent reels (:count posts)',
     'recent_videos' => 'Recent videos (:count videos)',
     'recent_posts' => 'Recent posts (:count posts)',
+    'metric_views' => 'views',
+    'metric_plays' => 'plays',
+    'metric_shares' => 'shares',
+    'metric_likes' => 'likes',
     'no_stats_yet' => 'No statistics yet.',
     'history_heading' => ':platform History',
 
@@ -46,6 +50,9 @@ return [
     'conference_unassigned' => 'Not assigned to any Daerah yet',
     'search_uni_placeholder' => 'Search Union…',
     'search_daerah_placeholder' => 'Search Conference…',
+    'waiting_for_daerah' => 'Choose a Conference first…',
+    'search_or_create_church_placeholder' => 'Search or type a new church name…',
+    'church_name_hint' => 'If your church isn\'t in the system yet, type its name — it\'ll be added automatically.',
     'own_church_reach' => 'Church Reach',
     'own_church_socials' => 'Church Social Accounts',
     'own_personal_socials' => 'Personal Social Accounts',
@@ -86,4 +93,36 @@ return [
     'auto_fetch_hint_person' => 'Turn off for accounts whose data is entered manually.',
     'delete_account' => 'Delete this account',
     'delete_account_confirm' => 'Delete account :handle? Historical data stays saved.',
+
+    // Flash messages — Person CRUD/link/unlink and social-account CRUD.
+    'person_created' => '":name" was added successfully.',
+    'person_updated' => '":name" was updated successfully.',
+    'person_status_changed' => '":name" has been :status.',
+    'person_deleted' => '":name" was deleted successfully.',
+    'person_linked' => '":name" was linked to account ":user" successfully.',
+    'person_unlinked' => 'The login account link for ":name" has been removed.',
+    'social_created' => 'Account :handle was added successfully.',
+    'social_updated' => 'Account :handle was updated successfully.',
+    'social_deleted' => 'Account :handle deleted.',
+    'social_already_tracked' => 'This account is already tracked under ":owner".',
+    'social_already_tracked_generic' => 'This account is already tracked.',
+    'manual_stat_saved' => 'Manual data for :handle saved successfully.',
+
+    // Flash messages — Profil Saya (own-profile edit) and initial profile completion.
+    'profile_completed' => 'Profile completed successfully.',
+    'profile_updated' => 'Profile updated successfully.',
+    'profile_name_updated_email_pending' => 'Name updated. A verification code has been sent to :email to confirm the new email.',
+    'password_updated' => 'Password updated successfully.',
+    'email_updated_verified' => 'Email updated and verified successfully.',
+    'otp_resent' => 'A new OTP code has been sent.',
+    'email_change_cancelled' => 'Email change cancelled.',
+
+    // Profil Saya page.
+    'profile_title' => 'My Profile',
+    'profile_subtitle' => 'Manage your personal info, username, and account password.',
+    'profile_pending_email_notice' => 'Waiting for verification of the email change to :email.',
+    'profile_verify_now' => 'Verify now',
+    'profile_cancel_email_change' => 'Cancel',
+    'profile_own_socials_subtitle' => 'Your personal social media accounts.',
+    'verify_new_email_title' => 'Verify New Email',
 ];

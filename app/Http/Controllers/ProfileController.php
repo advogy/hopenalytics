@@ -101,14 +101,14 @@ class ProfileController extends Controller
 
         if ($data['email'] === $user->email) {
             return redirect()->route('profile.edit', ['tab' => 'username'])
-                ->with('status', 'Profil berhasil diperbarui.');
+                ->with('status', __('entity.profile_updated'));
         }
 
         $user->forceFill(['pending_email' => $data['email']])->save();
         $this->generateAndSendOtp($user);
 
         return redirect()->route('profile.verify-email')
-            ->with('status', "Nama diperbarui. Kode verifikasi telah dikirim ke {$data['email']} untuk mengonfirmasi email baru.");
+            ->with('status', __('entity.profile_name_updated_email_pending', ['email' => $data['email']]));
     }
 
     public function updatePassword(Request $request): RedirectResponse
@@ -132,7 +132,7 @@ class ProfileController extends Controller
         $user->update(['password' => Hash::make($data['password'])]);
 
         return redirect()->route('profile.edit', ['tab' => 'password'])
-            ->with('status', 'Kata sandi berhasil diperbarui.');
+            ->with('status', __('entity.password_updated'));
     }
 
     public function showVerifyEmailChange(Request $request)
@@ -172,7 +172,7 @@ class ProfileController extends Controller
             'otp_expires_at' => null,
         ])->save();
 
-        return redirect()->route('profile.edit')->with('status', 'Email berhasil diperbarui dan diverifikasi.');
+        return redirect()->route('profile.edit')->with('status', __('entity.email_updated_verified'));
     }
 
     public function resendEmailChangeOtp(Request $request): RedirectResponse
@@ -185,7 +185,7 @@ class ProfileController extends Controller
 
         $this->generateAndSendOtp($user);
 
-        return back()->with('status', 'Kode OTP baru telah dikirim.');
+        return back()->with('status', __('entity.otp_resent'));
     }
 
     public function cancelEmailChange(Request $request): RedirectResponse
@@ -196,7 +196,7 @@ class ProfileController extends Controller
             'otp_expires_at' => null,
         ])->save();
 
-        return redirect()->route('profile.edit')->with('status', 'Perubahan email dibatalkan.');
+        return redirect()->route('profile.edit')->with('status', __('entity.email_change_cancelled'));
     }
 
     private function generateAndSendOtp(User $user): void

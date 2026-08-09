@@ -105,4 +105,18 @@ return [
     'deactivate_daerah' => 'Deactivate Conference',
     'deactivate_institusi_confirm' => 'Deactivate Institution ":name"?',
     'deactivate_institusi' => 'Deactivate Institution',
+
+    // Flash messages shared by Union/Conference/Institution/Church CRUD (create/update/toggle/
+    // delete) — one generic template per action, parametrized by :entity ("Union"/"Conference"/
+    // "Church"/"Institution") rather than four near-identical keys apiece.
+    'entity_created' => ':entity ":name" was added successfully.',
+    'entity_updated' => ':entity ":name" was updated successfully.',
+    'entity_status_changed' => ':entity ":name" has been :status.',
+    'entity_deleted' => ':entity ":name" was deleted successfully.',
+    'status_reactivated' => 'reactivated',
+    'status_deactivated' => 'deactivated',
+    'delete_blocked_uni' => 'Union ":name" can\'t be deleted because it still has Conferences and/or assigned users. Deactivate it instead, or move/delete the related data first.',
+    'delete_blocked_daerah' => 'Conference ":name" can\'t be deleted because it still has Churches and/or assigned users. Deactivate it instead, or move/delete the related data first.',
+    'delete_blocked_gereja' => 'Church ":name" can\'t be deleted because it still has assigned users. Deactivate it instead, or reassign those users first.',
+    'delete_blocked_institusi' => 'Institution ":name" can\'t be deleted because it still has assigned users. Deactivate it instead, or reassign those users first.',
 ];

@@ -60,6 +60,6 @@ class SettingsController extends Controller
 
         AppSetting::current()->update($data);
 
-        return back()->with('status', 'Pengaturan jadwal berhasil disimpan.');
+        return back()->with('status', __('settings.saved'));
     }
 }

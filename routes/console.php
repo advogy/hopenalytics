@@ -17,6 +17,14 @@ if ($settings->auto_fetch_enabled) {
         ->timezone('Asia/Jakarta')
         ->withoutOverlapping()
         ->onOneServer();
+
+    // Same schedule as the account auto-fetch above, per the user's explicit call — hashtag
+    // tracking piggybacks on the existing weekly cadence rather than its own separate toggle.
+    Schedule::command('hashtags:fetch-all')
+        ->weeklyOn($settings->auto_fetch_day, $settings->auto_fetch_time)
+        ->timezone('Asia/Jakarta')
+        ->withoutOverlapping()
+        ->onOneServer();
 }
 
 // Hostinger (shared hosting, no SSH/persistent processes) has no long-running `queue:work`

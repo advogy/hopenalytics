@@ -42,4 +42,13 @@ return [
     'clear_failed_confirm' => 'Clear the entire failed-job history? This only deletes the history record, it does not retry the failed jobs.',
     'delete_failed_confirm' => 'Delete this failed-job record?',
     'delete' => 'Delete',
+
+    'batch_cancelled' => 'Batch ":name" cancelled.',
+    'batch_not_found' => 'Batch not found (it may have already finished).',
+    'queue_cleared_named' => ':count job(s) in the ":queue" queue cleared.',
+    'queue_cleared_all' => ':count job(s) cleared from every queue.',
+    'failed_cleared' => ':count failed-job record(s) cleared.',
+    'failed_deleted' => 'Failed-job record deleted.',
+    'completed_cleared' => ':count completed-batch record(s) cleared.',
+    'completed_deleted' => 'Batch history record deleted.',
 ];

@@ -94,7 +94,7 @@ class PersonController extends Controller
 
         AuditLogger::log('person.created', $person, "Menambahkan Personal \"{$person->name}\".");
 
-        return redirect()->route('people.show', $person)->with('status', "\"{$person->name}\" berhasil ditambahkan.");
+        return redirect()->route('people.show', $person)->with('status', __('entity.person_created', ['name' => $person->name]));
     }
 
     public function edit(Request $request, Person $person)
@@ -138,7 +138,7 @@ class PersonController extends Controller
             AuditLogger::log('person.updated', $person, "Memperbarui data Personal \"{$person->name}\".");
         }
 
-        return redirect()->route('people.show', $person)->with('status', "\"{$person->name}\" berhasil diperbarui.");
+        return redirect()->route('people.show', $person)->with('status', __('entity.person_updated', ['name' => $person->name]));
     }
 
     /**
@@ -199,7 +199,7 @@ class PersonController extends Controller
     public function toggleActive(Person $person): RedirectResponse
     {
         $person->update(['is_active' => ! $person->is_active]);
-        $status = $person->is_active ? 'diaktifkan kembali' : 'dinonaktifkan';
+        $status = $person->is_active ? __('accounts.status_reactivated') : __('accounts.status_deactivated');
 
         AuditLogger::log(
             $person->is_active ? 'person.activated' : 'person.deactivated',
@@ -207,7 +207,7 @@ class PersonController extends Controller
             ($person->is_active ? 'Mengaktifkan kembali' : 'Menonaktifkan')." Personal \"{$person->name}\"."
         );
 
-        return redirect()->route('admin.accounts.index', ['tab' => 'personal'])->with('status', "\"{$person->name}\" telah {$status}.");
+        return redirect()->route('admin.accounts.index', ['tab' => 'personal'])->with('status', __('entity.person_status_changed', ['name' => $person->name, 'status' => $status]));
     }
 
     /**
@@ -224,7 +224,7 @@ class PersonController extends Controller
 
         AuditLogger::log('person.deleted', $person, "Menghapus permanen Personal \"{$name}\".");
 
-        return redirect()->route('admin.accounts.index', ['tab' => 'personal'])->with('status', "\"{$name}\" berhasil dihapus.");
+        return redirect()->route('admin.accounts.index', ['tab' => 'personal'])->with('status', __('entity.person_deleted', ['name' => $name]));
     }
 
     /**
@@ -246,14 +246,14 @@ class PersonController extends Controller
 
         $person->update(['user_id' => $user->id]);
 
-        return redirect()->route('people.edit', $person)->with('status', "\"{$person->name}\" berhasil ditautkan ke akun \"{$user->name}\".");
+        return redirect()->route('people.edit', $person)->with('status', __('entity.person_linked', ['name' => $person->name, 'user' => $user->name]));
     }
 
     public function unlinkUser(Person $person): RedirectResponse
     {
         $person->update(['user_id' => null]);
 
-        return redirect()->route('people.edit', $person)->with('status', "Tautan akun login untuk \"{$person->name}\" telah dilepas.");
+        return redirect()->route('people.edit', $person)->with('status', __('entity.person_unlinked', ['name' => $person->name]));
     }
 
     /**

@@ -54,7 +54,7 @@ class ConferenceController extends Controller
 
         AuditLogger::log('conference.created', $conference, "Menambahkan Daerah \"{$conference->name}\".");
 
-        return redirect()->route('admin.accounts.index', ['tab' => 'daerah'])->with('status', "Daerah \"{$data['name']}\" berhasil ditambahkan.");
+        return redirect()->route('admin.accounts.index', ['tab' => 'daerah'])->with('status', __('accounts.entity_created', ['entity' => __('common.conference'), 'name' => $data['name']]));
     }
 
     public function edit(Request $request, Conference $conference)
@@ -78,7 +78,7 @@ class ConferenceController extends Controller
 
         AuditLogger::log('conference.updated', $conference, "Memperbarui Daerah \"{$conference->name}\".");
 
-        return redirect()->route('admin.accounts.index', ['tab' => 'daerah'])->with('status', "Daerah \"{$conference->name}\" berhasil diperbarui.");
+        return redirect()->route('admin.accounts.index', ['tab' => 'daerah'])->with('status', __('accounts.entity_updated', ['entity' => __('common.conference'), 'name' => $conference->name]));
     }
 
     /**
@@ -118,7 +118,7 @@ class ConferenceController extends Controller
     public function toggleActive(Conference $conference): RedirectResponse
     {
         $conference->update(['is_active' => ! $conference->is_active]);
-        $status = $conference->is_active ? 'diaktifkan kembali' : 'dinonaktifkan';
+        $status = $conference->is_active ? __('accounts.status_reactivated') : __('accounts.status_deactivated');
 
         AuditLogger::log(
             $conference->is_active ? 'conference.activated' : 'conference.deactivated',
@@ -126,7 +126,7 @@ class ConferenceController extends Controller
             ($conference->is_active ? 'Mengaktifkan kembali' : 'Menonaktifkan')." Daerah \"{$conference->name}\"."
         );
 
-        return redirect()->route('admin.accounts.index', ['tab' => 'daerah'])->with('status', "Daerah \"{$conference->name}\" telah {$status}.");
+        return redirect()->route('admin.accounts.index', ['tab' => 'daerah'])->with('status', __('accounts.entity_status_changed', ['entity' => __('common.conference'), 'name' => $conference->name, 'status' => $status]));
     }
 
     /**
@@ -144,7 +144,7 @@ class ConferenceController extends Controller
     {
         if ($conference->churches()->exists() || $conference->users()->withTrashed()->exists()) {
             return redirect()->route('admin.accounts.index', ['tab' => 'daerah'])
-                ->with('error', "Daerah \"{$conference->name}\" tidak bisa dihapus karena masih memiliki Gereja dan/atau pengguna yang ditugaskan. Nonaktifkan saja, atau pindahkan/hapus data terkait terlebih dahulu.");
+                ->with('error', __('accounts.delete_blocked_daerah', ['name' => $conference->name]));
         }
 
         $name = $conference->name;
@@ -152,7 +152,7 @@ class ConferenceController extends Controller
 
         AuditLogger::log('conference.deleted', $conference, "Menghapus permanen Daerah \"{$name}\".");
 
-        return redirect()->route('admin.accounts.index', ['tab' => 'daerah'])->with('status', "Daerah \"{$name}\" berhasil dihapus.");
+        return redirect()->route('admin.accounts.index', ['tab' => 'daerah'])->with('status', __('accounts.entity_deleted', ['entity' => __('common.conference'), 'name' => $name]));
     }
 
     private function uniqueSlug(string $name): string

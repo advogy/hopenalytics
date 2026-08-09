@@ -13,14 +13,14 @@
 @endphp
 
 <div class="mb-5">
-    <label class="mb-1.5 block text-sm font-medium">Uni</label>
+    <label class="mb-1.5 block text-sm font-medium">{{ __('common.union') }}</label>
     <div class="relative" data-searchable-select data-region-union>
         <input type="hidden" name="union_id" data-searchable-select-value value="{{ old('union_id', $selectedUnionId) }}">
         <input
             type="text"
             data-searchable-select-search
             autocomplete="off"
-            placeholder="Cari Uni…"
+            placeholder="{{ __('entity.search_uni_placeholder') }}"
             value="{{ old('union_id') ? '' : $selectedUnionName }}"
             class="w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none dark:border-white/10 dark:bg-slate-800"
         >
@@ -32,14 +32,14 @@
 </div>
 
 <div class="mb-5">
-    <label class="mb-1.5 block text-sm font-medium">Daerah / Konferens</label>
+    <label class="mb-1.5 block text-sm font-medium">{{ __('entity.conference') }}</label>
     <div class="relative" data-searchable-select data-region-conference>
         <input type="hidden" name="conference_id" data-searchable-select-value value="{{ old('conference_id', $selectedConferenceId) }}">
         <input
             type="text"
             data-searchable-select-search
             autocomplete="off"
-            placeholder="{{ $selectedUnionId ? 'Cari Daerah…' : 'Pilih Uni terlebih dahulu…' }}"
+            placeholder="{{ $selectedUnionId ? __('entity.search_daerah_placeholder') : __('accounts.waiting_for_uni') }}"
             value="{{ old('conference_id') ? '' : $selectedConferenceName }}"
             @unless ($selectedUnionId) disabled @endunless
             class="w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none disabled:bg-slate-100 disabled:cursor-not-allowed dark:border-white/10 dark:bg-slate-800 dark:disabled:bg-slate-900"
@@ -52,15 +52,15 @@
 </div>
 
 <div class="mb-5">
-    <label class="mb-0.5 block text-sm font-medium">Nama Gereja</label>
-    <p class="mb-1.5 text-xs text-slate-400">Kalau gereja Anda belum ada di sistem, ketik namanya — akan otomatis ditambahkan.</p>
+    <label class="mb-0.5 block text-sm font-medium">{{ __('entity.church_name') }}</label>
+    <p class="mb-1.5 text-xs text-slate-400">{{ __('entity.church_name_hint') }}</p>
     <div class="relative" data-searchable-select data-region-church>
         <input type="hidden" name="church_name" data-searchable-select-value value="{{ old('church_name', $selectedChurchName) }}">
         <input
             type="text"
             data-searchable-select-search
             autocomplete="off"
-            placeholder="{{ $selectedConferenceId ? 'Cari atau ketik nama gereja baru…' : 'Pilih Daerah terlebih dahulu…' }}"
+            placeholder="{{ $selectedConferenceId ? __('entity.search_or_create_church_placeholder') : __('entity.waiting_for_daerah') }}"
             value="{{ old('church_name', $selectedChurchName) }}"
             @unless ($selectedConferenceId) disabled @endunless
             class="w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none disabled:bg-slate-100 disabled:cursor-not-allowed dark:border-white/10 dark:bg-slate-800 dark:disabled:bg-slate-900"
@@ -76,6 +76,13 @@
     (function () {
         var conferencesByUnion = @json($conferences->groupBy('union_id')->map(fn ($group) => $group->map(fn ($c) => ['id' => $c->id, 'label' => $c->name])->values()));
         var churchesByConference = @json($churches->groupBy('conference_id')->map(fn ($group) => $group->map(fn ($c) => ['id' => $c->name, 'label' => $c->name])->values()));
+        var i18n = @json([
+            'searchUni' => __('entity.search_uni_placeholder'),
+            'searchDaerah' => __('entity.search_daerah_placeholder'),
+            'waitingForUni' => __('accounts.waiting_for_uni'),
+            'waitingForDaerah' => __('entity.waiting_for_daerah'),
+            'searchOrCreateChurch' => __('entity.search_or_create_church_placeholder'),
+        ]);
 
         var unionWrapper = document.querySelector('[data-region-union]');
         var conferenceWrapper = document.querySelector('[data-region-conference]');
@@ -89,11 +96,11 @@
             onChange: function (conferenceId) {
                 if (! conferenceId) {
                     churchSearch.disabled = true;
-                    churchCtl.setOptions([], 'Pilih Daerah terlebih dahulu…');
+                    churchCtl.setOptions([], i18n.waitingForDaerah);
                     return;
                 }
                 churchSearch.disabled = false;
-                churchCtl.setOptions(churchesByConference[conferenceId] || [], 'Cari atau ketik nama gereja baru…');
+                churchCtl.setOptions(churchesByConference[conferenceId] || [], i18n.searchOrCreateChurch);
             },
         });
 
@@ -101,29 +108,29 @@
             onChange: function (unionId) {
                 if (! unionId) {
                     conferenceSearch.disabled = true;
-                    conferenceCtl.setOptions([], 'Pilih Uni terlebih dahulu…');
+                    conferenceCtl.setOptions([], i18n.waitingForUni);
                     churchSearch.disabled = true;
-                    churchCtl.setOptions([], 'Pilih Daerah terlebih dahulu…');
+                    churchCtl.setOptions([], i18n.waitingForDaerah);
                     return;
                 }
                 conferenceSearch.disabled = false;
-                conferenceCtl.setOptions(conferencesByUnion[unionId] || [], 'Cari Daerah…');
+                conferenceCtl.setOptions(conferencesByUnion[unionId] || [], i18n.searchDaerah);
                 churchSearch.disabled = true;
-                churchCtl.setOptions([], 'Pilih Daerah terlebih dahulu…');
+                churchCtl.setOptions([], i18n.waitingForDaerah);
             },
         });
 
-        unionCtl.setOptions(@json($unions->map(fn ($u) => ['id' => $u->id, 'label' => $u->name])), 'Cari Uni…');
+        unionCtl.setOptions(@json($unions->map(fn ($u) => ['id' => $u->id, 'label' => $u->name])), i18n.searchUni);
 
         @if ($selectedUnionId)
             unionCtl.preset({{ $selectedUnionId }}, @json($selectedUnionName));
-            conferenceCtl.setOptions(conferencesByUnion[{{ $selectedUnionId }}] || [], 'Cari Daerah…');
+            conferenceCtl.setOptions(conferencesByUnion[{{ $selectedUnionId }}] || [], i18n.searchDaerah);
             conferenceSearch.disabled = false;
         @endif
 
         @if ($selectedConferenceId)
             conferenceCtl.preset({{ $selectedConferenceId }}, @json($selectedConferenceName));
-            churchCtl.setOptions(churchesByConference[{{ $selectedConferenceId }}] || [], 'Cari atau ketik nama gereja baru…');
+            churchCtl.setOptions(churchesByConference[{{ $selectedConferenceId }}] || [], i18n.searchOrCreateChurch);
             churchSearch.disabled = false;
         @endif
 

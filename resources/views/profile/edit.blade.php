@@ -1,23 +1,23 @@
 @extends('layouts.app')
 
-@section('title', 'Profil Saya — ' . config('app.name'))
+@section('title', __('entity.profile_title') . ' — ' . config('app.name'))
 
 @section('content')
     <div class="mb-6">
-        <h1 class="mb-1 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Profil Saya</h1>
-        <p class="text-sm text-slate-500 dark:text-slate-400">Kelola info personal, username, dan kata sandi akun Anda.</p>
+        <h1 class="mb-1 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{{ __('entity.profile_title') }}</h1>
+        <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('entity.profile_subtitle') }}</p>
     </div>
 
     @if ($user->pending_email)
         <div class="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300">
             <p class="mb-2">
-                Menunggu verifikasi perubahan email ke <strong>{{ $user->pending_email }}</strong>.
+                {{ __('entity.profile_pending_email_notice', ['email' => $user->pending_email]) }}
             </p>
             <div class="flex items-center gap-3">
-                <a href="{{ route('profile.verify-email') }}" class="font-medium underline">Verifikasi sekarang</a>
+                <a href="{{ route('profile.verify-email') }}" class="font-medium underline">{{ __('entity.profile_verify_now') }}</a>
                 <form method="POST" action="{{ route('profile.verify-email.cancel') }}">
                     @csrf
-                    <button type="submit" class="font-medium underline">Batalkan</button>
+                    <button type="submit" class="font-medium underline">{{ __('entity.profile_cancel_email_change') }}</button>
                 </form>
             </div>
         </div>
@@ -97,7 +97,7 @@
                  from Analitik & Grafik Personal, per the user's explicit call: one page for
                  viewing, one for managing, not the same list duplicated in two places. --}}
             <div class="mb-4 flex items-center justify-between gap-3">
-                <p class="text-sm text-slate-500 dark:text-slate-400">Akun media sosial pribadi Anda.</p>
+                <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('entity.profile_own_socials_subtitle') }}</p>
                 <a
                     href="{{ route('people.socials.create', $person) }}"
                     class="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700"

@@ -1,4 +1,19 @@
-@php $isEmpty = $row['total'] == 0; @endphp
+@php
+    $isEmpty = $row['total'] == 0;
+
+    // Church only ever reaches its Union through ->conference->union (no direct union_id of
+    // its own); Person can be independently Union-scoped with no Daerah at all (see
+    // PersonController::resolveOrgScope()), hence the ?? fallback — same chain
+    // ChurchDashboardController::index() already uses for the dashboard map.
+    $rowConference = $row['entity']->conference ?? null;
+    $rowUnion = $rowConference?->union ?? $row['entity']->union ?? null;
+    $rowRegionLabel = match (true) {
+        $rowConference && $rowUnion => "{$rowConference->name}, {$rowUnion->name}",
+        (bool) $rowConference => $rowConference->name,
+        (bool) $rowUnion => $rowUnion->name,
+        default => null,
+    };
+@endphp
 <div class="flex items-center gap-4 rounded-xl border px-4 py-3 {{ $i === 0 ? 'border-blue-500/40 bg-blue-600/10 ring-1 ring-blue-500/40 dark:bg-blue-600/20' : 'border-black/5 bg-white dark:border-white/5 dark:bg-[#0f1e33]' }} {{ $isEmpty ? 'opacity-40' : '' }}">
     <span class="w-6 shrink-0 text-right text-lg font-semibold text-slate-500 dark:text-slate-400">{{ $i + 1 }}</span>
 
@@ -8,8 +23,10 @@
 
     <div class="min-w-0 flex-1">
         <p class="truncate font-medium">{{ $row['entity']->name }}</p>
-        @if ($row['entity']->city)
-            <p class="truncate text-xs text-slate-500 dark:text-slate-400">{{ $row['entity']->city }}</p>
+        @if ($row['entity']->city || $rowRegionLabel)
+            <p class="truncate text-xs text-slate-500 dark:text-slate-400">
+                {{ collect([$row['entity']->city, $rowRegionLabel])->filter()->implode(' · ') }}
+            </p>
         @endif
     </div>
 

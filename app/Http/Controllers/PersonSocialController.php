@@ -36,7 +36,7 @@ class PersonSocialController extends Controller
 
         // Deliberately no immediate fetch dispatch here — see ChurchSocialController::store()'s
         // comment for why.
-        return redirect(self::manageLocation($request, $person))->with('status', "Akun {$social->display_handle} berhasil ditambahkan.");
+        return redirect(self::manageLocation($request, $person))->with('status', __('entity.social_created', ['handle' => $social->display_handle]));
     }
 
     /**
@@ -116,8 +116,8 @@ class PersonSocialController extends Controller
 
         throw ValidationException::withMessages([
             'handle' => $owner
-                ? "Akun ini sudah terdaftar di \"{$owner->name}\"."
-                : 'Akun ini sudah terdaftar.',
+                ? __('entity.social_already_tracked', ['owner' => $owner->name])
+                : __('entity.social_already_tracked_generic'),
         ]);
     }
 

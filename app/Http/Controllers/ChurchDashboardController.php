@@ -9,6 +9,8 @@ use App\Models\ChurchSocial;
 use App\Models\ChurchStat;
 use App\Models\Conference;
 use App\Models\Goal;
+use App\Models\Hashtag;
+use App\Models\HashtagPost;
 use App\Models\Institution;
 use App\Models\Person;
 use App\Models\Union;
@@ -310,15 +312,15 @@ class ChurchDashboardController extends Controller
         // two different scopes (see the block comment at the top of this method).
         $scopeLabel = match (true) {
             $user->role?->hasNasionalAccess() || $user->role?->level() === 'nasional'
-                => 'Ringkasan nasional — seluruh gereja dan akun personal.',
+                => __('dashboard.scope_nasional'),
             $user->role?->level() === 'uni'
-                => 'Wilayah Uni ' . ($user->union?->name ?? '—') . '.',
+                => __('dashboard.scope_uni', ['name' => $user->union?->name ?? '—']),
             $user->role?->level() === 'daerah'
-                => 'Wilayah Daerah ' . ($user->conference?->name ?? '—') . '.',
+                => __('dashboard.scope_daerah', ['name' => $user->conference?->name ?? '—']),
             $isGerejaLevel
-                => ($user->church?->name ?? 'gereja Anda') . ' — kartu statistik dan Top 5/Terendah untuk wilayah Daerah/Konferens Anda; Peta dan Skor Platform ditampilkan secara nasional untuk perbandingan.',
+                => __('dashboard.scope_gereja', ['church' => $user->church?->name ?? __('dashboard.scope_gereja_fallback_name')]),
             $user->role?->level() === 'institusi'
-                => 'Institusi ' . ($user->institution?->name ?? '—') . '.',
+                => __('dashboard.scope_institusi', ['name' => $user->institution?->name ?? '—']),
             default => __('dashboard.subtitle'),
         };
 
@@ -332,9 +334,26 @@ class ChurchDashboardController extends Controller
         $lastFetchedAtRaw = ChurchSocial::where('is_active', true)->visibleTo($user)->max('last_fetched_at');
         $lastFetchedAt = $lastFetchedAtRaw ? Carbon::parse($lastFetchedAtRaw) : null;
 
+        // Global, not scoped to $user — same reasoning as hashtagComparisonData(): hashtag
+        // posts have no owner/region in this system, so every viewer sees the same numbers.
+        $topHashtagPost = HashtagPost::query()
+            ->selectRaw('hashtag_id, COUNT(*) as total')
+            ->groupBy('hashtag_id')
+            ->orderByDesc('total')
+            ->with('hashtag')
+            ->first();
+
+        $hashtagSummary = [
+            'total' => HashtagPost::count(),
+            'byPlatform' => HashtagPost::selectRaw('platform, COUNT(*) as total')->groupBy('platform')->pluck('total', 'platform'),
+            'topHashtag' => $topHashtagPost?->hashtag,
+            'topHashtagCount' => $topHashtagPost?->total ?? 0,
+        ];
+
         return view('churches.index', [
             'scopeLabel' => $scopeLabel,
             'lastFetchedAt' => $lastFetchedAt,
+            'hashtagSummary' => $hashtagSummary,
             'totalChurches' => $churches->count(),
             'totalSocials' => $allSocials->count(),
             'totalPeople' => $people->count(),
@@ -1507,7 +1526,7 @@ class ChurchDashboardController extends Controller
         // (if anyone) happens to be logged in while it's displayed.
         $churches = Church::query()
             ->where('is_active', true)
-            ->with(['socials' => fn ($q) => $q->where('is_active', true)->with('latestStat')])
+            ->with(['socials' => fn ($q) => $q->where('is_active', true)->with('latestStat'), 'conference.union'])
             ->get();
 
         $rows = $churches->map(function ($church) use ($countField) {
@@ -1572,7 +1591,7 @@ class ChurchDashboardController extends Controller
         // Public presentation page — always unscoped, see presentation() above.
         $people = Person::query()
             ->where('is_active', true)
-            ->with(['socials' => fn ($q) => $q->where('is_active', true)->with('latestStat')])
+            ->with(['socials' => fn ($q) => $q->where('is_active', true)->with('latestStat'), 'conference.union', 'union'])
             ->get();
 
         $rows = $people->map(function ($person) use ($countField) {
@@ -1720,6 +1739,102 @@ class ChurchDashboardController extends Controller
             'rows' => $rows,
             'groupedRows' => $groupedRows,
         ], $regionFilterData));
+    }
+
+    /**
+     * Unlike metricComparison()/platformComparison() above, hashtag posts have no owner in this
+     * system — they're external posts found by keyword search, not accounts registered under a
+     * church/person/institution/union — so there's no region/category filter to apply and the
+     * SAME global data renders on every scope's tab. These four thin methods exist only so the
+     * page's "back to Analytics" link (via $scope->analyticsUrl()) returns to whichever tab the
+     * admin came from, matching every other comparison page's convention.
+     */
+    public function hashtagComparison(Request $request)
+    {
+        return view('churches.hashtag-comparison', array_merge(
+            $this->hashtagComparisonData($request),
+            ['scope' => ComparisonScope::church()],
+        ));
+    }
+
+    public function personalHashtagComparison(Request $request)
+    {
+        return view('churches.hashtag-comparison', array_merge(
+            $this->hashtagComparisonData($request),
+            ['scope' => ComparisonScope::personal()],
+        ));
+    }
+
+    public function institutionHashtagComparison(Request $request)
+    {
+        return view('churches.hashtag-comparison', array_merge(
+            $this->hashtagComparisonData($request),
+            ['scope' => ComparisonScope::institution()],
+        ));
+    }
+
+    public function organizationHashtagComparison(Request $request)
+    {
+        return view('churches.hashtag-comparison', array_merge(
+            $this->hashtagComparisonData($request),
+            ['scope' => ComparisonScope::organization()],
+        ));
+    }
+
+    /**
+     * Shared by all four hashtagComparison*() methods above. $platforms is fixed to the three
+     * with a working hashtag-search fetcher (see FetchHashtagPosts) — Facebook never appears
+     * here since no hashtag_posts rows for it can ever exist.
+     */
+    private function hashtagComparisonData(Request $request): array
+    {
+        $selectedHashtagId = $request->query('hashtag');
+        $selectedPlatform = $request->query('platform');
+        $platforms = ['instagram', 'tiktok', 'youtube'];
+
+        $hashtags = Hashtag::where('is_active', true)->orderBy('tag')->get();
+
+        $countsByHashtag = HashtagPost::query()
+            ->selectRaw('hashtag_id, platform, COUNT(*) as total')
+            ->groupBy('hashtag_id', 'platform')
+            ->get()
+            ->groupBy('hashtag_id');
+
+        $rows = $hashtags->map(function ($hashtag) use ($countsByHashtag, $platforms) {
+            $countsForHashtag = $countsByHashtag->get($hashtag->id, collect())->keyBy('platform');
+            $counts = collect($platforms)->mapWithKeys(fn ($platform) => [
+                $platform => (int) ($countsForHashtag[$platform]->total ?? 0),
+            ]);
+
+            return [
+                'hashtag' => $hashtag,
+                'counts' => $counts,
+                'total' => $counts->sum(),
+            ];
+        });
+
+        $grandTotalByPlatform = collect($platforms)->mapWithKeys(fn ($platform) => [
+            $platform => $rows->sum(fn ($row) => $row['counts'][$platform]),
+        ]);
+
+        $posts = HashtagPost::query()
+            ->with('hashtag')
+            ->when($selectedHashtagId, fn ($q) => $q->where('hashtag_id', $selectedHashtagId))
+            ->when($selectedPlatform, fn ($q) => $q->where('platform', $selectedPlatform))
+            ->orderByDesc('posted_at')
+            ->limit(100)
+            ->get();
+
+        return [
+            'hashtags' => $hashtags,
+            'platforms' => $platforms,
+            'rows' => $rows,
+            'grandTotal' => $rows->sum('total'),
+            'grandTotalByPlatform' => $grandTotalByPlatform,
+            'posts' => $posts,
+            'selectedHashtagId' => $selectedHashtagId,
+            'selectedPlatform' => $selectedPlatform,
+        ];
     }
 
     public function show(Church $church)

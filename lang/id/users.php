@@ -59,4 +59,17 @@ return [
     'delete_user_confirm' => 'Hapus ":name"? Akun ini akan hilang dari semua daftar.',
     'verified' => 'Terverifikasi',
     'pending_verification' => 'Menunggu Verifikasi',
+
+    // Flash messages.
+    'assigned' => '":name" berhasil ditugaskan.',
+    'role_revoked' => 'Peran ":name" telah dicabut.',
+    'region_released' => 'Wilayah ":name" telah dilepas.',
+    'region_released_bulk_none' => 'Tidak ada pengguna belum ditugaskan yang dilepas.',
+    'region_released_bulk' => 'Wilayah dari :count pengguna belum ditugaskan telah dilepas (:names).',
+    'user_deleted' => '":name" telah dihapus.',
+    'user_restored' => '":name" berhasil dipulihkan.',
+    'user_force_deleted' => '":name" berhasil dihapus permanen.',
+    'user_updated' => '":name" berhasil diperbarui.',
+    'user_status_changed' => '":name" telah :status.',
+    'otp_resent_to' => 'Kode OTP baru telah dikirim ke :email.',
 ];

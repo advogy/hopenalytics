@@ -3,6 +3,7 @@
 return [
     'title' => 'Settings',
     'subtitle' => 'Configure the weekly auto-fetch schedule.',
+    'saved' => 'Schedule settings saved successfully.',
     'auto_fetch_active' => 'Weekly auto-fetch active',
     'day' => 'Day',
     'time_wib' => 'Time (WIB)',

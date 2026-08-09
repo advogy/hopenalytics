@@ -1,12 +1,12 @@
 @extends('layouts.app')
 
-@section('title', 'Verifikasi Email Baru — ' . config('app.name'))
+@section('title', __('entity.verify_new_email_title') . ' — ' . config('app.name'))
 
 @section('content')
     <div class="mx-auto max-w-sm">
-        <h1 class="mb-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Verifikasi Email Baru</h1>
+        <h1 class="mb-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{{ __('entity.verify_new_email_title') }}</h1>
         <p class="mb-6 text-sm text-slate-500 dark:text-slate-400">
-            Kami telah mengirim kode verifikasi 6 digit ke {{ $pendingEmail }}.
+            {{ __('auth.reset_password_subtitle', ['email' => $pendingEmail]) }}
         </p>
 
         <div class="rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/5 dark:bg-slate-900">

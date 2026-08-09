@@ -3,6 +3,7 @@
 return [
     'title' => 'Pengaturan',
     'subtitle' => 'Atur jadwal auto-fetch mingguan.',
+    'saved' => 'Pengaturan jadwal berhasil disimpan.',
     'auto_fetch_active' => 'Auto-fetch mingguan aktif',
     'day' => 'Hari',
     'time_wib' => 'Jam (WIB)',

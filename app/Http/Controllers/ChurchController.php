@@ -77,7 +77,7 @@ class ChurchController extends Controller
 
         AuditLogger::log('church.created', $church, "Menambahkan Gereja \"{$church->name}\".");
 
-        return redirect()->route('churches.show', $church)->with('status', "Gereja \"{$church->name}\" berhasil ditambahkan.");
+        return redirect()->route('churches.show', $church)->with('status', __('accounts.entity_created', ['entity' => __('common.church'), 'name' => $church->name]));
     }
 
     public function edit(Request $request, Church $church)
@@ -115,7 +115,7 @@ class ChurchController extends Controller
         // churches.edit is only ever reached from Kelola Akun (see admin.accounts.partials.
         // row-actions) — same destination as this form's own Back/Cancel links, so a successful
         // save lands back where the admin actually came from instead of the public show page.
-        return redirect()->route('admin.accounts.index', ['tab' => 'gereja'])->with('status', "Gereja \"{$church->name}\" berhasil diperbarui.");
+        return redirect()->route('admin.accounts.index', ['tab' => 'gereja'])->with('status', __('accounts.entity_updated', ['entity' => __('common.church'), 'name' => $church->name]));
     }
 
     /**
@@ -183,7 +183,7 @@ class ChurchController extends Controller
     public function toggleActive(Church $church): RedirectResponse
     {
         $church->update(['is_active' => ! $church->is_active]);
-        $status = $church->is_active ? 'diaktifkan kembali' : 'dinonaktifkan';
+        $status = $church->is_active ? __('accounts.status_reactivated') : __('accounts.status_deactivated');
 
         AuditLogger::log(
             $church->is_active ? 'church.activated' : 'church.deactivated',
@@ -191,7 +191,7 @@ class ChurchController extends Controller
             ($church->is_active ? 'Mengaktifkan kembali' : 'Menonaktifkan')." Gereja \"{$church->name}\"."
         );
 
-        return redirect()->route('admin.accounts.index', ['tab' => 'gereja'])->with('status', "Gereja \"{$church->name}\" telah {$status}.");
+        return redirect()->route('admin.accounts.index', ['tab' => 'gereja'])->with('status', __('accounts.entity_status_changed', ['entity' => __('common.church'), 'name' => $church->name, 'status' => $status]));
     }
 
     /**
@@ -210,7 +210,7 @@ class ChurchController extends Controller
     {
         if ($church->users()->withTrashed()->exists()) {
             return redirect()->route('admin.accounts.index', ['tab' => 'gereja'])
-                ->with('error', "Gereja \"{$church->name}\" tidak bisa dihapus karena masih ada pengguna yang ditugaskan. Nonaktifkan saja, atau pindahkan penugasan pengguna terlebih dahulu.");
+                ->with('error', __('accounts.delete_blocked_gereja', ['name' => $church->name]));
         }
 
         $name = $church->name;
@@ -218,6 +218,6 @@ class ChurchController extends Controller
 
         AuditLogger::log('church.deleted', $church, "Menghapus permanen Gereja \"{$name}\".");
 
-        return redirect()->route('admin.accounts.index', ['tab' => 'gereja'])->with('status', "Gereja \"{$name}\" berhasil dihapus.");
+        return redirect()->route('admin.accounts.index', ['tab' => 'gereja'])->with('status', __('accounts.entity_deleted', ['entity' => __('common.church'), 'name' => $name]));
     }
 }

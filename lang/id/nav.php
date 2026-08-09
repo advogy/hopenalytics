@@ -7,6 +7,7 @@ return [
     'about' => 'Tentang',
     'queue' => 'Monitoring Antrean',
     'settings' => 'Pengaturan',
+    'hashtags' => 'Hashtag Dilacak',
     'toggle_theme' => 'Ganti tema terang/gelap',
     'open_menu' => 'Buka menu',
     'language' => 'Bahasa',

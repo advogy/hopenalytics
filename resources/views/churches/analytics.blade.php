@@ -286,6 +286,13 @@
                     <x-icon name="arrow-trending-up" class="h-4 w-4" />
                     {{ __('analytics.platform_comparison_organization') }}
                 </a>
+                <a
+                    href="{{ route('organizations.hashtag-comparison') }}"
+                    class="inline-flex items-center gap-1.5 rounded-lg border border-black/10 bg-white px-4 py-2 text-sm font-medium shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:hover:bg-slate-700"
+                >
+                    <x-icon name="hashtag" class="h-4 w-4" />
+                    {{ __('hashtag.comparison_link') }}
+                </a>
             </div>
             @can('browse-directory-analytics')
                 <x-export-button :url="route('export.organization-analytics.preview', array_filter(['organization_id' => $selectedOrganizationKey, 'platform' => $selectedPlatform]))" />
@@ -518,9 +525,9 @@
                                 <th class="px-4 py-3 font-medium text-slate-500 dark:text-slate-400">{{ __('comparison.organization_name_label') }}</th>
                                 <th class="px-4 py-3 font-medium text-slate-500 dark:text-slate-400">{{ __('common.account') }}</th>
                                 <th class="px-4 py-3 font-medium text-slate-500 dark:text-slate-400">{{ __('analytics.total_reach') }}</th>
-                                <th class="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400">Views</th>
-                                <th class="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400">Likes</th>
-                                <th class="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400">Post / Video</th>
+                                <th class="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400">{{ __('common.metric_views') }}</th>
+                                <th class="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400">{{ __('common.metric_likes') }}</th>
+                                <th class="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400">{{ __('common.metric_posts') }}</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-900">
@@ -604,6 +611,13 @@
                 >
                     <x-icon name="arrow-trending-up" class="h-4 w-4" />
                     {{ __('analytics.platform_comparison_church') }}
+                </a>
+                <a
+                    href="{{ route('churches.hashtag-comparison') }}"
+                    class="inline-flex items-center gap-1.5 rounded-lg border border-black/10 bg-white px-4 py-2 text-sm font-medium shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:hover:bg-slate-700"
+                >
+                    <x-icon name="hashtag" class="h-4 w-4" />
+                    {{ __('hashtag.comparison_link') }}
                 </a>
             </div>
             @can('browse-directory-analytics')
@@ -858,9 +872,9 @@
                                 <th class="px-4 py-3 font-medium text-slate-500 dark:text-slate-400">{{ __('directory.church_accounts') }}</th>
                                 <th class="px-4 py-3 font-medium text-slate-500 dark:text-slate-400">{{ __('directory.general_accounts') }}</th>
                                 <th class="px-4 py-3 font-medium text-slate-500 dark:text-slate-400">{{ __('analytics.total_reach') }}</th>
-                                <th class="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400">Views</th>
-                                <th class="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400">Likes</th>
-                                <th class="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400">Post / Video</th>
+                                <th class="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400">{{ __('common.metric_views') }}</th>
+                                <th class="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400">{{ __('common.metric_likes') }}</th>
+                                <th class="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400">{{ __('common.metric_posts') }}</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-900">
@@ -936,6 +950,13 @@
                 >
                     <x-icon name="arrow-trending-up" class="h-4 w-4" />
                     {{ __('analytics.platform_comparison_institution') }}
+                </a>
+                <a
+                    href="{{ route('institutions.hashtag-comparison') }}"
+                    class="inline-flex items-center gap-1.5 rounded-lg border border-black/10 bg-white px-4 py-2 text-sm font-medium shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:hover:bg-slate-700"
+                >
+                    <x-icon name="hashtag" class="h-4 w-4" />
+                    {{ __('hashtag.comparison_link') }}
                 </a>
             </div>
             @can('browse-directory-analytics')
@@ -1166,9 +1187,9 @@
                                 <th class="px-4 py-3 font-medium text-slate-500 dark:text-slate-400">{{ __('common.institution') }}</th>
                                 <th class="px-4 py-3 font-medium text-slate-500 dark:text-slate-400">{{ __('common.account') }}</th>
                                 <th class="px-4 py-3 font-medium text-slate-500 dark:text-slate-400">{{ __('analytics.total_reach') }}</th>
-                                <th class="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400">Views</th>
-                                <th class="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400">Likes</th>
-                                <th class="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400">Post / Video</th>
+                                <th class="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400">{{ __('common.metric_views') }}</th>
+                                <th class="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400">{{ __('common.metric_likes') }}</th>
+                                <th class="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400">{{ __('common.metric_posts') }}</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-900">
@@ -1244,6 +1265,13 @@
                 >
                     <x-icon name="arrow-trending-up" class="h-4 w-4" />
                     {{ __('analytics.platform_comparison_personal') }}
+                </a>
+                <a
+                    href="{{ route('people.hashtag-comparison') }}"
+                    class="inline-flex items-center gap-1.5 rounded-lg border border-black/10 bg-white px-4 py-2 text-sm font-medium shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:hover:bg-slate-700"
+                >
+                    <x-icon name="hashtag" class="h-4 w-4" />
+                    {{ __('hashtag.comparison_link') }}
                 </a>
             </div>
             @can('browse-directory-analytics')
@@ -1474,9 +1502,9 @@
                                 <th class="px-4 py-3 font-medium text-slate-500 dark:text-slate-400">{{ __('common.name') }}</th>
                                 <th class="px-4 py-3 font-medium text-slate-500 dark:text-slate-400">{{ __('common.account') }}</th>
                                 <th class="px-4 py-3 font-medium text-slate-500 dark:text-slate-400">{{ __('analytics.total_reach') }}</th>
-                                <th class="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400">Views</th>
-                                <th class="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400">Likes</th>
-                                <th class="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400">Post / Video</th>
+                                <th class="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400">{{ __('common.metric_views') }}</th>
+                                <th class="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400">{{ __('common.metric_likes') }}</th>
+                                <th class="px-4 py-3 text-right font-medium text-slate-500 dark:text-slate-400">{{ __('common.metric_posts') }}</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-900">

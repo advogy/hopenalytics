@@ -32,7 +32,7 @@
     @endif
 
     @if (empty($dataset['rows']))
-        <p>Tidak ada data untuk diekspor.</p>
+        <p>{{ __('export.no_data') }}</p>
     @else
         <table>
             <thead>

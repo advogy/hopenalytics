@@ -49,7 +49,7 @@ class UnionController extends Controller
 
         AuditLogger::log('union.created', $union, "Menambahkan Uni \"{$union->name}\".");
 
-        return redirect()->route('admin.accounts.index', ['tab' => 'uni'])->with('status', "Uni \"{$data['name']}\" berhasil ditambahkan.");
+        return redirect()->route('admin.accounts.index', ['tab' => 'uni'])->with('status', __('accounts.entity_created', ['entity' => __('common.union'), 'name' => $data['name']]));
     }
 
     public function edit(Union $union)
@@ -73,13 +73,13 @@ class UnionController extends Controller
 
         AuditLogger::log('union.updated', $union, "Memperbarui Uni \"{$union->name}\".");
 
-        return redirect()->route('admin.accounts.index', ['tab' => 'uni'])->with('status', "Uni \"{$union->name}\" berhasil diperbarui.");
+        return redirect()->route('admin.accounts.index', ['tab' => 'uni'])->with('status', __('accounts.entity_updated', ['entity' => __('common.union'), 'name' => $union->name]));
     }
 
     public function toggleActive(Union $union): RedirectResponse
     {
         $union->update(['is_active' => ! $union->is_active]);
-        $status = $union->is_active ? 'diaktifkan kembali' : 'dinonaktifkan';
+        $status = $union->is_active ? __('accounts.status_reactivated') : __('accounts.status_deactivated');
 
         AuditLogger::log(
             $union->is_active ? 'union.activated' : 'union.deactivated',
@@ -87,7 +87,7 @@ class UnionController extends Controller
             ($union->is_active ? 'Mengaktifkan kembali' : 'Menonaktifkan')." Uni \"{$union->name}\"."
         );
 
-        return redirect()->route('admin.accounts.index', ['tab' => 'uni'])->with('status', "Uni \"{$union->name}\" telah {$status}.");
+        return redirect()->route('admin.accounts.index', ['tab' => 'uni'])->with('status', __('accounts.entity_status_changed', ['entity' => __('common.union'), 'name' => $union->name, 'status' => $status]));
     }
 
     /**
@@ -105,7 +105,7 @@ class UnionController extends Controller
     {
         if ($union->conferences()->exists() || $union->users()->withTrashed()->exists()) {
             return redirect()->route('admin.accounts.index', ['tab' => 'uni'])
-                ->with('error', "Uni \"{$union->name}\" tidak bisa dihapus karena masih memiliki Daerah dan/atau pengguna yang ditugaskan. Nonaktifkan saja, atau pindahkan/hapus data terkait terlebih dahulu.");
+                ->with('error', __('accounts.delete_blocked_uni', ['name' => $union->name]));
         }
 
         $name = $union->name;
@@ -113,7 +113,7 @@ class UnionController extends Controller
 
         AuditLogger::log('union.deleted', $union, "Menghapus permanen Uni \"{$name}\".");
 
-        return redirect()->route('admin.accounts.index', ['tab' => 'uni'])->with('status', "Uni \"{$name}\" berhasil dihapus.");
+        return redirect()->route('admin.accounts.index', ['tab' => 'uni'])->with('status', __('accounts.entity_deleted', ['entity' => __('common.union'), 'name' => $name]));
     }
 
     private function uniqueSlug(string $name): string

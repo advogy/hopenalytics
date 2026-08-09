@@ -105,4 +105,18 @@ return [
     'deactivate_daerah' => 'Nonaktifkan Daerah',
     'deactivate_institusi_confirm' => 'Nonaktifkan Institusi ":name"?',
     'deactivate_institusi' => 'Nonaktifkan Institusi',
+
+    // Flash messages shared by Union/Conference/Institution/Church CRUD (create/update/toggle/
+    // delete) — one generic template per action, parametrized by :entity ("Uni"/"Daerah"/
+    // "Gereja"/"Institusi") rather than four near-identical keys apiece.
+    'entity_created' => ':entity ":name" berhasil ditambahkan.',
+    'entity_updated' => ':entity ":name" berhasil diperbarui.',
+    'entity_status_changed' => ':entity ":name" telah :status.',
+    'entity_deleted' => ':entity ":name" berhasil dihapus.',
+    'status_reactivated' => 'diaktifkan kembali',
+    'status_deactivated' => 'dinonaktifkan',
+    'delete_blocked_uni' => 'Uni ":name" tidak bisa dihapus karena masih memiliki Daerah dan/atau pengguna yang ditugaskan. Nonaktifkan saja, atau pindahkan/hapus data terkait terlebih dahulu.',
+    'delete_blocked_daerah' => 'Daerah ":name" tidak bisa dihapus karena masih memiliki Gereja dan/atau pengguna yang ditugaskan. Nonaktifkan saja, atau pindahkan/hapus data terkait terlebih dahulu.',
+    'delete_blocked_gereja' => 'Gereja ":name" tidak bisa dihapus karena masih ada pengguna yang ditugaskan. Nonaktifkan saja, atau pindahkan penugasan pengguna terlebih dahulu.',
+    'delete_blocked_institusi' => 'Institusi ":name" tidak bisa dihapus karena masih ada pengguna yang ditugaskan. Nonaktifkan saja, atau pindahkan penugasan pengguna terlebih dahulu.',
 ];

@@ -7,6 +7,7 @@ return [
     'about' => 'About',
     'queue' => 'Queue Monitoring',
     'settings' => 'Settings',
+    'hashtags' => 'Tracked Hashtags',
     'toggle_theme' => 'Toggle light/dark theme',
     'open_menu' => 'Open menu',
     'language' => 'Language',

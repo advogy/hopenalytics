@@ -21,7 +21,7 @@
                 type="button"
                 data-password-toggle
                 tabindex="-1"
-                aria-label="Tampilkan/sembunyikan kata sandi"
+                aria-label="{{ __('common.toggle_password_visibility') }}"
                 class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
             >
                 <x-icon name="eye" class="h-4 w-4" data-password-toggle-icon-show />

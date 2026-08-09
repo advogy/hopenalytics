@@ -5,7 +5,7 @@
 @section('content')
     <div class="mb-6 flex items-center justify-between">
         <div>
-            <h1 class="mb-1 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Dashboard</h1>
+            <h1 class="mb-1 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{{ __('dashboard.heading') }}</h1>
             <p class="text-sm text-slate-500 dark:text-slate-400">{{ $scopeLabel }}</p>
         </div>
 
@@ -176,6 +176,36 @@
             :view-all-url="\App\Support\ComparisonScope::church()->platformComparisonUrl()"
         />
     </div>
+
+    {{-- Hidden until at least one hashtag is tracked and has matched data — no empty-state
+         clutter for accounts that never turn this feature on. --}}
+    @if ($hashtagSummary['total'] > 0)
+        <div class="mb-8 rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
+            <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <p class="font-bold text-slate-900 dark:text-white">{{ __('hashtag.dashboard_summary_title') }}</p>
+                    <p class="text-sm text-slate-500 dark:text-slate-400">
+                        {{ __('hashtag.dashboard_summary_subtitle', ['count' => number_format($hashtagSummary['total'])]) }}
+                        @if ($hashtagSummary['topHashtag'])
+                            — {{ __('hashtag.dashboard_top_hashtag', ['tag' => $hashtagSummary['topHashtag']->display_tag, 'count' => number_format($hashtagSummary['topHashtagCount'])]) }}
+                        @endif
+                    </p>
+                </div>
+                <a href="{{ \App\Support\ComparisonScope::church()->hashtagComparisonUrl() }}" class="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400">
+                    {{ __('hashtag.view_all') }}
+                </a>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-6">
+                @foreach (['youtube', 'instagram', 'tiktok'] as $platform)
+                    <div class="flex items-center gap-1.5">
+                        <x-platform-icon :platform="$platform" class="h-9 w-9" />
+                        <span class="text-2xl font-bold tabular-nums text-slate-900 dark:text-white">{{ number_format($hashtagSummary['byPlatform'][$platform] ?? 0) }}</span>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+    @endif
 
     <div class="mb-3 flex items-center justify-between">
         <h2 class="text-lg font-bold text-slate-900 dark:text-white">{{ __('dashboard.map_title') }}</h2>

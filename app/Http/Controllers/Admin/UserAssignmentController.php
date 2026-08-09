@@ -189,7 +189,7 @@ class UserAssignmentController extends Controller
         );
 
         return redirect()->route('admin.users.index', ['tab' => 'unassigned'])
-            ->with('status', "\"{$target->name}\" berhasil ditugaskan.");
+            ->with('status', __('users.assigned', ['name' => $target->name]));
     }
 
     public function revoke(Request $request, User $target): RedirectResponse
@@ -215,7 +215,7 @@ class UserAssignmentController extends Controller
         $tab = $wasInstitusi ? 'institusi' : ($wasReadOnly ? 'pemimpin' : 'admin');
 
         return redirect()->route('admin.users.index', ['tab' => $tab])
-            ->with('status', "Peran \"{$target->name}\" telah dicabut.");
+            ->with('status', __('users.role_revoked', ['name' => $target->name]));
     }
 
     /**
@@ -239,7 +239,7 @@ class UserAssignmentController extends Controller
 
         AuditLogger::log('user.region_released', $target, "Melepas wilayah \"{$regionLabel}\" dari \"{$target->name}\".");
 
-        return $this->redirectToTab($request)->with('status', "Wilayah \"{$target->name}\" telah dilepas.");
+        return $this->redirectToTab($request)->with('status', __('users.region_released', ['name' => $target->name]));
     }
 
     /**
@@ -275,8 +275,8 @@ class UserAssignmentController extends Controller
         }
 
         return back()->with('status', $targets->isEmpty()
-            ? 'Tidak ada pengguna belum ditugaskan yang dilepas.'
-            : "Wilayah dari {$targets->count()} pengguna belum ditugaskan telah dilepas ({$names}).");
+            ? __('users.region_released_bulk_none')
+            : __('users.region_released_bulk', ['count' => $targets->count(), 'names' => $names]));
     }
 
     public function destroy(Request $request, User $target): RedirectResponse
@@ -287,7 +287,7 @@ class UserAssignmentController extends Controller
 
         AuditLogger::log('user.deleted', $target, "Menghapus akun \"{$target->name}\".");
 
-        return $this->redirectToTab($request)->with('status', "\"{$target->name}\" telah dihapus.");
+        return $this->redirectToTab($request)->with('status', __('users.user_deleted', ['name' => $target->name]));
     }
 
     public function restore(User $target): RedirectResponse
@@ -297,7 +297,7 @@ class UserAssignmentController extends Controller
         AuditLogger::log('user.restored', $target, "Memulihkan akun \"{$target->name}\".");
 
         return redirect()->route('admin.users.index', ['tab' => 'terhapus'])
-            ->with('status', "\"{$target->name}\" berhasil dipulihkan.");
+            ->with('status', __('users.user_restored', ['name' => $target->name]));
     }
 
     /**
@@ -313,7 +313,7 @@ class UserAssignmentController extends Controller
         AuditLogger::log('user.force_deleted', $target, "Menghapus permanen akun \"{$name}\".");
 
         return redirect()->route('admin.users.index', ['tab' => 'terhapus'])
-            ->with('status', "\"{$name}\" berhasil dihapus permanen.");
+            ->with('status', __('users.user_force_deleted', ['name' => $name]));
     }
 
     /**
@@ -345,7 +345,7 @@ class UserAssignmentController extends Controller
 
         AuditLogger::log('user.updated', $target, "Memperbarui nama akun menjadi \"{$target->name}\".");
 
-        return $this->redirectToTab($request)->with('status', "\"{$target->name}\" berhasil diperbarui.");
+        return $this->redirectToTab($request)->with('status', __('users.user_updated', ['name' => $target->name]));
     }
 
     public function toggleActive(Request $request, User $target): RedirectResponse
@@ -354,7 +354,7 @@ class UserAssignmentController extends Controller
 
         $target->update(['is_active' => ! $target->is_active]);
 
-        $status = $target->is_active ? 'diaktifkan kembali' : 'dinonaktifkan';
+        $status = $target->is_active ? __('accounts.status_reactivated') : __('accounts.status_deactivated');
 
         AuditLogger::log(
             $target->is_active ? 'user.activated' : 'user.deactivated',
@@ -362,7 +362,7 @@ class UserAssignmentController extends Controller
             ($target->is_active ? 'Mengaktifkan kembali' : 'Menonaktifkan')." akun \"{$target->name}\"."
         );
 
-        return $this->redirectToTab($request)->with('status', "\"{$target->name}\" telah {$status}.");
+        return $this->redirectToTab($request)->with('status', __('users.user_status_changed', ['name' => $target->name, 'status' => $status]));
     }
 
     public function resendOtp(Request $request, User $target): RedirectResponse
@@ -373,7 +373,7 @@ class UserAssignmentController extends Controller
 
         $target->sendVerificationOtp();
 
-        return $this->redirectToTab($request)->with('status', "Kode OTP baru telah dikirim ke {$target->email}.");
+        return $this->redirectToTab($request)->with('status', __('users.otp_resent_to', ['email' => $target->email]));
     }
 
     /**

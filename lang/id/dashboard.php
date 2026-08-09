@@ -2,6 +2,7 @@
 
 return [
     'title' => 'Gereja',
+    'heading' => 'Dashboard',
     'subtitle' => 'Ringkasan pertumbuhan media sosial semua gereja.',
 
     'section_overview' => 'Ringkasan',
@@ -16,6 +17,16 @@ return [
     'refresh_failed' => 'Gagal memulai refresh',
     'last_updated_at' => 'Data terakhir diperbarui: :time',
     'last_updated_never' => 'Data belum pernah diperbarui',
+    'refresh_started' => 'Memperbarui :count akun di background — data akan muncul dalam beberapa menit.',
+
+    // Scope label shown under the dashboard title — see ChurchDashboardController::index().
+    'scope_nasional' => 'Ringkasan nasional — seluruh Uni, Konferens/Daerah, Gereja, Institusi, dan Personal.',
+    'scope_uni' => 'Wilayah Uni :name.',
+    'scope_daerah' => 'Wilayah Daerah :name.',
+    'scope_gereja' => ':church — kartu statistik dan Top 5/Terendah untuk wilayah Daerah/Konferens Anda; Peta dan Skor Platform ditampilkan secara nasional untuk perbandingan.',
+    'scope_gereja_fallback_name' => 'gereja Anda',
+    // scope_institusi already exists further below, reused by both this scopeLabel and
+    // goalProgressRows()'s $regionScopeLabel — not redefined here to avoid a duplicate key.
 
     'stat_churches' => 'Gereja terdaftar',
     'stat_institutions' => 'Institusi terdaftar',

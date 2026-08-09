@@ -163,7 +163,7 @@
                 </p>
                 <p class="text-sm">
                     <span class="font-semibold tabular-nums">{{ number_format($latest->recent_reels_views) }}</span>
-                    <span class="text-slate-500 dark:text-slate-400">views</span>
+                    <span class="text-slate-500 dark:text-slate-400">{{ __('entity.metric_views') }}</span>
                 </p>
             </div>
         @endif
@@ -175,10 +175,10 @@
                 </p>
                 <p class="text-sm">
                     <span class="font-semibold tabular-nums">{{ number_format($latest->recent_video_plays) }}</span>
-                    <span class="text-slate-500 dark:text-slate-400">plays</span>
+                    <span class="text-slate-500 dark:text-slate-400">{{ __('entity.metric_plays') }}</span>
                     &middot;
                     <span class="font-semibold tabular-nums">{{ number_format($latest->recent_video_shares) }}</span>
-                    <span class="text-slate-500 dark:text-slate-400">shares</span>
+                    <span class="text-slate-500 dark:text-slate-400">{{ __('entity.metric_shares') }}</span>
                 </p>
             </div>
         @endif
@@ -190,10 +190,10 @@
                 </p>
                 <p class="text-sm">
                     <span class="font-semibold tabular-nums">{{ number_format($latest->recent_posts_likes) }}</span>
-                    <span class="text-slate-500 dark:text-slate-400">likes</span>
+                    <span class="text-slate-500 dark:text-slate-400">{{ __('entity.metric_likes') }}</span>
                     &middot;
                     <span class="font-semibold tabular-nums">{{ number_format($latest->recent_posts_shares) }}</span>
-                    <span class="text-slate-500 dark:text-slate-400">shares</span>
+                    <span class="text-slate-500 dark:text-slate-400">{{ __('entity.metric_shares') }}</span>
                 </p>
             </div>
         @endif
