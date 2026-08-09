@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Conference;
 use App\Models\Union;
 use App\Support\AuditLogger;
+use App\Support\NameSimilarity;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -15,6 +17,24 @@ class ConferenceController extends Controller
     public function create(Request $request)
     {
         return view('admin.conferences.form', ['conference' => new Conference] + $this->unionPickerData($request));
+    }
+
+    /** Advisory "did you mean" lookup for the name field — see NameSimilarity. */
+    public function similar(Request $request): JsonResponse
+    {
+        $matches = NameSimilarity::findSimilar(
+            (string) $request->query('name', ''),
+            Conference::where('is_active', true)
+                ->when($request->query('exclude_id'), fn ($q, $id) => $q->whereKeyNot($id))
+                ->with('union')
+                ->get(['id', 'slug', 'name', 'union_id']),
+        );
+
+        return response()->json($matches->map(fn ($m) => [
+            'name' => $m['model']->name,
+            'context' => $m['model']->union?->name,
+            'url' => route('admin.conferences.edit', $m['model']),
+        ])->values());
     }
 
     public function store(Request $request): RedirectResponse

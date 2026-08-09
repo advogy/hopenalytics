@@ -120,10 +120,13 @@ Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group
         Route::get('/churches/create', [ChurchController::class, 'create'])->name('churches.create');
         Route::post('/churches', [ChurchController::class, 'store'])->name('churches.store');
     });
+    Route::get('/churches/similar', [ChurchController::class, 'similar'])->name('churches.similar');
     Route::get('/churches/{church:slug}/edit', [ChurchController::class, 'edit'])->name('churches.edit')->middleware('can:update,church');
     Route::put('/churches/{church:slug}', [ChurchController::class, 'update'])->name('churches.update')->middleware('can:update,church');
     Route::patch('/churches/{church:slug}/toggle-active', [ChurchController::class, 'toggleActive'])->name('churches.toggle-active')->middleware('can:delete,church');
     Route::delete('/churches/{church:slug}', [ChurchController::class, 'destroy'])->name('churches.destroy')->middleware('can:delete,church');
+
+    Route::get('/socials/similar', [ChurchSocialController::class, 'similar'])->name('socials.similar');
 
     Route::get('/churches/{church:slug}/socials', [ChurchSocialController::class, 'index'])->name('churches.socials.index')->middleware('can:update,church');
     Route::get('/churches/{church:slug}/socials/create', [ChurchSocialController::class, 'create'])->name('socials.create')->middleware('can:update,church');
@@ -152,6 +155,7 @@ Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group
         Route::get('/personal/create', [PersonController::class, 'create'])->name('people.create');
         Route::post('/personal', [PersonController::class, 'store'])->name('people.store');
     });
+    Route::get('/personal/similar', [PersonController::class, 'similar'])->name('people.similar');
     Route::get('/personal/{person}/edit', [PersonController::class, 'edit'])->name('people.edit')->middleware('can:update,person');
     Route::put('/personal/{person}', [PersonController::class, 'update'])->name('people.update')->middleware('can:update,person');
     Route::patch('/personal/{person}/toggle-active', [PersonController::class, 'toggleActive'])->name('people.toggle-active')->middleware('can:delete,person');
@@ -286,6 +290,7 @@ Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group
             Route::get('/unions/create', [UnionController::class, 'create'])->name('unions.create');
             Route::post('/unions', [UnionController::class, 'store'])->name('unions.store');
         });
+        Route::get('/unions/similar', [UnionController::class, 'similar'])->name('unions.similar');
         Route::get('/unions/{union:slug}/edit', [UnionController::class, 'edit'])->name('unions.edit')->middleware('can:update,union');
         Route::put('/unions/{union:slug}', [UnionController::class, 'update'])->name('unions.update')->middleware('can:update,union');
         Route::patch('/unions/{union:slug}/toggle-active', [UnionController::class, 'toggleActive'])->name('unions.toggle-active')->middleware('can:update,union');
@@ -301,6 +306,7 @@ Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group
             Route::get('/conferences/create', [ConferenceController::class, 'create'])->name('conferences.create');
             Route::post('/conferences', [ConferenceController::class, 'store'])->name('conferences.store');
         });
+        Route::get('/conferences/similar', [ConferenceController::class, 'similar'])->name('conferences.similar');
         Route::get('/conferences/{conference:slug}/edit', [ConferenceController::class, 'edit'])->name('conferences.edit')->middleware('can:update,conference');
         Route::put('/conferences/{conference:slug}', [ConferenceController::class, 'update'])->name('conferences.update')->middleware('can:update,conference');
         Route::patch('/conferences/{conference:slug}/toggle-active', [ConferenceController::class, 'toggleActive'])->name('conferences.toggle-active')->middleware('can:update,conference');
@@ -316,6 +322,7 @@ Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group
             Route::get('/institutions/create', [InstitutionController::class, 'create'])->name('institutions.create');
             Route::post('/institutions', [InstitutionController::class, 'store'])->name('institutions.store');
         });
+        Route::get('/institutions/similar', [InstitutionController::class, 'similar'])->name('institutions.similar');
         Route::get('/institutions/{institution:slug}/edit', [InstitutionController::class, 'edit'])->name('institutions.edit')->middleware('can:update,institution');
         Route::put('/institutions/{institution:slug}', [InstitutionController::class, 'update'])->name('institutions.update')->middleware('can:update,institution');
         Route::patch('/institutions/{institution:slug}/toggle-active', [InstitutionController::class, 'toggleActive'])->name('institutions.toggle-active')->middleware('can:update,institution');

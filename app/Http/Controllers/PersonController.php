@@ -9,6 +9,8 @@ use App\Models\Person;
 use App\Models\User;
 use App\Services\GeocodingService;
 use App\Support\AuditLogger;
+use App\Support\NameSimilarity;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -44,6 +46,28 @@ class PersonController extends Controller
     public function create()
     {
         return view('people.form', ['person' => new Person, 'linkableUsers' => collect()]);
+    }
+
+    /**
+     * Advisory "did you mean" lookup for the name field — see NameSimilarity. Not gated behind
+     * can:create,Person (a self-registered member can edit their own linked Person via
+     * PersonPolicy's self-ownership carve-out, but never create() — see that policy), so this
+     * stays open to plain auth like ChurchController::similar() for the same reason.
+     */
+    public function similar(Request $request): JsonResponse
+    {
+        $matches = NameSimilarity::findSimilar(
+            (string) $request->query('name', ''),
+            Person::where('is_active', true)
+                ->when($request->query('exclude_id'), fn ($q, $id) => $q->whereKeyNot($id))
+                ->get(['id', 'name', 'city']),
+        );
+
+        return response()->json($matches->map(fn ($m) => [
+            'name' => $m['model']->name,
+            'context' => $m['model']->city,
+            'url' => route('people.edit', $m['model']),
+        ])->values());
     }
 
     public function store(Request $request, GeocodingService $geocoding): RedirectResponse

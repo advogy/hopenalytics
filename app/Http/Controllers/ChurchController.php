@@ -7,6 +7,8 @@ use App\Models\Conference;
 use App\Models\Union;
 use App\Services\GeocodingService;
 use App\Support\AuditLogger;
+use App\Support\NameSimilarity;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -16,6 +18,30 @@ class ChurchController extends Controller
     public function create(Request $request)
     {
         return view('churches.form', ['church' => new Church] + $this->conferencePickerData($request));
+    }
+
+    /**
+     * Advisory "did you mean" lookup for the name field — see NameSimilarity. Deliberately not
+     * gated behind can:create,Church (unlike the create/store routes) since an admin_gereja can
+     * update their own church's name — see ChurchPolicy — but is barred from create(); the
+     * check needs to work on both the create AND edit forms, and church names are already fully
+     * public via the Directory page, so no extra authorization narrows this beyond plain auth.
+     */
+    public function similar(Request $request): JsonResponse
+    {
+        $matches = NameSimilarity::findSimilar(
+            (string) $request->query('name', ''),
+            Church::where('is_active', true)
+                ->when($request->query('exclude_id'), fn ($q, $id) => $q->whereKeyNot($id))
+                ->with('conference.union')
+                ->get(['id', 'slug', 'name', 'conference_id']),
+        );
+
+        return response()->json($matches->map(fn ($m) => [
+            'name' => $m['model']->name,
+            'context' => $m['model']->conference?->name,
+            'url' => route('churches.edit', $m['model']),
+        ])->values());
     }
 
     public function store(Request $request, GeocodingService $geocoding): RedirectResponse

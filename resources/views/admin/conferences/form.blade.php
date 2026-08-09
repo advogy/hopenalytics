@@ -22,6 +22,13 @@
         @endif
 
         <x-form-field name="name" :label="__('accounts.daerah_name')" required :value="$conference->name" />
+        <div id="name-similar-results" class="hidden mb-5 -mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm dark:border-amber-900 dark:bg-amber-950"></div>
+        <script>
+            window.initSimilarNameCheck(document.getElementById('name'), document.getElementById('name-similar-results'), {
+                url: '{{ route('admin.conferences.similar') }}',
+                excludeId: {{ $conference->exists ? $conference->id : 'null' }},
+            });
+        </script>
 
         <div class="mb-5">
             <label class="mb-1.5 block text-sm font-medium">{{ __('common.union') }}</label>

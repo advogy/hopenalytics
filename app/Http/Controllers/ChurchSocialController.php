@@ -5,12 +5,107 @@ namespace App\Http\Controllers;
 use App\Enums\SocialPlatform;
 use App\Models\Church;
 use App\Models\ChurchSocial;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class ChurchSocialController extends Controller
 {
+    /**
+     * Advisory "is this account already tracked" lookup, shared by every owner type's social
+     * form (church/person/union/conference/institution) via one endpoint rather than five —
+     * global, not owner-scoped, since the point is catching the SAME real-world account being
+     * registered twice under two different owners. Not gated beyond plain auth: it only ever
+     * surfaces a handle + which entity already has it, no more sensitive than the public
+     * Directory page already showing every account. Exact match only (not fuzzy like
+     * NameSimilarity) — an account handle either is or isn't the one already tracked.
+     */
+    public function similar(Request $request): JsonResponse
+    {
+        $platform = (string) $request->query('platform', '');
+        $handle = Str::lower(ltrim((string) $request->query('handle', ''), '@'));
+        $profileUrl = (string) $request->query('profile_url', '');
+        $normalizedUrl = $profileUrl !== '' ? $this->normalizeProfileUrl($profileUrl) : null;
+
+        if ($platform === '' || ($handle === '' && $normalizedUrl === null)) {
+            return response()->json([]);
+        }
+
+        $matches = ChurchSocial::query()
+            ->where('platform', $platform)
+            ->when($request->query('exclude_id'), fn ($q, $id) => $q->whereKeyNot($id))
+            ->where(function ($q) use ($handle, $normalizedUrl) {
+                $q->when($handle !== '', fn ($q2) => $q2->whereRaw('LOWER(handle) = ?', [$handle]));
+                $q->when($normalizedUrl !== null, fn ($q2) => $q2->orWhereRaw('LOWER(profile_url) LIKE ?', ["%{$normalizedUrl}%"]));
+            })
+            ->with(['church', 'person', 'institution', 'union', 'conference'])
+            ->limit(5)
+            ->get();
+
+        return response()->json($matches->map(function (ChurchSocial $social) use ($request) {
+            $owner = $social->church ?? $social->person ?? $social->institution ?? $social->union ?? $social->conference;
+
+            return [
+                'handle' => $social->display_handle,
+                'owner' => $owner?->name,
+                'url' => $this->manageLocation($request, $social),
+            ];
+        })->values());
+    }
+
+    /** Strips scheme/www/trailing-slash/query so two differently-formatted links to the same page still match. */
+    private function normalizeProfileUrl(string $url): string
+    {
+        $url = Str::lower(trim($url));
+        $url = preg_replace('#^https?://#', '', $url) ?? $url;
+        $url = preg_replace('#^www\.#', '', $url) ?? $url;
+        $url = strtok($url, '?');
+        $url = rtrim((string) $url, '/');
+
+        return $url;
+    }
+
+    /**
+     * Hard-blocks the same real-world account being registered a second time under ANY owner
+     * (not just the one being edited) — per the user's explicit call ("kalau daftar akun media
+     * sosial yg sama, maka tidak bisa"), upgraded from the advisory similar() lookup above to an
+     * actual validation failure. Global on purpose: the existing platform.unique rule in
+     * validated()/validatedOrganization() only ever catches the exact same owner+category+handle
+     * combination, so a handle already tracked under a *different* church/person/institution/
+     * union/conference would otherwise sail straight through. $ignoreId excludes the row being
+     * edited so saving an unchanged account doesn't trip over itself.
+     */
+    private function assertHandleNotAlreadyTracked(string $platform, string $handle, ?string $profileUrl, ?int $ignoreId): void
+    {
+        $normalizedHandle = Str::lower($handle);
+        $normalizedUrl = $profileUrl ? $this->normalizeProfileUrl($profileUrl) : null;
+
+        $duplicate = ChurchSocial::query()
+            ->where('platform', $platform)
+            ->when($ignoreId, fn ($q, $id) => $q->whereKeyNot($id))
+            ->where(function ($q) use ($normalizedHandle, $normalizedUrl) {
+                $q->whereRaw('LOWER(handle) = ?', [$normalizedHandle]);
+                $q->when($normalizedUrl !== null, fn ($q2) => $q2->orWhereRaw('LOWER(profile_url) LIKE ?', ["%{$normalizedUrl}%"]));
+            })
+            ->with(['church', 'person', 'institution', 'union', 'conference'])
+            ->first();
+
+        if (! $duplicate) {
+            return;
+        }
+
+        $owner = $duplicate->church ?? $duplicate->person ?? $duplicate->institution ?? $duplicate->union ?? $duplicate->conference;
+
+        throw ValidationException::withMessages([
+            'handle' => $owner
+                ? "Akun ini sudah terdaftar di \"{$owner->name}\"."
+                : 'Akun ini sudah terdaftar.',
+        ]);
+    }
+
     /**
      * The slim "manage accounts" list — reached only from Kelola Akun (see
      * admin.accounts.partials.row-actions), distinct from churches.show's read-only display
@@ -158,6 +253,8 @@ class ChurchSocialController extends Controller
             $data['category'] = 'personal';
         }
 
+        $this->assertHandleNotAlreadyTracked($data['platform'], $data['handle'], $data['profile_url'] ?? null, $ignoreId);
+
         return $data;
     }
 
@@ -190,6 +287,8 @@ class ChurchSocialController extends Controller
         $data['handle'] = ltrim($data['handle'], '@');
         $data['is_auto_fetch'] = $request->boolean('is_auto_fetch');
         $data['category'] = 'organisasi';
+
+        $this->assertHandleNotAlreadyTracked($data['platform'], $data['handle'], $data['profile_url'] ?? null, $ignoreId);
 
         return $data;
     }

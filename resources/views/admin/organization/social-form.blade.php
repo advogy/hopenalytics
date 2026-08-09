@@ -56,6 +56,19 @@
             :value="$social->profile_url"
             placeholder="https://www.facebook.com/..."
         />
+        <div id="social-similar-results" class="hidden mb-5 -mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm dark:border-amber-900 dark:bg-amber-950"></div>
+        <script>
+            window.initSimilarSocialCheck(
+                document.getElementById('platform'),
+                document.getElementById('handle'),
+                document.getElementById('profile_url'),
+                document.getElementById('social-similar-results'),
+                {
+                    url: '{{ route('socials.similar') }}',
+                    excludeId: {{ $social->exists ? $social->id : 'null' }},
+                }
+            );
+        </script>
 
         <div class="mb-6 flex items-center gap-2">
             <input

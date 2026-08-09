@@ -8,6 +8,8 @@ use App\Models\Institution;
 use App\Models\Union;
 use App\Services\GeocodingService;
 use App\Support\AuditLogger;
+use App\Support\NameSimilarity;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -17,6 +19,24 @@ class InstitutionController extends Controller
     public function create(Request $request)
     {
         return view('admin.institutions.form', ['institution' => new Institution] + $this->regionPickerData($request));
+    }
+
+    /** Advisory "did you mean" lookup for the name field — see NameSimilarity. */
+    public function similar(Request $request): JsonResponse
+    {
+        $matches = NameSimilarity::findSimilar(
+            (string) $request->query('name', ''),
+            Institution::where('is_active', true)
+                ->when($request->query('exclude_id'), fn ($q, $id) => $q->whereKeyNot($id))
+                ->with(['conference.union', 'union'])
+                ->get(['id', 'slug', 'name', 'union_id', 'conference_id']),
+        );
+
+        return response()->json($matches->map(fn ($m) => [
+            'name' => $m['model']->name,
+            'context' => $m['model']->conference?->name ?? $m['model']->union?->name,
+            'url' => route('admin.institutions.edit', $m['model']),
+        ])->values());
     }
 
     public function store(Request $request, GeocodingService $geocoding): RedirectResponse

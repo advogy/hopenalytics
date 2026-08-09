@@ -7,7 +7,9 @@ use App\Models\ChurchSocial;
 use App\Models\Person;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class PersonSocialController extends Controller
 {
@@ -81,6 +83,53 @@ class PersonSocialController extends Controller
         $data['is_auto_fetch'] = $request->boolean('is_auto_fetch');
         $data['category'] = 'personal';
 
+        $this->assertHandleNotAlreadyTracked($data['platform'], $data['handle'], $data['profile_url'] ?? null);
+
         return $data;
+    }
+
+    /**
+     * Same hard-block as ChurchSocialController::assertHandleNotAlreadyTracked() — duplicated
+     * per this file's own established precedent (see validated()'s docblock) rather than
+     * shared. Global across every owner type, not just other Person rows, since the point is
+     * catching the same real-world account being registered twice anywhere in the system.
+     */
+    private function assertHandleNotAlreadyTracked(string $platform, string $handle, ?string $profileUrl): void
+    {
+        $normalizedHandle = Str::lower($handle);
+        $normalizedUrl = $profileUrl ? $this->normalizeProfileUrl($profileUrl) : null;
+
+        $duplicate = ChurchSocial::query()
+            ->where('platform', $platform)
+            ->where(function ($q) use ($normalizedHandle, $normalizedUrl) {
+                $q->whereRaw('LOWER(handle) = ?', [$normalizedHandle]);
+                $q->when($normalizedUrl !== null, fn ($q2) => $q2->orWhereRaw('LOWER(profile_url) LIKE ?', ["%{$normalizedUrl}%"]));
+            })
+            ->with(['church', 'person', 'institution', 'union', 'conference'])
+            ->first();
+
+        if (! $duplicate) {
+            return;
+        }
+
+        $owner = $duplicate->church ?? $duplicate->person ?? $duplicate->institution ?? $duplicate->union ?? $duplicate->conference;
+
+        throw ValidationException::withMessages([
+            'handle' => $owner
+                ? "Akun ini sudah terdaftar di \"{$owner->name}\"."
+                : 'Akun ini sudah terdaftar.',
+        ]);
+    }
+
+    /** Strips scheme/www/trailing-slash/query so two differently-formatted links to the same page still match. */
+    private function normalizeProfileUrl(string $url): string
+    {
+        $url = Str::lower(trim($url));
+        $url = preg_replace('#^https?://#', '', $url) ?? $url;
+        $url = preg_replace('#^www\.#', '', $url) ?? $url;
+        $url = strtok($url, '?');
+        $url = rtrim((string) $url, '/');
+
+        return $url;
     }
 }

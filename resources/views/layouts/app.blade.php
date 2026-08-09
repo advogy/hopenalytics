@@ -23,6 +23,7 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
 
         @include('partials.searchable-select')
+        @include('partials.similar-check')
 
         <style>
             :root { --sparkline-ring: #ffffff; }

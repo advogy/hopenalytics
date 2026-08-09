@@ -22,6 +22,13 @@
         @endif
 
         <x-form-field name="name" :label="__('accounts.institusi_name')" required :value="$institution->name" />
+        <div id="name-similar-results" class="hidden mb-5 -mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm dark:border-amber-900 dark:bg-amber-950"></div>
+        <script>
+            window.initSimilarNameCheck(document.getElementById('name'), document.getElementById('name-similar-results'), {
+                url: '{{ route('admin.institutions.similar') }}',
+                excludeId: {{ $institution->exists ? $institution->id : 'null' }},
+            });
+        </script>
 
         <x-form-field name="city" :label="__('entity.city')" :hint="__('entity.city_optional_map')" :value="$institution->city" :placeholder="__('entity.city_placeholder')" />
 
