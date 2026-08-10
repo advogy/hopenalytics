@@ -232,6 +232,19 @@
         <x-filter-card :clear-url="$hasDaerahFilters ? route('admin.accounts.index', ['tab' => 'daerah']) : null">
             <form method="GET" id="daerah-filter-form" class="flex flex-wrap items-stretch gap-3">
                 <input type="hidden" name="tab" data-tab-hidden-field value="{{ $activeTab }}">
+                @if ($unionOptionsDaerah->isNotEmpty())
+                    @include('partials.analytics-entity-filter', [
+                        'prefix' => 'accounts-daerah',
+                        'formId' => 'daerah-filter-form',
+                        'fieldName' => 'union_id_daerah',
+                        'icon' => 'globe-alt',
+                        'placeholder' => __('entity.search_uni_placeholder'),
+                        'selectedId' => $selectedUnionIdDaerah,
+                        'options' => $unionOptionsDaerah->map(fn ($u) => ['id' => $u->id, 'label' => $u->name])->values()->all(),
+                        'wrapperClass' => 'flex-1 min-w-[180px]',
+                        'inputWidthClass' => 'w-full',
+                    ])
+                @endif
                 <label class="relative flex-1 min-w-[200px]">
                     <x-icon name="magnifying-glass" class="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-slate-400" />
                     <input
@@ -242,22 +255,6 @@
                         class="w-full rounded-full border py-2.5 pr-4 pl-9 text-sm font-medium shadow-sm transition placeholder:font-normal placeholder:text-slate-400 focus:bg-white focus:outline-none dark:placeholder:text-slate-500 dark:focus:bg-slate-800 {{ $searchDaerah !== '' ? $filterActiveClass : $filterInactiveClass }}"
                     >
                 </label>
-                @if ($unionOptionsDaerah->isNotEmpty())
-                    <label class="relative flex-1 min-w-[180px]">
-                        <x-icon name="globe-alt" class="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                        <select
-                            name="union_id_daerah"
-                            onchange="this.form.submit()"
-                            class="w-full appearance-none rounded-full border py-2.5 pr-10 pl-9 text-sm font-medium shadow-sm focus:border-blue-500 focus:outline-none {{ $selectedUnionIdDaerah ? $filterActiveClass : $filterInactiveClass }}"
-                        >
-                            <option value="">{{ __('accounts.filter_all_uni') }}</option>
-                            @foreach ($unionOptionsDaerah as $unionOption)
-                                <option value="{{ $unionOption->id }}" @selected((string) $selectedUnionIdDaerah === (string) $unionOption->id)>{{ $unionOption->name }}</option>
-                            @endforeach
-                        </select>
-                        <x-icon name="chevron-down" class="pointer-events-none absolute top-1/2 right-3.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                    </label>
-                @endif
                 <label class="relative flex-1 min-w-[180px]">
                     <select
                         name="sort_daerah"
@@ -341,16 +338,6 @@
         <x-filter-card :clear-url="$hasGerejaFilters ? route('admin.accounts.index', ['tab' => 'gereja']) : null">
             <form method="GET" id="gereja-filter-form" class="flex flex-wrap items-stretch gap-3">
                 <input type="hidden" name="tab" data-tab-hidden-field value="{{ $activeTab }}">
-                <label class="relative flex-1 min-w-[200px]">
-                    <x-icon name="magnifying-glass" class="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <input
-                        type="search"
-                        name="search_gereja"
-                        value="{{ $searchGereja }}"
-                        placeholder="{{ __('accounts.search_gereja_placeholder') }}"
-                        class="w-full rounded-full border py-2.5 pr-4 pl-9 text-sm font-medium shadow-sm transition placeholder:font-normal placeholder:text-slate-400 focus:bg-white focus:outline-none dark:placeholder:text-slate-500 dark:focus:bg-slate-800 {{ $searchGereja !== '' ? $filterActiveClass : $filterInactiveClass }}"
-                    >
-                </label>
                 @include('partials.analytics-region-filter', [
                     'prefix' => 'accounts-gereja',
                     'formId' => 'gereja-filter-form',
@@ -365,6 +352,16 @@
                     'wrapperClass' => 'flex-1 min-w-[180px]',
                     'inputWidthClass' => 'w-full',
                 ])
+                <label class="relative flex-1 min-w-[200px]">
+                    <x-icon name="magnifying-glass" class="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                        type="search"
+                        name="search_gereja"
+                        value="{{ $searchGereja }}"
+                        placeholder="{{ __('accounts.search_gereja_placeholder') }}"
+                        class="w-full rounded-full border py-2.5 pr-4 pl-9 text-sm font-medium shadow-sm transition placeholder:font-normal placeholder:text-slate-400 focus:bg-white focus:outline-none dark:placeholder:text-slate-500 dark:focus:bg-slate-800 {{ $searchGereja !== '' ? $filterActiveClass : $filterInactiveClass }}"
+                    >
+                </label>
                 <label class="relative flex-1 min-w-[180px]">
                     <select
                         name="sort_gereja"
@@ -457,16 +454,6 @@
         <x-filter-card :clear-url="$hasInstitusiFilters ? route('admin.accounts.index', ['tab' => 'institusi']) : null">
             <form method="GET" id="institusi-filter-form" class="flex flex-wrap items-stretch gap-3">
                 <input type="hidden" name="tab" data-tab-hidden-field value="{{ $activeTab }}">
-                <label class="relative flex-1 min-w-[200px]">
-                    <x-icon name="magnifying-glass" class="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <input
-                        type="search"
-                        name="search_institusi"
-                        value="{{ $searchInstitusi }}"
-                        placeholder="{{ __('accounts.search_institusi_placeholder') }}"
-                        class="w-full rounded-full border py-2.5 pr-4 pl-9 text-sm font-medium shadow-sm transition placeholder:font-normal placeholder:text-slate-400 focus:bg-white focus:outline-none dark:placeholder:text-slate-500 dark:focus:bg-slate-800 {{ $searchInstitusi !== '' ? $filterActiveClass : $filterInactiveClass }}"
-                    >
-                </label>
                 @include('partials.analytics-region-filter', [
                     'prefix' => 'accounts-institusi',
                     'formId' => 'institusi-filter-form',
@@ -481,6 +468,16 @@
                     'wrapperClass' => 'flex-1 min-w-[180px]',
                     'inputWidthClass' => 'w-full',
                 ])
+                <label class="relative flex-1 min-w-[200px]">
+                    <x-icon name="magnifying-glass" class="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                        type="search"
+                        name="search_institusi"
+                        value="{{ $searchInstitusi }}"
+                        placeholder="{{ __('accounts.search_institusi_placeholder') }}"
+                        class="w-full rounded-full border py-2.5 pr-4 pl-9 text-sm font-medium shadow-sm transition placeholder:font-normal placeholder:text-slate-400 focus:bg-white focus:outline-none dark:placeholder:text-slate-500 dark:focus:bg-slate-800 {{ $searchInstitusi !== '' ? $filterActiveClass : $filterInactiveClass }}"
+                    >
+                </label>
                 <label class="relative flex-1 min-w-[180px]">
                     <select
                         name="sort_institusi"
@@ -573,16 +570,6 @@
         <x-filter-card :clear-url="$hasPersonalFilters ? route('admin.accounts.index', ['tab' => 'personal']) : null">
             <form method="GET" id="personal-filter-form" class="flex flex-wrap items-stretch gap-3">
                 <input type="hidden" name="tab" data-tab-hidden-field value="{{ $activeTab }}">
-                <label class="relative flex-1 min-w-[200px]">
-                    <x-icon name="magnifying-glass" class="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <input
-                        type="search"
-                        name="search_personal"
-                        value="{{ $searchPersonal }}"
-                        placeholder="{{ __('accounts.search_personal_placeholder') }}"
-                        class="w-full rounded-full border py-2.5 pr-4 pl-9 text-sm font-medium shadow-sm transition placeholder:font-normal placeholder:text-slate-400 focus:bg-white focus:outline-none dark:placeholder:text-slate-500 dark:focus:bg-slate-800 {{ $searchPersonal !== '' ? $filterActiveClass : $filterInactiveClass }}"
-                    >
-                </label>
                 @include('partials.analytics-region-filter', [
                     'prefix' => 'accounts-personal',
                     'formId' => 'personal-filter-form',
@@ -597,6 +584,16 @@
                     'wrapperClass' => 'flex-1 min-w-[180px]',
                     'inputWidthClass' => 'w-full',
                 ])
+                <label class="relative flex-1 min-w-[200px]">
+                    <x-icon name="magnifying-glass" class="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                        type="search"
+                        name="search_personal"
+                        value="{{ $searchPersonal }}"
+                        placeholder="{{ __('accounts.search_personal_placeholder') }}"
+                        class="w-full rounded-full border py-2.5 pr-4 pl-9 text-sm font-medium shadow-sm transition placeholder:font-normal placeholder:text-slate-400 focus:bg-white focus:outline-none dark:placeholder:text-slate-500 dark:focus:bg-slate-800 {{ $searchPersonal !== '' ? $filterActiveClass : $filterInactiveClass }}"
+                    >
+                </label>
                 <label class="relative flex-1 min-w-[180px]">
                     <select
                         name="sort_personal"

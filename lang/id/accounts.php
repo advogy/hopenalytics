@@ -27,11 +27,11 @@ return [
     'personal_list_title' => 'Daftar Personal',
     'personal_list_subtitle' => 'Orang yang akun media sosialnya dipantau, terlepas dari punya login atau tidak.',
 
-    'search_uni_placeholder' => 'Cari nama Uni…',
-    'search_daerah_placeholder' => 'Cari nama Daerah…',
-    'search_gereja_placeholder' => 'Cari nama Gereja…',
-    'search_institusi_placeholder' => 'Cari nama Institusi…',
-    'search_personal_placeholder' => 'Cari nama atau kota…',
+    'search_uni_placeholder' => 'Cari Uni…',
+    'search_daerah_placeholder' => 'Cari Daerah…',
+    'search_gereja_placeholder' => 'Cari Gereja…',
+    'search_institusi_placeholder' => 'Cari Institusi…',
+    'search_personal_placeholder' => 'Cari Personal…',
 
     'no_match' => 'Tidak ada :entity yang cocok.',
     'no_yet' => 'Belum ada :entity.',

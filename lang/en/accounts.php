@@ -27,11 +27,11 @@ return [
     'personal_list_title' => 'Personal List',
     'personal_list_subtitle' => 'People whose social media is monitored, regardless of whether they have a login.',
 
-    'search_uni_placeholder' => 'Search Union name…',
-    'search_daerah_placeholder' => 'Search Conference name…',
-    'search_gereja_placeholder' => 'Search Church name…',
-    'search_institusi_placeholder' => 'Search Institution name…',
-    'search_personal_placeholder' => 'Search name or city…',
+    'search_uni_placeholder' => 'Search Union…',
+    'search_daerah_placeholder' => 'Search Conference…',
+    'search_gereja_placeholder' => 'Search Church…',
+    'search_institusi_placeholder' => 'Search Institution…',
+    'search_personal_placeholder' => 'Search Personal…',
 
     'no_match' => 'No matching :entity.',
     'no_yet' => 'No :entity yet.',
