@@ -27,6 +27,17 @@
     <body class="flex min-h-screen flex-col items-center justify-center bg-[#f8f4ec] px-4 py-8 font-sans text-slate-900 antialiased dark:bg-[#16130f] dark:text-slate-100">
         @php $wide = $wide ?? false; @endphp
         <div class="w-full {{ $wide ? 'max-w-4xl' : 'max-w-sm' }}">
+            @php $otherLocale = app()->getLocale() === 'id' ? 'en' : 'id'; @endphp
+            <div class="mb-2 flex justify-end">
+                <a
+                    href="{{ route('locale.switch', $otherLocale) }}"
+                    title="{{ __('nav.language') }}"
+                    class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black/5 bg-white text-xs font-bold text-slate-600 shadow-sm transition hover:bg-slate-50 dark:border-white/5 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                >
+                    {{ strtoupper($otherLocale) }}
+                </a>
+            </div>
+
             <a href="{{ route('churches.index') }}" class="mb-8 flex items-center justify-center gap-3 whitespace-nowrap">
                 <x-logo-mark class="h-16 w-16 shrink-0 text-blue-600 dark:text-[#f3ead9]" />
                 <span class="text-3xl font-semibold tracking-tight">Hopenalytics</span>
