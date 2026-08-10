@@ -56,16 +56,33 @@ class ChurchSocialController extends Controller
         })->values());
     }
 
-    /** Strips scheme/www/trailing-slash/query so two differently-formatted links to the same page still match. */
+    /**
+     * Strips scheme/www/trailing-slash/query-noise so two differently-formatted links to the
+     * same page still match — EXCEPT facebook.com/profile.php links, where the numeric ?id=
+     * is the only thing identifying which account it is (there's no vanity path). Blindly
+     * stripping it like other query-string noise collapsed every profile.php?id=... URL down
+     * to the same "facebook.com/profile.php" string, so any two unrelated accounts using that
+     * URL format (the default for a Facebook page/profile with no claimed username) falsely
+     * matched each other as duplicates.
+     */
     private function normalizeProfileUrl(string $url): string
     {
         $url = Str::lower(trim($url));
         $url = preg_replace('#^https?://#', '', $url) ?? $url;
         $url = preg_replace('#^www\.#', '', $url) ?? $url;
-        $url = strtok($url, '?');
-        $url = rtrim((string) $url, '/');
 
-        return $url;
+        [$path, $query] = array_pad(explode('?', $url, 2), 2, '');
+        $path = rtrim($path, '/');
+
+        if ($query !== '') {
+            parse_str($query, $params);
+
+            if (! empty($params['id'])) {
+                return $path.'?id='.$params['id'];
+            }
+        }
+
+        return $path;
     }
 
     /**
