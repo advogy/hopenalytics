@@ -37,6 +37,7 @@ class FacebookStatsFetcher
 
         return [
             'followers_count' => (int) ($item['followers'] ?? $item['likes'] ?? 0),
+            'following_count' => (int) ($item['followings'] ?? 0),
             'raw_payload' => $item,
             ...$this->fetchRecentPosts($pageUrl),
         ];

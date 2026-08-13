@@ -56,15 +56,13 @@
             :value="old('followers_count', $isYoutube ? $latest?->subscribers_count : $latest?->followers_count)"
         />
 
-        @unless ($isFacebook)
-            <x-form-field
-                name="following_count"
-                label="Following"
-                type="number"
-                min="0"
-                :value="old('following_count', $latest?->following_count)"
-            />
-        @endunless
+        <x-form-field
+            name="following_count"
+            label="Following"
+            type="number"
+            min="0"
+            :value="old('following_count', $latest?->following_count)"
+        />
 
         @if ($isYoutube)
             <x-form-field name="views_count" label="Views" type="number" min="0" :value="old('views_count', $latest?->views_count)" />

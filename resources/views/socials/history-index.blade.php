@@ -6,11 +6,19 @@
 @php
     $platformLabels = ['youtube' => 'YouTube', 'instagram' => 'Instagram', 'tiktok' => 'TikTok', 'facebook' => 'Facebook', 'x' => 'X'];
     $countField = ['youtube' => 'subscribers_count', 'instagram' => 'followers_count', 'tiktok' => 'followers_count', 'facebook' => 'followers_count', 'x' => 'followers_count'];
+    // Every column here has a real, fetched church_stats value behind it (confirmed against
+    // production data) — this table previously left several fetched fields with nowhere to be
+    // seen at all: recent_reels_views/recent_video_plays (the same "views" the weekly growth
+    // score and each platform's own account card use, see BuildsLeaderboards::metricDefinition()),
+    // recent_reels_count/recent_video_count (how many reels/videos that views figure is sampled
+    // from — context for reading it), recent_video_shares, and recent_posts_likes/shares
+    // (Facebook — no data yet in this environment, but the column exists and is fetched for,
+    // same as every other field here, so it's included for whenever that starts populating).
     $secondaryFields = [
         'youtube' => ['views_count' => 'Views', 'videos_count' => 'Videos'],
-        'instagram' => ['following_count' => 'Following', 'posts_count' => 'Posts'],
-        'tiktok' => ['following_count' => 'Following', 'likes_count' => 'Likes', 'posts_count' => 'Posts'],
-        'facebook' => ['recent_posts_count' => 'Posts'],
+        'instagram' => ['recent_reels_views' => 'Views', 'recent_reels_count' => 'Reels', 'following_count' => 'Following', 'posts_count' => 'Posts'],
+        'tiktok' => ['recent_video_plays' => 'Views', 'recent_video_count' => 'Videos', 'recent_video_shares' => 'Shares', 'following_count' => 'Following', 'likes_count' => 'Likes', 'posts_count' => 'Posts'],
+        'facebook' => ['following_count' => 'Following', 'recent_posts_count' => 'Posts', 'recent_posts_likes' => 'Likes', 'recent_posts_shares' => 'Shares'],
         'x' => ['following_count' => 'Following', 'posts_count' => 'Posts'],
     ];
     // manageRoute(), not showRoute() — this is an admin-only management view (see docblock
