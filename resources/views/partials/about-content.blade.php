@@ -1,3 +1,15 @@
+@php
+    // Same list the "Platform yang dipantau" badges below use — kept in sync so a
+    // disabled platform disappears from this sentence too, not just the badge row.
+    // Collection::join()'s finalGlue always prepends a comma even for exactly 2 items
+    // ("A, and B"), which reads wrong in both Indonesian and English for a 2-item list
+    // ("A dan B" / "A and B", no comma) — handled as its own case instead.
+    $enabledPlatformNames = array_values(\App\Models\AppSetting::current()->enabledPlatformLabels());
+    $platformsSentence = count($enabledPlatformNames) === 2
+        ? implode(' '.__('about.platforms_and').' ', $enabledPlatformNames)
+        : collect($enabledPlatformNames)->join(', ', ', '.__('about.platforms_and').' ');
+@endphp
+
 <h1 class="mb-1 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{{ __('nav.about') }}</h1>
 <p class="mb-8 text-sm text-slate-500 dark:text-slate-400">{{ __('about.subtitle', ['name' => config('app.name')]) }}</p>
 
@@ -5,7 +17,7 @@
     <div class="mb-6 flex items-center gap-3">
         <x-logo-mark class="h-10 w-10 shrink-0 text-blue-600 dark:text-[#f3ead9]" />
         <p class="max-w-3xl text-sm text-slate-600 dark:text-slate-300">
-            {{ __('about.description') }}
+            {{ __('about.description', ['platforms' => $platformsSentence]) }}
         </p>
     </div>
 
@@ -14,6 +26,12 @@
             <p class="font-medium text-slate-900 dark:text-white">{{ __('about.feature_monitoring_title') }}</p>
             <p class="text-sm text-slate-500 dark:text-slate-400">
                 {{ __('about.feature_monitoring_desc') }}
+            </p>
+        </div>
+        <div>
+            <p class="font-medium text-slate-900 dark:text-white">{{ __('about.feature_hashtag_title') }}</p>
+            <p class="text-sm text-slate-500 dark:text-slate-400">
+                {{ __('about.feature_hashtag_desc') }}
             </p>
         </div>
         <div>
@@ -44,6 +62,18 @@
             <p class="font-medium text-slate-900 dark:text-white">{{ __('about.feature_export_title') }}</p>
             <p class="text-sm text-slate-500 dark:text-slate-400">
                 {{ __('about.feature_export_desc') }}
+            </p>
+        </div>
+        <div>
+            <p class="font-medium text-slate-900 dark:text-white">{{ __('about.feature_platform_toggle_title') }}</p>
+            <p class="text-sm text-slate-500 dark:text-slate-400">
+                {{ __('about.feature_platform_toggle_desc') }}
+            </p>
+        </div>
+        <div>
+            <p class="font-medium text-slate-900 dark:text-white">{{ __('about.feature_audit_title') }}</p>
+            <p class="text-sm text-slate-500 dark:text-slate-400">
+                {{ __('about.feature_audit_desc') }}
             </p>
         </div>
         <div>
