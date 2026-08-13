@@ -20,7 +20,7 @@ return [
     'refresh_started' => 'Memperbarui :count akun di background — data akan muncul dalam beberapa menit.',
 
     // Scope label shown under the dashboard title — see ChurchDashboardController::index().
-    'scope_nasional' => 'Ringkasan nasional — seluruh Uni, Konferens/Daerah, Gereja, Institusi, dan Personal.',
+    'scope_global' => 'Ringkasan global — seluruh Uni, Konferens/Daerah, Gereja, Institusi, dan Personal.',
     'scope_nasional_scoped' => 'Wilayah Uni :names.',
     'scope_uni' => 'Wilayah Uni :name.',
     'scope_daerah' => 'Wilayah Daerah :name.',

@@ -259,7 +259,7 @@ class ChurchDashboardController extends Controller
         $scopeConference = $scopeUser->conference ?? $scopeUser->church?->conference;
         $regionScopeLabel = match (true) {
             $scopeUser->role === null || ($scopeUser->role?->hasGlobalAccess() ?? false) || $scopeUser->role?->level() === 'global'
-                => __('goals.scope_nasional'),
+                => __('goals.scope_global'),
             $scopeUser->role?->level() === 'nasional'
                 => __('goals.scope_nasional_scoped', ['names' => $scopeUser->assignedUnions()->pluck('name')->implode(', ') ?: '—']),
             $scopeUser->role?->level() === 'uni'
@@ -268,14 +268,14 @@ class ChurchDashboardController extends Controller
                 => __('goals.scope_daerah', ['name' => $scopeConference?->name ?? '—']),
             $scopeUser->role?->level() === 'institusi'
                 => __('dashboard.scope_institusi', ['name' => $scopeUser->institution?->name ?? '—']),
-            default => __('goals.scope_nasional'),
+            default => __('goals.scope_global'),
         };
 
         // Peta (and, elsewhere in this method, Skor Performa Platform) stay fully unscoped for a
         // gereja-level viewer — see the block comment at the top of this method — so its header
-        // needs "Nasional" instead of $regionScopeLabel's Daerah label for that one role; every
+        // needs "Global" instead of $regionScopeLabel's Daerah label for that one role; every
         // other role sees the same breadth on both, so the label is identical.
-        $mapScopeLabel = $isGerejaLevel ? __('goals.scope_nasional') : $regionScopeLabel;
+        $mapScopeLabel = $isGerejaLevel ? __('goals.scope_global') : $regionScopeLabel;
 
         // Reach-by-category pie chart — replaces the three separate reach stat-cards (their raw
         // numbers now ride along as each row's "detail" line) with a single visualization of the
@@ -318,7 +318,7 @@ class ChurchDashboardController extends Controller
         // two different scopes (see the block comment at the top of this method).
         $scopeLabel = match (true) {
             $user->role?->hasGlobalAccess() || $user->role?->level() === 'global'
-                => __('dashboard.scope_nasional'),
+                => __('dashboard.scope_global'),
             $user->role?->level() === 'nasional'
                 => __('dashboard.scope_nasional_scoped', ['names' => $user->assignedUnions()->pluck('name')->implode(', ') ?: '—']),
             $user->role?->level() === 'uni'
@@ -410,15 +410,15 @@ class ChurchDashboardController extends Controller
     {
         $user = auth()->user();
         $level = $user->role?->level();
-        $isNasional = $user->role === null || ($user->role?->hasGlobalAccess() ?? false) || $level === 'global';
+        $isGlobal = $user->role === null || ($user->role?->hasGlobalAccess() ?? false) || $level === 'global';
         // Admin/Pimpinan Nasional: sums the fair share of every Union they're assigned to,
         // rather than the full national total (Global) or a single Union's third (Uni-level) —
         // see User::assignedUnions().
-        $isScopedNasional = ! $isNasional && $level === 'nasional';
-        $isUni = ! $isNasional && ! $isScopedNasional && $level === 'uni';
-        $isDaerahOrGereja = ! $isNasional && ! $isScopedNasional && ! $isUni && in_array($level, ['daerah', 'gereja'], true);
+        $isScopedNasional = ! $isGlobal && $level === 'nasional';
+        $isUni = ! $isGlobal && ! $isScopedNasional && $level === 'uni';
+        $isDaerahOrGereja = ! $isGlobal && ! $isScopedNasional && ! $isUni && in_array($level, ['daerah', 'gereja'], true);
 
-        if (! $isNasional && ! $isScopedNasional && ! $isUni && ! $isDaerahOrGereja) {
+        if (! $isGlobal && ! $isScopedNasional && ! $isUni && ! $isDaerahOrGereja) {
             return collect();
         }
 
@@ -430,7 +430,7 @@ class ChurchDashboardController extends Controller
         $conference = $user->conference ?? $user->church?->conference;
 
         $scopeLabel = match (true) {
-            $isNasional => __('goals.scope_nasional'),
+            $isGlobal => __('goals.scope_global'),
             $isScopedNasional => __('goals.scope_nasional_scoped', ['names' => $user->assignedUnions()->pluck('name')->implode(', ') ?: '—']),
             $isUni => __('goals.scope_uni', ['name' => $user->union?->name ?? '—']),
             default => __('goals.scope_daerah', ['name' => $conference?->name ?? '—']),
@@ -442,11 +442,11 @@ class ChurchDashboardController extends Controller
         // re-derives it from this total.
         $combinedSocials = $churchSocials->merge($institutionSocials)->merge($personalSocials)->merge($organizationSocials);
 
-        return collect(Goal::METRICS)->map(function ($metric) use ($combinedSocials, $isNasional, $isScopedNasional, $isUni, $unionCount, $assignedUnionCount, $conference, $scopeLabel) {
+        return collect(Goal::METRICS)->map(function ($metric) use ($combinedSocials, $isGlobal, $isScopedNasional, $isUni, $unionCount, $assignedUnionCount, $conference, $scopeLabel) {
             $goal = Goal::forMetric($metric);
 
             $target = match (true) {
-                $isNasional => $goal->target_value,
+                $isGlobal => $goal->target_value,
                 $isScopedNasional => $unionCount > 0 ? (int) round($goal->target_value / $unionCount * $assignedUnionCount) : 0,
                 $isUni => $unionCount > 0 ? (int) round($goal->target_value / $unionCount) : 0,
                 default => (function () use ($goal, $unionCount, $conference) {

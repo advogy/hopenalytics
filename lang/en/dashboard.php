@@ -20,7 +20,7 @@ return [
     'refresh_started' => 'Refreshing :count accounts in the background — data will appear in a few minutes.',
 
     // Scope label shown under the dashboard title — see ChurchDashboardController::index().
-    'scope_nasional' => 'National overview — all Unions, Conferences/Districts, Churches, Institutions, and Personal accounts.',
+    'scope_global' => 'Global overview — all Unions, Conferences/Districts, Churches, Institutions, and Personal accounts.',
     'scope_nasional_scoped' => ':names Union region.',
     'scope_uni' => ':name Union region.',
     'scope_daerah' => ':name Conference region.',
