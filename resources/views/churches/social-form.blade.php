@@ -25,7 +25,7 @@
             <div>
                 <label for="platform" class="mb-1.5 block text-sm font-medium">{{ __('entity.platform') }}</label>
                 <select id="platform" name="platform" required class="w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none dark:border-white/10 dark:bg-slate-800">
-                    @foreach (['youtube' => 'YouTube', 'instagram' => 'Instagram', 'tiktok' => 'TikTok', 'facebook' => 'Facebook'] as $value => $label)
+                    @foreach (\App\Models\AppSetting::current()->enabledPlatformLabels() as $value => $label)
                         <option value="{{ $value }}" @selected(old('platform', $social->platform?->value) === $value)>{{ $label }}</option>
                     @endforeach
                 </select>

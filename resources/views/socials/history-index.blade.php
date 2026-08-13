@@ -4,13 +4,14 @@
      pages; this one adds Edit/Delete per row and deliberately isn't shared with that component
      so the public-ish show pages stay untouched by an admin-only capability. --}}
 @php
-    $platformLabels = ['youtube' => 'YouTube', 'instagram' => 'Instagram', 'tiktok' => 'TikTok', 'facebook' => 'Facebook'];
-    $countField = ['youtube' => 'subscribers_count', 'instagram' => 'followers_count', 'tiktok' => 'followers_count', 'facebook' => 'followers_count'];
+    $platformLabels = ['youtube' => 'YouTube', 'instagram' => 'Instagram', 'tiktok' => 'TikTok', 'facebook' => 'Facebook', 'x' => 'X'];
+    $countField = ['youtube' => 'subscribers_count', 'instagram' => 'followers_count', 'tiktok' => 'followers_count', 'facebook' => 'followers_count', 'x' => 'followers_count'];
     $secondaryFields = [
         'youtube' => ['views_count' => 'Views', 'videos_count' => 'Videos'],
         'instagram' => ['following_count' => 'Following', 'posts_count' => 'Posts'],
         'tiktok' => ['following_count' => 'Following', 'likes_count' => 'Likes', 'posts_count' => 'Posts'],
         'facebook' => ['recent_posts_count' => 'Posts'],
+        'x' => ['following_count' => 'Following', 'posts_count' => 'Posts'],
     ];
     [$backRouteName, $owner] = $social->showRoute();
 @endphp

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\SocialPlatform;
 use App\Http\Controllers\Concerns\BuildsLeaderboards;
+use App\Models\AppSetting;
 use App\Models\Church;
 use App\Models\ChurchSocial;
 use App\Models\ChurchStat;
@@ -210,9 +211,12 @@ class ChurchDashboardController extends Controller
         // have that yet, so it silently drops out instead of showing up with "no data". Backfill
         // any missing platform as a null-score placeholder row so every platform this app tracks
         // always shows up here, per the user's explicit call.
+        $enabledPlatformValues = AppSetting::current()->enabledPlatformValues();
+        $enabledPlatformCases = collect(SocialPlatform::cases())->filter(fn ($p) => in_array($p->value, $enabledPlatformValues, true));
+
         $platformScoreSocials = $this->activeSocials(scoped: ! $isGerejaLevel);
         $platformScoreRows = $this->growthScoreRowsByPlatform($platformScoreSocials);
-        $missingPlatformScoreRows = collect(SocialPlatform::cases())
+        $missingPlatformScoreRows = $enabledPlatformCases
             ->reject(fn ($platform) => $platformScoreRows->contains('platform', $platform->value))
             ->map(fn ($platform) => [
                 'platform' => $platform->value,
@@ -233,7 +237,7 @@ class ChurchDashboardController extends Controller
         // Goal card's "current" total above. Always one row per platform, in
         // SocialPlatform::cases() order, even a platform with zero accounts — the icon row
         // needs to show every platform's count, not just the ones in use.
-        $platformLabels = ['youtube' => 'YouTube', 'instagram' => 'Instagram', 'tiktok' => 'TikTok', 'facebook' => 'Facebook'];
+        $platformLabels = AppSetting::current()->enabledPlatformLabels();
         $allPlatformSocials = $allSocials->merge($personalSocials)->merge($institutionSocials)->merge($organizationSocials);
         $totalSocialAccounts = $allPlatformSocials->count();
         // Owner-type breakdown for the Total Akun card — replaces the old separate "Akun sosial
@@ -289,7 +293,7 @@ class ChurchDashboardController extends Controller
             ['label' => __('common.personal'), 'value' => $reachPercent($totalReachPersonal), 'detail' => number_format($totalReachPersonal), 'color' => '#7c3aed'],
             ['label' => __('dashboard.owner_type_organisasi'), 'value' => $reachPercent($totalReachOrganisasi), 'detail' => number_format($totalReachOrganisasi), 'color' => '#059669'],
         ];
-        $distributionChannels = collect(SocialPlatform::cases())->map(function ($platform) use ($allPlatformSocials, $reachCountField, $platformLabels) {
+        $distributionChannels = $enabledPlatformCases->map(function ($platform) use ($allPlatformSocials, $reachCountField, $platformLabels) {
             $platformSocials = $allPlatformSocials->where('platform', $platform);
 
             return [
@@ -371,7 +375,7 @@ class ChurchDashboardController extends Controller
             'topGrowthScores' => $topGrowthScores,
             'bottomGrowthScores' => $bottomGrowthScores,
             'platformScoreRows' => $platformScoreRows,
-            'platformLabels' => ['youtube' => 'YouTube', 'instagram' => 'Instagram', 'tiktok' => 'TikTok', 'facebook' => 'Facebook'],
+            'platformLabels' => $platformLabels,
             'goalRows' => $goalRows,
             'distributionChannels' => $distributionChannels,
             'regionScopeLabel' => $regionScopeLabel,
@@ -572,7 +576,7 @@ class ChurchDashboardController extends Controller
 
     public function personalPlatformComparison(Request $request, string $platform = 'semua')
     {
-        $platformLabels = ['semua' => 'Semua', 'youtube' => 'YouTube', 'instagram' => 'Instagram', 'tiktok' => 'TikTok', 'facebook' => 'Facebook'];
+        $platformLabels = ['semua' => 'Semua'] + AppSetting::current()->enabledPlatformLabels();
         $metricLabels = ['reach' => 'Followers/Subscribers', 'views' => 'Views', 'likes' => 'Likes', 'posts' => 'Post / Video'];
         $metricPlatforms = $this->metricPlatforms();
 
@@ -817,7 +821,7 @@ class ChurchDashboardController extends Controller
 
     public function organizationPlatformComparison(Request $request, string $platform = 'semua')
     {
-        $platformLabels = ['semua' => 'Semua', 'youtube' => 'YouTube', 'instagram' => 'Instagram', 'tiktok' => 'TikTok', 'facebook' => 'Facebook'];
+        $platformLabels = ['semua' => 'Semua'] + AppSetting::current()->enabledPlatformLabels();
         $metricLabels = ['reach' => 'Followers/Subscribers', 'views' => 'Views', 'likes' => 'Likes', 'posts' => 'Post / Video'];
         $metricPlatforms = $this->metricPlatforms();
 
@@ -900,7 +904,7 @@ class ChurchDashboardController extends Controller
 
     public function institutionPlatformComparison(Request $request, string $platform = 'semua')
     {
-        $platformLabels = ['semua' => 'Semua', 'youtube' => 'YouTube', 'instagram' => 'Instagram', 'tiktok' => 'TikTok', 'facebook' => 'Facebook'];
+        $platformLabels = ['semua' => 'Semua'] + AppSetting::current()->enabledPlatformLabels();
         $metricLabels = ['reach' => 'Followers/Subscribers', 'views' => 'Views', 'likes' => 'Likes', 'posts' => 'Post / Video'];
         $metricPlatforms = $this->metricPlatforms();
 
@@ -1159,6 +1163,9 @@ class ChurchDashboardController extends Controller
             ->join('church_socials', 'church_socials.id', '=', 'church_stats.church_social_id')
             ->join($ownerTable, "{$ownerTable}.id", '=', "church_socials.{$ownerColumn}")
             ->where('church_socials.is_active', true)
+            // A raw join by table name bypasses ChurchSocial's enabledPlatform global
+            // scope entirely (this query is rooted in ChurchStat) — needs its own filter.
+            ->whereIn('church_socials.platform', AppSetting::current()->enabledPlatformValues())
             ->where("{$ownerTable}.is_active", true)
             ->whereIn("{$ownerTable}.id", $visibleIds)
             ->when($ownerId, fn ($query) => $query->where("{$ownerTable}.id", $ownerId))
@@ -1201,6 +1208,8 @@ class ChurchDashboardController extends Controller
         return ChurchStat::query()
             ->join('church_socials', 'church_socials.id', '=', 'church_stats.church_social_id')
             ->where('church_socials.is_active', true)
+            // See growthOverTime()'s same comment — a raw join bypasses the model scope.
+            ->whereIn('church_socials.platform', AppSetting::current()->enabledPlatformValues())
             ->where(function ($query) use ($visibleUnionIds, $visibleConferenceIds) {
                 $query->whereIn('church_socials.union_id', $visibleUnionIds)
                     ->orWhereIn('church_socials.conference_id', $visibleConferenceIds);
@@ -1520,7 +1529,8 @@ class ChurchDashboardController extends Controller
 
     public function presentation()
     {
-        $countField = ['youtube' => 'subscribers_count', 'instagram' => 'followers_count', 'tiktok' => 'followers_count', 'facebook' => 'followers_count'];
+        $countField = ['youtube' => 'subscribers_count', 'instagram' => 'followers_count', 'tiktok' => 'followers_count', 'facebook' => 'followers_count', 'x' => 'followers_count'];
+        $enabledPlatforms = AppSetting::current()->enabledPlatformValues();
 
         // Public presentation page — always shows general data, never scoped to whoever
         // (if anyone) happens to be logged in while it's displayed.
@@ -1529,8 +1539,8 @@ class ChurchDashboardController extends Controller
             ->with(['socials' => fn ($q) => $q->where('is_active', true)->with('latestStat'), 'conference.union'])
             ->get();
 
-        $rows = $churches->map(function ($church) use ($countField) {
-            $byPlatform = collect(['youtube', 'instagram', 'tiktok', 'facebook'])->mapWithKeys(
+        $rows = $churches->map(function ($church) use ($countField, $enabledPlatforms) {
+            $byPlatform = collect($enabledPlatforms)->mapWithKeys(
                 fn ($platform) => [
                     $platform => $church->socials
                         ->filter(fn ($s) => $s->platform->value === $platform)
@@ -1586,7 +1596,8 @@ class ChurchDashboardController extends Controller
 
     public function personalPresentation()
     {
-        $countField = ['youtube' => 'subscribers_count', 'instagram' => 'followers_count', 'tiktok' => 'followers_count', 'facebook' => 'followers_count'];
+        $countField = ['youtube' => 'subscribers_count', 'instagram' => 'followers_count', 'tiktok' => 'followers_count', 'facebook' => 'followers_count', 'x' => 'followers_count'];
+        $enabledPlatforms = AppSetting::current()->enabledPlatformValues();
 
         // Public presentation page — always unscoped, see presentation() above.
         $people = Person::query()
@@ -1594,8 +1605,8 @@ class ChurchDashboardController extends Controller
             ->with(['socials' => fn ($q) => $q->where('is_active', true)->with('latestStat'), 'conference.union', 'union'])
             ->get();
 
-        $rows = $people->map(function ($person) use ($countField) {
-            $byPlatform = collect(['youtube', 'instagram', 'tiktok', 'facebook'])->mapWithKeys(
+        $rows = $people->map(function ($person) use ($countField, $enabledPlatforms) {
+            $byPlatform = collect($enabledPlatforms)->mapWithKeys(
                 fn ($platform) => [
                     $platform => $person->socials
                         ->filter(fn ($s) => $s->platform->value === $platform)
@@ -1651,7 +1662,7 @@ class ChurchDashboardController extends Controller
 
     public function platformComparison(Request $request, string $platform = 'semua')
     {
-        $platformLabels = ['semua' => 'Semua', 'youtube' => 'YouTube', 'instagram' => 'Instagram', 'tiktok' => 'TikTok', 'facebook' => 'Facebook'];
+        $platformLabels = ['semua' => 'Semua'] + AppSetting::current()->enabledPlatformLabels();
         $metricLabels = ['reach' => 'Followers/Subscribers', 'views' => 'Views', 'likes' => 'Likes', 'posts' => 'Post / Video'];
         $metricPlatforms = $this->metricPlatforms();
 

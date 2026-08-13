@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\SocialPlatform;
+use App\Models\AppSetting;
 use App\Models\ChurchSocial;
 use App\Models\Person;
 use Illuminate\Http\RedirectResponse;
@@ -80,7 +81,7 @@ class PersonSocialController extends Controller
             'platform' => [
                 'required',
                 'string',
-                'in:'.implode(',', array_column(SocialPlatform::cases(), 'value')),
+                'in:'.implode(',', AppSetting::current()->enabledPlatformValues()),
                 // is_active-filtered — this method is only ever used by store() (always
                 // create), never edit, so a deactivated ("deleted") row here doesn't count as a
                 // duplicate: store() reactivates it instead of inserting a new row.

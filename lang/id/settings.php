@@ -30,4 +30,8 @@ return [
     'youtube_api_key' => 'Kunci API YouTube',
     'youtube_api_key_hint_set' => 'Kunci sudah diatur. Kosongkan kolom ini untuk mempertahankan kunci yang berlaku sekarang.',
     'youtube_api_key_hint_unset' => 'Belum diatur — saat ini memakai YOUTUBE_API_KEY dari .env server (jika ada). Isi untuk mengaturnya lewat halaman ini, tanpa perlu ubah .env.',
+
+    'platform_title' => 'Platform yang Dilacak',
+    'platform_subtitle' => 'Matikan centang untuk menyembunyikan platform ini di seluruh aplikasi — tidak jadi pilihan saat menambah akun, tidak tampil di kartu/grafik/direktori, dan tidak lagi diambil datanya mingguan. Data yang sudah ada tetap tersimpan dan langsung muncul kembali begitu dicentang lagi.',
+    'platform_account_count' => ':count akun',
 ];

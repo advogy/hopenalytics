@@ -28,6 +28,27 @@ class ChurchSocial extends Model
         'last_fetched_at' => 'datetime',
     ];
 
+    /**
+     * A superadmin-disabled platform (see AppSetting::enabledPlatformValues(), Settings'
+     * platform-visibility card) must disappear from every query built off this model —
+     * cards, history, growth score, Kelola Akun counts, directory, the auto-fetch command's
+     * own query — without having to filter each of those ~15 call sites individually.
+     * Bypass with ChurchSocial::withoutGlobalScope('enabledPlatform') where a true,
+     * unfiltered count is genuinely needed (only Settings' own card, to show "N akun"
+     * next to a platform regardless of whether it's currently enabled).
+     *
+     * Does NOT reach raw ->join('church_socials', ...) queries rooted in a different
+     * model (see ChurchDashboardController::growthOverTime()) — those need their own
+     * explicit ->whereIn('church_socials.platform', ...) alongside this scope.
+     */
+    protected static function booted(): void
+    {
+        static::addGlobalScope('enabledPlatform', fn (Builder $query) => $query->whereIn(
+            'platform',
+            AppSetting::current()->enabledPlatformValues(),
+        ));
+    }
+
     public function church(): BelongsTo
     {
         return $this->belongsTo(Church::class);
@@ -185,6 +206,7 @@ class ChurchSocial extends Model
             SocialPlatform::TikTok => "https://www.tiktok.com/@{$handle}",
             SocialPlatform::YouTube => "https://www.youtube.com/@{$handle}",
             SocialPlatform::Facebook => null,
+            SocialPlatform::X => "https://x.com/{$handle}",
         };
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Concerns;
 
 use App\Enums\SocialPlatform;
+use App\Models\AppSetting;
 use App\Models\ChurchSocial;
 use App\Models\Conference;
 use App\Models\Union;
@@ -190,11 +191,19 @@ trait BuildsLeaderboards
      */
     protected function metricPlatforms(): array
     {
+        // X has no views or likes metric tracked (only followers/following/posts_count —
+        // see XStatsFetcher), so it's left out of those two, same as Facebook is left out
+        // of 'likes'. Each list is further intersected with whichever platforms are
+        // currently enabled (see AppSetting::enabledPlatformValues(), Settings' platform
+        // toggle card) — a disabled platform must not show as an empty comparison tab.
+        $enabled = AppSetting::current()->enabledPlatformValues();
+        $onlyEnabled = fn (array $platforms) => array_values(array_intersect($platforms, ['semua', ...$enabled]));
+
         return [
-            'reach' => ['semua', 'youtube', 'instagram', 'tiktok', 'facebook'],
-            'views' => ['semua', 'youtube', 'instagram', 'tiktok'],
-            'likes' => ['semua', 'tiktok'],
-            'posts' => ['semua', 'youtube', 'instagram', 'tiktok', 'facebook'],
+            'reach' => $onlyEnabled(['semua', 'youtube', 'instagram', 'tiktok', 'facebook', 'x']),
+            'views' => $onlyEnabled(['semua', 'youtube', 'instagram', 'tiktok']),
+            'likes' => $onlyEnabled(['semua', 'tiktok']),
+            'posts' => $onlyEnabled(['semua', 'youtube', 'instagram', 'tiktok', 'facebook', 'x']),
         ];
     }
 

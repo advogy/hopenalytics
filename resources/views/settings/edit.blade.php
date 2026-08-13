@@ -101,6 +101,31 @@
             </p>
         </div>
 
+        @can('manage-platform-visibility')
+            <div class="rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/5 dark:bg-slate-900">
+                <h2 class="mb-1 font-bold text-slate-900 dark:text-white">{{ __('settings.platform_title') }}</h2>
+                <p class="mb-4 text-sm text-slate-500 dark:text-slate-400">{{ __('settings.platform_subtitle') }}</p>
+
+                <div class="space-y-3">
+                    @foreach (\App\Models\AppSetting::allPlatforms() as $platform)
+                        <div class="flex items-center gap-2">
+                            <input
+                                type="checkbox" id="{{ $platform['column'] }}" name="{{ $platform['column'] }}" value="1"
+                                @checked(old($platform['column'], $settings->{$platform['column']}))
+                                class="h-4 w-4 rounded border-black/20 text-blue-600 focus:ring-blue-500"
+                            >
+                            <label for="{{ $platform['column'] }}" class="flex-1 text-sm font-medium">
+                                {{ $platform['label'] }}
+                            </label>
+                            <span class="text-xs text-slate-400 dark:text-slate-500">
+                                {{ __('settings.platform_account_count', ['count' => $platformAccountCounts[$platform['value']] ?? 0]) }}
+                            </span>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        @endcan
+
         <div class="rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/5 dark:bg-slate-900">
             <h2 class="mb-1 font-bold text-slate-900 dark:text-white">{{ __('settings.cs_title') }}</h2>
             <p class="mb-4 text-sm text-slate-500 dark:text-slate-400">{{ __('settings.cs_subtitle') }}</p>

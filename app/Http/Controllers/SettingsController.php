@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AppSetting;
+use App\Models\ChurchSocial;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -29,7 +30,21 @@ class SettingsController extends Controller
             }
         }
 
-        return view('settings.edit', ['settings' => $settings, 'nextRun' => $nextRun]);
+        // Bypasses the enabledPlatform scope deliberately — shown regardless of a
+        // platform's current toggle state, so disabling one doesn't also hide how many
+        // accounts it would affect. ->value explicitly, since `platform` is enum-cast —
+        // plucking it directly would key the array by enum instances, not plain strings.
+        $platformAccountCounts = ChurchSocial::withoutGlobalScope('enabledPlatform')
+            ->selectRaw('platform, count(*) as total')
+            ->groupBy('platform')
+            ->get()
+            ->mapWithKeys(fn ($row) => [$row->platform->value => $row->total]);
+
+        return view('settings.edit', [
+            'settings' => $settings,
+            'nextRun' => $nextRun,
+            'platformAccountCounts' => $platformAccountCounts,
+        ]);
     }
 
     public function update(Request $request): RedirectResponse
@@ -55,6 +70,17 @@ class SettingsController extends Controller
         foreach (['apify_token', 'youtube_api_key'] as $secretField) {
             if (! $request->filled($secretField)) {
                 unset($data[$secretField]);
+            }
+        }
+
+        // Superadmin-only (see settings/edit.blade.php's @can wrap around the whole
+        // card) — processed only when authorized, and skipped entirely otherwise, so a
+        // non-superadmin submitting the rest of this form (they can reach manage-settings
+        // more broadly) can't have platform toggles they never saw silently reset to
+        // false by their own request's absent checkboxes.
+        if ($request->user()->can('manage-platform-visibility')) {
+            foreach (['youtube', 'instagram', 'tiktok', 'facebook', 'x'] as $platform) {
+                $data["{$platform}_enabled"] = $request->boolean("{$platform}_enabled");
             }
         }
 

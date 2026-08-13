@@ -10,6 +10,7 @@ use App\Services\SocialStats\ApifyCreditsExhaustedException;
 use App\Services\SocialStats\FacebookStatsFetcher;
 use App\Services\SocialStats\InstagramStatsFetcher;
 use App\Services\SocialStats\TikTokStatsFetcher;
+use App\Services\SocialStats\XStatsFetcher;
 use App\Services\SocialStats\YouTubeStatsFetcher;
 use Illuminate\Bus\Batchable;
 use Illuminate\Bus\Queueable;
@@ -56,6 +57,7 @@ class FetchSingleChurchData implements ShouldQueue
         InstagramStatsFetcher $instagramStatsFetcher,
         TikTokStatsFetcher $tikTokStatsFetcher,
         FacebookStatsFetcher $facebookStatsFetcher,
+        XStatsFetcher $xStatsFetcher,
     ): void {
         try {
             $data = match ($this->churchSocial->platform) {
@@ -63,6 +65,7 @@ class FetchSingleChurchData implements ShouldQueue
                 SocialPlatform::Instagram => $instagramStatsFetcher->fetch($this->churchSocial->handle),
                 SocialPlatform::TikTok => $tikTokStatsFetcher->fetch($this->churchSocial->handle),
                 SocialPlatform::Facebook => $this->fetchFacebook($facebookStatsFetcher),
+                SocialPlatform::X => $xStatsFetcher->fetch($this->churchSocial->handle),
             };
 
             ChurchStat::updateOrCreate(

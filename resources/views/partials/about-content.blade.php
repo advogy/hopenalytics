@@ -57,7 +57,7 @@
     <div>
         <p class="mb-2 text-sm font-medium">{{ __('about.platforms_monitored') }}</p>
         <div class="flex flex-wrap gap-2">
-            @foreach (['youtube' => 'YouTube', 'instagram' => 'Instagram', 'tiktok' => 'TikTok', 'facebook' => 'Facebook'] as $value => $label)
+            @foreach (\App\Models\AppSetting::current()->enabledPlatformLabels() as $value => $label)
                 <span class="inline-flex items-center gap-1.5 rounded-full border border-black/5 bg-slate-50 px-3 py-1 text-sm dark:border-white/5 dark:bg-slate-800">
                     <x-platform-icon :platform="$value" class="h-4 w-4" />
                     {{ $label }}

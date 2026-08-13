@@ -30,4 +30,8 @@ return [
     'youtube_api_key' => 'YouTube API Key',
     'youtube_api_key_hint_set' => 'A key is already set. Leave this field blank to keep the current key.',
     'youtube_api_key_hint_unset' => "Not set yet — currently using the server's .env YOUTUBE_API_KEY (if any). Fill this in to manage it from this page instead, no .env changes needed.",
+
+    'platform_title' => 'Tracked Platforms',
+    'platform_subtitle' => 'Uncheck a platform to hide it across the whole app — it won\'t be offered when adding an account, won\'t show on any card/chart/directory, and stops being fetched weekly. Existing data stays saved and reappears instantly once checked again.',
+    'platform_account_count' => ':count accounts',
 ];

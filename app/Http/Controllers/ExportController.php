@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\BuildsLeaderboards;
+use App\Models\AppSetting;
 use App\Models\Church;
 use App\Models\ChurchSocial;
 use App\Models\Conference;
@@ -23,20 +24,29 @@ class ExportController extends Controller
 {
     use BuildsLeaderboards;
 
-    private array $platformLabels = ['semua' => 'Semua', 'youtube' => 'YouTube', 'instagram' => 'Instagram', 'tiktok' => 'TikTok', 'facebook' => 'Facebook'];
+    // Enabled-platforms-only + 'semua' — a property default can't call a method, so this
+    // is built in the constructor below instead of at declaration time. A disabled
+    // platform therefore also 404s out of every isset($this->platformLabels[...]) guard
+    // in this file, same as it disappears everywhere else.
+    private array $platformLabels;
 
     private array $categoryLabels = ['gereja' => 'Akun Gereja', 'umum' => 'Akun Umum', 'personal' => 'Akun Personal'];
 
-    private array $countField = ['youtube' => 'subscribers_count', 'instagram' => 'followers_count', 'tiktok' => 'followers_count', 'facebook' => 'followers_count'];
+    private array $countField = ['youtube' => 'subscribers_count', 'instagram' => 'followers_count', 'tiktok' => 'followers_count', 'facebook' => 'followers_count', 'x' => 'followers_count'];
 
-    private array $postField = ['youtube' => 'videos_count', 'instagram' => 'posts_count', 'tiktok' => 'posts_count', 'facebook' => 'recent_posts_count'];
+    private array $postField = ['youtube' => 'videos_count', 'instagram' => 'posts_count', 'tiktok' => 'posts_count', 'facebook' => 'recent_posts_count', 'x' => 'posts_count'];
 
     // Instagram/TikTok are recent-sample view counts (last ~10-12 posts/videos), not a lifetime
-    // total like YouTube's views_count. Facebook has no view-count field scraped at all — a
-    // lookup miss falls through to 'views_count' (always null on a Facebook row) via ?? below.
+    // total like YouTube's views_count. Facebook and X have no view-count field scraped at all —
+    // a lookup miss falls through to 'views_count' (always null on those rows) via ?? below.
     private array $viewsField = ['youtube' => 'views_count', 'instagram' => 'recent_reels_views', 'tiktok' => 'recent_video_plays'];
 
     private array $metricLabels = ['reach' => 'Followers/Subscribers', 'views' => 'Views', 'likes' => 'Likes', 'posts' => 'Post / Video'];
+
+    public function __construct()
+    {
+        $this->platformLabels = ['semua' => 'Semua'] + AppSetting::current()->enabledPlatformLabels();
+    }
 
     public function leaderboardPreview(string $metric)
     {

@@ -8,13 +8,14 @@
 @props(['social', 'historyRows' => null, 'showRecentContent' => true])
 
 @php
-    $platformLabels = ['youtube' => 'YouTube', 'instagram' => 'Instagram', 'tiktok' => 'TikTok', 'facebook' => 'Facebook'];
-    $countField = ['youtube' => 'subscribers_count', 'instagram' => 'followers_count', 'tiktok' => 'followers_count', 'facebook' => 'followers_count'];
+    $platformLabels = ['youtube' => 'YouTube', 'instagram' => 'Instagram', 'tiktok' => 'TikTok', 'facebook' => 'Facebook', 'x' => 'X'];
+    $countField = ['youtube' => 'subscribers_count', 'instagram' => 'followers_count', 'tiktok' => 'followers_count', 'facebook' => 'followers_count', 'x' => 'followers_count'];
     $secondaryFields = [
         'youtube' => ['views_count' => 'Views', 'videos_count' => 'Videos'],
         'instagram' => ['following_count' => 'Following', 'posts_count' => 'Posts'],
         'tiktok' => ['following_count' => 'Following', 'likes_count' => 'Likes', 'posts_count' => 'Posts'],
         'facebook' => [],
+        'x' => ['following_count' => 'Following', 'posts_count' => 'Posts'],
     ];
     $statusMeta = [
         'success' => ['label' => __('entity.status_auto'), 'icon' => 'check-circle', 'classes' => 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400'],
@@ -39,9 +40,32 @@
     $status = $statusMeta[$statusKey];
 
     $externalUrl = $social->externalUrl();
+
+    // Performance border — how many posts this account has put out lately, at a glance.
+    // Instagram/TikTok/Facebook use their "recent" field (reels/videos/posts found in the
+    // latest fetch — a freshness signal, not a lifetime total). YouTube and X have no such
+    // "recent" count tracked (their API/actor call only ever returns a lifetime cumulative
+    // total — videoCount / statusesCount), so both instead compare that total against the
+    // PREVIOUS recorded point — the growth since last time IS their "recent posts" signal.
+    // Needs two data points to mean anything; with fewer than that (brand new account) it
+    // reads as 0/red, same as "no recent activity data yet" everywhere else here. 0 = red
+    // (dead/never posted), 1-3 = amber (slowing down), 4+ = green (active) — per the user's
+    // explicit thresholds.
+    $postCount = match ($social->platform->value) {
+        'youtube' => ($latest && $previous) ? max(0, $latest->videos_count - $previous->videos_count) : 0,
+        'instagram' => $latest?->recent_reels_count ?? 0,
+        'tiktok' => $latest?->recent_video_count ?? 0,
+        'facebook' => $latest?->recent_posts_count ?? 0,
+        'x' => ($latest && $previous) ? max(0, $latest->posts_count - $previous->posts_count) : 0,
+    };
+    $performanceBorderClass = match (true) {
+        $postCount === 0 => 'border-red-400 dark:border-red-600',
+        $postCount <= 3 => 'border-amber-400 dark:border-amber-600',
+        default => 'border-emerald-400 dark:border-emerald-600',
+    };
 @endphp
 
-<div class="group rounded-2xl border border-black/5 bg-white p-5 shadow-sm transition hover:shadow-md dark:border-white/5 dark:bg-slate-900">
+<div class="group rounded-2xl border-2 {{ $performanceBorderClass }} bg-white p-5 shadow-sm transition hover:shadow-md dark:bg-slate-900">
     <div class="mb-4 flex items-start justify-between gap-2">
         <a
             @if ($externalUrl) href="{{ $externalUrl }}" target="_blank" rel="noopener noreferrer" @endif
@@ -78,7 +102,7 @@
                 @if ($social->is_auto_fetch)
                     @can('trigger-refresh')
                         @php
-                            $usesThirdPartyCredit = in_array($social->platform->value, ['instagram', 'tiktok'], true);
+                            $usesThirdPartyCredit = in_array($social->platform->value, ['instagram', 'tiktok', 'x'], true);
                             $refreshConfirm = $usesThirdPartyCredit
                                 ? __('entity.refresh_confirm_credit')
                                 : __('entity.refresh_confirm_youtube');

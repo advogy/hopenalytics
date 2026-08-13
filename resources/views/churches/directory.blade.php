@@ -1,5 +1,5 @@
 @php
-    $platformLabels = ['youtube' => 'YouTube', 'instagram' => 'Instagram', 'tiktok' => 'TikTok', 'facebook' => 'Facebook'];
+    $platformLabels = \App\Models\AppSetting::current()->enabledPlatformLabels();
     $hasDirectoryFilters = $selectedPlatform || $search || $autoFetch || $hideEmptyChurches || $hideEmptyPeople || $hideEmptyInstitutions || $hideEmptyOrganizations || $selectedUnionId || $selectedConferenceId || $sortGereja !== 'name_asc' || $sortInstitusi !== 'name_asc' || $sortPersonal !== 'name_asc' || $sortOrganisasi !== 'name_asc';
     $filterActiveClass = 'border-blue-600 bg-blue-50 text-blue-900 dark:border-blue-500 dark:bg-blue-950/40 dark:text-blue-200';
     $filterInactiveClass = 'border-black/10 bg-slate-50 text-slate-700 hover:bg-slate-100 dark:border-white/10 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700';

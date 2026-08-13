@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Enums\SocialPlatform;
 use App\Http\Controllers\Controller;
+use App\Models\AppSetting;
 use App\Models\ChurchSocial;
 use App\Models\Conference;
 use App\Models\Institution;
@@ -134,7 +135,7 @@ class OrganizationSocialController extends Controller
             'platform' => [
                 'required',
                 'string',
-                'in:'.implode(',', array_column(SocialPlatform::cases(), 'value')),
+                'in:'.implode(',', AppSetting::current()->enabledPlatformValues()),
                 // is_active-filtered — this method is only ever used by the three store()
                 // methods above (always create, $ignoreId always null), never edit, so a
                 // deactivated ("deleted") row here doesn't count as a duplicate:

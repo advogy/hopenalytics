@@ -31,7 +31,11 @@
     </div>
 
     <div class="hidden shrink-0 items-center gap-3 sm:flex">
-        @foreach (['youtube', 'instagram', 'tiktok', 'facebook'] as $platform)
+        {{-- $row['byPlatform']'s keys are already exactly the currently-enabled platforms
+             (see ChurchDashboardController::presentation()/personalPresentation()) —
+             looping its own keys instead of a hardcoded list means a disabled platform's
+             icon/count doesn't render at all, not just as a correct 0. --}}
+        @foreach (array_keys($row['byPlatform']->all()) as $platform)
             <span class="inline-flex items-center gap-1 text-sm {{ $row['byPlatform'][$platform] > 0 ? 'text-slate-700 dark:text-slate-200' : 'text-slate-400 dark:text-slate-600' }}">
                 <x-platform-icon :platform="$platform" class="h-4 w-4" />
                 {{ number_format($row['byPlatform'][$platform]) }}

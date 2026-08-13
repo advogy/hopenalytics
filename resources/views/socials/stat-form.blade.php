@@ -1,5 +1,5 @@
 @php
-    $platformLabels = ['youtube' => 'YouTube', 'instagram' => 'Instagram', 'tiktok' => 'TikTok', 'facebook' => 'Facebook'];
+    $platformLabels = ['youtube' => 'YouTube', 'instagram' => 'Instagram', 'tiktok' => 'TikTok', 'facebook' => 'Facebook', 'x' => 'X'];
     $isYoutube = $social->platform->value === 'youtube';
     $isFacebook = $social->platform->value === 'facebook';
     $editing ??= null;

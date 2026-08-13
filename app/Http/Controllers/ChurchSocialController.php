@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\SocialPlatform;
+use App\Models\AppSetting;
 use App\Models\Church;
 use App\Models\ChurchSocial;
 use Illuminate\Http\JsonResponse;
@@ -256,7 +257,7 @@ class ChurchSocialController extends Controller
             'platform' => [
                 'required',
                 'string',
-                'in:'.implode(',', array_column(SocialPlatform::cases(), 'value')),
+                'in:'.implode(',', AppSetting::current()->enabledPlatformValues()),
                 // On CREATE ($ignoreId === null, from store()), a deactivated ("deleted") row
                 // already occupying this slot doesn't count as a duplicate — store() reactivates
                 // it instead of inserting a new row (see its own comment). On EDIT, keep
@@ -319,7 +320,7 @@ class ChurchSocialController extends Controller
             'platform' => [
                 'required',
                 'string',
-                'in:'.implode(',', array_column(SocialPlatform::cases(), 'value')),
+                'in:'.implode(',', AppSetting::current()->enabledPlatformValues()),
                 // See validated()'s same comment above — no is_active filter, the DB unique
                 // index doesn't have one either.
                 Rule::unique('church_socials', 'platform')

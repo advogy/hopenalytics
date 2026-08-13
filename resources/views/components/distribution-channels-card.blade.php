@@ -28,6 +28,10 @@
         'instagram' => '#833AB4',
         'tiktok' => '#00B8B0',
         'facebook' => '#1877F2',
+        // X's own brand black would be indistinguishable from a black-on-black rendering next
+        // to TikTok's dark-mode override below (a legend dot has no shape to fall back on, the
+        // way the platform-icon badge does) — using X's muted secondary brand gray instead.
+        'x' => '#536471',
     ];
     $colorsDark = $colors;
     $colorsDark['tiktok'] = '#00897B';

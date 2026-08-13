@@ -206,5 +206,10 @@ class AppServiceProvider extends ServiceProvider
         // manage the account (can:update,social) — this gate only covers correcting/removing
         // one that's already recorded.
         Gate::define('manage-social-history', fn (User $user) => $user->role === UserRole::SuperAdmin);
+
+        // Which platforms the whole app tracks at all — a global kill switch, so it stays
+        // Superadmin-only same as the two gates above it, per the user's explicit call
+        // ("ini hanya ada di superadmin").
+        Gate::define('manage-platform-visibility', fn (User $user) => $user->role === UserRole::SuperAdmin);
     }
 }

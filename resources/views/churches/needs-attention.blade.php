@@ -1,5 +1,5 @@
 @php
-    $platformLabels = ['youtube' => 'YouTube', 'instagram' => 'Instagram', 'tiktok' => 'TikTok', 'facebook' => 'Facebook'];
+    $platformLabels = \App\Models\AppSetting::current()->enabledPlatformLabels();
 @endphp
 
 @extends('layouts.app')
