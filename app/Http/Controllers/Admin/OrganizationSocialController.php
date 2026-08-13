@@ -41,7 +41,7 @@ class OrganizationSocialController extends Controller
     public function unionStore(Request $request, Union $union): RedirectResponse
     {
         $data = $this->validated($request, 'union_id', $union->id, null);
-        $social = $union->socials()->create($data);
+        $social = $this->createOrReactivate($union, $data);
 
         // Deliberately no immediate fetch dispatch here — see ChurchSocialController::store()'s
         // comment for why.
@@ -65,7 +65,7 @@ class OrganizationSocialController extends Controller
     public function conferenceStore(Request $request, Conference $conference): RedirectResponse
     {
         $data = $this->validated($request, 'conference_id', $conference->id, null);
-        $social = $conference->socials()->create($data);
+        $social = $this->createOrReactivate($conference, $data);
 
         // Deliberately no immediate fetch dispatch here — see ChurchSocialController::store()'s
         // comment for why.
@@ -89,11 +89,35 @@ class OrganizationSocialController extends Controller
     public function institutionStore(Request $request, Institution $institution): RedirectResponse
     {
         $data = $this->validated($request, 'institution_id', $institution->id, null);
-        $social = $institution->socials()->create($data);
+        $social = $this->createOrReactivate($institution, $data);
 
         // Deliberately no immediate fetch dispatch here — see ChurchSocialController::store()'s
         // comment for why.
         return redirect()->route('admin.institutions.socials.index', $institution)->with('status', __('entity.social_created', ['handle' => $social->display_handle]));
+    }
+
+    /**
+     * A deactivated ("deleted" — see ChurchSocialController::destroy()'s doc comment) row
+     * already occupying this exact owner+platform+category+handle slot gets reactivated
+     * instead of a new row being inserted, so its history (ChurchStat) picks back up rather
+     * than the "historical data stays saved" promise on delete quietly breaking the moment the
+     * same handle is re-added. validated()'s Rule::unique already lets this exact case through
+     * (is_active-filtered, since this is always called from a store(), never edit).
+     */
+    private function createOrReactivate(Union|Conference|Institution $owner, array $data): ChurchSocial
+    {
+        $existing = $owner->socials()
+            ->where('platform', $data['platform'])->where('category', $data['category'])
+            ->where('handle', $data['handle'])->where('is_active', false)
+            ->first();
+
+        if ($existing) {
+            $existing->update($data + ['is_active' => true]);
+
+            return $existing;
+        }
+
+        return $owner->socials()->create($data);
     }
 
     /**
@@ -111,10 +135,12 @@ class OrganizationSocialController extends Controller
                 'required',
                 'string',
                 'in:'.implode(',', array_column(SocialPlatform::cases(), 'value')),
-                // No is_active filter — see ChurchSocialController::validatedOrganization()'s
-                // same comment; the DB's unique index doesn't have one either.
+                // is_active-filtered — this method is only ever used by the three store()
+                // methods above (always create, $ignoreId always null), never edit, so a
+                // deactivated ("deleted") row here doesn't count as a duplicate:
+                // createOrReactivate() picks it back up instead of inserting a new row.
                 Rule::unique('church_socials', 'platform')
-                    ->where(fn ($query) => $query->where($ownerColumn, $ownerId)->where('category', 'organisasi')->where('handle', $handle))
+                    ->where(fn ($query) => $query->where($ownerColumn, $ownerId)->where('category', 'organisasi')->where('handle', $handle)->where('is_active', true))
                     ->ignore($ignoreId),
             ],
             'handle' => ['required', 'string', 'max:255'],

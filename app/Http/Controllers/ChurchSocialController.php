@@ -149,7 +149,22 @@ class ChurchSocialController extends Controller
     {
         $data = $this->validated($request, false, $church->id, null, null);
 
-        $social = $church->socials()->create($data);
+        // A deactivated ("deleted" — see destroy() below) row already occupying this exact
+        // slot gets reactivated instead of a new row being inserted: same row, so its history
+        // (ChurchStat) picks back up rather than the "historical data stays saved" promise on
+        // delete quietly breaking the moment the same handle is re-added. validated()'s
+        // Rule::unique already lets this exact case through (is_active-filtered on create).
+        $existing = $church->socials()
+            ->where('platform', $data['platform'])->where('category', $data['category'])
+            ->where('handle', $data['handle'])->where('is_active', false)
+            ->first();
+
+        if ($existing) {
+            $existing->update($data + ['is_active' => true]);
+            $social = $existing;
+        } else {
+            $social = $church->socials()->create($data);
+        }
 
         // Deliberately no immediate fetch dispatch here, per the user's explicit call — a
         // newly-added account waits for the weekly schedule (see routes/console.php) or an
@@ -242,13 +257,20 @@ class ChurchSocialController extends Controller
                 'required',
                 'string',
                 'in:'.implode(',', array_column(SocialPlatform::cases(), 'value')),
-                // No is_active filter here (unlike assertHandleNotAlreadyTracked() below) —
-                // the DB has a hard unique index on this same (owner, category, handle) tuple
-                // regardless of is_active, so letting a deactivated row's handle through here
-                // would just trade this validation message for a raw SQL 1062 crash on insert.
+                // On CREATE ($ignoreId === null, from store()), a deactivated ("deleted") row
+                // already occupying this slot doesn't count as a duplicate — store() reactivates
+                // it instead of inserting a new row (see its own comment). On EDIT, keep
+                // blocking on ANY match including inactive ones: there's no reactivate-and-merge
+                // path for that rarer case, and letting it through would just trade this clean
+                // message for a raw SQL 1062 crash against the DB's hard unique index on this
+                // same (owner, category, handle) tuple.
                 Rule::unique('church_socials', 'platform')
-                    ->where(function ($query) use ($churchId, $personId, $category, $handle) {
+                    ->where(function ($query) use ($churchId, $personId, $category, $handle, $ignoreId) {
                         $query->where('category', $category)->where('handle', $handle);
+
+                        if ($ignoreId === null) {
+                            $query->where('is_active', true);
+                        }
 
                         if ($churchId !== null) {
                             $query->where('church_id', $churchId);

@@ -32,7 +32,19 @@ class PersonSocialController extends Controller
     {
         $data = $this->validated($request, $person->id);
 
-        $social = $person->socials()->create($data);
+        // A deactivated ("deleted") row already occupying this slot gets reactivated instead
+        // of a new row being inserted — see ChurchSocialController::store()'s same comment.
+        $existing = $person->socials()
+            ->where('platform', $data['platform'])->where('category', $data['category'])
+            ->where('handle', $data['handle'])->where('is_active', false)
+            ->first();
+
+        if ($existing) {
+            $existing->update($data + ['is_active' => true]);
+            $social = $existing;
+        } else {
+            $social = $person->socials()->create($data);
+        }
 
         // Deliberately no immediate fetch dispatch here — see ChurchSocialController::store()'s
         // comment for why.
@@ -69,11 +81,11 @@ class PersonSocialController extends Controller
                 'required',
                 'string',
                 'in:'.implode(',', array_column(SocialPlatform::cases(), 'value')),
-                // No is_active filter — the DB's unique index on (person_id, platform,
-                // category, handle) doesn't have one either, so this must match it exactly to
-                // avoid trading a clean validation message for a raw SQL 1062 crash on insert.
+                // is_active-filtered — this method is only ever used by store() (always
+                // create), never edit, so a deactivated ("deleted") row here doesn't count as a
+                // duplicate: store() reactivates it instead of inserting a new row.
                 Rule::unique('church_socials', 'platform')
-                    ->where(fn ($query) => $query->where('person_id', $personId)->where('category', 'personal')->where('handle', $handle)),
+                    ->where(fn ($query) => $query->where('person_id', $personId)->where('category', 'personal')->where('handle', $handle)->where('is_active', true)),
             ],
             'handle' => ['required', 'string', 'max:255'],
             'profile_url' => ['nullable', 'url', 'max:2048'],
