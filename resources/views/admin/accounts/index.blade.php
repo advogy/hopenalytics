@@ -164,6 +164,10 @@
                     </select>
                     <x-icon name="chevron-down" class="pointer-events-none absolute top-1/2 right-3.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                 </label>
+                {{-- Gives the browser an explicit default button so pressing Enter in any of
+                     this form's text fields reliably submits it — without one, a form with more
+                     than one text-type field has no defined "Enter submits" behavior at all. --}}
+                <button type="submit" class="sr-only">{{ __('common.search') }}</button>
             </form>
         </x-filter-card>
 
@@ -270,6 +274,7 @@
                     </select>
                     <x-icon name="chevron-down" class="pointer-events-none absolute top-1/2 right-3.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                 </label>
+                <button type="submit" class="sr-only">{{ __('common.search') }}</button>
             </form>
         </x-filter-card>
 
@@ -379,6 +384,7 @@
                     </select>
                     <x-icon name="chevron-down" class="pointer-events-none absolute top-1/2 right-3.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                 </label>
+                <button type="submit" class="sr-only">{{ __('common.search') }}</button>
             </form>
         </x-filter-card>
 
@@ -493,6 +499,7 @@
                     </select>
                     <x-icon name="chevron-down" class="pointer-events-none absolute top-1/2 right-3.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                 </label>
+                <button type="submit" class="sr-only">{{ __('common.search') }}</button>
             </form>
         </x-filter-card>
 
@@ -611,6 +618,7 @@
                     </select>
                     <x-icon name="chevron-down" class="pointer-events-none absolute top-1/2 right-3.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                 </label>
+                <button type="submit" class="sr-only">{{ __('common.search') }}</button>
             </form>
         </x-filter-card>
 
