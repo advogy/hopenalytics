@@ -165,7 +165,11 @@ class AccountController extends Controller
         // other four tabs (unlike the public directory), and searches name OR city (the other
         // tabs only search name; Person's search kept its own broader shape on the move).
         $people = Person::with(['union', 'conference.union', 'user:id,name'])
-            ->withCount('socials')
+            // "Delete" on a social account only deactivates it (see ChurchSocialController::
+            // destroy()'s doc comment) rather than removing the row, so an unfiltered count here
+            // would keep counting deleted accounts — showing a number that disagrees with what
+            // the account list itself displays once you click through.
+            ->withCount(['socials' => fn ($q) => $q->where('is_active', true)])
             ->visibleTo($request->user())
             ->when($searchPersonal, fn ($q) => $q->where(fn ($q2) => $q2
                 ->where('name', 'like', "%{$searchPersonal}%")
@@ -294,22 +298,31 @@ class AccountController extends Controller
         ]);
     }
 
-    /** Active churches the user manages with zero social accounts ever added. */
+    /**
+     * Active churches the user manages with zero social accounts currently tracked — a church
+     * whose only account was later deleted (deactivated, not removed — see
+     * ChurchSocialController::destroy()) counts as having none, matching what its own account
+     * list actually shows, hence the is_active filter on the relation itself rather than a bare
+     * doesntHave('socials').
+     */
     private function churchesWithoutSocialsQuery(User $user)
     {
-        return Church::where('is_active', true)->visibleTo($user)->doesntHave('socials');
+        return Church::where('is_active', true)->visibleTo($user)
+            ->doesntHave('socials', 'and', fn ($q) => $q->where('is_active', true));
     }
 
     /** Same as churchesWithoutSocialsQuery(), for Institution instead of Church. */
     private function institutionsWithoutSocialsQuery(User $user)
     {
-        return Institution::where('is_active', true)->manageableBy($user)->doesntHave('socials');
+        return Institution::where('is_active', true)->manageableBy($user)
+            ->doesntHave('socials', 'and', fn ($q) => $q->where('is_active', true));
     }
 
     /** Same as churchesWithoutSocialsQuery(), for Person instead of Church. */
     private function peopleWithoutSocialsQuery(User $user)
     {
-        return Person::where('is_active', true)->visibleTo($user)->doesntHave('socials');
+        return Person::where('is_active', true)->visibleTo($user)
+            ->doesntHave('socials', 'and', fn ($q) => $q->where('is_active', true));
     }
 
     /**
