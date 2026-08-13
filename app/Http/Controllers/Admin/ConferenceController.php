@@ -84,20 +84,26 @@ class ConferenceController extends Controller
     /**
      * Never trust a client-submitted union assignment: an admin_uni is always pinned to their
      * own union (see unionPickerData() — the form only ever shows them a read-only label, no
-     * picker), so any submitted union_id is ignored and their own is forced instead. Only
-     * nasional-level roles reach here with $submitted actually taken at face value (already
-     * validated against exists:unions,id above).
+     * picker), so any submitted union_id is ignored and their own is forced instead. A scoped
+     * admin_nasional's submission is re-validated against their own assigned Union set. Global-
+     * level (superadmin/admin_global) roles reach here with $submitted taken at face value
+     * (already validated against exists:unions,id above).
      */
     private function resolveUnionId(Request $request, ?int $current): ?int
     {
         $user = $request->user();
         $submitted = $request->filled('union_id') ? (int) $request->input('union_id') : null;
 
-        return $user->role->level() === 'uni' ? $user->union_id : ($submitted ?? $current);
+        return match ($user->role->level()) {
+            'uni' => $user->union_id,
+            'nasional' => $submitted && in_array($submitted, $user->assignedUnionIds(), true) ? $submitted : $current,
+            default => $submitted ?? $current,
+        };
     }
 
     /**
-     * Nasional-level gets the full Uni picker; admin_uni (the only other role that can reach
+     * Global-level gets the full Uni picker; a scoped admin_nasional gets a picker limited to
+     * their own assigned Unions; admin_uni (the only other role that can reach
      * ConferencePolicy::create()) is already pinned to one union, so they see it as read-only
      * text instead — mirrors ChurchController::conferencePickerData() for the Gereja tab.
      */
@@ -105,10 +111,17 @@ class ConferenceController extends Controller
     {
         $user = $request->user();
 
-        if ($user->role?->hasNasionalAccess()) {
+        if ($user->role?->hasGlobalAccess()) {
             return [
                 'canPickUnion' => true,
                 'unions' => Union::where('is_active', true)->orderBy('name')->get(),
+            ];
+        }
+
+        if ($user->role?->level() === 'nasional') {
+            return [
+                'canPickUnion' => true,
+                'unions' => Union::whereIn('id', $user->assignedUnionIds())->where('is_active', true)->orderBy('name')->get(),
             ];
         }
 

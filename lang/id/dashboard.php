@@ -21,6 +21,7 @@ return [
 
     // Scope label shown under the dashboard title — see ChurchDashboardController::index().
     'scope_nasional' => 'Ringkasan nasional — seluruh Uni, Konferens/Daerah, Gereja, Institusi, dan Personal.',
+    'scope_nasional_scoped' => 'Wilayah Uni :names.',
     'scope_uni' => 'Wilayah Uni :name.',
     'scope_daerah' => 'Wilayah Daerah :name.',
     'scope_gereja' => ':church — kartu statistik dan Top 5/Terendah untuk wilayah Daerah/Konferens Anda; Peta dan Skor Platform ditampilkan secara nasional untuk perbandingan.',

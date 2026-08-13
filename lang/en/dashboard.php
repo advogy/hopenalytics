@@ -21,6 +21,7 @@ return [
 
     // Scope label shown under the dashboard title — see ChurchDashboardController::index().
     'scope_nasional' => 'National overview — all Unions, Conferences/Districts, Churches, Institutions, and Personal accounts.',
+    'scope_nasional_scoped' => ':names Union region.',
     'scope_uni' => ':name Union region.',
     'scope_daerah' => ':name Conference region.',
     'scope_gereja' => ':church — stat cards and Top 5/Bottom show your Conference/Union region; Map and Platform Score are shown nationally for comparison.',

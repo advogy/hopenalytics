@@ -105,10 +105,13 @@ class InstitutionController extends Controller
      * Never trust a client-submitted region assignment: an admin_daerah is always pinned to
      * their own Uni+Daerah; an admin_uni is pinned to their own Uni, only the Daerah-under-it
      * picker (regionPickerData() below) is a real choice for them, and it's re-validated here
-     * against their own union regardless; nasional-level is trusted as-is, including leaving
-     * both blank for a nasional institution. Whatever conference ends up selected always forces
-     * its own union_id too, so the denormalized invariant (Institution::scopeVisibleTo()) never
-     * drifts even if a nasional actor's picker submits a stale/omitted union_id.
+     * against their own union regardless; a scoped admin_nasional's submission is re-validated
+     * against their own assigned Union set (falling back to blank/nasional rather than their
+     * prior value, same as admin_uni's conference re-validation above); global-level (superadmin/
+     * admin_global) is trusted as-is, including leaving both blank for a nasional institution.
+     * Whatever conference ends up selected always forces its own union_id too, so the
+     * denormalized invariant (Institution::scopeVisibleTo()) never drifts even if a global
+     * actor's picker submits a stale/omitted union_id.
      */
     private function resolveRegion(Request $request, ?int $currentUnionId, ?int $currentConferenceId): array
     {
@@ -121,6 +124,12 @@ class InstitutionController extends Controller
             'uni' => [
                 $user->union_id,
                 $submittedConferenceId && Conference::whereKey($submittedConferenceId)->where('union_id', $user->union_id)->exists()
+                    ? $submittedConferenceId
+                    : null,
+            ],
+            'nasional' => [
+                $submittedUnionId && in_array($submittedUnionId, $user->assignedUnionIds(), true) ? $submittedUnionId : null,
+                $submittedConferenceId && Conference::whereKey($submittedConferenceId)->whereIn('union_id', $user->assignedUnionIds())->exists()
                     ? $submittedConferenceId
                     : null,
             ],
@@ -144,11 +153,21 @@ class InstitutionController extends Controller
     {
         $user = $request->user();
 
-        if ($user->role?->hasNasionalAccess()) {
+        if ($user->role?->hasGlobalAccess()) {
             return [
                 'canPickUnion' => true,
                 'unions' => Union::where('is_active', true)->orderBy('name')->get(),
                 'conferences' => Conference::where('is_active', true)->orderBy('name')->get(['id', 'union_id', 'name']),
+            ];
+        }
+
+        if ($user->role?->level() === 'nasional') {
+            $unionIds = $user->assignedUnionIds();
+
+            return [
+                'canPickUnion' => true,
+                'unions' => Union::whereIn('id', $unionIds)->orderBy('name')->get(),
+                'conferences' => Conference::whereIn('union_id', $unionIds)->where('is_active', true)->orderBy('name')->get(['id', 'union_id', 'name']),
             ];
         }
 

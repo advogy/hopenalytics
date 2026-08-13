@@ -14,6 +14,7 @@ return [
     'section_title' => 'Goals',
     'goal_title' => ':year :metric goal',
     'scope_nasional' => 'National',
+    'scope_nasional_scoped' => ':names Union',
     'scope_uni' => ':name Union',
     'scope_daerah' => ':name Conference',
 ];

@@ -18,6 +18,8 @@ return [
     'assign' => 'Assign',
     'search_scope_placeholder' => 'Search…',
     'search_scope_for' => 'Search :level…',
+    'select_unions' => 'Select Unions…',
+    'unions_selected_count' => ':count Union(s) selected',
 
     'admin_all_title' => 'All Admins',
     'admin_level_title' => ':level Admin',

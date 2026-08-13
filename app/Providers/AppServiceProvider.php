@@ -101,17 +101,17 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('verify-email-change', fn ($request) => Limit::perMinute(5)
             ->by($request->user()->id.'|'.$request->ip()));
 
-        Gate::define('manage-queue', fn (User $user) => $user->role?->hasNasionalAccess() ?? false);
-        Gate::define('manage-settings', fn (User $user) => $user->role?->hasNasionalAccess() ?? false);
+        Gate::define('manage-queue', fn (User $user) => $user->role?->hasGlobalAccess() ?? false);
+        Gate::define('manage-settings', fn (User $user) => $user->role?->hasGlobalAccess() ?? false);
 
         // Setting the national reach/views/likes/posts targets (evenly divided down the Uni >
         // Daerah chain for the dashboard's Goal widget) is nasional-level only, same threshold
         // as manage-queue/manage-settings above.
-        Gate::define('manage-goals', fn (User $user) => $user->role?->hasNasionalAccess() ?? false);
+        Gate::define('manage-goals', fn (User $user) => $user->role?->hasGlobalAccess() ?? false);
 
         // Fetching fresh data spends paid Apify credits per call regardless of scope
         // (decision #3), so both single and bulk refresh are nasional-level only.
-        Gate::define('trigger-refresh', fn (User $user) => $user->role?->hasNasionalAccess() ?? false);
+        Gate::define('trigger-refresh', fn (User $user) => $user->role?->hasGlobalAccess() ?? false);
 
         // Governs the Uni/Daerah/Gereja/Institusi CRUD sub-routes nested under Kelola Akun
         // (create/edit/toggle/delete/socials for each), NOT the page itself anymore — Kelola
@@ -132,22 +132,27 @@ class AppServiceProvider extends ServiceProvider
 
         // Institutions aren't nested under a single Union/Conference (per UserRole::level()),
         // so — unlike admin_uni/admin_daerah/admin_gereja — their admins are assigned
-        // directly by nasional-level actors instead of delegated down the chain.
-        Gate::define('manage-institution-users', fn (User $user) => $user->role?->hasNasionalAccess() ?? false);
+        // directly by global- or nasional-level actors instead of delegated down the chain.
+        // Admin Nasional keeps this reach even though it's now scoped to an assigned Union
+        // set elsewhere, per the user's explicit call — institutions aren't Union-scoped, so
+        // there's nothing to narrow here.
+        Gate::define('manage-institution-users', fn (User $user) => $user->role?->hasGlobalAccess()
+            || $user->role === UserRole::AdminNasional);
 
         // Any role that can promote at all (i.e. not read-only, not gereja-level, not a
         // plain member) may reach the delegated user-assignment page.
         Gate::define('delegate-users', fn (User $user) => $user->role?->promotesToLevel() !== null);
 
         // Exporting (directory, analytics, leaderboards, comparisons) stays superadmin/
-        // admin_nasional/admin_uni/admin_daerah only, per the user's explicit call —
-        // deliberately excludes admin_gereja, admin_institusi, and every Pimpinan (read-only)
-        // role. level() is null for SuperAdmin (see UserRole::level()), hence its presence in
-        // the allow-list below alongside the three named levels. *Viewing* the Analytics page
-        // itself is a separate, broader gate — see view-analytics below.
+        // admin_global/admin_nasional/admin_uni/admin_daerah only, per the user's explicit
+        // call — deliberately excludes admin_gereja, admin_institusi, and every Pimpinan
+        // (read-only) role. level() is null for SuperAdmin and 'global' for Admin Global
+        // (see UserRole::level()), hence both being in the allow-list below alongside the
+        // three named levels. *Viewing* the Analytics page itself is a separate, broader
+        // gate — see view-analytics below.
         Gate::define('browse-directory-analytics', fn (User $user) => $user->role !== null
             && ! $user->role->isReadOnly()
-            && in_array($user->role->level(), [null, 'nasional', 'uni', 'daerah'], true));
+            && in_array($user->role->level(), [null, 'global', 'nasional', 'uni', 'daerah'], true));
 
         // Viewing Analytics & Statistik (as opposed to exporting it — browse-directory-
         // analytics above) is open to a plain member, admin_gereja, admin_daerah, and

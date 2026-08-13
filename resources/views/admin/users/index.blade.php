@@ -9,6 +9,7 @@
 
     $scopeDisplayFor = function ($user) {
         return match ($user->role?->level()) {
+            'nasional' => $user->assignedUnions->isNotEmpty() ? $user->assignedUnions->pluck('name')->implode(', ') : '—',
             'uni' => $user->union?->name ?? '—',
             'daerah' => $user->conference ? "{$user->conference->name} ({$user->conference->union->name})" : '—',
             'gereja' => $user->church ? "{$user->church->name} ({$user->church->conference?->name})" : '—',
@@ -123,6 +124,22 @@
                                                 class="absolute left-0 top-full z-20 mt-1 hidden max-h-52 w-56 overflow-y-auto rounded-lg border border-black/10 bg-white p-1 text-xs shadow-lg dark:border-white/10 dark:bg-slate-800"
                                             ></ul>
                                         </div>
+                                        {{-- Admin/Pimpinan Nasional is the one role assignable to a SET of Unions rather
+                                             than a single scope — a checkbox popover instead of the searchable combobox
+                                             above, submitting scope_ids[] (see UserAssignmentController::promote()). --}}
+                                        <div class="relative" data-assign-scope-checkboxes hidden>
+                                            <button
+                                                type="button"
+                                                data-scope-checkbox-toggle
+                                                class="w-36 rounded-lg border border-black/10 bg-white px-2 py-1.5 text-left text-xs shadow-sm focus:border-blue-500 focus:outline-none dark:border-white/10 dark:bg-slate-800"
+                                            >
+                                                <span data-scope-checkbox-summary>{{ __('users.select_unions') }}</span>
+                                            </button>
+                                            <div
+                                                data-scope-checkbox-list
+                                                class="absolute left-0 top-full z-20 mt-1 hidden max-h-52 w-56 space-y-0.5 overflow-y-auto rounded-lg border border-black/10 bg-white p-2 text-xs shadow-lg dark:border-white/10 dark:bg-slate-800"
+                                            ></div>
+                                        </div>
                                         <button type="submit" class="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:bg-blue-700">
                                             {{ __('users.assign') }}
                                         </button>
@@ -149,32 +166,92 @@
                     institusi: @json(__('common.institution')),
                 };
                 var SEARCH_SCOPE_TEMPLATE = @json(__('users.search_scope_for', ['level' => ':level']));
+                var SELECT_UNIONS_LABEL = @json(__('users.select_unions'));
+                var UNIONS_SELECTED_TEMPLATE = @json(__('users.unions_selected_count', ['count' => ':count']));
 
+                // 'global' (unrestricted, e.g. Admin Global) needs no scope at all — same as
+                // 'nasional' used to before it became Union-set-scoped. 'nasional' now needs the
+                // checkbox popover instead of the single-value combobox every other level uses.
                 function levelForRole(role) {
+                    if (role.endsWith('_global')) return 'global';
+                    if (role.endsWith('_nasional')) return 'nasional';
                     if (role.endsWith('_uni')) return 'uni';
                     if (role.endsWith('_daerah')) return 'daerah';
                     if (role.endsWith('_gereja')) return 'gereja';
                     if (role.endsWith('_institusi')) return 'institusi';
-                    return 'nasional';
+                    return 'global';
+                }
+
+                function renderUnionCheckboxes(checkboxWrapper) {
+                    var list = checkboxWrapper.querySelector('[data-scope-checkbox-list]');
+                    if (list.dataset.rendered) return;
+                    list.dataset.rendered = '1';
+
+                    (assignScopeData.nasional || []).forEach(function (option) {
+                        var label = document.createElement('label');
+                        label.className = 'flex items-center gap-2 rounded px-1 py-1 hover:bg-slate-50 dark:hover:bg-slate-700';
+
+                        var input = document.createElement('input');
+                        input.type = 'checkbox';
+                        input.name = 'scope_ids[]';
+                        input.value = option.id;
+                        input.className = 'shrink-0';
+                        input.addEventListener('change', function () { updateScopeCheckboxSummary(checkboxWrapper); });
+
+                        var span = document.createElement('span');
+                        span.textContent = option.label;
+
+                        label.appendChild(input);
+                        label.appendChild(span);
+                        list.appendChild(label);
+                    });
+                }
+
+                function updateScopeCheckboxSummary(checkboxWrapper) {
+                    var checked = checkboxWrapper.querySelectorAll('input[type=checkbox]:checked');
+                    checkboxWrapper.querySelector('[data-scope-checkbox-summary]').textContent = checked.length
+                        ? UNIONS_SELECTED_TEMPLATE.replace(':count', checked.length)
+                        : SELECT_UNIONS_LABEL;
                 }
 
                 function refreshScope(roleSelect) {
                     var form = roleSelect.closest('form');
                     var wrapper = form.querySelector('[data-assign-scope-wrapper]');
+                    var checkboxWrapper = form.querySelector('[data-assign-scope-checkboxes]');
                     var level = levelForRole(roleSelect.value);
+
+                    if (level === 'global') {
+                        wrapper.hidden = true;
+                        wrapper._searchableSelect.setOptions([]);
+                        checkboxWrapper.hidden = true;
+                        return;
+                    }
 
                     if (level === 'nasional') {
                         wrapper.hidden = true;
                         wrapper._searchableSelect.setOptions([]);
+                        checkboxWrapper.hidden = false;
+                        renderUnionCheckboxes(checkboxWrapper);
                         return;
                     }
 
                     wrapper.hidden = false;
+                    checkboxWrapper.hidden = true;
                     wrapper._searchableSelect.setOptions(assignScopeData[level] || [], SEARCH_SCOPE_TEMPLATE.replace(':level', LEVEL_LABELS[level] || ''));
                 }
 
                 document.querySelectorAll('[data-assign-scope-wrapper]').forEach(function (wrapper) {
                     window.initSearchableSelect(wrapper);
+                });
+
+                document.querySelectorAll('[data-scope-checkbox-toggle]').forEach(function (btn) {
+                    btn.addEventListener('click', function (e) {
+                        e.stopPropagation();
+                        btn.closest('[data-assign-scope-checkboxes]').querySelector('[data-scope-checkbox-list]').classList.toggle('hidden');
+                    });
+                });
+                document.addEventListener('click', function () {
+                    document.querySelectorAll('[data-scope-checkbox-list]').forEach(function (list) { list.classList.add('hidden'); });
                 });
 
                 document.querySelectorAll('[data-assign-role]').forEach(function (select) {
@@ -183,17 +260,23 @@
                 });
 
                 // Belt-and-suspenders: a hidden input's `required` attribute is ignored by
-                // browsers, so block submission here if a visible scope combobox has no
-                // selection yet (matches the old <select required> behavior it replaced).
+                // browsers, so block submission here if a visible scope combobox/checkbox list
+                // has no selection yet (matches the old <select required> behavior it replaced).
                 document.querySelectorAll('[data-assign-role]').forEach(function (select) {
                     var form = select.closest('form');
                     form.addEventListener('submit', function (e) {
                         var wrapper = form.querySelector('[data-assign-scope-wrapper]');
-                        if (wrapper.hidden) return;
+                        var checkboxWrapper = form.querySelector('[data-assign-scope-checkboxes]');
 
-                        if (! wrapper._searchableSelect.getValue()) {
+                        if (! wrapper.hidden && ! wrapper._searchableSelect.getValue()) {
                             e.preventDefault();
                             wrapper.querySelector('[data-searchable-select-search]').focus();
+                            return;
+                        }
+
+                        if (! checkboxWrapper.hidden && checkboxWrapper.querySelectorAll('input[type=checkbox]:checked').length === 0) {
+                            e.preventDefault();
+                            checkboxWrapper.querySelector('[data-scope-checkbox-toggle]').focus();
                         }
                     });
                 });
@@ -410,7 +493,7 @@
                                     </td>
                                     <td class="py-2 pr-2 text-slate-500 dark:text-slate-400">{{ $user->role?->label() ?? '—' }}</td>
                                     <td class="py-2 pr-2 text-slate-500 dark:text-slate-400">
-                                        {{ $user->church?->name ?? $user->conference?->name ?? $user->union?->name ?? $user->institution?->name ?? '—' }}
+                                        {{ $user->church?->name ?? $user->conference?->name ?? $user->union?->name ?? $user->institution?->name ?? ($user->assignedUnions->isNotEmpty() ? $user->assignedUnions->pluck('name')->implode(', ') : '—') }}
                                     </td>
                                     <td class="py-2 pr-2 text-slate-500 dark:text-slate-400">{{ $user->deleted_at->translatedFormat('d M Y H:i') }}</td>
                                     <td class="py-2">

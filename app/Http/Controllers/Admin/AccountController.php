@@ -341,7 +341,7 @@ class AccountController extends Controller
      */
     private function visibleTabsFor(User $user): array
     {
-        $level = ($user->role?->hasNasionalAccess() ?? false) ? 'nasional' : $user->role?->level();
+        $level = ($user->role?->hasGlobalAccess() ?? false) ? 'nasional' : $user->role?->level();
 
         return match ($level) {
             'nasional' => ['uni' => true, 'daerah' => true, 'gereja' => true, 'institusi' => true, 'personal' => true],

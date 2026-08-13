@@ -14,6 +14,7 @@ return [
     'section_title' => 'Tujuan',
     'goal_title' => ':year Tujuan :metric',
     'scope_nasional' => 'Nasional',
+    'scope_nasional_scoped' => 'Uni :names',
     'scope_uni' => 'Uni :name',
     'scope_daerah' => 'Daerah :name',
 ];

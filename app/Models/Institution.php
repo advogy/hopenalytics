@@ -71,7 +71,14 @@ class Institution extends Model
         }
 
         return match (true) {
-            $user->role->hasNasionalAccess() || $user->role->level() === 'nasional' => $query,
+            $user->role->hasGlobalAccess() || $user->role->level() === 'global' => $query,
+            // Admin/Pimpinan Nasional: institutions under their assigned Union set, PLUS
+            // every "nasional" institution (no union_id at all — decision above) — per the
+            // user's explicit call, a nasional institution stays visible to every Admin
+            // Nasional regardless of which Unions they're assigned to, not just Admin Global.
+            $user->role->level() === 'nasional' => $query->where(
+                fn (Builder $q) => $q->whereIn('union_id', $user->assignedUnionIds())->orWhereNull('union_id')
+            ),
             $user->role->level() === 'uni' => $query->where('union_id', $user->union_id),
             $user->role->level() === 'daerah' => $query->where('conference_id', $user->conference_id),
             $user->role->level() === 'institusi' => $query->where('id', $user->institution_id),
@@ -93,7 +100,10 @@ class Institution extends Model
         }
 
         return match (true) {
-            $user->role->hasNasionalAccess() || $user->role->level() === 'nasional' => $query,
+            $user->role->hasGlobalAccess() || $user->role->level() === 'global' => $query,
+            $user->role->level() === 'nasional' => $query->where(
+                fn (Builder $q) => $q->whereIn('union_id', $user->assignedUnionIds())->orWhereNull('union_id')
+            ),
             $user->role->level() === 'uni' => $query->where('union_id', $user->union_id),
             $user->role->level() === 'daerah' => $query->where('conference_id', $user->conference_id),
             $user->role->level() === 'institusi' => $query->where('id', $user->institution_id),

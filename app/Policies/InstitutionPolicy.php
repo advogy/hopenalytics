@@ -60,7 +60,12 @@ class InstitutionPolicy
         }
 
         return match (true) {
-            $user->role->hasNasionalAccess() || $user->role->level() === 'nasional' => true,
+            $user->role->hasGlobalAccess() || $user->role->level() === 'global' => true,
+            // A scoped Admin Nasional edits any nasional (unscoped) institution, plus any
+            // institution nested under one of their own assigned Unions — mirrors
+            // Institution::scopeVisibleTo()'s own nasional-scoped arm exactly.
+            $user->role->level() === 'nasional' => $institution->union_id === null
+                || in_array($institution->union_id, $user->assignedUnionIds(), true),
             $user->role->level() === 'uni' => $institution->union_id === $user->union_id,
             $user->role->level() === 'daerah' => $institution->conference_id === $user->conference_id,
             $user->role->level() === 'institusi' => $institution->id === $user->institution_id,

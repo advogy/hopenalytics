@@ -4,8 +4,9 @@
     - A Customer Service bubble linking out to WhatsApp — always includes the National
       Coordinator/group (superadmin-configured in Pengaturan, see AppSetting::csWhatsappUrl()/
       cs_whatsapp_group_link), plus:
-        - a superadmin/admin_nasional sees EVERY active Union's own coordinator/group that's
+        - a superadmin/admin_global sees EVERY active Union's own coordinator/group that's
           actually set (Kelola Akun → Uni), since they oversee all of them;
+        - a scoped admin_nasional sees just their own assigned Unions' coordinators/groups;
         - anyone scoped to a single Union (admin_uni/daerah/gereja) sees just their own Union's,
           if it has one set.
       A guest/plain member/institusi-level viewer has no Union of their own (institutions sit
@@ -19,7 +20,8 @@
 --}}
 @php
     $floatingWidgetUser = auth()->user();
-    $isNasionalAdmin = $floatingWidgetUser?->role?->hasNasionalAccess() ?? false;
+    $hasGlobalCsAccess = $floatingWidgetUser?->role?->hasGlobalAccess() ?? false;
+    $isScopedNasionalCsAdmin = $floatingWidgetUser?->role?->level() === 'nasional';
 
     $floatingWidgetUnion = match ($floatingWidgetUser?->role?->level()) {
         'uni' => $floatingWidgetUser->union,
@@ -38,9 +40,11 @@
         $csEntries->push(['url' => $link, 'label' => __('common.cs_group_link_national'), 'icon' => 'users']);
     }
 
-    $floatingWidgetUnions = $isNasionalAdmin
-        ? \App\Models\Union::where('is_active', true)->orderBy('name')->get()
-        : collect([$floatingWidgetUnion])->filter();
+    $floatingWidgetUnions = match (true) {
+        $hasGlobalCsAccess => \App\Models\Union::where('is_active', true)->orderBy('name')->get(),
+        $isScopedNasionalCsAdmin => \App\Models\Union::whereIn('id', $floatingWidgetUser->assignedUnionIds())->where('is_active', true)->orderBy('name')->get(),
+        default => collect([$floatingWidgetUnion])->filter(),
+    };
 
     foreach ($floatingWidgetUnions as $union) {
         if ($url = $union->coordinatorWhatsappUrl()) {

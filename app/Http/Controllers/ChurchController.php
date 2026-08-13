@@ -57,14 +57,6 @@ class ChurchController extends Controller
         $data['latitude'] = $request->filled('latitude') ? (float) $data['latitude'] : null;
         $data['longitude'] = $request->filled('longitude') ? (float) $data['longitude'] : null;
 
-        $slug = Str::slug($data['name']);
-        $original = $slug;
-        $i = 1;
-        while (Church::where('slug', $slug)->exists()) {
-            $slug = "{$original}-{$i}";
-            $i++;
-        }
-        $data['slug'] = $slug;
         $data['conference_id'] = $this->resolveConferenceId($request, null);
 
         if ($data['latitude'] !== null && $data['longitude'] !== null) {
@@ -73,7 +65,7 @@ class ChurchController extends Controller
             $this->applyGeocoding($data, $geocoding);
         }
 
-        $church = Church::create($data);
+        $church = $this->createChurchWithUniqueSlug($data);
 
         AuditLogger::log('church.created', $church, "Menambahkan Gereja \"{$church->name}\".");
 
@@ -131,6 +123,9 @@ class ChurchController extends Controller
 
         return match ($user->role->level()) {
             'daerah' => $user->conference_id,
+            'nasional' => $submitted && Conference::whereKey($submitted)->whereIn('union_id', $user->assignedUnionIds())->exists()
+                ? $submitted
+                : $current,
             'uni' => $submitted && Conference::whereKey($submitted)->where('union_id', $user->union_id)->exists()
                 ? $submitted
                 : $current,
@@ -149,11 +144,21 @@ class ChurchController extends Controller
     {
         $user = $request->user();
 
-        if ($user->role?->hasNasionalAccess()) {
+        if ($user->role?->hasGlobalAccess()) {
             return [
                 'canPickConference' => true,
                 'unions' => Union::where('is_active', true)->orderBy('name')->get(),
                 'conferences' => Conference::where('is_active', true)->orderBy('name')->get(['id', 'union_id', 'name']),
+            ];
+        }
+
+        if ($user->role?->level() === 'nasional') {
+            $unionIds = $user->assignedUnionIds();
+
+            return [
+                'canPickConference' => true,
+                'unions' => Union::whereIn('id', $unionIds)->orderBy('name')->get(),
+                'conferences' => Conference::whereIn('union_id', $unionIds)->where('is_active', true)->orderBy('name')->get(['id', 'union_id', 'name']),
             ];
         }
 
@@ -166,6 +171,36 @@ class ChurchController extends Controller
         }
 
         return ['canPickConference' => false, 'unions' => collect(), 'conferences' => collect()];
+    }
+
+    /**
+     * The obvious "check exists(), then create()" approach has a race: two near-simultaneous
+     * submissions for the same church name can both pass the exists() check before either
+     * commits, so the second create() hits a raw UniqueConstraintViolationException on
+     * churches_slug_unique instead of a clean error (confirmed happening in production).
+     * Retrying with a re-derived slug after a collision closes that window.
+     */
+    private function createChurchWithUniqueSlug(array $data): Church
+    {
+        $original = Str::slug($data['name']);
+        $slug = $original;
+        $i = 1;
+
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            while (Church::where('slug', $slug)->exists()) {
+                $slug = "{$original}-{$i}";
+                $i++;
+            }
+
+            try {
+                return Church::create(['slug' => $slug] + $data);
+            } catch (\Illuminate\Database\UniqueConstraintViolationException) {
+                $slug = "{$original}-{$i}";
+                $i++;
+            }
+        }
+
+        throw new \RuntimeException('Could not generate a unique church slug after 5 attempts.');
     }
 
     private function applyGeocoding(array &$data, GeocodingService $geocoding): void

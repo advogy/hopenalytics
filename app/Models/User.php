@@ -8,6 +8,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -59,6 +60,22 @@ class User extends Authenticatable implements MustVerifyEmail
     public function person(): HasOne
     {
         return $this->hasOne(Person::class);
+    }
+
+    /**
+     * Which Unions a scoped Admin/Pimpinan Nasional is assigned to (see UserRole::level()'s
+     * doc comment for why this is a set rather than a single union_id column like
+     * uni/daerah/gereja/institusi levels use). Meaningless for every other role.
+     */
+    public function assignedUnions(): BelongsToMany
+    {
+        return $this->belongsToMany(Union::class, 'admin_nasional_unions');
+    }
+
+    /** Plain id array — what every scopeVisibleTo()/scopeManageableBy() whereIn() below needs. */
+    public function assignedUnionIds(): array
+    {
+        return $this->assignedUnions()->pluck('unions.id')->all();
     }
 
     /**

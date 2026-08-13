@@ -258,8 +258,10 @@ class ChurchDashboardController extends Controller
         $scopeUser = auth()->user();
         $scopeConference = $scopeUser->conference ?? $scopeUser->church?->conference;
         $regionScopeLabel = match (true) {
-            $scopeUser->role === null || ($scopeUser->role?->hasNasionalAccess() ?? false) || $scopeUser->role?->level() === 'nasional'
+            $scopeUser->role === null || ($scopeUser->role?->hasGlobalAccess() ?? false) || $scopeUser->role?->level() === 'global'
                 => __('goals.scope_nasional'),
+            $scopeUser->role?->level() === 'nasional'
+                => __('goals.scope_nasional_scoped', ['names' => $scopeUser->assignedUnions()->pluck('name')->implode(', ') ?: '—']),
             $scopeUser->role?->level() === 'uni'
                 => __('goals.scope_uni', ['name' => $scopeUser->union?->name ?? '—']),
             $scopeUser->role?->level() === 'daerah' || $isGerejaLevel
@@ -315,8 +317,10 @@ class ChurchDashboardController extends Controller
         // for a gereja-level admin, whose stat cards and "big picture" widgets deliberately use
         // two different scopes (see the block comment at the top of this method).
         $scopeLabel = match (true) {
-            $user->role?->hasNasionalAccess() || $user->role?->level() === 'nasional'
+            $user->role?->hasGlobalAccess() || $user->role?->level() === 'global'
                 => __('dashboard.scope_nasional'),
+            $user->role?->level() === 'nasional'
+                => __('dashboard.scope_nasional_scoped', ['names' => $user->assignedUnions()->pluck('name')->implode(', ') ?: '—']),
             $user->role?->level() === 'uni'
                 => __('dashboard.scope_uni', ['name' => $user->union?->name ?? '—']),
             $user->role?->level() === 'daerah'
@@ -406,15 +410,20 @@ class ChurchDashboardController extends Controller
     {
         $user = auth()->user();
         $level = $user->role?->level();
-        $isNasional = $user->role === null || ($user->role?->hasNasionalAccess() ?? false) || $level === 'nasional';
-        $isUni = ! $isNasional && $level === 'uni';
-        $isDaerahOrGereja = ! $isNasional && ! $isUni && in_array($level, ['daerah', 'gereja'], true);
+        $isNasional = $user->role === null || ($user->role?->hasGlobalAccess() ?? false) || $level === 'global';
+        // Admin/Pimpinan Nasional: sums the fair share of every Union they're assigned to,
+        // rather than the full national total (Global) or a single Union's third (Uni-level) —
+        // see User::assignedUnions().
+        $isScopedNasional = ! $isNasional && $level === 'nasional';
+        $isUni = ! $isNasional && ! $isScopedNasional && $level === 'uni';
+        $isDaerahOrGereja = ! $isNasional && ! $isScopedNasional && ! $isUni && in_array($level, ['daerah', 'gereja'], true);
 
-        if (! $isNasional && ! $isUni && ! $isDaerahOrGereja) {
+        if (! $isNasional && ! $isScopedNasional && ! $isUni && ! $isDaerahOrGereja) {
             return collect();
         }
 
         $unionCount = Union::where('is_active', true)->count();
+        $assignedUnionCount = $isScopedNasional ? count($user->assignedUnionIds()) : 0;
 
         // admin_gereja has no $user->conference of its own (only $user->church) — same
         // conference_id derivation as analyticsChurchScope()'s gereja-level branch.
@@ -422,6 +431,7 @@ class ChurchDashboardController extends Controller
 
         $scopeLabel = match (true) {
             $isNasional => __('goals.scope_nasional'),
+            $isScopedNasional => __('goals.scope_nasional_scoped', ['names' => $user->assignedUnions()->pluck('name')->implode(', ') ?: '—']),
             $isUni => __('goals.scope_uni', ['name' => $user->union?->name ?? '—']),
             default => __('goals.scope_daerah', ['name' => $conference?->name ?? '—']),
         };
@@ -432,11 +442,12 @@ class ChurchDashboardController extends Controller
         // re-derives it from this total.
         $combinedSocials = $churchSocials->merge($institutionSocials)->merge($personalSocials)->merge($organizationSocials);
 
-        return collect(Goal::METRICS)->map(function ($metric) use ($combinedSocials, $isNasional, $isUni, $unionCount, $conference, $scopeLabel) {
+        return collect(Goal::METRICS)->map(function ($metric) use ($combinedSocials, $isNasional, $isScopedNasional, $isUni, $unionCount, $assignedUnionCount, $conference, $scopeLabel) {
             $goal = Goal::forMetric($metric);
 
             $target = match (true) {
                 $isNasional => $goal->target_value,
+                $isScopedNasional => $unionCount > 0 ? (int) round($goal->target_value / $unionCount * $assignedUnionCount) : 0,
                 $isUni => $unionCount > 0 ? (int) round($goal->target_value / $unionCount) : 0,
                 default => (function () use ($goal, $unionCount, $conference) {
                     if ($unionCount === 0) {

@@ -41,7 +41,11 @@ class Union extends Model
         }
 
         return match (true) {
-            $user->role->hasNasionalAccess() || $user->role->level() === 'nasional' => $query,
+            $user->role->hasGlobalAccess() || $user->role->level() === 'global' => $query,
+            // Admin/Pimpinan Nasional: scoped to their assigned set of Unions (see
+            // User::assignedUnions()) rather than a single region — one country can have
+            // multiple Unions and one Union can span multiple countries.
+            $user->role->level() === 'nasional' => $query->whereIn('id', $user->assignedUnionIds()),
             $user->role->level() === 'uni' => $query->where('id', $user->union_id),
             $user->role->level() === 'daerah' => $query->whereHas(
                 'conferences', fn (Builder $q) => $q->where('id', $user->conference_id)

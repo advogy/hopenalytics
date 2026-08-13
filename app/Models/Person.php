@@ -57,7 +57,12 @@ class Person extends Model
         }
 
         return match (true) {
-            $user->role->hasNasionalAccess() || $user->role->level() === 'nasional' => $query,
+            $user->role->hasGlobalAccess() || $user->role->level() === 'global' => $query,
+            $user->role->level() === 'nasional' => $query->where(function (Builder $q) use ($user) {
+                $unionIds = $user->assignedUnionIds();
+                $q->whereIn('union_id', $unionIds)
+                    ->orWhereHas('conference', fn (Builder $q2) => $q2->whereIn('union_id', $unionIds));
+            }),
             $user->role->level() === 'uni' => $query->where(function (Builder $q) use ($user) {
                 $q->where('union_id', $user->union_id)
                     ->orWhereHas('conference', fn (Builder $q2) => $q2->where('union_id', $user->union_id));

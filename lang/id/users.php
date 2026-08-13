@@ -18,6 +18,8 @@ return [
     'assign' => 'Tugaskan',
     'search_scope_placeholder' => 'Cari…',
     'search_scope_for' => 'Cari :level…',
+    'select_unions' => 'Pilih Uni…',
+    'unions_selected_count' => ':count Uni dipilih',
 
     'admin_all_title' => 'Semua Admin',
     'admin_level_title' => 'Admin :level',

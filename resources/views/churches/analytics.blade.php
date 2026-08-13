@@ -15,7 +15,7 @@
     // their own single Uni, so it's not rendered); everyone else (daerah/gereja/institusi-level)
     // just gets the flat list they already had, since their scope is already a single Daerah.
     $analyticsRole = auth()->user()->role;
-    $isNasionalView = $analyticsRole === null || ($analyticsRole->hasNasionalAccess() ?? false) || $analyticsRole->level() === 'nasional';
+    $isNasionalView = $analyticsRole === null || ($analyticsRole->hasGlobalAccess() ?? false) || in_array($analyticsRole->level(), ['global', 'nasional'], true);
     $isUniView = ! $isNasionalView && $analyticsRole->level() === 'uni';
 
     // Defaults so these stay defined even when a tab's entity collection is empty — each tab's

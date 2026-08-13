@@ -55,7 +55,10 @@ class Church extends Model
         }
 
         return match (true) {
-            $user->role->hasNasionalAccess() || $user->role->level() === 'nasional' => $query,
+            $user->role->hasGlobalAccess() || $user->role->level() === 'global' => $query,
+            $user->role->level() === 'nasional' => $query->whereHas(
+                'conference', fn (Builder $q) => $q->whereIn('union_id', $user->assignedUnionIds())
+            ),
             $user->role->level() === 'uni' => $query->whereHas(
                 'conference', fn (Builder $q) => $q->where('union_id', $user->union_id)
             ),
