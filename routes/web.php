@@ -49,6 +49,16 @@ Route::post('/verify-otp', [RegisterController::class, 'verifyOtp'])->name('veri
 Route::post('/verify-otp/resend', [RegisterController::class, 'resendOtp'])->name('verify-otp.resend')->middleware('throttle:3,10');
 Route::post('/verify-otp/cancel', [RegisterController::class, 'cancelRegistration'])->name('verify-otp.cancel');
 
+// This app verifies email via the custom OTP flow above, not Laravel's default email-link
+// flow — but the 'verified' middleware guarding the whole logged-in area below (see
+// EnsureEmailIsVerified) still redirects to the framework's default 'verification.notice' route
+// name whenever it encounters an authenticated-but-unverified session. AuthController::login()
+// already screens this out on a normal password login, but any other way a session ends up
+// authenticated-yet-unverified (a stale/"remember me" cookie predating that check, etc.) would
+// otherwise crash with RouteNotFoundException instead of a clean redirect — confirmed happening
+// to real users in production logs. This is the fallback that keeps that failure mode a redirect.
+Route::get('/verifikasi-email', fn () => redirect()->route('verify-otp'))->name('verification.notice');
+
 Route::get('/forgot-password', [ForgotPasswordController::class, 'show'])->name('forgot-password');
 Route::post('/forgot-password', [ForgotPasswordController::class, 'send'])->name('forgot-password.send')->middleware('throttle:3,10');
 Route::get('/reset-password', [ForgotPasswordController::class, 'showReset'])->name('reset-password');

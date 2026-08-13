@@ -32,20 +32,7 @@ class PersonSocialController extends Controller
     public function store(Request $request, Person $person): RedirectResponse
     {
         $data = $this->validated($request, $person->id);
-
-        // A deactivated ("deleted") row already occupying this slot gets reactivated instead
-        // of a new row being inserted — see ChurchSocialController::store()'s same comment.
-        $existing = $person->socials()
-            ->where('platform', $data['platform'])->where('category', $data['category'])
-            ->where('handle', $data['handle'])->where('is_active', false)
-            ->first();
-
-        if ($existing) {
-            $existing->update($data + ['is_active' => true]);
-            $social = $existing;
-        } else {
-            $social = $person->socials()->create($data);
-        }
+        $social = $this->createOrReactivate($person, $data);
 
         // Deliberately no immediate fetch dispatch here — see ChurchSocialController::store()'s
         // comment for why.
@@ -64,6 +51,50 @@ class PersonSocialController extends Controller
         return $person->user_id === $request->user()->id
             ? route('profile.edit', ['tab' => 'sosial'])
             : route('people.socials.index', $person);
+    }
+
+    /**
+     * A deactivated ("deleted") row already occupying this exact slot gets reactivated instead
+     * of a new row being inserted — see ChurchSocialController::store()'s matching helper.
+     * validated() already checked for a duplicate moments ago, but that's a check-then-act gap:
+     * two near-simultaneous submits (a double-click, a retried failed request) can both pass
+     * validation before either commits, so the second create() here can still race into the
+     * (person_id, platform, category, handle) unique constraint — confirmed happening in
+     * production logs. Catching that and resolving it the same way validated() would have
+     * (reactivate if the racing request deactivated it, otherwise report it as a duplicate)
+     * keeps this a normal redirect/validation error instead of a raw 500.
+     */
+    private function createOrReactivate(Person $person, array $data): ChurchSocial
+    {
+        $existing = $person->socials()
+            ->where('platform', $data['platform'])->where('category', $data['category'])
+            ->where('handle', $data['handle'])->where('is_active', false)
+            ->first();
+
+        if ($existing) {
+            $existing->update($data + ['is_active' => true]);
+
+            return $existing;
+        }
+
+        try {
+            return $person->socials()->create($data);
+        } catch (\Illuminate\Database\UniqueConstraintViolationException) {
+            $racedRow = $person->socials()
+                ->where('platform', $data['platform'])->where('category', $data['category'])
+                ->where('handle', $data['handle'])
+                ->first();
+
+            if ($racedRow && ! $racedRow->is_active) {
+                $racedRow->update($data + ['is_active' => true]);
+
+                return $racedRow;
+            }
+
+            throw ValidationException::withMessages([
+                'platform' => 'Akun dengan handle yang sama untuk platform ini sudah ada.',
+            ]);
+        }
     }
 
     /**

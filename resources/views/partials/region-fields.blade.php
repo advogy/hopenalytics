@@ -10,6 +10,19 @@
     $selectedChurchName ??= null;
     $selectedUnionName = $selectedUnionId ? $unions->firstWhere('id', $selectedUnionId)?->name : null;
     $selectedConferenceName = $selectedConferenceId ? $conferences->firstWhere('id', $selectedConferenceId)?->name : null;
+
+    // Computed here rather than inline inside @json() below — a multi-line array literal
+    // with nested __('...') calls inside @json(...)'s own argument list trips up Blade's
+    // directive-argument parser (it stops at an inner call's closing paren instead of the
+    // whole array's), silently truncating the compiled output and breaking the page with a
+    // PHP parse error. Passing a plain already-built variable sidesteps that entirely.
+    $regionFieldsI18n = [
+        'searchUni' => __('entity.search_uni_placeholder'),
+        'searchDaerah' => __('entity.search_daerah_placeholder'),
+        'waitingForUni' => __('accounts.waiting_for_uni'),
+        'waitingForDaerah' => __('entity.waiting_for_daerah'),
+        'searchOrCreateChurch' => __('entity.search_or_create_church_placeholder'),
+    ];
 @endphp
 
 <div class="mb-5">
@@ -76,13 +89,7 @@
     (function () {
         var conferencesByUnion = @json($conferences->groupBy('union_id')->map(fn ($group) => $group->map(fn ($c) => ['id' => $c->id, 'label' => $c->name])->values()));
         var churchesByConference = @json($churches->groupBy('conference_id')->map(fn ($group) => $group->map(fn ($c) => ['id' => $c->name, 'label' => $c->name])->values()));
-        var i18n = @json([
-            'searchUni' => __('entity.search_uni_placeholder'),
-            'searchDaerah' => __('entity.search_daerah_placeholder'),
-            'waitingForUni' => __('accounts.waiting_for_uni'),
-            'waitingForDaerah' => __('entity.waiting_for_daerah'),
-            'searchOrCreateChurch' => __('entity.search_or_create_church_placeholder'),
-        ]);
+        var i18n = @json($regionFieldsI18n);
 
         var unionWrapper = document.querySelector('[data-region-union]');
         var conferenceWrapper = document.querySelector('[data-region-conference]');

@@ -87,19 +87,32 @@ class CompleteProfileController extends Controller
             return $existing;
         }
 
-        $slug = Str::slug($name);
-        $original = $slug;
+        $original = Str::slug($name);
+        $slug = $original;
         $i = 1;
-        while (Church::where('slug', $slug)->exists()) {
-            $slug = "{$original}-{$i}";
-            $i++;
+
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            while (Church::where('slug', $slug)->exists()) {
+                $slug = "{$original}-{$i}";
+                $i++;
+            }
+
+            try {
+                return Church::create([
+                    'conference_id' => $conferenceId,
+                    'name' => trim($name),
+                    'slug' => $slug,
+                    'is_active' => true,
+                ]);
+            } catch (\Illuminate\Database\UniqueConstraintViolationException) {
+                // Another request created a church with this exact slug between our check
+                // above and this insert (e.g. two people completing profiles for the same
+                // new church at once) — recompute against the now-current state and retry.
+                $slug = "{$original}-{$i}";
+                $i++;
+            }
         }
 
-        return Church::create([
-            'conference_id' => $conferenceId,
-            'name' => trim($name),
-            'slug' => $slug,
-            'is_active' => true,
-        ]);
+        throw new \RuntimeException('Could not generate a unique church slug after 5 attempts.');
     }
 }

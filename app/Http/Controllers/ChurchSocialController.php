@@ -149,12 +149,30 @@ class ChurchSocialController extends Controller
     public function store(Request $request, Church $church): RedirectResponse
     {
         $data = $this->validated($request, false, $church->id, null, null);
+        $social = $this->createOrReactivate($church, $data);
 
-        // A deactivated ("deleted" — see destroy() below) row already occupying this exact
-        // slot gets reactivated instead of a new row being inserted: same row, so its history
-        // (ChurchStat) picks back up rather than the "historical data stays saved" promise on
-        // delete quietly breaking the moment the same handle is re-added. validated()'s
-        // Rule::unique already lets this exact case through (is_active-filtered on create).
+        // Deliberately no immediate fetch dispatch here, per the user's explicit call — a
+        // newly-added account waits for the weekly schedule (see routes/console.php) or an
+        // admin manually refreshing it, rather than pulling Apify data the moment it's typed
+        // in (which was burning API calls on accounts that often turned out mistyped anyway).
+        return redirect()->route('churches.socials.index', $church)->with('status', __('entity.social_created', ['handle' => $social->display_handle]));
+    }
+
+    /**
+     * A deactivated ("deleted" — see destroy() below) row already occupying this exact slot
+     * gets reactivated instead of a new row being inserted: same row, so its history
+     * (ChurchStat) picks back up rather than the "historical data stays saved" promise on
+     * delete quietly breaking the moment the same handle is re-added. validated()'s Rule::unique
+     * already lets this exact case through (is_active-filtered on create) — but that's a
+     * check-then-act gap: two near-simultaneous submits (a double-click, a retried failed
+     * request) can both pass validation before either commits, so the second create() here can
+     * still race into the unique constraint — confirmed happening in production logs. Catching
+     * that and resolving it the same way validated() would have (reactivate if the racing
+     * request deactivated it, otherwise report it as a duplicate) keeps this a normal
+     * redirect/validation error instead of a raw 500.
+     */
+    private function createOrReactivate(Church $church, array $data): ChurchSocial
+    {
         $existing = $church->socials()
             ->where('platform', $data['platform'])->where('category', $data['category'])
             ->where('handle', $data['handle'])->where('is_active', false)
@@ -162,16 +180,28 @@ class ChurchSocialController extends Controller
 
         if ($existing) {
             $existing->update($data + ['is_active' => true]);
-            $social = $existing;
-        } else {
-            $social = $church->socials()->create($data);
+
+            return $existing;
         }
 
-        // Deliberately no immediate fetch dispatch here, per the user's explicit call — a
-        // newly-added account waits for the weekly schedule (see routes/console.php) or an
-        // admin manually refreshing it, rather than pulling Apify data the moment it's typed
-        // in (which was burning API calls on accounts that often turned out mistyped anyway).
-        return redirect()->route('churches.socials.index', $church)->with('status', __('entity.social_created', ['handle' => $social->display_handle]));
+        try {
+            return $church->socials()->create($data);
+        } catch (\Illuminate\Database\UniqueConstraintViolationException) {
+            $racedRow = $church->socials()
+                ->where('platform', $data['platform'])->where('category', $data['category'])
+                ->where('handle', $data['handle'])
+                ->first();
+
+            if ($racedRow && ! $racedRow->is_active) {
+                $racedRow->update($data + ['is_active' => true]);
+
+                return $racedRow;
+            }
+
+            throw ValidationException::withMessages([
+                'platform' => 'Akun dengan handle yang sama untuk platform ini sudah ada.',
+            ]);
+        }
     }
 
     /**
