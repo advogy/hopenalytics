@@ -69,6 +69,9 @@ class PersonSocialController extends Controller
                 'required',
                 'string',
                 'in:'.implode(',', array_column(SocialPlatform::cases(), 'value')),
+                // No is_active filter — the DB's unique index on (person_id, platform,
+                // category, handle) doesn't have one either, so this must match it exactly to
+                // avoid trading a clean validation message for a raw SQL 1062 crash on insert.
                 Rule::unique('church_socials', 'platform')
                     ->where(fn ($query) => $query->where('person_id', $personId)->where('category', 'personal')->where('handle', $handle)),
             ],
@@ -101,6 +104,7 @@ class PersonSocialController extends Controller
 
         $duplicate = ChurchSocial::query()
             ->where('platform', $platform)
+            ->where('is_active', true)
             ->where(function ($q) use ($normalizedHandle, $normalizedUrl) {
                 $q->whereRaw('LOWER(handle) = ?', [$normalizedHandle]);
                 $q->when($normalizedUrl !== null, fn ($q2) => $q2->orWhereRaw('LOWER(profile_url) LIKE ?', ["%{$normalizedUrl}%"]));

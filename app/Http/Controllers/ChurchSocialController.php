@@ -36,6 +36,7 @@ class ChurchSocialController extends Controller
 
         $matches = ChurchSocial::query()
             ->where('platform', $platform)
+            ->where('is_active', true)
             ->when($request->query('exclude_id'), fn ($q, $id) => $q->whereKeyNot($id))
             ->where(function ($q) use ($handle, $normalizedUrl) {
                 $q->when($handle !== '', fn ($q2) => $q2->whereRaw('LOWER(handle) = ?', [$handle]));
@@ -93,7 +94,9 @@ class ChurchSocialController extends Controller
      * validated()/validatedOrganization() only ever catches the exact same owner+category+handle
      * combination, so a handle already tracked under a *different* church/person/institution/
      * union/conference would otherwise sail straight through. $ignoreId excludes the row being
-     * edited so saving an unchanged account doesn't trip over itself.
+     * edited so saving an unchanged account doesn't trip over itself. is_active = true only —
+     * "delete" (see social-account-row.blade.php) just deactivates a row rather than removing
+     * it, so a deactivated handle must be re-addable, not permanently blocked by its own ghost.
      */
     private function assertHandleNotAlreadyTracked(string $platform, string $handle, ?string $profileUrl, ?int $ignoreId): void
     {
@@ -102,6 +105,7 @@ class ChurchSocialController extends Controller
 
         $duplicate = ChurchSocial::query()
             ->where('platform', $platform)
+            ->where('is_active', true)
             ->when($ignoreId, fn ($q, $id) => $q->whereKeyNot($id))
             ->where(function ($q) use ($normalizedHandle, $normalizedUrl) {
                 $q->whereRaw('LOWER(handle) = ?', [$normalizedHandle]);
@@ -238,6 +242,10 @@ class ChurchSocialController extends Controller
                 'required',
                 'string',
                 'in:'.implode(',', array_column(SocialPlatform::cases(), 'value')),
+                // No is_active filter here (unlike assertHandleNotAlreadyTracked() below) —
+                // the DB has a hard unique index on this same (owner, category, handle) tuple
+                // regardless of is_active, so letting a deactivated row's handle through here
+                // would just trade this validation message for a raw SQL 1062 crash on insert.
                 Rule::unique('church_socials', 'platform')
                     ->where(function ($query) use ($churchId, $personId, $category, $handle) {
                         $query->where('category', $category)->where('handle', $handle);
@@ -290,6 +298,8 @@ class ChurchSocialController extends Controller
                 'required',
                 'string',
                 'in:'.implode(',', array_column(SocialPlatform::cases(), 'value')),
+                // See validated()'s same comment above — no is_active filter, the DB unique
+                // index doesn't have one either.
                 Rule::unique('church_socials', 'platform')
                     ->where(fn ($query) => $query->where($ownerColumn, $ownerId)->where('category', 'organisasi')->where('handle', $handle))
                     ->ignore($ignoreId),

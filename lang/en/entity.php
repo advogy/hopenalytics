@@ -37,6 +37,19 @@ return [
     'manual_stat_link' => 'Enter data manually',
     'stat_date' => 'Recorded date',
 
+    // Superadmin-only: edit/delete an individual historical data point (see
+    // SocialStatController::history()/editStat()/update()/destroy(), gated by
+    // can:manage-social-history).
+    'manage_history_title' => 'Manage data history',
+    'history_manage_title' => 'Manage Data History',
+    'edit_stat_title' => 'Edit Historical Data',
+    'back_to_history' => 'Back to history',
+    'add_stat' => '+ Add Data',
+    'delete_stat_confirm' => 'Delete the :date entry? This cannot be undone.',
+    'manual_stat_updated' => 'Historical data for :handle updated successfully.',
+    'manual_stat_deleted' => 'Historical data entry deleted.',
+    'stat_date_taken' => 'This account already has an entry for that date — pick a different date or edit the existing entry instead.',
+
     'title_edit_church' => 'Edit Church',
     'title_add_church' => 'Add Church',
     'church_name' => 'Church Name',

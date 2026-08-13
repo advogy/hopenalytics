@@ -143,6 +143,11 @@ Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group
     Route::get('/socials/{social}/edit', [ChurchSocialController::class, 'edit'])->name('socials.edit')->middleware('can:update,social');
     Route::get('/socials/{social}/stats/create', [SocialStatController::class, 'create'])->name('socials.stats.create')->middleware('can:update,social');
     Route::post('/socials/{social}/stats', [SocialStatController::class, 'store'])->name('socials.stats.store')->middleware('can:update,social');
+
+    Route::get('/socials/{social}/history', [SocialStatController::class, 'history'])->name('socials.history.index')->middleware('can:manage-social-history');
+    Route::get('/socials/stats/{stat}/edit', [SocialStatController::class, 'editStat'])->name('socials.stats.edit')->middleware('can:manage-social-history');
+    Route::put('/socials/stats/{stat}', [SocialStatController::class, 'update'])->name('socials.stats.update')->middleware('can:manage-social-history');
+    Route::delete('/socials/stats/{stat}', [SocialStatController::class, 'destroy'])->name('socials.stats.destroy')->middleware('can:manage-social-history');
     Route::put('/socials/{social}', [ChurchSocialController::class, 'update'])->name('socials.update')->middleware('can:update,social');
     Route::delete('/socials/{social}', [ChurchSocialController::class, 'destroy'])->name('socials.destroy')->middleware('can:update,social');
 

@@ -39,6 +39,19 @@ return [
     'manual_stat_link' => 'Input data manual',
     'stat_date' => 'Tanggal pencatatan',
 
+    // Superadmin-only: edit/delete an individual historical data point (see
+    // SocialStatController::history()/editStat()/update()/destroy(), gated by
+    // can:manage-social-history).
+    'manage_history_title' => 'Kelola riwayat data',
+    'history_manage_title' => 'Kelola Riwayat Data',
+    'edit_stat_title' => 'Edit Data Historis',
+    'back_to_history' => 'Kembali ke riwayat',
+    'add_stat' => '+ Tambah Data',
+    'delete_stat_confirm' => 'Hapus data tanggal :date? Tindakan ini tidak bisa dibatalkan.',
+    'manual_stat_updated' => 'Data historis untuk :handle berhasil diperbarui.',
+    'manual_stat_deleted' => 'Data historis berhasil dihapus.',
+    'stat_date_taken' => 'Sudah ada data tercatat untuk tanggal ini — pilih tanggal lain atau edit data yang sudah ada.',
+
     'title_edit_church' => 'Edit Gereja',
     'title_add_church' => 'Tambah Gereja',
     'church_name' => 'Nama Gereja',

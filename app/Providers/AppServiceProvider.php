@@ -198,5 +198,13 @@ class AppServiceProvider extends ServiceProvider
         // untuk superadmin saja dulu") — not even Admin Nasional, unlike most other
         // nasional-level gates in this file.
         Gate::define('view-audit-log', fn (User $user) => $user->role === UserRole::SuperAdmin);
+
+        // Editing/deleting an individual historical data point (ChurchStat row) rewrites a
+        // church/person/organization's recorded growth numbers directly — Superadmin-only, same
+        // threshold as view-audit-log above, per the user's explicit call ("untuk superadmin").
+        // Adding a NEW data point (socials.stats.create/store) stays open to anyone who can
+        // manage the account (can:update,social) — this gate only covers correcting/removing
+        // one that's already recorded.
+        Gate::define('manage-social-history', fn (User $user) => $user->role === UserRole::SuperAdmin);
     }
 }

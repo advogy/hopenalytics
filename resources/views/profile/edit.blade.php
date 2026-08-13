@@ -106,11 +106,12 @@
                 </a>
             </div>
 
-            @if ($person->socials->isEmpty())
+            @php $activeSocials = $person->socials->where('is_active', true); @endphp
+            @if ($activeSocials->isEmpty())
                 <p class="py-6 text-center text-sm text-slate-400 dark:text-slate-500">{{ __('entity.no_socials') }}</p>
             @else
                 <ul class="-mx-6 divide-y divide-slate-100 dark:divide-slate-800">
-                    @foreach ($person->socials as $social)
+                    @foreach ($activeSocials as $social)
                         <x-social-account-row :social="$social" padding="px-6 py-3" />
                     @endforeach
                 </ul>

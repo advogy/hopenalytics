@@ -2,40 +2,49 @@
     $platformLabels = ['youtube' => 'YouTube', 'instagram' => 'Instagram', 'tiktok' => 'TikTok', 'facebook' => 'Facebook'];
     $isYoutube = $social->platform->value === 'youtube';
     $isFacebook = $social->platform->value === 'facebook';
-    [$backRouteName, $owner] = $social->showRoute();
-    $backRoute = route($backRouteName, $owner);
+    $editing ??= null;
+
+    if ($editing) {
+        $backRoute = route('socials.history.index', $social);
+        $backLabel = __('entity.back_to_history');
+    } else {
+        [$backRouteName, $owner] = $social->showRoute();
+        $backRoute = route($backRouteName, $owner);
+        $backLabel = __('entity.back_to', ['name' => $owner->name]);
+    }
 @endphp
 
 @extends('layouts.app')
 
-@section('title', __('entity.manual_stat_title') . ' — ' . $social->display_handle)
+@section('title', ($editing ? __('entity.edit_stat_title') : __('entity.manual_stat_title')) . ' — ' . $social->display_handle)
 
 @section('content')
     <a href="{{ $backRoute }}" class="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
-        &larr; {{ __('entity.back_to', ['name' => $owner->name]) }}
+        &larr; {{ $backLabel }}
     </a>
 
     <div class="mb-8 flex items-center gap-3">
         <x-platform-icon :platform="$social->platform" class="h-10 w-10 shrink-0 text-lg" />
         <div>
-            <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{{ __('entity.manual_stat_title') }}</h1>
+            <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{{ $editing ? __('entity.edit_stat_title') : __('entity.manual_stat_title') }}</h1>
             <p class="text-slate-500 dark:text-slate-400">{{ $platformLabels[$social->platform->value] }} &middot; {{ $social->display_handle }}</p>
         </div>
     </div>
 
     <form
         method="POST"
-        action="{{ route('socials.stats.store', $social) }}"
+        action="{{ $editing ? route('socials.stats.update', $editing) : route('socials.stats.store', $social) }}"
         class="max-w-lg rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/5 dark:bg-slate-900"
     >
         @csrf
+        @if ($editing) @method('PUT') @endif
 
         <x-form-field
             name="recorded_at"
             :label="__('entity.stat_date')"
             type="date"
             required
-            :value="old('recorded_at', now()->toDateString())"
+            :value="old('recorded_at', $editing ? $editing->recorded_at->toDateString() : now()->toDateString())"
         />
 
         <x-form-field

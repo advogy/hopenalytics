@@ -111,6 +111,8 @@ class OrganizationSocialController extends Controller
                 'required',
                 'string',
                 'in:'.implode(',', array_column(SocialPlatform::cases(), 'value')),
+                // No is_active filter — see ChurchSocialController::validatedOrganization()'s
+                // same comment; the DB's unique index doesn't have one either.
                 Rule::unique('church_socials', 'platform')
                     ->where(fn ($query) => $query->where($ownerColumn, $ownerId)->where('category', 'organisasi')->where('handle', $handle))
                     ->ignore($ignoreId),
@@ -144,6 +146,7 @@ class OrganizationSocialController extends Controller
 
         $duplicate = ChurchSocial::query()
             ->where('platform', $platform)
+            ->where('is_active', true)
             ->when($ignoreId, fn ($q, $id) => $q->whereKeyNot($id))
             ->where(function ($q) use ($normalizedHandle, $normalizedUrl) {
                 $q->whereRaw('LOWER(handle) = ?', [$normalizedHandle]);

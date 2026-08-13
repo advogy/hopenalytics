@@ -26,6 +26,15 @@
     </div>
 
     <div class="flex shrink-0 items-center gap-1">
+        @can('manage-social-history')
+            <a
+                href="{{ route('socials.history.index', $social) }}"
+                title="{{ __('entity.manage_history_title') }}"
+                class="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-blue-600 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-blue-400"
+            >
+                <x-icon name="clock" class="h-4 w-4" />
+            </a>
+        @endcan
         <a
             href="{{ route('socials.edit', $social) }}"
             title="{{ __('entity.edit_account_title') }}"

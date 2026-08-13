@@ -6,6 +6,11 @@
 @props(['socials', 'groupByCategory' => false])
 
 @php
+    // "Delete" (see x-social-account-row) only ever deactivates a social account (is_active =
+    // false) — data stays for history, per its own confirm text — so this list must filter it
+    // out itself, otherwise a "deleted" account just sits there unchanged and deleting looks
+    // like it did nothing.
+    $socials = $socials->where('is_active', true)->values();
     $categoryLabels = ['gereja' => __('directory.church_accounts'), 'umum' => __('directory.general_accounts')];
 @endphp
 
