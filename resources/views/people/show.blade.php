@@ -43,7 +43,13 @@
     @endif
 
     @if ($person->socials->isNotEmpty())
-        <x-growth-score-summary :score-history="$scoreHistory" />
+        <x-growth-score-summary
+            :score-history="$scoreHistory"
+            :score-metrics="$scoreMetrics"
+            :score-breakdown="$scoreBreakdown"
+            :score-sample-count="$scoreSampleCount"
+            :score-sample-sum="$scoreSampleSum"
+        />
     @endif
 
     <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">

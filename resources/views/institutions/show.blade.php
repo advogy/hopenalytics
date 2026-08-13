@@ -63,7 +63,14 @@
     @endif
 
     @if ($institution->socials->isNotEmpty())
-        <x-growth-score-summary :score-history="$scoreHistory" :anchored="true" />
+        <x-growth-score-summary
+            :score-history="$scoreHistory"
+            :score-metrics="$scoreMetrics"
+            :score-breakdown="$scoreBreakdown"
+            :score-sample-count="$scoreSampleCount"
+            :score-sample-sum="$scoreSampleSum"
+            :anchored="true"
+        />
 
         <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             @foreach ($institution->socials as $social)

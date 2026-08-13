@@ -34,12 +34,16 @@ class PersonController extends Controller
             fn ($social) => [$social->id => $social->stats()->limit(30)->get()]
         );
 
-        $scoreHistory = $this->growthScoreHistory($person->socials);
+        $growthScore = $this->growthScoreHistory($person->socials);
 
         return view('people.show', [
             'person' => $person,
             'history' => $history,
-            'scoreHistory' => $scoreHistory,
+            'scoreHistory' => $growthScore['history'],
+            'scoreMetrics' => $growthScore['metrics'],
+            'scoreBreakdown' => $growthScore['breakdown'],
+            'scoreSampleCount' => $growthScore['sampleCount'],
+            'scoreSampleSum' => $growthScore['sampleSum'],
         ]);
     }
 

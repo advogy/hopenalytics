@@ -793,7 +793,12 @@ trait BuildsLeaderboards
             ->map(function (Collection $entries) {
                 $church = $entries->first()['church'];
 
-                $allPercents = $entries->flatMap(fn ($entry) => $entry['metrics'])->values();
+                // array_values() strips each entry's metric-name keys ('reach', 'views', ...)
+                // before flattening — flatMap()'s underlying collapse() merges same-keyed
+                // arrays with array_merge semantics, which would otherwise silently keep only
+                // the LAST account's value for each metric name and discard the rest instead of
+                // treating every (metric, account) percent as its own independent sample.
+                $allPercents = $entries->flatMap(fn ($entry) => array_values($entry['metrics']))->values();
 
                 $byMetric = collect(['reach', 'views', 'likes', 'posts'])->mapWithKeys(function ($metric) use ($entries) {
                     $values = $entries->pluck("metrics.{$metric}")->filter(fn ($v) => $v !== null);
@@ -908,7 +913,12 @@ trait BuildsLeaderboards
             ->map(function (Collection $entries) {
                 $person = $entries->first()['person'];
 
-                $allPercents = $entries->flatMap(fn ($entry) => $entry['metrics'])->values();
+                // array_values() strips each entry's metric-name keys ('reach', 'views', ...)
+                // before flattening — flatMap()'s underlying collapse() merges same-keyed
+                // arrays with array_merge semantics, which would otherwise silently keep only
+                // the LAST account's value for each metric name and discard the rest instead of
+                // treating every (metric, account) percent as its own independent sample.
+                $allPercents = $entries->flatMap(fn ($entry) => array_values($entry['metrics']))->values();
 
                 $byMetric = collect(['reach', 'views', 'likes', 'posts'])->mapWithKeys(function ($metric) use ($entries) {
                     $values = $entries->pluck("metrics.{$metric}")->filter(fn ($v) => $v !== null);
@@ -967,7 +977,12 @@ trait BuildsLeaderboards
             ->map(function (Collection $entries) {
                 $institution = $entries->first()['institution'];
 
-                $allPercents = $entries->flatMap(fn ($entry) => $entry['metrics'])->values();
+                // array_values() strips each entry's metric-name keys ('reach', 'views', ...)
+                // before flattening — flatMap()'s underlying collapse() merges same-keyed
+                // arrays with array_merge semantics, which would otherwise silently keep only
+                // the LAST account's value for each metric name and discard the rest instead of
+                // treating every (metric, account) percent as its own independent sample.
+                $allPercents = $entries->flatMap(fn ($entry) => array_values($entry['metrics']))->values();
 
                 $byMetric = collect(['reach', 'views', 'likes', 'posts'])->mapWithKeys(function ($metric) use ($entries) {
                     $values = $entries->pluck("metrics.{$metric}")->filter(fn ($v) => $v !== null);
@@ -1030,7 +1045,12 @@ trait BuildsLeaderboards
             ->map(function (Collection $entries) {
                 $organization = $entries->first()['organization'];
 
-                $allPercents = $entries->flatMap(fn ($entry) => $entry['metrics'])->values();
+                // array_values() strips each entry's metric-name keys ('reach', 'views', ...)
+                // before flattening — flatMap()'s underlying collapse() merges same-keyed
+                // arrays with array_merge semantics, which would otherwise silently keep only
+                // the LAST account's value for each metric name and discard the rest instead of
+                // treating every (metric, account) percent as its own independent sample.
+                $allPercents = $entries->flatMap(fn ($entry) => array_values($entry['metrics']))->values();
 
                 $byMetric = collect(['reach', 'views', 'likes', 'posts'])->mapWithKeys(function ($metric) use ($entries) {
                     $values = $entries->pluck("metrics.{$metric}")->filter(fn ($v) => $v !== null);
@@ -1055,59 +1075,125 @@ trait BuildsLeaderboards
      * week-transition (oldest first) — for a sparkline showing the score trend,
      * unlike growthScoreRows()/growthScoreRowsPersonal() which only look at the
      * latest transition across every entity at once.
+     *
+     * Each account is compared against its OWN record sequence (step 0 = its own latest vs.
+     * second-latest stat row, step 1 = the pair before that, etc.) — the same "own latest two"
+     * comparison growthScoreRows() uses for the current score, just generalized across more
+     * steps back in time. This used to instead align every account to a shared set of calendar
+     * dates (the union of every account's recorded_at dates), which silently dropped or
+     * misaligned any account whose fetch cadence didn't land on the same day as the others
+     * (YouTube's own API vs. Apify-scraped platforms, retries, backfills, etc.) — that's why
+     * this history's most recent point could disagree with growthScoreRows()'s dashboard
+     * number for the exact same entity. Comparing each account against itself removes that
+     * dependency on shared dates entirely, so the two are always consistent.
+     *
+     * @return array{history: array<int, float>, metrics: array<string, float|null>, breakdown: array, sampleCount: int, sampleSum: float}
+     *   'history' is the sparkline series (oldest first). 'metrics' is the same reach/views/
+     *   likes/posts breakdown growthScoreRows()' own 'metrics' key exposes, but for just this
+     *   entity's latest transition — same per-metric averaging, so the number shown here next
+     *   to "Skor Pertumbuhan Mingguan" always agrees with what the dashboard leaderboard shows
+     *   for this same entity. 'breakdown'/'sampleCount'/'sampleSum' are the underlying per-
+     *   account samples behind the latest transition — for the "how was this calculated"
+     *   drill-down (see components/growth-score-summary.blade.php's modal), not used by the
+     *   card itself.
      */
     protected function growthScoreHistory(Collection $socials, int $limit = 8): array
     {
+        $empty = ['history' => [], 'metrics' => [], 'breakdown' => [], 'sampleCount' => 0, 'sampleSum' => 0.0];
+
         if ($socials->isEmpty()) {
-            return [];
+            return $empty;
         }
 
-        $metrics = ['reach', 'views', 'likes', 'posts'];
+        $metricNames = ['reach', 'views', 'likes', 'posts'];
+        $platformLabels = ['youtube' => 'YouTube', 'instagram' => 'Instagram', 'tiktok' => 'TikTok', 'facebook' => 'Facebook', 'x' => 'X'];
 
         $statsBySocial = $socials->mapWithKeys(fn ($social) => [
-            $social->id => $social->stats()->orderBy('recorded_at')->get()->keyBy(fn ($s) => $s->recorded_at->toDateString()),
+            $social->id => $social->stats()->limit($limit + 1)->get(),
         ]);
 
-        $allDates = $statsBySocial->flatMap(fn ($stats) => $stats->keys())->unique()->sort()->values();
+        $steps = min($statsBySocial->max(fn ($stats) => max($stats->count() - 1, 0)), $limit);
 
-        if ($allDates->count() < 2) {
-            return [];
+        if ($steps < 1) {
+            return $empty;
         }
 
-        $scores = [];
+        $scoresByStep = [];
+        $percentsByStepAndMetric = [];
+        $breakdown = [];
+        $sampleCount = 0;
+        $sampleSum = 0.0;
 
-        for ($i = 1; $i < $allDates->count(); $i++) {
-            $previousDate = $allDates[$i - 1];
-            $currentDate = $allDates[$i];
+        for ($step = 0; $step < $steps; $step++) {
             $percents = [];
 
-            foreach ($metrics as $metric) {
+            foreach ($metricNames as $metric) {
                 [$applicableSocials, $fieldResolver] = $this->metricDefinition($metric, $socials);
 
                 foreach ($applicableSocials as $social) {
                     $stats = $statsBySocial[$social->id];
 
-                    if (! $stats->has($previousDate) || ! $stats->has($currentDate)) {
+                    if ($stats->count() < $step + 2) {
                         continue;
                     }
 
                     $field = $fieldResolver($social);
-                    $previous = $stats[$previousDate]->{$field} ?? 0;
-                    $current = $stats[$currentDate]->{$field} ?? 0;
+                    $current = $stats[$step]->{$field} ?? 0;
+                    $previous = $stats[$step + 1]->{$field} ?? 0;
 
                     if ($previous <= 0) {
                         continue;
                     }
 
-                    $percents[] = (($current - $previous) / $previous) * 100;
+                    // Rounded immediately (matching growthScoreRows()'s own per-sample
+                    // rounding) and that rounded value is what's summed/averaged from here on
+                    // — so the modal's displayed samples always sum to exactly the displayed
+                    // final score, with no "why doesn't the math add up" floating-point gap.
+                    $pct = round((($current - $previous) / $previous) * 100, 2);
+                    $percents[] = $pct;
+                    $percentsByStepAndMetric[$step][$metric][] = $pct;
+
+                    // Only the latest transition (step 0) is what the card/modal actually
+                    // shows — the deeper history steps only ever feed the sparkline.
+                    if ($step === 0) {
+                        $breakdown[$metric][] = [
+                            'label' => ($platformLabels[$social->platform->value] ?? $social->platform->value).' · '.$social->display_handle,
+                            'previous' => $previous,
+                            'current' => $current,
+                            'percent' => $pct,
+                        ];
+                        $sampleCount++;
+                        $sampleSum += $pct;
+                    }
                 }
             }
 
             if (! empty($percents)) {
-                $scores[] = round(array_sum($percents) / count($percents), 2);
+                $scoresByStep[$step] = round(array_sum($percents) / count($percents), 2);
             }
         }
 
-        return array_slice($scores, -$limit);
+        // Built newest-first above (step 0 = latest transition) to mirror growthScoreRows();
+        // reversed here since the sparkline reads oldest-first. Steps with no data are simply
+        // absent rather than null, same compacting behavior as before.
+        $history = collect(range($steps - 1, 0))
+            ->filter(fn ($step) => array_key_exists($step, $scoresByStep))
+            ->map(fn ($step) => $scoresByStep[$step])
+            ->values()
+            ->all();
+
+        $currentMetrics = collect($metricNames)->mapWithKeys(function ($metric) use ($percentsByStepAndMetric) {
+            $values = $percentsByStepAndMetric[0][$metric] ?? [];
+
+            return [$metric => empty($values) ? null : round(array_sum($values) / count($values), 2)];
+        })->all();
+
+        return [
+            'history' => $history,
+            'metrics' => $currentMetrics,
+            'breakdown' => $breakdown,
+            'sampleCount' => $sampleCount,
+            'sampleSum' => round($sampleSum, 2),
+        ];
     }
 }

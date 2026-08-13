@@ -98,7 +98,9 @@
 </div>
 
 @if (auth()->user()?->role !== null)
-    <div class="mt-6 rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/5 dark:bg-slate-900">
+    {{-- Anchor target for growth-score-summary.blade.php's "learn more" link on every
+         church/institution/union/conference/person page. --}}
+    <div id="cara-hitung-skor" class="mt-6 scroll-mt-20 rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/5 dark:bg-slate-900">
         <h2 class="mb-1 text-lg font-bold text-slate-900 dark:text-white">{{ __('about.score_title') }}</h2>
         <p class="mb-6 text-sm text-slate-500 dark:text-slate-400">{{ __('about.score_intro') }}</p>
 
@@ -113,9 +115,11 @@
             </div>
         </div>
 
-        <div class="mb-6 rounded-xl bg-slate-50 p-4 dark:bg-slate-800/60">
-            <p class="mb-1 text-sm font-medium text-slate-900 dark:text-white">{{ __('about.score_example_title') }}</p>
-            <p class="text-sm text-slate-600 dark:text-slate-300">{{ __('about.score_example_desc') }}</p>
+        <div class="mb-6 space-y-3 rounded-xl bg-slate-50 p-4 dark:bg-slate-800/60">
+            <p class="text-sm font-medium text-slate-900 dark:text-white">{{ __('about.score_example_title') }}</p>
+            <p class="text-sm text-slate-600 dark:text-slate-300">{{ __('about.score_example_a_desc') }}</p>
+            <p class="text-sm text-slate-600 dark:text-slate-300">{{ __('about.score_example_b_desc') }}</p>
+            <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('about.score_example_hint') }}</p>
         </div>
 
         <div class="grid gap-5 sm:grid-cols-2">

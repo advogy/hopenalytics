@@ -81,7 +81,14 @@
     @endif
 
     @if ($church->socials->isNotEmpty())
-        <x-growth-score-summary :score-history="$scoreHistory" :anchored="true" />
+        <x-growth-score-summary
+            :score-history="$scoreHistory"
+            :score-metrics="$scoreMetrics"
+            :score-breakdown="$scoreBreakdown"
+            :score-sample-count="$scoreSampleCount"
+            :score-sample-sum="$scoreSampleSum"
+            :anchored="true"
+        />
     @endif
 
     @foreach (['gereja', 'umum'] as $category)

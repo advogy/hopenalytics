@@ -1867,7 +1867,7 @@ class ChurchDashboardController extends Controller
             fn ($social) => [$social->id => $social->stats()->limit(30)->get()]
         );
 
-        $scoreHistory = $this->growthScoreHistory($church->socials);
+        $growthScore = $this->growthScoreHistory($church->socials);
 
         // Only a gereja-level viewer gets these — their own dashboard stat cards now show
         // their whole Daerah/Konferens (per the user's explicit call), so this is the one
@@ -1896,7 +1896,11 @@ class ChurchDashboardController extends Controller
         return view('churches.show', [
             'church' => $church,
             'history' => $history,
-            'scoreHistory' => $scoreHistory,
+            'scoreHistory' => $growthScore['history'],
+            'scoreMetrics' => $growthScore['metrics'],
+            'scoreBreakdown' => $growthScore['breakdown'],
+            'scoreSampleCount' => $growthScore['sampleCount'],
+            'scoreSampleSum' => $growthScore['sampleSum'],
             'ownStats' => $ownStats,
         ]);
     }
@@ -1909,7 +1913,7 @@ class ChurchDashboardController extends Controller
             fn ($social) => [$social->id => $social->stats()->limit(30)->get()]
         );
 
-        $scoreHistory = $this->growthScoreHistory($institution->socials);
+        $growthScore = $this->growthScoreHistory($institution->socials);
 
         // Only the admin_institusi actually bound to THIS institution gets these — same
         // reasoning as churches.show's $ownStats (see show() above), minus the personal-accounts
@@ -1931,7 +1935,11 @@ class ChurchDashboardController extends Controller
         return view('institutions.show', [
             'institution' => $institution,
             'history' => $history,
-            'scoreHistory' => $scoreHistory,
+            'scoreHistory' => $growthScore['history'],
+            'scoreMetrics' => $growthScore['metrics'],
+            'scoreBreakdown' => $growthScore['breakdown'],
+            'scoreSampleCount' => $growthScore['sampleCount'],
+            'scoreSampleSum' => $growthScore['sampleSum'],
             'ownStats' => $ownStats,
         ]);
     }
@@ -1949,12 +1957,16 @@ class ChurchDashboardController extends Controller
             fn ($social) => [$social->id => $social->stats()->limit(30)->get()]
         );
 
-        $scoreHistory = $this->growthScoreHistory($union->socials);
+        $growthScore = $this->growthScoreHistory($union->socials);
 
         return view('organizations.show', [
             'organization' => $union,
             'history' => $history,
-            'scoreHistory' => $scoreHistory,
+            'scoreHistory' => $growthScore['history'],
+            'scoreMetrics' => $growthScore['metrics'],
+            'scoreBreakdown' => $growthScore['breakdown'],
+            'scoreSampleCount' => $growthScore['sampleCount'],
+            'scoreSampleSum' => $growthScore['sampleSum'],
         ]);
     }
 
@@ -1967,12 +1979,16 @@ class ChurchDashboardController extends Controller
             fn ($social) => [$social->id => $social->stats()->limit(30)->get()]
         );
 
-        $scoreHistory = $this->growthScoreHistory($conference->socials);
+        $growthScore = $this->growthScoreHistory($conference->socials);
 
         return view('organizations.show', [
             'organization' => $conference,
             'history' => $history,
-            'scoreHistory' => $scoreHistory,
+            'scoreHistory' => $growthScore['history'],
+            'scoreMetrics' => $growthScore['metrics'],
+            'scoreBreakdown' => $growthScore['breakdown'],
+            'scoreSampleCount' => $growthScore['sampleCount'],
+            'scoreSampleSum' => $growthScore['sampleSum'],
         ]);
     }
 }
