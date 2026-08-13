@@ -13,7 +13,11 @@
         'facebook' => ['recent_posts_count' => 'Posts'],
         'x' => ['following_count' => 'Following', 'posts_count' => 'Posts'],
     ];
-    [$backRouteName, $owner] = $social->showRoute();
+    // manageRoute(), not showRoute() — this is an admin-only management view (see docblock
+    // above), so "back" should return to where the account is managed (same place
+    // churches/social-form.blade.php's own back/cancel link goes), not to the entity's
+    // public-ish show page.
+    [$backRouteName, $owner] = $social->manageRoute();
 @endphp
 
 @extends('layouts.app')
