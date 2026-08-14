@@ -178,6 +178,7 @@
                                 :colspan="2"
                                 row-view="partials.directory-organization-row"
                                 row-key="organization"
+                                show-division-header
                             />
                         </tbody>
                     </table>
@@ -226,6 +227,7 @@
                                 :colspan="3"
                                 row-view="partials.directory-church-row"
                                 row-key="church"
+                                show-division-header
                             />
                         </tbody>
                     </table>
@@ -273,6 +275,7 @@
                                 :colspan="2"
                                 row-view="partials.directory-institution-row"
                                 row-key="institution"
+                                show-division-header
                             />
                         </tbody>
                     </table>
@@ -320,6 +323,7 @@
                                 :colspan="2"
                                 row-view="partials.directory-person-row"
                                 row-key="person"
+                                show-division-header
                             />
                         </tbody>
                     </table>

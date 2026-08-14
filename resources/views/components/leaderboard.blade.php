@@ -6,7 +6,7 @@
     for the shared row markup and components/analytics-group-row.blade.php + partials/analytics-
     group-toggle.blade.php for the group headers/click handling.
 --}}
-@props(['title', 'subtitle', 'rows', 'valueLabel', 'viewAllUrl' => null, 'exportUrl' => null, 'nameLabel' => null, 'groupedRows' => null, 'groupPrefix' => null, 'isNasionalView' => false])
+@props(['title', 'subtitle', 'rows', 'valueLabel', 'viewAllUrl' => null, 'exportUrl' => null, 'nameLabel' => null, 'groupedRows' => null, 'groupPrefix' => null, 'isNasionalView' => false, 'showDivisionHeader' => false])
 
 @php $nameLabel ??= __('common.name'); @endphp
 
@@ -54,6 +54,7 @@
                             row-view="partials.leaderboard-row"
                             row-key="row"
                             :show-union-header="$isNasionalView"
+                            :show-division-header="$showDivisionHeader"
                         />
                     @else
                         @foreach ($rows as $i => $row)

@@ -60,6 +60,7 @@
         :grouped-rows="$groupedScoreRows"
         group-prefix="church-metric"
         :is-nasional-view="$isNasionalView"
+        :show-division-header="$showDivisionHeader"
         :scope="$scope"
     />
 

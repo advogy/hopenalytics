@@ -9,6 +9,7 @@ use App\Models\Church;
 use App\Models\ChurchSocial;
 use App\Models\ChurchStat;
 use App\Models\Conference;
+use App\Models\Division;
 use App\Models\Goal;
 use App\Models\Hashtag;
 use App\Models\HashtagPost;
@@ -37,7 +38,7 @@ class ChurchDashboardController extends Controller
         $isGerejaLevel = auth()->user()->role?->level() === 'gereja';
 
         $churches = $this->analyticsChurchScope(Church::query()->where('is_active', true))
-            ->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat'), 'conference.union'])
+            ->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat'), 'conference.union.division'])
             ->orderBy('name')
             ->get();
 
@@ -46,6 +47,7 @@ class ChurchDashboardController extends Controller
         // Union — so this mirrors BuildsLeaderboards::regionEntityUnion()'s fallback chain
         // rather than reusing it (that one takes ChurchSocial-shaped rows, not these entities).
         $resolveUnion = fn ($entity) => $entity->conference?->union ?? $entity->union ?? null;
+        $resolveDivision = fn ($entity) => $resolveUnion($entity)?->division;
 
         // Church/Person/Institution each have their own direct conference() relation (unlike
         // resolveUnion() above, this needs no fallback chain — an entity is either attached to a
@@ -59,7 +61,7 @@ class ChurchDashboardController extends Controller
         $totalReachChurch = $allSocials->sum(fn ($social) => $social->latestStat?->{$reachCountField($social)} ?? 0);
 
         $mapChurchSource = $isGerejaLevel
-            ? Church::query()->where('is_active', true)->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat'), 'conference.union'])->get()
+            ? Church::query()->where('is_active', true)->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat'), 'conference.union.division'])->get()
             : $churches;
 
         // One batched query instead of ChurchPolicy::update()'s own per-church visibleTo() query
@@ -81,6 +83,8 @@ class ChurchDashboardController extends Controller
                 'lat' => $church->latitude,
                 'lng' => $church->longitude,
                 'reach' => $church->socials->sum(fn ($social) => $social->latestStat?->{$reachCountField($social)} ?? 0),
+                'divisionId' => $resolveDivision($church)?->id,
+                'divisionName' => $resolveDivision($church)?->name,
                 'unionId' => $resolveUnion($church)?->id,
                 'unionName' => $resolveUnion($church)?->name,
                 'conferenceId' => $resolveConference($church)?->id,
@@ -91,7 +95,7 @@ class ChurchDashboardController extends Controller
         $unmappedCount = $mapChurchSource->count() - $mapChurches->count();
 
         $people = $this->analyticsPersonScope(Person::query()->where('is_active', true))
-            ->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat'), 'conference.union', 'union'])
+            ->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat'), 'conference.union.division', 'union.division'])
             ->get();
 
         $personalSocials = $people->flatMap->socials;
@@ -99,7 +103,7 @@ class ChurchDashboardController extends Controller
         $totalReachPersonal = $personalSocials->sum(fn ($social) => $social->latestStat?->{$reachCountField($social)} ?? 0);
 
         $mapPeopleSource = $isGerejaLevel
-            ? Person::query()->where('is_active', true)->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat'), 'conference.union', 'union'])->get()
+            ? Person::query()->where('is_active', true)->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat'), 'conference.union.division', 'union.division'])->get()
             : $people;
 
         $mapPeople = $mapPeopleSource->filter(fn ($person) => $person->latitude !== null && $person->longitude !== null)
@@ -110,6 +114,8 @@ class ChurchDashboardController extends Controller
                 'lat' => $person->latitude,
                 'lng' => $person->longitude,
                 'reach' => $person->socials->sum(fn ($social) => $social->latestStat?->{$reachCountField($social)} ?? 0),
+                'divisionId' => $resolveDivision($person)?->id,
+                'divisionName' => $resolveDivision($person)?->name,
                 'unionId' => $resolveUnion($person)?->id,
                 'unionName' => $resolveUnion($person)?->name,
                 'conferenceId' => $resolveConference($person)?->id,
@@ -120,7 +126,7 @@ class ChurchDashboardController extends Controller
         $unmappedPeopleCount = $mapPeopleSource->count() - $mapPeople->count();
 
         $institutions = $this->analyticsInstitutionScope(Institution::query()->where('is_active', true))
-            ->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat'), 'conference.union', 'union'])
+            ->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat'), 'conference.union.division', 'union.division'])
             ->get();
 
         $institutionSocials = $institutions->flatMap->socials;
@@ -128,7 +134,7 @@ class ChurchDashboardController extends Controller
         $totalReachInstitution = $institutionSocials->sum(fn ($social) => $social->latestStat?->{$reachCountField($social)} ?? 0);
 
         $mapInstitutionSource = $isGerejaLevel
-            ? Institution::query()->where('is_active', true)->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat'), 'conference.union', 'union'])->get()
+            ? Institution::query()->where('is_active', true)->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat'), 'conference.union.division', 'union.division'])->get()
             : $institutions;
 
         $mapInstitutions = $mapInstitutionSource->filter(fn ($institution) => $institution->latitude !== null && $institution->longitude !== null)
@@ -139,6 +145,8 @@ class ChurchDashboardController extends Controller
                 'lat' => $institution->latitude,
                 'lng' => $institution->longitude,
                 'reach' => $institution->socials->sum(fn ($social) => $social->latestStat?->{$reachCountField($social)} ?? 0),
+                'divisionId' => $resolveDivision($institution)?->id,
+                'divisionName' => $resolveDivision($institution)?->name,
                 'unionId' => $resolveUnion($institution)?->id,
                 'unionName' => $resolveUnion($institution)?->name,
                 'conferenceId' => $resolveConference($institution)?->id,
@@ -169,6 +177,22 @@ class ChurchDashboardController extends Controller
                 'name' => $item['unionName'],
                 'officeLat' => $unionOffices[$item['unionId']]->latitude ?? null,
                 'officeLng' => $unionOffices[$item['unionId']]->longitude ?? null,
+            ]);
+
+        // The Divisi-level layer shown when the viewer is zoomed out furthest — a Union not yet
+        // placed under any Divisi (still common right after the Divisi feature ships) simply has
+        // no Divisi-tier representation, same "no catch-all bucket" principle as unionId above.
+        // Division has no latitude/longitude columns of its own (unlike Union/Conference), so
+        // there's no office marker for this tier — buildOfficeMarker() in the view already
+        // no-ops on a null officeLat/officeLng.
+        $mapDivisions = $mapOrganizationItems
+            ->filter(fn ($item) => $item['divisionId'] !== null)
+            ->unique('divisionId')
+            ->sortBy('divisionName')
+            ->values()
+            ->map(fn ($item) => [
+                'id' => $item['divisionId'],
+                'name' => $item['divisionName'],
             ]);
 
         $conferenceIds = $mapOrganizationItems->pluck('conferenceId')->filter()->unique();
@@ -371,6 +395,7 @@ class ChurchDashboardController extends Controller
             'totalPeople' => $people->count(),
             'totalInstitutions' => $institutions->count(),
             'weeklyGrowth' => $weeklyGrowth,
+            'mapDivisions' => $mapDivisions,
             'mapUnions' => $mapUnions,
             'mapConferences' => $mapConferences,
             'mapOrganizationCount' => $mapOrganizationItems->count(),
@@ -548,6 +573,7 @@ class ChurchDashboardController extends Controller
             'selectedUnionId' => $selectedUnionId,
             'selectedConferenceId' => $selectedConferenceId,
             'isNasionalView' => $this->isNasionalView(),
+            'showDivisionHeader' => $this->showsDivisionTier(),
             'isUniView' => $isUniView,
         ]);
     }
@@ -591,6 +617,7 @@ class ChurchDashboardController extends Controller
             'selectedUnionId' => $selectedUnionId,
             'selectedConferenceId' => $selectedConferenceId,
             'isNasionalView' => $this->isNasionalView(),
+            'showDivisionHeader' => $this->showsDivisionTier(),
             'isUniView' => $isUniView,
         ]);
     }
@@ -618,6 +645,7 @@ class ChurchDashboardController extends Controller
             'selectedUnionId' => $selectedUnionId,
             'selectedConferenceId' => $selectedConferenceId,
             'isNasionalView' => $isNasionalView,
+            'showDivisionHeader' => $this->showsDivisionTier(),
             'isUniView' => $isUniView,
         ];
 
@@ -712,6 +740,7 @@ class ChurchDashboardController extends Controller
             'selectedUnionId' => $selectedUnionId,
             'selectedConferenceId' => $selectedConferenceId,
             'isNasionalView' => $this->isNasionalView(),
+            'showDivisionHeader' => $this->showsDivisionTier(),
             'isUniView' => $isUniView,
         ]);
     }
@@ -755,6 +784,7 @@ class ChurchDashboardController extends Controller
             'selectedUnionId' => $selectedUnionId,
             'selectedConferenceId' => $selectedConferenceId,
             'isNasionalView' => $this->isNasionalView(),
+            'showDivisionHeader' => $this->showsDivisionTier(),
             'isUniView' => $isUniView,
         ]);
     }
@@ -793,6 +823,7 @@ class ChurchDashboardController extends Controller
             'selectedUnionId' => $selectedUnionId,
             'selectedConferenceId' => $selectedConferenceId,
             'isNasionalView' => $this->isNasionalView(),
+            'showDivisionHeader' => $this->showsDivisionTier(),
             'isUniView' => $isUniView,
         ]);
     }
@@ -836,6 +867,7 @@ class ChurchDashboardController extends Controller
             'selectedUnionId' => $selectedUnionId,
             'selectedConferenceId' => $selectedConferenceId,
             'isNasionalView' => $this->isNasionalView(),
+            'showDivisionHeader' => $this->showsDivisionTier(),
             'isUniView' => $isUniView,
         ]);
     }
@@ -863,6 +895,7 @@ class ChurchDashboardController extends Controller
             'selectedUnionId' => $selectedUnionId,
             'selectedConferenceId' => $selectedConferenceId,
             'isNasionalView' => $isNasionalView,
+            'showDivisionHeader' => $this->showsDivisionTier(),
             'isUniView' => $isUniView,
         ];
 
@@ -946,6 +979,7 @@ class ChurchDashboardController extends Controller
             'selectedUnionId' => $selectedUnionId,
             'selectedConferenceId' => $selectedConferenceId,
             'isNasionalView' => $isNasionalView,
+            'showDivisionHeader' => $this->showsDivisionTier(),
             'isUniView' => $isUniView,
         ];
 
@@ -1035,7 +1069,7 @@ class ChurchDashboardController extends Controller
         // analytics.blade.php's $groupEntityRows) — cheap to always eager-load rather than
         // conditionally adding it just for nasional/uni-level viewers.
         $churches = $this->analyticsChurchScope(Church::query()->where('is_active', true))
-            ->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat'), 'conference.union'])
+            ->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat'), 'conference.union.division'])
             ->orderBy('name')
             ->get()
             ->filter($matchesRegionFilter)
@@ -1061,7 +1095,7 @@ class ChurchDashboardController extends Controller
             ));
 
         $people = $this->analyticsPersonScope(Person::query()->where('is_active', true))
-            ->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat'), 'union', 'conference.union'])
+            ->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat'), 'union.division', 'conference.union.division'])
             ->orderBy('name')
             ->get()
             ->filter($matchesRegionFilter)
@@ -1078,7 +1112,7 @@ class ChurchDashboardController extends Controller
             ));
 
         $institutions = $this->analyticsInstitutionScope(Institution::query()->where('is_active', true))
-            ->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat'), 'union', 'conference.union'])
+            ->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat'), 'union.division', 'conference.union.division'])
             ->orderBy('name')
             ->get()
             ->filter($matchesRegionFilter)
@@ -1100,12 +1134,12 @@ class ChurchDashboardController extends Controller
         // Conference row at its own Daerah tier under its parent Union (see BuildsLeaderboards::
         // regionEntityUnion()/regionEntityConference()).
         $visibleUnions = $this->analyticsUnionScope(Union::query()->where('is_active', true))
-            ->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat')])
+            ->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat'), 'division'])
             ->orderBy('name')
             ->get();
 
         $visibleConferences = $this->analyticsConferenceScope(Conference::query()->where('is_active', true))
-            ->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat'), 'union'])
+            ->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat'), 'union.division'])
             ->orderBy('name')
             ->get();
 
@@ -1346,7 +1380,7 @@ class ChurchDashboardController extends Controller
             ))
             ->tap($applyChurchRegionFilter)
             ->when($hideEmptyChurches, fn ($q) => $q->whereHas('socials', $socialsFilter))
-            ->with(['socials' => $socialsFilter, 'conference.union'])
+            ->with(['socials' => $socialsFilter, 'conference.union.division'])
             ->tap(fn ($q) => match ($sortGereja) {
                 'name_desc' => $q->orderByDesc('name'),
                 'city_asc' => $q->orderBy('city')->orderBy('name'),
@@ -1366,7 +1400,7 @@ class ChurchDashboardController extends Controller
             ))
             ->tap($applyPersonOrInstitutionRegionFilter)
             ->when($hideEmptyPeople, fn ($q) => $q->whereHas('socials', $socialsFilter))
-            ->with(['socials' => $socialsFilter, 'conference.union', 'union'])
+            ->with(['socials' => $socialsFilter, 'conference.union.division', 'union.division'])
             ->tap(fn ($q) => match ($sortPersonal) {
                 'name_desc' => $q->orderByDesc('name'),
                 'city_asc' => $q->orderBy('city')->orderBy('name'),
@@ -1383,7 +1417,7 @@ class ChurchDashboardController extends Controller
             ->when($search, fn ($q) => $q->where('name', 'like', "%{$search}%"))
             ->tap($applyPersonOrInstitutionRegionFilter)
             ->when($hideEmptyInstitutions, fn ($q) => $q->whereHas('socials', $socialsFilter))
-            ->with(['socials' => $socialsFilter, 'conference.union', 'union'])
+            ->with(['socials' => $socialsFilter, 'conference.union.division', 'union.division'])
             ->tap(fn ($q) => match ($sortInstitusi) {
                 'name_desc' => $q->orderByDesc('name'),
                 'region_asc' => $q->orderBy($this->directoryScopeOrderExpression('institutions'))->orderBy('name'),
@@ -1398,7 +1432,7 @@ class ChurchDashboardController extends Controller
             ->when($search, fn ($q) => $q->where('name', 'like', "%{$search}%"))
             ->tap($applyUnionRegionFilter)
             ->when($hideEmptyOrganizations, fn ($q) => $q->whereHas('socials', $socialsFilter))
-            ->with(['socials' => $socialsFilter])
+            ->with(['socials' => $socialsFilter, 'division'])
             ->orderBy('name', $sortOrganisasi === 'name_desc' ? 'desc' : 'asc')
             ->get();
 
@@ -1407,7 +1441,7 @@ class ChurchDashboardController extends Controller
             ->when($search, fn ($q) => $q->where('name', 'like', "%{$search}%"))
             ->tap($applyConferenceRegionFilter)
             ->when($hideEmptyOrganizations, fn ($q) => $q->whereHas('socials', $socialsFilter))
-            ->with(['socials' => $socialsFilter, 'union'])
+            ->with(['socials' => $socialsFilter, 'union.division'])
             ->orderBy('name', $sortOrganisasi === 'name_desc' ? 'desc' : 'asc')
             ->get();
 
@@ -1496,6 +1530,7 @@ class ChurchDashboardController extends Controller
             'selectedUnionId' => $selectedUnionId,
             'selectedConferenceId' => $selectedConferenceId,
             'isNasionalView' => $this->isNasionalView(),
+            'showDivisionHeader' => $this->showsDivisionTier(),
             'isUniView' => $isUniView,
             'selectedCategory' => $selectedCategory,
         ]);
@@ -1543,6 +1578,7 @@ class ChurchDashboardController extends Controller
             'selectedUnionId' => $selectedUnionId,
             'selectedConferenceId' => $selectedConferenceId,
             'isNasionalView' => $this->isNasionalView(),
+            'showDivisionHeader' => $this->showsDivisionTier(),
             'isUniView' => $isUniView,
             'selectedCategory' => $selectedCategory,
         ]);
@@ -1707,6 +1743,7 @@ class ChurchDashboardController extends Controller
             'selectedUnionId' => $selectedUnionId,
             'selectedConferenceId' => $selectedConferenceId,
             'isNasionalView' => $isNasionalView,
+            'showDivisionHeader' => $this->showsDivisionTier(),
             'isUniView' => $isUniView,
             'selectedCategory' => $selectedCategory,
         ];

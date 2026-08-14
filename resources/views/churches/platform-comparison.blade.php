@@ -111,6 +111,7 @@
                             row-key="row"
                             :row-extra="['scope' => $scope]"
                             :show-union-header="$isNasionalView"
+                            :show-division-header="$showDivisionHeader"
                         />
                     @else
                         @foreach ($rows as $i => $row)

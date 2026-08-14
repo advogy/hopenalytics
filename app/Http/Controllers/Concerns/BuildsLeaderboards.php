@@ -6,6 +6,7 @@ use App\Enums\SocialPlatform;
 use App\Models\AppSetting;
 use App\Models\ChurchSocial;
 use App\Models\Conference;
+use App\Models\Division;
 use App\Models\Union;
 use Illuminate\Support\Collection;
 
@@ -33,6 +34,16 @@ trait BuildsLeaderboards
     protected function isUniView(): bool
     {
         return ! $this->isNasionalView() && auth()->user()->role->level() === 'uni';
+    }
+
+    /**
+     * True for a viewer whose grouped tables should show a Divisi tier above Uni — everyone
+     * isNasionalView() covers EXCEPT a Divisi-level viewer themselves, who's already scoped to
+     * exactly one Divisi (same reasoning as isUniView() never showing its own Uni tier).
+     */
+    protected function showsDivisionTier(): bool
+    {
+        return $this->isNasionalView() && auth()->user()->role?->level() !== 'divisi';
     }
 
     /**
@@ -143,6 +154,12 @@ trait BuildsLeaderboards
         };
     }
 
+    /** The Divisi a region-groupable entity's Union belongs to (or null — a Union not yet placed under any Divisi). */
+    private function regionEntityDivision($entity): ?Division
+    {
+        return $this->regionEntityUnion($entity)?->division;
+    }
+
     /**
      * Groups any rows collection into the same Uni > Daerah > entity nesting used across the
      * region-filterable pages — $entityAccessor plucks the Church/Person/Institution/Union/
@@ -162,6 +179,7 @@ trait BuildsLeaderboards
             ->map(function ($unionRows) use ($entityAccessor) {
                 $sample = $entityAccessor($unionRows->first());
                 $union = $this->regionEntityUnion($sample);
+                $division = $this->regionEntityDivision($sample);
 
                 // A row whose entity IS the Union itself sits directly under the Union's own
                 // header — Union sits above Daerah in the hierarchy, so it can never itself
@@ -171,6 +189,14 @@ trait BuildsLeaderboards
 
                 return [
                     'label' => $union?->name ?? __('analytics.group_national'),
+                    // Not part of the grouping key/nesting itself (the tree below stays Union >
+                    // Conference > rows, unchanged) — just tagged onto each Union-group so a
+                    // caller that wants a Divisi tier (see components/grouped-rows.blade.php's
+                    // showDivisionHeader) can re-bucket these top-level entries by division for
+                    // rendering, without this method needing to know or care whether that's
+                    // actually happening on any given page.
+                    'divisionId' => $division?->id ?? 'no-division',
+                    'divisionName' => $division?->name ?? __('analytics.group_no_division'),
                     'rows' => $ownRows,
                     'conferences' => $nestedRows
                         ->groupBy(fn ($row) => $this->regionEntityConference($entityAccessor($row))?->id ?? 'uni-level')

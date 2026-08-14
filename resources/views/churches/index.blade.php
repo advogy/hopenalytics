@@ -310,9 +310,16 @@
                 // out it shows one region per Union, zoomed in one region per Daerah, each just
                 // an outline (still built from that region's own churches' coordinates) plus a
                 // summary popup — see buildRegionLayer()/refreshOrganizationLayer() below.
+                var mapDivisions = @json($mapDivisions);
                 var mapUnions = @json($mapUnions);
                 var mapConferences = @json($mapConferences);
                 var unionColorPalette = ['#2563eb', '#dc2626', '#059669', '#d97706', '#7c3aed', '#db2777', '#0891b2', '#65a30d', '#ea580c', '#4f46e5'];
+                // Divisi gets its own independent color assignment (not inherited by Uni/Daerah
+                // below it) — every Uni keeps a visually distinct color at its own zoom tier
+                // exactly as before Divisi existed; only the Divisi tier itself, one zoom step
+                // further out, uses this separate palette.
+                var divisionColorById = {};
+                mapDivisions.forEach(function (d, i) { divisionColorById[d.id] = unionColorPalette[i % unionColorPalette.length]; });
                 var unionColorById = {};
                 mapUnions.forEach(function (u, i) { unionColorById[u.id] = unionColorPalette[i % unionColorPalette.length]; });
                 var conferenceColorById = {};
@@ -511,6 +518,18 @@
                         .map(function (item) { return buildChurchPointMarker(item, color); });
                 }
 
+                var divisionRegionLayers = mapDivisions.map(function (d) {
+                    return buildRegionLayer(organizationItems.filter(function (item) { return item.divisionId === d.id; }), d.name, divisionColorById[d.id]);
+                }).filter(function (layer) { return layer !== null; });
+
+                // No office markers for this tier — Division has no latitude/longitude of its own.
+                var divisionChurchPointMarkers = [];
+                mapDivisions.forEach(function (d) {
+                    divisionChurchPointMarkers = divisionChurchPointMarkers.concat(
+                        buildChurchPointMarkers(organizationItems.filter(function (item) { return item.divisionId === d.id; }), divisionColorById[d.id])
+                    );
+                });
+
                 var unionRegionLayers = mapUnions.map(function (u) {
                     return buildRegionLayer(organizationItems.filter(function (item) { return item.unionId === u.id; }), u.name, unionColorById[u.id]);
                 }).filter(function (layer) { return layer !== null; });
@@ -541,14 +560,25 @@
                     );
                 });
 
+                var divisionLayer = L.layerGroup(divisionRegionLayers.concat(divisionChurchPointMarkers));
                 var unionLayer = L.layerGroup(unionRegionLayers.concat(unionOfficeMarkers).concat(unionChurchPointMarkers));
                 var conferenceLayer = L.layerGroup(conferenceRegionLayers.concat(conferenceOfficeMarkers).concat(conferenceChurchPointMarkers));
+                // Below DIVISION_ZOOM_THRESHOLD: one region per Divisi. Between the two
+                // thresholds: one region per Uni (unchanged from before Divisi existed). At or
+                // above ORGANIZATION_ZOOM_THRESHOLD: one region per Daerah.
+                var DIVISION_ZOOM_THRESHOLD = 6;
                 var ORGANIZATION_ZOOM_THRESHOLD = 9;
 
                 var legendEl = document.getElementById('church-map-union-legend');
-                if (legendEl) {
-                    var legendItems = mapUnions.map(function (u) {
-                        return { color: unionColorById[u.id], label: u.name };
+
+                // Swaps the legend's contents to match whichever tier is currently on screen —
+                // called from refreshOrganizationLayer() below, since the visible tier (and thus
+                // which colors are actually on the map) changes with zoom.
+                function renderLegend(items, colorById, labelKey) {
+                    if (! legendEl) return;
+
+                    var legendItems = items.map(function (item) {
+                        return { color: colorById[item.id], label: item[labelKey] || item.name };
                     });
                     legendEl.innerHTML = legendItems.map(function (item) {
                         return '<span class="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">' +
@@ -560,7 +590,8 @@
                 // Office coordinates can sit well outside where any of that region's mapped
                 // church/personal/institution pins happen to be, so they're folded into this
                 // tab's own bounds-fit too — otherwise switching to it wouldn't necessarily bring
-                // the office marker into view.
+                // the office marker into view. Divisi has no office coordinates of its own (see
+                // $mapDivisions above), so there's nothing to add for that tier here.
                 var organizationBoundsItems = organizationItems.concat(
                     mapUnions.filter(function (u) { return u.officeLat != null && u.officeLng != null; })
                         .map(function (u) { return { lat: u.officeLat, lng: u.officeLng }; }),
@@ -583,20 +614,34 @@
                 var activeLayer = null;
                 var currentTab = null;
 
-                // The "Uni/Daerah" tab swaps between unionLayer/conferenceLayer as the viewer
-                // zooms, instead of being one fixed entry in layersByTab like every other tab —
-                // guarded by currentTab so the zoomend listener is a no-op on every other tab.
+                // The "Uni/Daerah" tab swaps between divisionLayer/unionLayer/conferenceLayer as
+                // the viewer zooms, instead of being one fixed entry in layersByTab like every
+                // other tab — guarded by currentTab so the zoomend listener is a no-op on every
+                // other tab. The legend swaps in step, since the colors actually on screen change
+                // with the tier too.
                 var organizationSubLayer = null;
 
                 function refreshOrganizationLayer() {
                     if (currentTab !== 'organisasi') return;
 
-                    var desired = map.getZoom() >= ORGANIZATION_ZOOM_THRESHOLD ? conferenceLayer : unionLayer;
-                    if (organizationSubLayer === desired) return;
+                    var zoom = map.getZoom();
+                    var desired = zoom >= ORGANIZATION_ZOOM_THRESHOLD
+                        ? conferenceLayer
+                        : (zoom >= DIVISION_ZOOM_THRESHOLD ? unionLayer : divisionLayer);
 
-                    if (organizationSubLayer) map.removeLayer(organizationSubLayer);
-                    organizationSubLayer = desired;
-                    map.addLayer(organizationSubLayer);
+                    if (organizationSubLayer !== desired) {
+                        if (organizationSubLayer) map.removeLayer(organizationSubLayer);
+                        organizationSubLayer = desired;
+                        map.addLayer(organizationSubLayer);
+                    }
+
+                    if (desired === divisionLayer) {
+                        renderLegend(mapDivisions, divisionColorById, 'name');
+                    } else if (desired === unionLayer) {
+                        renderLegend(mapUnions, unionColorById, 'name');
+                    }
+                    // Conference tier reuses its parent Union's colors — no separate legend swap,
+                    // the Uni legend from the tier just zoomed past stays correct.
                 }
 
                 map.on('zoomend', refreshOrganizationLayer);

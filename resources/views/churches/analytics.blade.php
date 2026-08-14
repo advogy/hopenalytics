@@ -17,6 +17,10 @@
     $analyticsRole = auth()->user()->role;
     $isNasionalView = $analyticsRole === null || ($analyticsRole->hasGlobalAccess() ?? false) || in_array($analyticsRole->level(), ['global', 'nasional', 'divisi'], true);
     $isUniView = ! $isNasionalView && $analyticsRole->level() === 'uni';
+    // Same reasoning as isUniView() never showing its own Uni tier — a Divisi-level viewer is
+    // isNasionalView() too (they can see multiple Unions), but shouldn't see a Divisi tier for
+    // their own single Divisi.
+    $showDivisionHeader = $isNasionalView && $analyticsRole?->level() !== 'divisi';
 
     // Defaults so these stay defined even when a tab's entity collection is empty — each tab's
     // own @if ($filteredX->isEmpty()) branch skips straight past the @php block that would
@@ -45,6 +49,7 @@
             $entity instanceof \App\Models\Union => null,
             default => $entity->conference ?? null,
         };
+        $resolveDivision = fn ($entity) => $resolveUnion($entity)?->division;
 
         return $rows
             ->groupBy(function ($row) use ($entityAccessor, $resolveUnion) {
@@ -52,9 +57,10 @@
 
                 return $union?->id ?? 'nasional';
             })
-            ->map(function ($unionRows) use ($entityAccessor, $resolveUnion, $resolveConference) {
+            ->map(function ($unionRows) use ($entityAccessor, $resolveUnion, $resolveConference, $resolveDivision) {
                 $sample = $entityAccessor($unionRows->first());
                 $union = $resolveUnion($sample);
+                $division = $resolveDivision($sample);
 
                 // A row whose entity IS the Union itself sits directly under the Union's own
                 // header — Union sits above Daerah, so it can never itself "not have a Daerah
@@ -64,6 +70,12 @@
 
                 return [
                     'label' => $union?->name ?? __('analytics.group_national'),
+                    // Not part of the grouping key/nesting (Union > Conference > rows stays as-is)
+                    // — just tagged on so x-grouped-rows can re-bucket these entries by division
+                    // when showDivisionHeader is on. See BuildsLeaderboards::groupByRegion()'s
+                    // identical shape, which this mirrors.
+                    'divisionId' => $division?->id ?? 'no-division',
+                    'divisionName' => $division?->name ?? __('analytics.group_no_division'),
                     'rows' => $ownRows,
                     'conferences' => $nestedRows
                         ->groupBy(fn ($row) => $resolveConference($entityAccessor($row))?->id ?? 'uni-level')
@@ -449,6 +461,7 @@
                                     row-key="row"
                                     :row-extra="['maxReach' => $maxOrganizationReach, 'countField' => $countField]"
                                     :show-union-header="$isNasionalView"
+                                    :show-division-header="$showDivisionHeader"
                                 />
                             @else
                                 @foreach ($organizationRows as $row)
@@ -678,6 +691,7 @@
                                     row-key="row"
                                     :row-extra="['maxReach' => $maxChurchReach, 'countField' => $countField]"
                                     :show-union-header="$isNasionalView"
+                                    :show-division-header="$showDivisionHeader"
                                 />
                             @else
                                 @foreach ($churchRows as $row)
@@ -895,6 +909,7 @@
                                     row-key="row"
                                     :row-extra="['maxReach' => $maxInstitutionReach, 'countField' => $countField]"
                                     :show-union-header="$isNasionalView"
+                                    :show-division-header="$showDivisionHeader"
                                 />
                             @else
                                 @foreach ($institutionRows as $row)
@@ -1112,6 +1127,7 @@
                                     row-key="row"
                                     :row-extra="['maxReach' => $maxPersonReach, 'countField' => $countField]"
                                     :show-union-header="$isNasionalView"
+                                    :show-division-header="$showDivisionHeader"
                                 />
                             @else
                                 @foreach ($personRows as $row)

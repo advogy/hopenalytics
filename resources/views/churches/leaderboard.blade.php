@@ -80,6 +80,7 @@
         :grouped-rows="$groupedRows"
         group-prefix="church-leaderboard"
         :is-nasional-view="$isNasionalView"
+        :show-division-header="$showDivisionHeader"
     />
 
     @if ($groupedRows !== null)
