@@ -44,7 +44,7 @@
 @endphp
 
 @if ($total <= 0)
-    <p class="py-6 text-center text-sm text-slate-400 dark:text-slate-500">{{ __('common.no_data_yet') }}</p>
+    <x-empty-state variant="inline">{{ __('common.no_data_yet') }}</x-empty-state>
 @else
     <div data-pie-card="{{ $uid }}" class="flex flex-col items-center gap-8 sm:flex-row sm:items-center sm:justify-between">
         <ul class="w-full flex-1 space-y-3">

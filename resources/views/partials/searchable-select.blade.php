@@ -22,6 +22,25 @@
             list.innerHTML = '';
         }
 
+        // Flips the list above the input instead of below when there isn't enough room
+        // underneath (e.g. a row near the bottom of a long table, like Kelola Pengguna's
+        // "Belum Ditugaskan" list) — otherwise it renders off-screen and forces a scroll to
+        // even see the results. 208px mirrors the list's own max-h-52 Tailwind class; the list
+        // is still display:none at this point (class="hidden"), so its real scrollHeight can't
+        // be measured yet — this is a fixed upper-bound estimate, not a live measurement.
+        function positionList() {
+            var estimatedListHeight = 208;
+            var inputRect = searchInput.getBoundingClientRect();
+            var spaceBelow = window.innerHeight - inputRect.bottom;
+            var spaceAbove = inputRect.top;
+            var openUpward = spaceBelow < estimatedListHeight && spaceAbove > spaceBelow;
+
+            list.classList.toggle('top-full', ! openUpward);
+            list.classList.toggle('mt-1', ! openUpward);
+            list.classList.toggle('bottom-full', openUpward);
+            list.classList.toggle('mb-1', openUpward);
+        }
+
         function setValue(value) {
             valueInput.value = value;
             onChange(value);
@@ -44,6 +63,7 @@
             var query = searchInput.value.trim();
             var matches = filtered();
 
+            positionList();
             list.innerHTML = '';
 
             if (matches.length === 0 && ! allowCreate) {

@@ -3,32 +3,18 @@
 @section('title', ($institution->exists ? __('accounts.title_edit_institusi') : __('accounts.title_add_institusi')) . ' — ' . config('app.name'))
 
 @section('content')
-    <a href="{{ route('admin.accounts.index', ['tab' => 'institusi']) }}" class="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
-        &larr; {{ __('common.back') }}
-    </a>
-
-    <h1 class="mb-8 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
-        {{ $institution->exists ? __('accounts.title_edit_institusi') : __('accounts.title_add_institusi') }}
-    </h1>
-
-    <form
-        method="POST"
-        action="{{ $institution->exists ? route('admin.institutions.update', $institution) : route('admin.institutions.store') }}"
-        class="max-w-lg rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/5 dark:bg-slate-900"
+    <x-entity-crud-form
+        :entity="$institution"
+        :action="$institution->exists ? route('admin.institutions.update', $institution) : route('admin.institutions.store')"
+        :back-url="route('admin.accounts.index', ['tab' => 'institusi'])"
+        :title="$institution->exists ? __('accounts.title_edit_institusi') : __('accounts.title_add_institusi')"
+        :submit-label="$institution->exists ? __('common.save_changes') : __('accounts.title_add_institusi')"
+        :destroy-action="$institution->exists ? route('admin.institutions.destroy', $institution) : null"
+        :destroy-confirm="__('accounts.deactivate_institusi_confirm', ['name' => $institution->name])"
+        :destroy-label="__('accounts.deactivate_institusi')"
     >
-        @csrf
-        @if ($institution->exists)
-            @method('PUT')
-        @endif
-
         <x-form-field name="name" :label="__('accounts.institusi_name')" required :value="$institution->name" />
-        <div id="name-similar-results" class="hidden mb-5 -mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm dark:border-amber-900 dark:bg-amber-950"></div>
-        <script>
-            window.initSimilarNameCheck(document.getElementById('name'), document.getElementById('name-similar-results'), {
-                url: '{{ route('admin.institutions.similar') }}',
-                excludeId: {{ $institution->exists ? $institution->id : 'null' }},
-            });
-        </script>
+        <x-similar-name-check :route="route('admin.institutions.similar')" :exclude-id="$institution->exists ? $institution->id : null" />
 
         <x-form-field name="city" :label="__('entity.city')" :hint="__('entity.city_optional_map')" :value="$institution->city" :placeholder="__('entity.city_placeholder')" />
 
@@ -108,29 +94,5 @@
                 </p>
             @endif
         </div>
-
-        <div class="flex items-center gap-3">
-            <button type="submit" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700">
-                {{ $institution->exists ? __('common.save_changes') : __('accounts.title_add_institusi') }}
-            </button>
-            <a href="{{ route('admin.accounts.index', ['tab' => 'institusi']) }}" class="text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
-                {{ __('common.cancel') }}
-            </a>
-        </div>
-    </form>
-
-    @if ($institution->exists)
-        <form
-            method="POST"
-            action="{{ route('admin.institutions.destroy', $institution) }}"
-            class="mt-6 max-w-lg"
-            data-confirm="{{ __('accounts.deactivate_institusi_confirm', ['name' => $institution->name]) }}"
-        >
-            @csrf
-            @method('DELETE')
-            <button type="submit" class="text-sm text-red-600 hover:underline dark:text-red-400">
-                {{ __('accounts.deactivate_institusi') }}
-            </button>
-        </form>
-    @endif
+    </x-entity-crud-form>
 @endsection

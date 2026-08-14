@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'subtitle' => 'Uni → Daerah → Gereja, Institusi, dan Personal.',
+    'subtitle' => 'Divisi → Uni → Daerah → Gereja, Institusi, dan Personal.',
 
     'stat_no_socials' => 'Belum punya akun sosial',
     'no_socials_title' => 'Belum Punya Akun Sosial',
@@ -10,14 +10,17 @@ return [
     'no_socials_section_empty' => 'Semua :entity sudah punya akun media sosial.',
     'no_socials_add_link' => 'Tambah akun',
 
+    'add_divisi' => '+ Tambah Divisi',
     'add_uni' => '+ Tambah Uni',
     'add_daerah' => '+ Tambah Daerah',
     'add_gereja' => '+ Tambah Gereja',
     'add_institusi' => '+ Tambah Institusi',
     'add_personal' => '+ Tambah Personal',
 
+    'divisi_list_title' => 'Daftar Divisi',
+    'divisi_list_subtitle' => 'Wilayah kerja tingkat tertinggi dalam struktur organisasi, menaungi beberapa Uni.',
     'uni_list_title' => 'Daftar Uni',
-    'uni_list_subtitle' => 'Wilayah kerja tingkat nasional, tingkat tertinggi dalam struktur organisasi.',
+    'uni_list_subtitle' => 'Wilayah kerja di bawah Divisi, menaungi Daerah-Daerah di dalamnya.',
     'daerah_list_title' => 'Daftar Daerah',
     'daerah_list_subtitle' => 'Wilayah kerja di bawah Uni, menaungi gereja-gereja di dalamnya.',
     'gereja_list_title' => 'Daftar Gereja',
@@ -27,6 +30,7 @@ return [
     'personal_list_title' => 'Daftar Personal',
     'personal_list_subtitle' => 'Orang yang akun media sosialnya dipantau, terlepas dari punya login atau tidak.',
 
+    'search_divisi_placeholder' => 'Cari Divisi…',
     'search_uni_placeholder' => 'Cari Uni…',
     'search_daerah_placeholder' => 'Cari Daerah…',
     'search_gereja_placeholder' => 'Cari Gereja…',
@@ -40,6 +44,8 @@ return [
     'sort_name_desc' => 'Nama (Z-A)',
     'sort_city_asc' => 'Kota (A-Z)',
     'sort_city_desc' => 'Kota (Z-A)',
+    'sort_division_asc' => 'Divisi (A-Z)',
+    'sort_division_desc' => 'Divisi (Z-A)',
     'sort_union_asc' => 'Uni (A-Z)',
     'sort_union_desc' => 'Uni (Z-A)',
     'sort_daerah_asc' => 'Daerah (A-Z)',
@@ -53,6 +59,7 @@ return [
 
     'filter_all_uni' => 'Semua Uni',
 
+    'count_uni' => 'Jumlah Uni',
     'count_daerah' => 'Jumlah Daerah',
     'count_person' => 'Jumlah Person',
     'count_gereja' => 'Jumlah Gereja',
@@ -64,6 +71,7 @@ return [
     'has_login' => 'Punya akun login (:name)',
     'no_login' => 'Belum ada akun login',
 
+    'blocked_divisi' => 'Masih memiliki Uni dan/atau pengguna yang ditugaskan.',
     'blocked_uni' => 'Masih memiliki Daerah dan/atau pengguna yang ditugaskan.',
     'blocked_daerah' => 'Masih memiliki Gereja dan/atau pengguna yang ditugaskan.',
     'blocked_gereja' => 'Masih ada pengguna yang ditugaskan ke gereja ini.',
@@ -77,13 +85,16 @@ return [
     'deactivate_confirm' => 'Nonaktifkan ":name"?',
     'delete_confirm' => 'Hapus ":name"? Tindakan ini permanen dan tidak bisa dibatalkan.',
 
+    'title_edit_divisi' => 'Edit Divisi',
+    'title_add_divisi' => 'Tambah Divisi',
+    'divisi_name' => 'Nama Divisi',
     'title_edit_uni' => 'Edit Uni',
     'title_add_uni' => 'Tambah Uni',
     'uni_name' => 'Nama Uni',
     'uni_coordinator_whatsapp' => 'Nomor WhatsApp Koordinator Uni',
-    'uni_coordinator_whatsapp_hint' => 'Format internasional tanpa "+" atau angka 0 di depan, contoh: 628123456789. Kosongkan untuk memakai nomor Koordinator Nasional (Pengaturan) sebagai gantinya.',
-    'uni_whatsapp_group_link' => 'Tautan Grup WhatsApp Uni',
-    'uni_whatsapp_group_link_hint' => 'Tautan undangan grup WhatsApp (chat.whatsapp.com/…). Kosongkan untuk memakai grup nasional (Pengaturan) sebagai gantinya.',
+    'uni_coordinator_whatsapp_hint' => 'Format internasional tanpa "+" atau angka 0 di depan, contoh: 628123456789. Kosongkan untuk memakai nomor Koordinator Global (Pengaturan) sebagai gantinya.',
+    'uni_groups' => 'Grup Chat Uni',
+    'uni_groups_hint' => 'Grup WhatsApp/Messenger untuk Uni ini — bisa lebih dari satu. Kosongkan untuk memakai grup global (Pengaturan) sebagai gantinya.',
     'title_edit_daerah' => 'Edit Daerah',
     'title_add_daerah' => 'Tambah Daerah',
     'daerah_name' => 'Nama Daerah',
@@ -97,8 +108,11 @@ return [
     'search_daerah_optional' => 'Cari Daerah… (opsional)',
     'search_daerah_optional_own_union' => 'Cari Daerah… (opsional — kosongkan untuk seluruh Uni)',
     'choose_uni_placeholder' => 'Pilih Uni…',
+    'choose_divisi_placeholder' => 'Pilih Divisi… (opsional)',
     'waiting_for_uni' => 'Pilih Uni terlebih dahulu…',
 
+    'deactivate_divisi_confirm' => 'Nonaktifkan Divisi ":name"?',
+    'deactivate_divisi' => 'Nonaktifkan Divisi',
     'deactivate_uni_confirm' => 'Nonaktifkan Uni ":name"?',
     'deactivate_uni' => 'Nonaktifkan Uni',
     'deactivate_daerah_confirm' => 'Nonaktifkan Daerah ":name"?',
@@ -115,6 +129,7 @@ return [
     'entity_deleted' => ':entity ":name" berhasil dihapus.',
     'status_reactivated' => 'diaktifkan kembali',
     'status_deactivated' => 'dinonaktifkan',
+    'delete_blocked_divisi' => 'Divisi ":name" tidak bisa dihapus karena masih memiliki Uni dan/atau pengguna yang ditugaskan. Nonaktifkan saja, atau pindahkan/hapus data terkait terlebih dahulu.',
     'delete_blocked_uni' => 'Uni ":name" tidak bisa dihapus karena masih memiliki Daerah dan/atau pengguna yang ditugaskan. Nonaktifkan saja, atau pindahkan/hapus data terkait terlebih dahulu.',
     'delete_blocked_daerah' => 'Daerah ":name" tidak bisa dihapus karena masih memiliki Gereja dan/atau pengguna yang ditugaskan. Nonaktifkan saja, atau pindahkan/hapus data terkait terlebih dahulu.',
     'delete_blocked_gereja' => 'Gereja ":name" tidak bisa dihapus karena masih ada pengguna yang ditugaskan. Nonaktifkan saja, atau pindahkan penugasan pengguna terlebih dahulu.',

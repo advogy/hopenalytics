@@ -28,8 +28,8 @@
         @php $wide = $wide ?? false; @endphp
         <div class="w-full {{ $wide ? 'max-w-4xl' : 'max-w-sm' }}">
             <a href="{{ route('churches.index') }}" class="mb-8 flex items-center justify-center gap-3 whitespace-nowrap">
-                <x-logo-mark class="h-16 w-16 shrink-0 text-blue-600 dark:text-[#f3ead9]" />
-                <span class="text-3xl font-semibold tracking-tight">Hopenalytics</span>
+                <x-brand-mark class="h-16 w-16 text-blue-600 dark:text-[#f3ead9]" />
+                <span class="text-3xl font-semibold tracking-tight">{{ config('app.name') }}</span>
             </a>
 
             @if (session('status'))

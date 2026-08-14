@@ -22,9 +22,10 @@ return [
     // Scope label shown under the dashboard title — see ChurchDashboardController::index().
     'scope_global' => 'Ringkasan global — seluruh Uni, Konferens/Daerah, Gereja, Institusi, dan Personal.',
     'scope_nasional_scoped' => 'Wilayah Uni :names.',
+    'scope_divisi' => 'Wilayah Divisi :name.',
     'scope_uni' => 'Wilayah Uni :name.',
     'scope_daerah' => 'Wilayah Daerah :name.',
-    'scope_gereja' => ':church — kartu statistik dan Top 5/Terendah untuk wilayah Daerah/Konferens Anda; Peta dan Skor Platform ditampilkan secara nasional untuk perbandingan.',
+    'scope_gereja' => ':church — kartu statistik dan Top 5/Terendah untuk wilayah Daerah/Konferens Anda; Peta dan Skor Platform ditampilkan secara global untuk perbandingan.',
     'scope_gereja_fallback_name' => 'gereja Anda',
     // scope_institusi already exists further below, reused by both this scopeLabel and
     // goalProgressRows()'s $regionScopeLabel — not redefined here to avoid a duplicate key.

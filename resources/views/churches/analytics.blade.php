@@ -15,7 +15,7 @@
     // their own single Uni, so it's not rendered); everyone else (daerah/gereja/institusi-level)
     // just gets the flat list they already had, since their scope is already a single Daerah.
     $analyticsRole = auth()->user()->role;
-    $isNasionalView = $analyticsRole === null || ($analyticsRole->hasGlobalAccess() ?? false) || in_array($analyticsRole->level(), ['global', 'nasional'], true);
+    $isNasionalView = $analyticsRole === null || ($analyticsRole->hasGlobalAccess() ?? false) || in_array($analyticsRole->level(), ['global', 'nasional', 'divisi'], true);
     $isUniView = ! $isNasionalView && $analyticsRole->level() === 'uni';
 
     // Defaults so these stay defined even when a tab's entity collection is empty — each tab's
@@ -228,45 +228,21 @@
 @section('title', __('nav.analytics') . ' — ' . config('app.name'))
 
 @section('content')
-    <a href="{{ route('churches.index') }}" class="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
-        &larr; {{ __('common.back_to_dashboard') }}
-    </a>
+    <x-back-link :href="route('churches.index')">
+        {{ __('common.back_to_dashboard') }}
+    </x-back-link>
 
     <div class="mb-6">
         <h1 class="mb-1 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{{ __('nav.analytics') }}</h1>
         <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('analytics.subtitle') }}</p>
     </div>
 
-    <div class="mb-6 flex gap-2 overflow-x-auto border-b border-black/5 dark:border-white/5">
-        <button
-            type="button"
-            data-tab-button="organisasi"
-            class="border-b-2 px-4 py-2.5 text-sm font-medium transition"
-        >
-            {{ __('comparison.organization_label') }}
-        </button>
-        <button
-            type="button"
-            data-tab-button="gereja"
-            class="border-b-2 px-4 py-2.5 text-sm font-medium transition"
-        >
-            {{ __('common.church') }}
-        </button>
-        <button
-            type="button"
-            data-tab-button="institusi"
-            class="border-b-2 px-4 py-2.5 text-sm font-medium transition"
-        >
-            {{ __('common.institution') }}
-        </button>
-        <button
-            type="button"
-            data-tab-button="personal"
-            class="border-b-2 px-4 py-2.5 text-sm font-medium transition"
-        >
-            {{ __('common.personal') }}
-        </button>
-    </div>
+    <x-tab-bar>
+        <x-tab-button tab-key="organisasi">{{ __('comparison.organization_label') }}</x-tab-button>
+        <x-tab-button tab-key="gereja">{{ __('common.church') }}</x-tab-button>
+        <x-tab-button tab-key="institusi">{{ __('common.institution') }}</x-tab-button>
+        <x-tab-button tab-key="personal">{{ __('common.personal') }}</x-tab-button>
+    </x-tab-bar>
 
     {{-- ===================== TAB: ORGANISASI ===================== --}}
     <div data-tab-panel="organisasi">
@@ -353,61 +329,21 @@
         </x-filter-card>
 
         {{-- Hero KPI --}}
-        <div class="mb-6 flex flex-wrap items-center gap-6 rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/5 dark:bg-slate-900">
-            <span class="inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 shadow-sm dark:bg-blue-950/50 dark:text-blue-300">
-                <x-icon name="arrow-trending-up" class="h-7 w-7" />
-            </span>
+        <x-analytics-hero-kpi :value="$latestPointOrganization->total_reach ?? 0" :growth-percent="$reachGrowthPercentOrganization" />
 
-            <div class="min-w-[180px]">
-                <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('analytics.total_reach_current') }}</p>
-                <p class="text-3xl font-bold tabular-nums text-slate-900 dark:text-white">
-                    {{ number_format($latestPointOrganization->total_reach ?? 0) }}
-                </p>
-            </div>
-
-            @if ($reachGrowthPercentOrganization !== null)
-                <div class="flex items-center gap-2 rounded-full border px-4 py-2 {{ $reachGrowthPercentOrganization >= 0 ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950' : 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950' }}">
-                    <x-icon :name="$reachGrowthPercentOrganization > 0 ? 'arrow-trending-up' : ($reachGrowthPercentOrganization < 0 ? 'arrow-trending-down' : 'minus-small')" class="h-4 w-4 {{ $reachGrowthPercentOrganization >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400' }}" />
-                    <span class="text-sm font-semibold tabular-nums {{ $reachGrowthPercentOrganization >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400' }}">
-                        {{ $reachGrowthPercentOrganization > 0 ? '+' : '' }}{{ number_format($reachGrowthPercentOrganization, 2) }}%
-                    </span>
-                    <span class="text-xs text-slate-400 dark:text-slate-500">{{ __('common.this_week') }}</span>
-                </div>
-            @endif
-        </div>
-
-        <div class="mb-8 grid gap-6 sm:grid-cols-2">
-            <div class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
-                <p class="font-bold text-slate-900 dark:text-white">{{ __('analytics.growth_reach_title') }}</p>
-                <p class="mb-4 text-sm text-slate-500 dark:text-slate-400">{{ $reachSubtitleOrganization }}{{ __('analytics.per_week') }}</p>
-                <x-growth-chart :values="$growthOverTimeOrganization->pluck('total_reach')" :labels="$growthLabelsOrganization" />
-            </div>
-
-            <div class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
-                <p class="font-bold text-slate-900 dark:text-white">{{ __('analytics.growth_views_title') }}</p>
-                <p class="mb-4 text-sm text-slate-500 dark:text-slate-400">{{ $viewsSubtitleOrganization }}{{ __('analytics.per_week') }}</p>
-                <x-growth-chart :values="$growthOverTimeOrganization->pluck('total_views')" :labels="$growthLabelsOrganization" />
-            </div>
-
-            <div class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
-                <p class="font-bold text-slate-900 dark:text-white">{{ __('analytics.growth_likes_title') }}</p>
-                <p class="mb-4 text-sm text-slate-500 dark:text-slate-400">{{ $likesSubtitleOrganization }}{{ __('analytics.per_week') }}</p>
-                <x-growth-chart :values="$growthOverTimeOrganization->pluck('total_likes')" :labels="$growthLabelsOrganization" />
-            </div>
-
-            <div class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
-                <p class="font-bold text-slate-900 dark:text-white">{{ __('analytics.growth_posts_title') }}</p>
-                <p class="mb-4 text-sm text-slate-500 dark:text-slate-400">{{ $postsSubtitleOrganization }}{{ __('analytics.per_week') }}</p>
-                <x-growth-chart :values="$growthOverTimeOrganization->pluck('total_posts')" :labels="$growthLabelsOrganization" />
-            </div>
-        </div>
+        <x-analytics-growth-grid
+            :growth-over-time="$growthOverTimeOrganization"
+            :growth-labels="$growthLabelsOrganization"
+            :reach-subtitle="$reachSubtitleOrganization"
+            :views-subtitle="$viewsSubtitleOrganization"
+            :likes-subtitle="$likesSubtitleOrganization"
+            :posts-subtitle="$postsSubtitleOrganization"
+        />
 
         @if ($filteredOrganizations->isEmpty())
-            <div class="rounded-2xl border border-dashed border-slate-300 p-12 text-center dark:border-slate-700">
-                <p class="text-slate-500 dark:text-slate-400">
-                    {{ $organizations->isEmpty() ? __('analytics.no_organization_data') : __('analytics.no_organization_match_filter') }}
-                </p>
-            </div>
+            <x-empty-state>
+                {{ $organizations->isEmpty() ? __('analytics.no_organization_data') : __('analytics.no_organization_match_filter') }}
+            </x-empty-state>
         @else
             @php
                 $allDisplaySocialsOrganization = $filteredOrganizations->flatMap(
@@ -460,36 +396,9 @@
                         <tr>
                             <td class="px-4 py-3 font-semibold">{{ __('analytics.organizations_count', ['count' => $filteredOrganizations->count()]) }}</td>
                             <td class="px-4 py-3">
-                                @if ($grandByPlatformOrganization->isEmpty())
-                                    <span class="text-slate-300 dark:text-slate-600">—</span>
-                                @else
-                                    <p class="mb-1 text-xs text-slate-400 dark:text-slate-500">{{ __('analytics.account_count') }}</p>
-                                    <div class="mb-2 flex flex-wrap gap-1.5">
-                                        @foreach ($grandByPlatformOrganization as $platformValue => $group)
-                                            <span class="inline-flex items-center gap-1.5 rounded-full border border-black/5 bg-slate-50 py-1 pr-2.5 pl-1 dark:border-white/5 dark:bg-slate-800">
-                                                <x-platform-icon :platform="$platformValue" class="h-4.5 w-4.5" />
-                                                <span class="font-semibold tabular-nums">{{ $group->count() }}</span>
-                                            </span>
-                                        @endforeach
-                                    </div>
-
-                                    <p class="mb-1 text-xs text-slate-400 dark:text-slate-500">{{ __('analytics.total_followers_subscribers') }}</p>
-                                    <div class="flex flex-wrap gap-1.5">
-                                        @foreach ($grandByPlatformOrganization as $platformValue => $group)
-                                            <span class="inline-flex items-center gap-1.5 rounded-full border border-black/5 bg-slate-50 py-1 pr-2.5 pl-1 dark:border-white/5 dark:bg-slate-800">
-                                                <x-platform-icon :platform="$platformValue" class="h-4.5 w-4.5" />
-                                                <span class="font-semibold tabular-nums">
-                                                    {{ number_format($group->sum(fn ($s) => $s->latestStat?->{$countField[$platformValue]} ?? 0)) }}
-                                                </span>
-                                            </span>
-                                        @endforeach
-                                    </div>
-                                @endif
+                                <x-platform-count-chips :group="$grandByPlatformOrganization" :count-field="$countField" />
                             </td>
-                            <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ number_format($grandReachOrganization) }}</td>
-                            <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ $grandViewsOrganization ? number_format($grandViewsOrganization) : '—' }}</td>
-                            <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ $grandLikesOrganization ? number_format($grandLikesOrganization) : '—' }}</td>
-                            <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ $grandPostsOrganization ? number_format($grandPostsOrganization) : '—' }}</td>
+                            <x-analytics-grand-total-cells :reach="$grandReachOrganization" :views="$grandViewsOrganization" :likes="$grandLikesOrganization" :posts="$grandPostsOrganization" />
                         </tr>
                     </tbody>
                 </table>
@@ -512,7 +421,7 @@
                             <x-group-toggle-all-button scope="organization" />
                         @endif
                         <label class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-                            <input type="checkbox" id="hide-empty-organizations" class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800">
+                            <input type="checkbox" data-hide-empty-toggle="[data-organization-row]" class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800">
                             {{ __('analytics.hide_empty_organizations') }}
                         </label>
                     </div>
@@ -532,42 +441,15 @@
                         </thead>
                         <tbody class="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-900">
                             @if ($groupedOrganizationRows !== null)
-                                @foreach ($groupedOrganizationRows as $unionKey => $unionGroup)
-                                    @if ($isNasionalView)
-                                        <x-analytics-group-row
-                                            :label="$unionGroup['label']"
-                                            :count="$unionGroup['conferences']->sum(fn ($c) => $c['rows']->count()) + $unionGroup['rows']->count()"
-                                            :colspan="6"
-                                            :toggle-id="'organization-union-'.$unionKey"
-                                        />
-                                    @endif
-                                    @foreach ($unionGroup['rows'] as $row)
-                                        @include('partials.analytics-organization-row', [
-                                            'row' => $row,
-                                            'maxReach' => $maxOrganizationReach,
-                                            'depth' => 1,
-                                            'ancestors' => $isNasionalView ? 'organization-union-'.$unionKey : null,
-                                        ])
-                                    @endforeach
-                                    @foreach ($unionGroup['conferences'] as $conferenceKey => $conferenceGroup)
-                                        <x-analytics-group-row
-                                            :label="$conferenceGroup['label']"
-                                            :count="$conferenceGroup['rows']->count()"
-                                            :colspan="6"
-                                            :toggle-id="'organization-conf-'.$unionKey.'-'.$conferenceKey"
-                                            :ancestors="$isNasionalView ? 'organization-union-'.$unionKey : null"
-                                            :depth="1"
-                                        />
-                                        @foreach ($conferenceGroup['rows'] as $row)
-                                            @include('partials.analytics-organization-row', [
-                                                'row' => $row,
-                                                'maxReach' => $maxOrganizationReach,
-                                                'depth' => 2,
-                                                'ancestors' => ($isNasionalView ? 'organization-union-'.$unionKey.' ' : '').'organization-conf-'.$unionKey.'-'.$conferenceKey,
-                                            ])
-                                        @endforeach
-                                    @endforeach
-                                @endforeach
+                                <x-grouped-rows
+                                    :grouped="$groupedOrganizationRows"
+                                    prefix="organization"
+                                    :colspan="6"
+                                    row-view="partials.analytics-organization-row"
+                                    row-key="row"
+                                    :row-extra="['maxReach' => $maxOrganizationReach, 'countField' => $countField]"
+                                    :show-union-header="$isNasionalView"
+                                />
                             @else
                                 @foreach ($organizationRows as $row)
                                     @include('partials.analytics-organization-row', ['row' => $row, 'maxReach' => $maxOrganizationReach])
@@ -578,19 +460,7 @@
                 </div>
             </div>
 
-            <script>
-                (function () {
-                    var checkbox = document.getElementById('hide-empty-organizations');
-                    if (! checkbox) return;
-
-                    checkbox.addEventListener('change', function () {
-                        document.querySelectorAll('[data-organization-row]').forEach(function (row) {
-                            var isEmpty = row.hasAttribute('data-empty-row');
-                            row.classList.toggle('hidden', checkbox.checked && isEmpty);
-                        });
-                    });
-                })();
-            </script>
+            @include('partials.hide-empty-rows')
         @endif
     </div>
 
@@ -666,19 +536,7 @@
                     <x-icon name="chevron-down" class="pointer-events-none absolute top-1/2 right-3.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                 </label>
 
-                <label class="relative">
-                    <x-icon name="building-office" class="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <select
-                        name="category"
-                        onchange="this.form.submit()"
-                        class="appearance-none rounded-full border border-black/10 bg-slate-50 py-2.5 pr-10 pl-9 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-100 dark:border-white/10 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-                    >
-                        <option value="">{{ __('common.all_categories') }}</option>
-                        <option value="gereja" @selected($selectedCategory === 'gereja')>{{ __('directory.church_accounts') }}</option>
-                        <option value="umum" @selected($selectedCategory === 'umum')>{{ __('directory.general_accounts') }}</option>
-                    </select>
-                    <x-icon name="chevron-down" class="pointer-events-none absolute top-1/2 right-3.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                </label>
+                <x-category-filter :selected-category="$selectedCategory" />
 
                 @include('partials.analytics-date-range-filter', [
                     'prefix' => 'church',
@@ -690,61 +548,21 @@
         </x-filter-card>
 
         {{-- Hero KPI --}}
-        <div class="mb-6 flex flex-wrap items-center gap-6 rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/5 dark:bg-slate-900">
-            <span class="inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 shadow-sm dark:bg-blue-950/50 dark:text-blue-300">
-                <x-icon name="arrow-trending-up" class="h-7 w-7" />
-            </span>
+        <x-analytics-hero-kpi :value="$currentReachChurch" :growth-percent="$reachGrowthPercent" />
 
-            <div class="min-w-[180px]">
-                <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('analytics.total_reach_current') }}</p>
-                <p class="text-3xl font-bold tabular-nums text-slate-900 dark:text-white">
-                    {{ number_format($currentReachChurch) }}
-                </p>
-            </div>
-
-            @if ($reachGrowthPercent !== null)
-                <div class="flex items-center gap-2 rounded-full border px-4 py-2 {{ $reachGrowthPercent >= 0 ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950' : 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950' }}">
-                    <x-icon :name="$reachGrowthPercent > 0 ? 'arrow-trending-up' : ($reachGrowthPercent < 0 ? 'arrow-trending-down' : 'minus-small')" class="h-4 w-4 {{ $reachGrowthPercent >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400' }}" />
-                    <span class="text-sm font-semibold tabular-nums {{ $reachGrowthPercent >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400' }}">
-                        {{ $reachGrowthPercent > 0 ? '+' : '' }}{{ number_format($reachGrowthPercent, 2) }}%
-                    </span>
-                    <span class="text-xs text-slate-400 dark:text-slate-500">{{ __('common.this_week') }}</span>
-                </div>
-            @endif
-        </div>
-
-        <div class="mb-8 grid gap-6 sm:grid-cols-2">
-            <div class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
-                <p class="font-bold text-slate-900 dark:text-white">{{ __('analytics.growth_reach_title') }}</p>
-                <p class="mb-4 text-sm text-slate-500 dark:text-slate-400">{{ $reachSubtitle }}{{ __('analytics.per_week') }}</p>
-                <x-growth-chart :values="$growthOverTime->pluck('total_reach')" :labels="$growthLabels" />
-            </div>
-
-            <div class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
-                <p class="font-bold text-slate-900 dark:text-white">{{ __('analytics.growth_views_title') }}</p>
-                <p class="mb-4 text-sm text-slate-500 dark:text-slate-400">{{ $viewsSubtitle }}{{ __('analytics.per_week') }}</p>
-                <x-growth-chart :values="$growthOverTime->pluck('total_views')" :labels="$growthLabels" />
-            </div>
-
-            <div class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
-                <p class="font-bold text-slate-900 dark:text-white">{{ __('analytics.growth_likes_title') }}</p>
-                <p class="mb-4 text-sm text-slate-500 dark:text-slate-400">{{ $likesSubtitle }}{{ __('analytics.per_week') }}</p>
-                <x-growth-chart :values="$growthOverTime->pluck('total_likes')" :labels="$growthLabels" />
-            </div>
-
-            <div class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
-                <p class="font-bold text-slate-900 dark:text-white">{{ __('analytics.growth_posts_title') }}</p>
-                <p class="mb-4 text-sm text-slate-500 dark:text-slate-400">{{ $postsSubtitle }}{{ __('analytics.per_week') }}</p>
-                <x-growth-chart :values="$growthOverTime->pluck('total_posts')" :labels="$growthLabels" />
-            </div>
-        </div>
+        <x-analytics-growth-grid
+            :growth-over-time="$growthOverTime"
+            :growth-labels="$growthLabels"
+            :reach-subtitle="$reachSubtitle"
+            :views-subtitle="$viewsSubtitle"
+            :likes-subtitle="$likesSubtitle"
+            :posts-subtitle="$postsSubtitle"
+        />
 
         @if ($filteredChurches->isEmpty())
-            <div class="rounded-2xl border border-dashed border-slate-300 p-12 text-center dark:border-slate-700">
-                <p class="text-slate-500 dark:text-slate-400">
-                    {{ $churches->isEmpty() ? __('analytics.no_church_data') : __('analytics.no_church_match_filter') }}
-                </p>
-            </div>
+            <x-empty-state>
+                {{ $churches->isEmpty() ? __('analytics.no_church_data') : __('analytics.no_church_match_filter') }}
+            </x-empty-state>
         @else
             @php
                 $allDisplaySocials = $filteredChurches->flatMap(
@@ -805,37 +623,10 @@
                             <td class="px-4 py-3 font-semibold">{{ __('analytics.churches_count', ['count' => $filteredChurches->count()]) }}</td>
                             @foreach (['gereja', 'umum'] as $category)
                                 <td class="px-4 py-3">
-                                    @if ($grandByCategory[$category]->isEmpty())
-                                        <span class="text-slate-300 dark:text-slate-600">—</span>
-                                    @else
-                                        <p class="mb-1 text-xs text-slate-400 dark:text-slate-500">{{ __('analytics.account_count') }}</p>
-                                        <div class="mb-2 flex flex-wrap gap-1.5">
-                                            @foreach ($grandByCategory[$category] as $platformValue => $group)
-                                                <span class="inline-flex items-center gap-1.5 rounded-full border border-black/5 bg-slate-50 py-1 pr-2.5 pl-1 dark:border-white/5 dark:bg-slate-800">
-                                                    <x-platform-icon :platform="$platformValue" class="h-4.5 w-4.5" />
-                                                    <span class="font-semibold tabular-nums">{{ $group->count() }}</span>
-                                                </span>
-                                            @endforeach
-                                        </div>
-
-                                        <p class="mb-1 text-xs text-slate-400 dark:text-slate-500">{{ __('analytics.total_followers_subscribers') }}</p>
-                                        <div class="flex flex-wrap gap-1.5">
-                                            @foreach ($grandByCategory[$category] as $platformValue => $group)
-                                                <span class="inline-flex items-center gap-1.5 rounded-full border border-black/5 bg-slate-50 py-1 pr-2.5 pl-1 dark:border-white/5 dark:bg-slate-800">
-                                                    <x-platform-icon :platform="$platformValue" class="h-4.5 w-4.5" />
-                                                    <span class="font-semibold tabular-nums">
-                                                        {{ number_format($group->sum(fn ($s) => $s->latestStat?->{$countField[$platformValue]} ?? 0)) }}
-                                                    </span>
-                                                </span>
-                                            @endforeach
-                                        </div>
-                                    @endif
+                                    <x-platform-count-chips :group="$grandByCategory[$category]" :count-field="$countField" />
                                 </td>
                             @endforeach
-                            <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ number_format($grandReach) }}</td>
-                            <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ $grandViews ? number_format($grandViews) : '—' }}</td>
-                            <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ $grandLikes ? number_format($grandLikes) : '—' }}</td>
-                            <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ $grandPosts ? number_format($grandPosts) : '—' }}</td>
+                            <x-analytics-grand-total-cells :reach="$grandReach" :views="$grandViews" :likes="$grandLikes" :posts="$grandPosts" />
                         </tr>
                     </tbody>
                 </table>
@@ -858,7 +649,7 @@
                             <x-group-toggle-all-button scope="church" />
                         @endif
                         <label class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-                            <input type="checkbox" id="hide-empty-churches" class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800">
+                            <input type="checkbox" data-hide-empty-toggle="[data-church-row]" class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800">
                             {{ __('analytics.hide_empty_churches') }}
                         </label>
                     </div>
@@ -879,34 +670,15 @@
                         </thead>
                         <tbody class="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-900">
                             @if ($groupedChurchRows !== null)
-                                @foreach ($groupedChurchRows as $unionKey => $unionGroup)
-                                    @if ($isNasionalView)
-                                        <x-analytics-group-row
-                                            :label="$unionGroup['label']"
-                                            :count="$unionGroup['conferences']->sum(fn ($c) => $c['rows']->count())"
-                                            :colspan="7"
-                                            :toggle-id="'church-union-'.$unionKey"
-                                        />
-                                    @endif
-                                    @foreach ($unionGroup['conferences'] as $conferenceKey => $conferenceGroup)
-                                        <x-analytics-group-row
-                                            :label="$conferenceGroup['label']"
-                                            :count="$conferenceGroup['rows']->count()"
-                                            :colspan="7"
-                                            :toggle-id="'church-conf-'.$unionKey.'-'.$conferenceKey"
-                                            :ancestors="$isNasionalView ? 'church-union-'.$unionKey : null"
-                                            :depth="1"
-                                        />
-                                        @foreach ($conferenceGroup['rows'] as $row)
-                                            @include('partials.analytics-church-row', [
-                                                'row' => $row,
-                                                'maxReach' => $maxChurchReach,
-                                                'depth' => 2,
-                                                'ancestors' => ($isNasionalView ? 'church-union-'.$unionKey.' ' : '').'church-conf-'.$unionKey.'-'.$conferenceKey,
-                                            ])
-                                        @endforeach
-                                    @endforeach
-                                @endforeach
+                                <x-grouped-rows
+                                    :grouped="$groupedChurchRows"
+                                    prefix="church"
+                                    :colspan="7"
+                                    row-view="partials.analytics-church-row"
+                                    row-key="row"
+                                    :row-extra="['maxReach' => $maxChurchReach, 'countField' => $countField]"
+                                    :show-union-header="$isNasionalView"
+                                />
                             @else
                                 @foreach ($churchRows as $row)
                                     @include('partials.analytics-church-row', ['row' => $row, 'maxReach' => $maxChurchReach])
@@ -917,19 +689,7 @@
                 </div>
             </div>
 
-            <script>
-                (function () {
-                    var checkbox = document.getElementById('hide-empty-churches');
-                    if (! checkbox) return;
-
-                    checkbox.addEventListener('change', function () {
-                        document.querySelectorAll('[data-church-row]').forEach(function (row) {
-                            var isEmpty = row.hasAttribute('data-empty-row');
-                            row.classList.toggle('hidden', checkbox.checked && isEmpty);
-                        });
-                    });
-                })();
-            </script>
+            @include('partials.hide-empty-rows')
         @endif
     </div>
 
@@ -1015,61 +775,21 @@
         </x-filter-card>
 
         {{-- Hero KPI --}}
-        <div class="mb-6 flex flex-wrap items-center gap-6 rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/5 dark:bg-slate-900">
-            <span class="inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 shadow-sm dark:bg-blue-950/50 dark:text-blue-300">
-                <x-icon name="arrow-trending-up" class="h-7 w-7" />
-            </span>
+        <x-analytics-hero-kpi :value="$latestPointInstitution->total_reach ?? 0" :growth-percent="$reachGrowthPercentInstitution" />
 
-            <div class="min-w-[180px]">
-                <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('analytics.total_reach_current') }}</p>
-                <p class="text-3xl font-bold tabular-nums text-slate-900 dark:text-white">
-                    {{ number_format($latestPointInstitution->total_reach ?? 0) }}
-                </p>
-            </div>
-
-            @if ($reachGrowthPercentInstitution !== null)
-                <div class="flex items-center gap-2 rounded-full border px-4 py-2 {{ $reachGrowthPercentInstitution >= 0 ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950' : 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950' }}">
-                    <x-icon :name="$reachGrowthPercentInstitution > 0 ? 'arrow-trending-up' : ($reachGrowthPercentInstitution < 0 ? 'arrow-trending-down' : 'minus-small')" class="h-4 w-4 {{ $reachGrowthPercentInstitution >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400' }}" />
-                    <span class="text-sm font-semibold tabular-nums {{ $reachGrowthPercentInstitution >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400' }}">
-                        {{ $reachGrowthPercentInstitution > 0 ? '+' : '' }}{{ number_format($reachGrowthPercentInstitution, 2) }}%
-                    </span>
-                    <span class="text-xs text-slate-400 dark:text-slate-500">{{ __('common.this_week') }}</span>
-                </div>
-            @endif
-        </div>
-
-        <div class="mb-8 grid gap-6 sm:grid-cols-2">
-            <div class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
-                <p class="font-bold text-slate-900 dark:text-white">{{ __('analytics.growth_reach_title') }}</p>
-                <p class="mb-4 text-sm text-slate-500 dark:text-slate-400">{{ $reachSubtitleInstitution }}{{ __('analytics.per_week') }}</p>
-                <x-growth-chart :values="$growthOverTimeInstitution->pluck('total_reach')" :labels="$growthLabelsInstitution" />
-            </div>
-
-            <div class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
-                <p class="font-bold text-slate-900 dark:text-white">{{ __('analytics.growth_views_title') }}</p>
-                <p class="mb-4 text-sm text-slate-500 dark:text-slate-400">{{ $viewsSubtitleInstitution }}{{ __('analytics.per_week') }}</p>
-                <x-growth-chart :values="$growthOverTimeInstitution->pluck('total_views')" :labels="$growthLabelsInstitution" />
-            </div>
-
-            <div class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
-                <p class="font-bold text-slate-900 dark:text-white">{{ __('analytics.growth_likes_title') }}</p>
-                <p class="mb-4 text-sm text-slate-500 dark:text-slate-400">{{ $likesSubtitleInstitution }}{{ __('analytics.per_week') }}</p>
-                <x-growth-chart :values="$growthOverTimeInstitution->pluck('total_likes')" :labels="$growthLabelsInstitution" />
-            </div>
-
-            <div class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
-                <p class="font-bold text-slate-900 dark:text-white">{{ __('analytics.growth_posts_title') }}</p>
-                <p class="mb-4 text-sm text-slate-500 dark:text-slate-400">{{ $postsSubtitleInstitution }}{{ __('analytics.per_week') }}</p>
-                <x-growth-chart :values="$growthOverTimeInstitution->pluck('total_posts')" :labels="$growthLabelsInstitution" />
-            </div>
-        </div>
+        <x-analytics-growth-grid
+            :growth-over-time="$growthOverTimeInstitution"
+            :growth-labels="$growthLabelsInstitution"
+            :reach-subtitle="$reachSubtitleInstitution"
+            :views-subtitle="$viewsSubtitleInstitution"
+            :likes-subtitle="$likesSubtitleInstitution"
+            :posts-subtitle="$postsSubtitleInstitution"
+        />
 
         @if ($filteredInstitutions->isEmpty())
-            <div class="rounded-2xl border border-dashed border-slate-300 p-12 text-center dark:border-slate-700">
-                <p class="text-slate-500 dark:text-slate-400">
-                    {{ $institutions->isEmpty() ? __('analytics.no_institution_data') : __('analytics.no_institution_match_filter') }}
-                </p>
-            </div>
+            <x-empty-state>
+                {{ $institutions->isEmpty() ? __('analytics.no_institution_data') : __('analytics.no_institution_match_filter') }}
+            </x-empty-state>
         @else
             @php
                 $allDisplaySocialsInstitution = $filteredInstitutions->flatMap(
@@ -1122,36 +842,9 @@
                         <tr>
                             <td class="px-4 py-3 font-semibold">{{ __('analytics.institutions_count', ['count' => $filteredInstitutions->count()]) }}</td>
                             <td class="px-4 py-3">
-                                @if ($grandByPlatformInstitution->isEmpty())
-                                    <span class="text-slate-300 dark:text-slate-600">—</span>
-                                @else
-                                    <p class="mb-1 text-xs text-slate-400 dark:text-slate-500">{{ __('analytics.account_count') }}</p>
-                                    <div class="mb-2 flex flex-wrap gap-1.5">
-                                        @foreach ($grandByPlatformInstitution as $platformValue => $group)
-                                            <span class="inline-flex items-center gap-1.5 rounded-full border border-black/5 bg-slate-50 py-1 pr-2.5 pl-1 dark:border-white/5 dark:bg-slate-800">
-                                                <x-platform-icon :platform="$platformValue" class="h-4.5 w-4.5" />
-                                                <span class="font-semibold tabular-nums">{{ $group->count() }}</span>
-                                            </span>
-                                        @endforeach
-                                    </div>
-
-                                    <p class="mb-1 text-xs text-slate-400 dark:text-slate-500">{{ __('analytics.total_followers_subscribers') }}</p>
-                                    <div class="flex flex-wrap gap-1.5">
-                                        @foreach ($grandByPlatformInstitution as $platformValue => $group)
-                                            <span class="inline-flex items-center gap-1.5 rounded-full border border-black/5 bg-slate-50 py-1 pr-2.5 pl-1 dark:border-white/5 dark:bg-slate-800">
-                                                <x-platform-icon :platform="$platformValue" class="h-4.5 w-4.5" />
-                                                <span class="font-semibold tabular-nums">
-                                                    {{ number_format($group->sum(fn ($s) => $s->latestStat?->{$countField[$platformValue]} ?? 0)) }}
-                                                </span>
-                                            </span>
-                                        @endforeach
-                                    </div>
-                                @endif
+                                <x-platform-count-chips :group="$grandByPlatformInstitution" :count-field="$countField" />
                             </td>
-                            <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ number_format($grandReachInstitution) }}</td>
-                            <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ $grandViewsInstitution ? number_format($grandViewsInstitution) : '—' }}</td>
-                            <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ $grandLikesInstitution ? number_format($grandLikesInstitution) : '—' }}</td>
-                            <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ $grandPostsInstitution ? number_format($grandPostsInstitution) : '—' }}</td>
+                            <x-analytics-grand-total-cells :reach="$grandReachInstitution" :views="$grandViewsInstitution" :likes="$grandLikesInstitution" :posts="$grandPostsInstitution" />
                         </tr>
                     </tbody>
                 </table>
@@ -1174,7 +867,7 @@
                             <x-group-toggle-all-button scope="institution" />
                         @endif
                         <label class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-                            <input type="checkbox" id="hide-empty-institutions" class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800">
+                            <input type="checkbox" data-hide-empty-toggle="[data-institution-row]" class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800">
                             {{ __('analytics.hide_empty_institutions') }}
                         </label>
                     </div>
@@ -1194,34 +887,15 @@
                         </thead>
                         <tbody class="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-900">
                             @if ($groupedInstitutionRows !== null)
-                                @foreach ($groupedInstitutionRows as $unionKey => $unionGroup)
-                                    @if ($isNasionalView)
-                                        <x-analytics-group-row
-                                            :label="$unionGroup['label']"
-                                            :count="$unionGroup['conferences']->sum(fn ($c) => $c['rows']->count())"
-                                            :colspan="6"
-                                            :toggle-id="'institution-union-'.$unionKey"
-                                        />
-                                    @endif
-                                    @foreach ($unionGroup['conferences'] as $conferenceKey => $conferenceGroup)
-                                        <x-analytics-group-row
-                                            :label="$conferenceGroup['label']"
-                                            :count="$conferenceGroup['rows']->count()"
-                                            :colspan="6"
-                                            :toggle-id="'institution-conf-'.$unionKey.'-'.$conferenceKey"
-                                            :ancestors="$isNasionalView ? 'institution-union-'.$unionKey : null"
-                                            :depth="1"
-                                        />
-                                        @foreach ($conferenceGroup['rows'] as $row)
-                                            @include('partials.analytics-institution-row', [
-                                                'row' => $row,
-                                                'maxReach' => $maxInstitutionReach,
-                                                'depth' => 2,
-                                                'ancestors' => ($isNasionalView ? 'institution-union-'.$unionKey.' ' : '').'institution-conf-'.$unionKey.'-'.$conferenceKey,
-                                            ])
-                                        @endforeach
-                                    @endforeach
-                                @endforeach
+                                <x-grouped-rows
+                                    :grouped="$groupedInstitutionRows"
+                                    prefix="institution"
+                                    :colspan="6"
+                                    row-view="partials.analytics-institution-row"
+                                    row-key="row"
+                                    :row-extra="['maxReach' => $maxInstitutionReach, 'countField' => $countField]"
+                                    :show-union-header="$isNasionalView"
+                                />
                             @else
                                 @foreach ($institutionRows as $row)
                                     @include('partials.analytics-institution-row', ['row' => $row, 'maxReach' => $maxInstitutionReach])
@@ -1232,19 +906,7 @@
                 </div>
             </div>
 
-            <script>
-                (function () {
-                    var checkbox = document.getElementById('hide-empty-institutions');
-                    if (! checkbox) return;
-
-                    checkbox.addEventListener('change', function () {
-                        document.querySelectorAll('[data-institution-row]').forEach(function (row) {
-                            var isEmpty = row.hasAttribute('data-empty-row');
-                            row.classList.toggle('hidden', checkbox.checked && isEmpty);
-                        });
-                    });
-                })();
-            </script>
+            @include('partials.hide-empty-rows')
         @endif
     </div>
 
@@ -1330,61 +992,21 @@
         </x-filter-card>
 
         {{-- Hero KPI --}}
-        <div class="mb-6 flex flex-wrap items-center gap-6 rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/5 dark:bg-slate-900">
-            <span class="inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600 shadow-sm dark:bg-blue-950/50 dark:text-blue-300">
-                <x-icon name="arrow-trending-up" class="h-7 w-7" />
-            </span>
+        <x-analytics-hero-kpi :value="$latestPointPersonal->total_reach ?? 0" :growth-percent="$reachGrowthPercentPersonal" />
 
-            <div class="min-w-[180px]">
-                <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('analytics.total_reach_current') }}</p>
-                <p class="text-3xl font-bold tabular-nums text-slate-900 dark:text-white">
-                    {{ number_format($latestPointPersonal->total_reach ?? 0) }}
-                </p>
-            </div>
-
-            @if ($reachGrowthPercentPersonal !== null)
-                <div class="flex items-center gap-2 rounded-full border px-4 py-2 {{ $reachGrowthPercentPersonal >= 0 ? 'border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950' : 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950' }}">
-                    <x-icon :name="$reachGrowthPercentPersonal > 0 ? 'arrow-trending-up' : ($reachGrowthPercentPersonal < 0 ? 'arrow-trending-down' : 'minus-small')" class="h-4 w-4 {{ $reachGrowthPercentPersonal >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400' }}" />
-                    <span class="text-sm font-semibold tabular-nums {{ $reachGrowthPercentPersonal >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400' }}">
-                        {{ $reachGrowthPercentPersonal > 0 ? '+' : '' }}{{ number_format($reachGrowthPercentPersonal, 2) }}%
-                    </span>
-                    <span class="text-xs text-slate-400 dark:text-slate-500">{{ __('common.this_week') }}</span>
-                </div>
-            @endif
-        </div>
-
-        <div class="mb-8 grid gap-6 sm:grid-cols-2">
-            <div class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
-                <p class="font-bold text-slate-900 dark:text-white">{{ __('analytics.growth_reach_title') }}</p>
-                <p class="mb-4 text-sm text-slate-500 dark:text-slate-400">{{ $reachSubtitlePersonal }}{{ __('analytics.per_week') }}</p>
-                <x-growth-chart :values="$growthOverTimePersonal->pluck('total_reach')" :labels="$growthLabelsPersonal" />
-            </div>
-
-            <div class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
-                <p class="font-bold text-slate-900 dark:text-white">{{ __('analytics.growth_views_title') }}</p>
-                <p class="mb-4 text-sm text-slate-500 dark:text-slate-400">{{ $viewsSubtitlePersonal }}{{ __('analytics.per_week') }}</p>
-                <x-growth-chart :values="$growthOverTimePersonal->pluck('total_views')" :labels="$growthLabelsPersonal" />
-            </div>
-
-            <div class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
-                <p class="font-bold text-slate-900 dark:text-white">{{ __('analytics.growth_likes_title') }}</p>
-                <p class="mb-4 text-sm text-slate-500 dark:text-slate-400">{{ $likesSubtitlePersonal }}{{ __('analytics.per_week') }}</p>
-                <x-growth-chart :values="$growthOverTimePersonal->pluck('total_likes')" :labels="$growthLabelsPersonal" />
-            </div>
-
-            <div class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
-                <p class="font-bold text-slate-900 dark:text-white">{{ __('analytics.growth_posts_title') }}</p>
-                <p class="mb-4 text-sm text-slate-500 dark:text-slate-400">{{ $postsSubtitlePersonal }}{{ __('analytics.per_week') }}</p>
-                <x-growth-chart :values="$growthOverTimePersonal->pluck('total_posts')" :labels="$growthLabelsPersonal" />
-            </div>
-        </div>
+        <x-analytics-growth-grid
+            :growth-over-time="$growthOverTimePersonal"
+            :growth-labels="$growthLabelsPersonal"
+            :reach-subtitle="$reachSubtitlePersonal"
+            :views-subtitle="$viewsSubtitlePersonal"
+            :likes-subtitle="$likesSubtitlePersonal"
+            :posts-subtitle="$postsSubtitlePersonal"
+        />
 
         @if ($filteredPeople->isEmpty())
-            <div class="rounded-2xl border border-dashed border-slate-300 p-12 text-center dark:border-slate-700">
-                <p class="text-slate-500 dark:text-slate-400">
-                    {{ $people->isEmpty() ? __('analytics.no_personal_data') : __('analytics.no_personal_match_filter') }}
-                </p>
-            </div>
+            <x-empty-state>
+                {{ $people->isEmpty() ? __('analytics.no_personal_data') : __('analytics.no_personal_match_filter') }}
+            </x-empty-state>
         @else
             @php
                 $allDisplaySocialsPersonal = $filteredPeople->flatMap(
@@ -1437,36 +1059,9 @@
                         <tr>
                             <td class="px-4 py-3 font-semibold">{{ __('analytics.personal_count', ['count' => $filteredPeople->count()]) }}</td>
                             <td class="px-4 py-3">
-                                @if ($grandByPlatformPersonal->isEmpty())
-                                    <span class="text-slate-300 dark:text-slate-600">—</span>
-                                @else
-                                    <p class="mb-1 text-xs text-slate-400 dark:text-slate-500">{{ __('analytics.account_count') }}</p>
-                                    <div class="mb-2 flex flex-wrap gap-1.5">
-                                        @foreach ($grandByPlatformPersonal as $platformValue => $group)
-                                            <span class="inline-flex items-center gap-1.5 rounded-full border border-black/5 bg-slate-50 py-1 pr-2.5 pl-1 dark:border-white/5 dark:bg-slate-800">
-                                                <x-platform-icon :platform="$platformValue" class="h-4.5 w-4.5" />
-                                                <span class="font-semibold tabular-nums">{{ $group->count() }}</span>
-                                            </span>
-                                        @endforeach
-                                    </div>
-
-                                    <p class="mb-1 text-xs text-slate-400 dark:text-slate-500">{{ __('analytics.total_followers_subscribers') }}</p>
-                                    <div class="flex flex-wrap gap-1.5">
-                                        @foreach ($grandByPlatformPersonal as $platformValue => $group)
-                                            <span class="inline-flex items-center gap-1.5 rounded-full border border-black/5 bg-slate-50 py-1 pr-2.5 pl-1 dark:border-white/5 dark:bg-slate-800">
-                                                <x-platform-icon :platform="$platformValue" class="h-4.5 w-4.5" />
-                                                <span class="font-semibold tabular-nums">
-                                                    {{ number_format($group->sum(fn ($s) => $s->latestStat?->{$countField[$platformValue]} ?? 0)) }}
-                                                </span>
-                                            </span>
-                                        @endforeach
-                                    </div>
-                                @endif
+                                <x-platform-count-chips :group="$grandByPlatformPersonal" :count-field="$countField" />
                             </td>
-                            <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ number_format($grandReachPersonal) }}</td>
-                            <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ $grandViewsPersonal ? number_format($grandViewsPersonal) : '—' }}</td>
-                            <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ $grandLikesPersonal ? number_format($grandLikesPersonal) : '—' }}</td>
-                            <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ $grandPostsPersonal ? number_format($grandPostsPersonal) : '—' }}</td>
+                            <x-analytics-grand-total-cells :reach="$grandReachPersonal" :views="$grandViewsPersonal" :likes="$grandLikesPersonal" :posts="$grandPostsPersonal" />
                         </tr>
                     </tbody>
                 </table>
@@ -1489,7 +1084,7 @@
                             <x-group-toggle-all-button scope="person" />
                         @endif
                         <label class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-                            <input type="checkbox" id="hide-empty-people" class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800">
+                            <input type="checkbox" data-hide-empty-toggle="[data-person-row]" class="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-800">
                             {{ __('analytics.hide_empty_personal') }}
                         </label>
                     </div>
@@ -1509,34 +1104,15 @@
                         </thead>
                         <tbody class="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-900">
                             @if ($groupedPersonRows !== null)
-                                @foreach ($groupedPersonRows as $unionKey => $unionGroup)
-                                    @if ($isNasionalView)
-                                        <x-analytics-group-row
-                                            :label="$unionGroup['label']"
-                                            :count="$unionGroup['conferences']->sum(fn ($c) => $c['rows']->count())"
-                                            :colspan="6"
-                                            :toggle-id="'person-union-'.$unionKey"
-                                        />
-                                    @endif
-                                    @foreach ($unionGroup['conferences'] as $conferenceKey => $conferenceGroup)
-                                        <x-analytics-group-row
-                                            :label="$conferenceGroup['label']"
-                                            :count="$conferenceGroup['rows']->count()"
-                                            :colspan="6"
-                                            :toggle-id="'person-conf-'.$unionKey.'-'.$conferenceKey"
-                                            :ancestors="$isNasionalView ? 'person-union-'.$unionKey : null"
-                                            :depth="1"
-                                        />
-                                        @foreach ($conferenceGroup['rows'] as $row)
-                                            @include('partials.analytics-person-row', [
-                                                'row' => $row,
-                                                'maxReach' => $maxPersonReach,
-                                                'depth' => 2,
-                                                'ancestors' => ($isNasionalView ? 'person-union-'.$unionKey.' ' : '').'person-conf-'.$unionKey.'-'.$conferenceKey,
-                                            ])
-                                        @endforeach
-                                    @endforeach
-                                @endforeach
+                                <x-grouped-rows
+                                    :grouped="$groupedPersonRows"
+                                    prefix="person"
+                                    :colspan="6"
+                                    row-view="partials.analytics-person-row"
+                                    row-key="row"
+                                    :row-extra="['maxReach' => $maxPersonReach, 'countField' => $countField]"
+                                    :show-union-header="$isNasionalView"
+                                />
                             @else
                                 @foreach ($personRows as $row)
                                     @include('partials.analytics-person-row', ['row' => $row, 'maxReach' => $maxPersonReach])
@@ -1547,19 +1123,7 @@
                 </div>
             </div>
 
-            <script>
-                (function () {
-                    var checkbox = document.getElementById('hide-empty-people');
-                    if (! checkbox) return;
-
-                    checkbox.addEventListener('change', function () {
-                        document.querySelectorAll('[data-person-row]').forEach(function (row) {
-                            var isEmpty = row.hasAttribute('data-empty-row');
-                            row.classList.toggle('hidden', checkbox.checked && isEmpty);
-                        });
-                    });
-                })();
-            </script>
+            @include('partials.hide-empty-rows')
         @endif
     </div>
 

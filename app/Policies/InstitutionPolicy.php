@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Models\Institution;
+use App\Models\Union;
 use App\Models\User;
 
 class InstitutionPolicy
@@ -66,6 +67,10 @@ class InstitutionPolicy
             // Institution::scopeVisibleTo()'s own nasional-scoped arm exactly.
             $user->role->level() === 'nasional' => $institution->union_id === null
                 || in_array($institution->union_id, $user->assignedUnionIds(), true),
+            // Same strict, no-nasional-carve-out reasoning as the 'uni' arm right below —
+            // mirrors Institution::scopeVisibleTo()'s own 'divisi' arm.
+            $user->role->level() === 'divisi' => $institution->union_id !== null
+                && Union::whereKey($institution->union_id)->where('division_id', $user->division_id)->exists(),
             $user->role->level() === 'uni' => $institution->union_id === $user->union_id,
             $user->role->level() === 'daerah' => $institution->conference_id === $user->conference_id,
             $user->role->level() === 'institusi' => $institution->id === $user->institution_id,

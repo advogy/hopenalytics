@@ -7,12 +7,14 @@ enum UserRole: string
     case SuperAdmin = 'superadmin';
     case AdminGlobal = 'admin_global';
     case AdminNasional = 'admin_nasional';
+    case AdminDivisi = 'admin_divisi';
     case AdminUni = 'admin_uni';
     case AdminDaerah = 'admin_daerah';
     case AdminGereja = 'admin_gereja';
     case AdminInstitusi = 'admin_institusi';
     case PimpinanGlobal = 'pimpinan_global';
     case PimpinanNasional = 'pimpinan_nasional';
+    case PimpinanDivisi = 'pimpinan_divisi';
     case PimpinanUni = 'pimpinan_uni';
     case PimpinanDaerah = 'pimpinan_daerah';
     case PimpinanGereja = 'pimpinan_gereja';
@@ -28,8 +30,11 @@ enum UserRole: string
      * "nasional" (Admin/Pimpinan Nasional) is scoped to an assigned SET of Union records
      * (see User::assignedUnions()) rather than a single region column, since one country
      * can have multiple Unions and one Union can span multiple countries — there's no
-     * clean single "region" value to store on the user row the way uni/daerah/gereja/
-     * institusi levels do. "institusi" sits outside the global→nasional→uni→daerah→gereja
+     * clean single "region" value to store on the user row the way divisi/uni/daerah/gereja/
+     * institusi levels do. "divisi" (Admin/Pimpinan Divisi) sits between nasional and uni —
+     * unlike nasional's arbitrary assigned set, Divisi IS a real hierarchical parent of Union
+     * (see Division model, Union::division_id), independent of Admin Nasional's own Union-set
+     * assignment. "institusi" sits outside the global→nasional→divisi→uni→daerah→gereja
      * chain — institutions aren't nested under a single Union/Conference, so they're
      * assigned directly via the manage-institution-users gate instead.
      */
@@ -39,6 +44,7 @@ enum UserRole: string
             self::SuperAdmin => null,
             self::AdminGlobal, self::PimpinanGlobal => 'global',
             self::AdminNasional, self::PimpinanNasional => 'nasional',
+            self::AdminDivisi, self::PimpinanDivisi => 'divisi',
             self::AdminUni, self::PimpinanUni => 'uni',
             self::AdminDaerah, self::PimpinanDaerah => 'daerah',
             self::AdminGereja, self::PimpinanGereja => 'gereja',
@@ -51,6 +57,7 @@ enum UserRole: string
         return in_array($this, [
             self::PimpinanGlobal,
             self::PimpinanNasional,
+            self::PimpinanDivisi,
             self::PimpinanUni,
             self::PimpinanDaerah,
             self::PimpinanGereja,
@@ -80,7 +87,8 @@ enum UserRole: string
         return match ($this) {
             self::SuperAdmin => 'global',
             self::AdminGlobal => 'nasional',
-            self::AdminNasional => 'uni',
+            self::AdminNasional => 'divisi',
+            self::AdminDivisi => 'uni',
             self::AdminUni => 'daerah',
             self::AdminDaerah => 'gereja',
             default => null,
@@ -97,12 +105,14 @@ enum UserRole: string
             self::SuperAdmin => 'Superadmin',
             self::AdminGlobal => 'Admin Global',
             self::AdminNasional => 'Admin Nasional',
+            self::AdminDivisi => 'Admin Divisi',
             self::AdminUni => 'Admin Uni',
             self::AdminDaerah => 'Admin Daerah',
             self::AdminGereja => 'Admin Gereja',
             self::AdminInstitusi => 'Admin Institusi',
             self::PimpinanGlobal => 'Pimpinan Global',
             self::PimpinanNasional => 'Pimpinan Nasional',
+            self::PimpinanDivisi => 'Pimpinan Divisi',
             self::PimpinanUni => 'Pimpinan Uni',
             self::PimpinanDaerah => 'Pimpinan Daerah',
             self::PimpinanGereja => 'Pimpinan Gereja',

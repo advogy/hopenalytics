@@ -1,6 +1,7 @@
 @php
-    $levelLabels = ['nasional' => __('common.national'), 'uni' => __('common.union'), 'daerah' => __('common.conference'), 'gereja' => __('common.church')];
+    $levelLabels = ['nasional' => __('common.national'), 'divisi' => __('common.division'), 'uni' => __('common.union'), 'daerah' => __('common.conference'), 'gereja' => __('common.church')];
     $scopeLabel = match ($targetLevel) {
+        'divisi' => __('common.division'),
         'uni' => __('common.union'),
         'daerah' => __('common.conference'),
         'gereja' => __('common.church'),
@@ -10,12 +11,82 @@
     $scopeDisplayFor = function ($user) {
         return match ($user->role?->level()) {
             'nasional' => $user->assignedUnions->isNotEmpty() ? $user->assignedUnions->pluck('name')->implode(', ') : '—',
-            'uni' => $user->union?->name ?? '—',
+            'divisi' => $user->division?->name ?? '—',
+            'uni' => $user->union ? "{$user->union->name}".($user->union->division ? " ({$user->union->division->name})" : '') : '—',
             'daerah' => $user->conference ? "{$user->conference->name} ({$user->conference->union->name})" : '—',
             'gereja' => $user->church ? "{$user->church->name} ({$user->church->conference?->name})" : '—',
             default => '—',
         };
     };
+
+    // Groups the admin/pemimpin lists into a Divisi > Uni > Daerah tree, same collapsible-
+    // header shape as the Data Per * tables in churches/analytics.blade.php (see
+    // components/analytics-group-row.blade.php + partials/analytics-group-toggle.blade.php) —
+    // only meaningful for a $canBootstrapAnyLevel viewer (SuperAdmin/Admin Global/a scoped Admin
+    // Nasional), who's the only one ever looking at a list spanning more than one region; a
+    // scoped Admin Uni/Daerah/Gereja's own list is already a single region, so grouping it would
+    // add a header for exactly one group.
+    $resolveUnionFromUser = fn ($user) => match ($user->role?->level()) {
+        'uni' => $user->union,
+        'daerah' => $user->conference?->union,
+        'gereja' => $user->church?->conference?->union,
+        default => null,
+    };
+    $resolveConferenceFromUser = fn ($user) => match ($user->role?->level()) {
+        'daerah' => $user->conference,
+        'gereja' => $user->church?->conference,
+        default => null,
+    };
+
+    $groupUsersByRegion = function ($users) use ($resolveUnionFromUser, $resolveConferenceFromUser) {
+        // Global/Nasional (Union-set-scoped, not one Union)/Institusi admins don't map onto a
+        // single Divisi/Uni/Daerah node — listed flat, above the grouped tree.
+        $flatLevels = ['global', 'nasional', 'institusi', null];
+        $ungrouped = $users->filter(fn ($u) => in_array($u->role?->level(), $flatLevels, true))->values();
+        $groupable = $users->reject(fn ($u) => in_array($u->role?->level(), $flatLevels, true));
+
+        $divisions = $groupable
+            ->groupBy(fn ($u) => ($u->role?->level() === 'divisi' ? $u->division : $resolveUnionFromUser($u)?->division)?->id ?? 'no-division')
+            ->map(function ($divisionUsers) use ($resolveUnionFromUser, $resolveConferenceFromUser) {
+                $sample = $divisionUsers->first();
+                $division = $sample->role?->level() === 'divisi' ? $sample->division : $resolveUnionFromUser($sample)?->division;
+
+                $ownRows = $divisionUsers->filter(fn ($u) => $u->role?->level() === 'divisi')->values();
+                $nested = $divisionUsers->reject(fn ($u) => $u->role?->level() === 'divisi');
+
+                return [
+                    'label' => $division?->name ?? __('users.group_no_division'),
+                    'rows' => $ownRows,
+                    'unions' => $nested
+                        ->groupBy(fn ($u) => $resolveUnionFromUser($u)?->id ?? 'no-union')
+                        ->map(function ($unionUsers) use ($resolveUnionFromUser, $resolveConferenceFromUser) {
+                            $union = $resolveUnionFromUser($unionUsers->first());
+
+                            $ownRows = $unionUsers->filter(fn ($u) => $u->role?->level() === 'uni')->values();
+                            $nested = $unionUsers->reject(fn ($u) => $u->role?->level() === 'uni');
+
+                            return [
+                                'label' => $union?->name ?? __('users.group_no_union'),
+                                'rows' => $ownRows,
+                                'conferences' => $nested
+                                    ->groupBy(fn ($u) => $resolveConferenceFromUser($u)?->id ?? 'uni-level')
+                                    ->map(fn ($confUsers) => [
+                                        'label' => $resolveConferenceFromUser($confUsers->first())?->name ?? __('analytics.group_union_level'),
+                                        'rows' => $confUsers->values(),
+                                    ])
+                                    ->sortBy('label'),
+                            ];
+                        })
+                        ->sortBy('label'),
+                ];
+            })
+            ->sortBy('label');
+
+        return ['ungrouped' => $ungrouped, 'divisions' => $divisions];
+    };
+
+    $groupedAdminUsers = $canBootstrapAnyLevel ? $groupUsersByRegion($adminUsers) : null;
+    $groupedPimpinanUsers = $canBootstrapAnyLevel ? $groupUsersByRegion($pimpinanUsers) : null;
 @endphp
 
 @extends('layouts.app')
@@ -34,132 +105,114 @@
         </p>
     </div>
 
-    <div class="mb-6 flex gap-2 overflow-x-auto border-b border-black/5 dark:border-white/5">
-        <button type="button" data-tab-button="unassigned" class="border-b-2 px-4 py-2.5 text-sm font-medium transition">
-            {{ __('users.tab_unassigned') }}
-        </button>
-        <button type="button" data-tab-button="admin" class="border-b-2 px-4 py-2.5 text-sm font-medium transition">
-            {{ __('users.tab_admin') }}
-        </button>
-        <button type="button" data-tab-button="pemimpin" class="border-b-2 px-4 py-2.5 text-sm font-medium transition">
-            {{ __('users.tab_pemimpin') }}
-        </button>
+    <x-tab-bar>
+        <x-tab-button tab-key="unassigned">{{ __('users.tab_unassigned') }}</x-tab-button>
+        <x-tab-button tab-key="admin">{{ __('users.tab_admin') }}</x-tab-button>
+        <x-tab-button tab-key="pemimpin">{{ __('users.tab_pemimpin') }}</x-tab-button>
         @if ($canManageInstitutions)
-            <button type="button" data-tab-button="institusi" class="border-b-2 px-4 py-2.5 text-sm font-medium transition">
-                {{ __('common.institution') }}
-            </button>
+            <x-tab-button tab-key="institusi">{{ __('common.institution') }}</x-tab-button>
         @endif
         @if ($isSuperAdmin)
-            <button type="button" data-tab-button="terhapus" class="border-b-2 px-4 py-2.5 text-sm font-medium transition">
-                {{ __('users.tab_terhapus') }}
-            </button>
+            <x-tab-button tab-key="terhapus">{{ __('users.tab_terhapus') }}</x-tab-button>
         @endif
-    </div>
+    </x-tab-bar>
 
-    <div data-tab-panel="unassigned" class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
-        <p class="mb-1 font-bold text-slate-900 dark:text-white">{{ __('users.unassigned_title') }}</p>
-        <p class="mb-4 border-b border-black/5 pb-4 text-sm text-slate-500 dark:border-white/5 dark:text-slate-400">{{ __('users.unassigned_subtitle') }}</p>
+    <div data-tab-panel="unassigned">
+        <x-admin-list-card :items="$unassigned" :title="__('users.unassigned_title')" :subtitle="__('users.unassigned_subtitle')" :empty-message="__('users.no_match')">
+            <x-slot:beforeContent>
+                <form method="GET" class="mb-4">
+                    <input type="hidden" name="tab" data-tab-hidden-field value="{{ $activeTab }}">
+                    <label class="relative block w-full max-w-sm">
+                        <x-icon name="magnifying-glass" class="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                        <input
+                            type="search"
+                            name="search"
+                            value="{{ $search }}"
+                            placeholder="{{ __('users.search_placeholder') }}"
+                            class="w-full rounded-full border border-black/10 bg-slate-50 py-2.5 pr-4 pl-9 text-sm font-medium text-slate-700 shadow-sm transition placeholder:font-normal placeholder:text-slate-400 hover:bg-slate-100 focus:bg-white focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500 dark:hover:bg-slate-700 dark:focus:bg-slate-800"
+                        >
+                    </label>
+                </form>
 
-        <form method="GET" class="mb-4">
-            <input type="hidden" name="tab" data-tab-hidden-field value="{{ $activeTab }}">
-            <label class="relative block w-full max-w-sm">
-                <x-icon name="magnifying-glass" class="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input
-                    type="search"
-                    name="search"
-                    value="{{ $search }}"
-                    placeholder="{{ __('users.search_placeholder') }}"
-                    class="w-full rounded-full border border-black/10 bg-slate-50 py-2.5 pr-4 pl-9 text-sm font-medium text-slate-700 shadow-sm transition placeholder:font-normal placeholder:text-slate-400 hover:bg-slate-100 focus:bg-white focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500 dark:hover:bg-slate-700 dark:focus:bg-slate-800"
-                >
-            </label>
-        </form>
+                <script>
+                    var assignScopeData = @json($scopeDataByLevel);
+                </script>
+            </x-slot:beforeContent>
 
-        <script>
-            var assignScopeData = @json($scopeDataByLevel);
-        </script>
-
-        @if ($unassigned->isEmpty())
-            <p class="py-6 text-center text-sm text-slate-400 dark:text-slate-500">{{ __('users.no_match') }}</p>
-        @else
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-sm">
-                    <thead>
-                        <tr class="text-slate-500 dark:text-slate-400">
-                            <th class="py-2 pr-2 font-medium">#</th>
-                            <th class="py-2 pr-2 font-medium">{{ __('users.col_user') }}</th>
-                            <th class="py-2 pr-2 font-medium">{{ __('common.status') }}</th>
-                            <th class="py-2 pr-2 font-medium">{{ __('users.col_assign') }}</th>
-                            <th class="py-2 pr-2 font-medium">{{ __('common.action') }}</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                        @foreach ($unassigned as $user)
-                            <tr>
-                                <td class="py-2 pr-2 text-slate-400 dark:text-slate-500">{{ $unassigned->firstItem() + $loop->index }}</td>
-                                <td class="py-2 pr-2">
-                                    @include('admin.users.partials.name-email', ['user' => $user])
-                                </td>
-                                <td class="py-2 pr-2">
-                                    @include('admin.users.partials.status-badges', ['user' => $user])
-                                </td>
-                                <td class="py-2 pr-2">
-                                    <form method="POST" action="{{ route('admin.users.promote', $user) }}" class="flex flex-wrap items-center gap-2">
-                                        @csrf
-                                        <select name="role" required data-assign-role class="rounded-lg border border-black/10 bg-white px-2 py-1.5 text-xs shadow-sm dark:border-white/10 dark:bg-slate-800">
-                                            @foreach ($roles as $role)
-                                                <option value="{{ $role->value }}">{{ $role->label() }}</option>
-                                            @endforeach
-                                        </select>
-                                        <div class="relative" data-assign-scope-wrapper data-searchable-select hidden>
-                                            <input type="hidden" name="scope_id" data-searchable-select-value>
-                                            <input
-                                                type="text"
-                                                data-searchable-select-search
-                                                autocomplete="off"
-                                                placeholder="{{ __('users.search_scope_placeholder') }}"
-                                                class="w-36 rounded-lg border border-black/10 bg-white px-2 py-1.5 text-xs shadow-sm focus:border-blue-500 focus:outline-none dark:border-white/10 dark:bg-slate-800"
-                                            >
-                                            <ul
-                                                data-searchable-select-list
-                                                class="absolute left-0 top-full z-20 mt-1 hidden max-h-52 w-56 overflow-y-auto rounded-lg border border-black/10 bg-white p-1 text-xs shadow-lg dark:border-white/10 dark:bg-slate-800"
-                                            ></ul>
-                                        </div>
-                                        {{-- Admin/Pimpinan Nasional is the one role assignable to a SET of Unions rather
-                                             than a single scope — a checkbox popover instead of the searchable combobox
-                                             above, submitting scope_ids[] (see UserAssignmentController::promote()). --}}
-                                        <div class="relative" data-assign-scope-checkboxes hidden>
-                                            <button
-                                                type="button"
-                                                data-scope-checkbox-toggle
-                                                class="w-36 rounded-lg border border-black/10 bg-white px-2 py-1.5 text-left text-xs shadow-sm focus:border-blue-500 focus:outline-none dark:border-white/10 dark:bg-slate-800"
-                                            >
-                                                <span data-scope-checkbox-summary>{{ __('users.select_unions') }}</span>
-                                            </button>
-                                            <div
-                                                data-scope-checkbox-list
-                                                class="absolute left-0 top-full z-20 mt-1 hidden max-h-52 w-56 space-y-0.5 overflow-y-auto rounded-lg border border-black/10 bg-white p-2 text-xs shadow-lg dark:border-white/10 dark:bg-slate-800"
-                                            ></div>
-                                        </div>
-                                        <button type="submit" class="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:bg-blue-700">
-                                            {{ __('users.assign') }}
-                                        </button>
-                                    </form>
-                                </td>
-                                <td class="py-2 pr-2">
-                                    @include('admin.users.partials.row-actions', ['user' => $user, 'tab' => 'unassigned'])
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-
-            <x-pagination :paginator="$unassigned" />
-        @endif
+            <thead>
+                <tr class="text-slate-500 dark:text-slate-400">
+                    <th class="py-2 pr-2 font-medium">#</th>
+                    <th class="py-2 pr-2 font-medium">{{ __('users.col_user') }}</th>
+                    <th class="py-2 pr-2 font-medium">{{ __('common.status') }}</th>
+                    <th class="py-2 pr-2 font-medium">{{ __('users.col_assign') }}</th>
+                    <th class="py-2 pr-2 font-medium">{{ __('common.action') }}</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                @foreach ($unassigned as $user)
+                    <tr>
+                        <td class="py-2 pr-2 text-slate-400 dark:text-slate-500">{{ $unassigned->firstItem() + $loop->index }}</td>
+                        <td class="py-2 pr-2">
+                            @include('admin.users.partials.name-email', ['user' => $user])
+                        </td>
+                        <td class="py-2 pr-2">
+                            @include('admin.users.partials.status-badges', ['user' => $user])
+                        </td>
+                        <td class="py-2 pr-2">
+                            <form method="POST" action="{{ route('admin.users.promote', $user) }}" class="flex flex-wrap items-center gap-2">
+                                @csrf
+                                <select name="role" required data-assign-role class="rounded-lg border border-black/10 bg-white px-2 py-1.5 text-xs shadow-sm dark:border-white/10 dark:bg-slate-800">
+                                    @foreach ($roles as $role)
+                                        <option value="{{ $role->value }}">{{ $role->label() }}</option>
+                                    @endforeach
+                                </select>
+                                <div class="relative" data-assign-scope-wrapper data-searchable-select hidden>
+                                    <input type="hidden" name="scope_id" data-searchable-select-value>
+                                    <input
+                                        type="text"
+                                        data-searchable-select-search
+                                        autocomplete="off"
+                                        placeholder="{{ __('users.search_scope_placeholder') }}"
+                                        class="w-36 rounded-lg border border-black/10 bg-white px-2 py-1.5 text-xs shadow-sm focus:border-blue-500 focus:outline-none dark:border-white/10 dark:bg-slate-800"
+                                    >
+                                    <ul
+                                        data-searchable-select-list
+                                        class="absolute left-0 top-full z-20 mt-1 hidden max-h-52 w-56 overflow-y-auto rounded-lg border border-black/10 bg-white p-1 text-xs shadow-lg dark:border-white/10 dark:bg-slate-800"
+                                    ></ul>
+                                </div>
+                                {{-- Admin/Pimpinan Nasional is the one role assignable to a SET of Unions rather
+                                     than a single scope — a checkbox popover instead of the searchable combobox
+                                     above, submitting scope_ids[] (see UserAssignmentController::promote()). --}}
+                                <div class="relative" data-assign-scope-checkboxes hidden>
+                                    <button
+                                        type="button"
+                                        data-scope-checkbox-toggle
+                                        class="w-36 rounded-lg border border-black/10 bg-white px-2 py-1.5 text-left text-xs shadow-sm focus:border-blue-500 focus:outline-none dark:border-white/10 dark:bg-slate-800"
+                                    >
+                                        <span data-scope-checkbox-summary>{{ __('users.select_unions') }}</span>
+                                    </button>
+                                    <div
+                                        data-scope-checkbox-list
+                                        class="absolute left-0 top-full z-20 mt-1 hidden max-h-52 w-56 space-y-0.5 overflow-y-auto rounded-lg border border-black/10 bg-white p-2 text-xs shadow-lg dark:border-white/10 dark:bg-slate-800"
+                                    ></div>
+                                </div>
+                                <button type="submit" class="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:bg-blue-700">
+                                    {{ __('users.assign') }}
+                                </button>
+                            </form>
+                        </td>
+                        <td class="py-2 pr-2">
+                            @include('admin.users.partials.row-actions', ['user' => $user, 'tab' => 'unassigned'])
+                        </td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </x-admin-list-card>
 
         <script>
             (function () {
                 var LEVEL_LABELS = {
+                    divisi: @json(__('common.division')),
                     uni: @json(__('common.union')),
                     daerah: @json(__('common.conference')),
                     gereja: @json(__('common.church')),
@@ -175,6 +228,7 @@
                 function levelForRole(role) {
                     if (role.endsWith('_global')) return 'global';
                     if (role.endsWith('_nasional')) return 'nasional';
+                    if (role.endsWith('_divisi')) return 'divisi';
                     if (role.endsWith('_uni')) return 'uni';
                     if (role.endsWith('_daerah')) return 'daerah';
                     if (role.endsWith('_gereja')) return 'gereja';
@@ -284,256 +338,197 @@
         </script>
     </div>
 
-    <div data-tab-panel="admin" class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
-        <p class="mb-1 font-bold text-slate-900 dark:text-white">
-            {{ $canBootstrapAnyLevel ? __('users.admin_all_title') : __('users.admin_level_title', ['level' => $levelLabels[$targetLevel]]) }}
-        </p>
-        <p class="mb-4 border-b border-black/5 pb-4 text-sm text-slate-500 dark:border-white/5 dark:text-slate-400">{{ __('users.admin_subtitle') }}</p>
-
-        @if ($adminUsers->isEmpty())
-            <p class="py-6 text-center text-sm text-slate-400 dark:text-slate-500">{{ __('users.no_admin_yet') }}</p>
-        @else
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-sm">
-                    <thead>
-                        <tr class="text-slate-500 dark:text-slate-400">
-                            <th class="py-2 pr-2 font-medium">#</th>
-                            <th class="py-2 pr-2 font-medium">{{ __('users.col_user') }}</th>
-                            @if ($canBootstrapAnyLevel)
-                                <th class="py-2 pr-2 font-medium">{{ __('users.col_role') }}</th>
-                                <th class="py-2 pr-2 font-medium">{{ __('users.col_scope') }}</th>
-                            @endif
-                            <th class="py-2 pr-2 font-medium">{{ __('common.status') }}</th>
-                            <th class="py-2 pr-2 font-medium">{{ __('common.action') }}</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                        @foreach ($adminUsers as $user)
-                            <tr>
-                                <td class="py-2 pr-2 text-slate-400 dark:text-slate-500">{{ $loop->iteration }}</td>
-                                <td class="py-2 pr-2">
-                                    @include('admin.users.partials.name-email', ['user' => $user])
-                                </td>
-                                @if ($canBootstrapAnyLevel)
-                                    <td class="py-2 pr-2 text-slate-500 dark:text-slate-400">{{ $user->role->label() }}</td>
-                                    <td class="py-2 pr-2 text-slate-500 dark:text-slate-400">{{ $scopeDisplayFor($user) }}</td>
-                                @endif
-                                <td class="py-2 pr-2">
-                                    @include('admin.users.partials.status-badges', ['user' => $user])
-                                </td>
-                                <td class="py-2 pr-2">
-                                    <div class="flex items-center justify-end gap-3">
-                                        <form
-                                            method="POST"
-                                            action="{{ route('admin.users.revoke', $user) }}"
-                                            data-confirm="{{ __('users.revoke_confirm', ['name' => $user->name]) }}"
-                                        >
-                                            @csrf
-                                            <button type="submit" class="text-xs font-medium text-red-600 hover:underline dark:text-red-400">
-                                                {{ __('users.revoke') }}
-                                            </button>
-                                        </form>
-                                        @include('admin.users.partials.row-actions', ['user' => $user, 'tab' => 'admin'])
-                                    </div>
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-        @endif
+    <div data-tab-panel="admin">
+        <x-admin-list-card
+            :items="$adminUsers"
+            :title="$canBootstrapAnyLevel ? __('users.admin_all_title') : __('users.admin_level_title', ['level' => $levelLabels[$targetLevel]])"
+            :subtitle="__('users.admin_subtitle')"
+            :empty-message="__('users.no_admin_yet')"
+            :paginated="false"
+        >
+            <thead>
+                <tr class="text-slate-500 dark:text-slate-400">
+                    <th class="py-2 pr-2 font-medium">#</th>
+                    <th class="py-2 pr-2 font-medium">{{ __('users.col_user') }}</th>
+                    @if ($canBootstrapAnyLevel)
+                        <th class="py-2 pr-2 font-medium">{{ __('users.col_role') }}</th>
+                        <th class="py-2 pr-2 font-medium">{{ __('users.col_scope') }}</th>
+                    @endif
+                    <th class="py-2 pr-2 font-medium">{{ __('common.status') }}</th>
+                    <th class="py-2 pr-2 font-medium">{{ __('common.action') }}</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                @if ($groupedAdminUsers !== null)
+                    @include('admin.users.partials.grouped-user-rows', [
+                        'grouped' => $groupedAdminUsers, 'colspan' => 6, 'prefix' => 'admin-users',
+                        'canBootstrapAnyLevel' => $canBootstrapAnyLevel, 'tab' => 'admin',
+                    ])
+                @else
+                    @foreach ($adminUsers as $i => $user)
+                        @include('admin.users.partials.user-row', ['user' => $user, 'index' => $i + 1, 'canBootstrapAnyLevel' => $canBootstrapAnyLevel, 'tab' => 'admin'])
+                    @endforeach
+                @endif
+            </tbody>
+        </x-admin-list-card>
     </div>
 
-    <div data-tab-panel="pemimpin" class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
-        <p class="mb-1 font-bold text-slate-900 dark:text-white">
-            {{ $canBootstrapAnyLevel ? __('users.pemimpin_all_title') : __('users.pemimpin_level_title', ['level' => $levelLabels[$targetLevel]]) }}
-        </p>
-        <p class="mb-4 border-b border-black/5 pb-4 text-sm text-slate-500 dark:border-white/5 dark:text-slate-400">{{ __('users.pemimpin_subtitle') }}</p>
-
-        @if ($pimpinanUsers->isEmpty())
-            <p class="py-6 text-center text-sm text-slate-400 dark:text-slate-500">{{ __('users.no_pemimpin_yet') }}</p>
-        @else
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-sm">
-                    <thead>
-                        <tr class="text-slate-500 dark:text-slate-400">
-                            <th class="py-2 pr-2 font-medium">#</th>
-                            <th class="py-2 pr-2 font-medium">{{ __('users.col_user') }}</th>
-                            @if ($canBootstrapAnyLevel)
-                                <th class="py-2 pr-2 font-medium">{{ __('users.col_role') }}</th>
-                                <th class="py-2 pr-2 font-medium">{{ __('users.col_scope') }}</th>
-                            @endif
-                            <th class="py-2 pr-2 font-medium">{{ __('common.status') }}</th>
-                            <th class="py-2 pr-2 font-medium">{{ __('common.action') }}</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                        @foreach ($pimpinanUsers as $user)
-                            <tr>
-                                <td class="py-2 pr-2 text-slate-400 dark:text-slate-500">{{ $loop->iteration }}</td>
-                                <td class="py-2 pr-2">
-                                    @include('admin.users.partials.name-email', ['user' => $user])
-                                </td>
-                                @if ($canBootstrapAnyLevel)
-                                    <td class="py-2 pr-2 text-slate-500 dark:text-slate-400">{{ $user->role->label() }}</td>
-                                    <td class="py-2 pr-2 text-slate-500 dark:text-slate-400">{{ $scopeDisplayFor($user) }}</td>
-                                @endif
-                                <td class="py-2 pr-2">
-                                    @include('admin.users.partials.status-badges', ['user' => $user])
-                                </td>
-                                <td class="py-2 pr-2">
-                                    <div class="flex items-center justify-end gap-3">
-                                        <form
-                                            method="POST"
-                                            action="{{ route('admin.users.revoke', $user) }}"
-                                            data-confirm="{{ __('users.revoke_confirm', ['name' => $user->name]) }}"
-                                        >
-                                            @csrf
-                                            <button type="submit" class="text-xs font-medium text-red-600 hover:underline dark:text-red-400">
-                                                {{ __('users.revoke') }}
-                                            </button>
-                                        </form>
-                                        @include('admin.users.partials.row-actions', ['user' => $user, 'tab' => 'pemimpin'])
-                                    </div>
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-        @endif
+    <div data-tab-panel="pemimpin">
+        <x-admin-list-card
+            :items="$pimpinanUsers"
+            :title="$canBootstrapAnyLevel ? __('users.pemimpin_all_title') : __('users.pemimpin_level_title', ['level' => $levelLabels[$targetLevel]])"
+            :subtitle="__('users.pemimpin_subtitle')"
+            :empty-message="__('users.no_pemimpin_yet')"
+            :paginated="false"
+        >
+            <thead>
+                <tr class="text-slate-500 dark:text-slate-400">
+                    <th class="py-2 pr-2 font-medium">#</th>
+                    <th class="py-2 pr-2 font-medium">{{ __('users.col_user') }}</th>
+                    @if ($canBootstrapAnyLevel)
+                        <th class="py-2 pr-2 font-medium">{{ __('users.col_role') }}</th>
+                        <th class="py-2 pr-2 font-medium">{{ __('users.col_scope') }}</th>
+                    @endif
+                    <th class="py-2 pr-2 font-medium">{{ __('common.status') }}</th>
+                    <th class="py-2 pr-2 font-medium">{{ __('common.action') }}</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                @if ($groupedPimpinanUsers !== null)
+                    @include('admin.users.partials.grouped-user-rows', [
+                        'grouped' => $groupedPimpinanUsers, 'colspan' => 6, 'prefix' => 'pemimpin-users',
+                        'canBootstrapAnyLevel' => $canBootstrapAnyLevel, 'tab' => 'pemimpin',
+                    ])
+                @else
+                    @foreach ($pimpinanUsers as $i => $user)
+                        @include('admin.users.partials.user-row', ['user' => $user, 'index' => $i + 1, 'canBootstrapAnyLevel' => $canBootstrapAnyLevel, 'tab' => 'pemimpin'])
+                    @endforeach
+                @endif
+            </tbody>
+        </x-admin-list-card>
     </div>
 
     @if ($canManageInstitutions)
-        <div data-tab-panel="institusi" class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
-            <p class="mb-1 font-bold text-slate-900 dark:text-white">{{ __('users.institusi_admin_title') }}</p>
-            <p class="mb-4 border-b border-black/5 pb-4 text-sm text-slate-500 dark:border-white/5 dark:text-slate-400">
-                {{ __('users.institusi_admin_subtitle_prefix') }} <a href="{{ route('admin.accounts.index', ['tab' => 'institusi']) }}" class="font-medium text-blue-600 hover:underline dark:text-blue-400">{{ __('nav.manage_accounts') }}</a>.
-            </p>
+        <div data-tab-panel="institusi">
+            <x-admin-list-card
+                :items="$institutionAdmins->concat($institutionPimpinan)"
+                :title="__('users.institusi_admin_title')"
+                :empty-message="__('users.no_institusi_admin_yet')"
+                :paginated="false"
+            >
+                <x-slot:subtitle>
+                    {{ __('users.institusi_admin_subtitle_prefix') }} <a href="{{ route('admin.accounts.index', ['tab' => 'institusi']) }}" class="font-medium text-blue-600 hover:underline dark:text-blue-400">{{ __('nav.manage_accounts') }}</a>.
+                </x-slot:subtitle>
 
-            <div class="overflow-x-auto">
-                @if ($institutionAdmins->isEmpty() && $institutionPimpinan->isEmpty())
-                    <p class="py-6 text-center text-sm text-slate-400 dark:text-slate-500">{{ __('users.no_institusi_admin_yet') }}</p>
-                @else
-                    <table class="w-full text-left text-sm">
-                        <thead>
-                            <tr class="text-slate-500 dark:text-slate-400">
-                                <th class="py-2 pr-2 font-medium">#</th>
-                                <th class="py-2 pr-2 font-medium">{{ __('users.col_user') }}</th>
-                                <th class="py-2 pr-2 font-medium">{{ __('users.col_role') }}</th>
-                                <th class="py-2 pr-2 font-medium">{{ __('common.institution') }}</th>
-                                <th class="py-2 pr-2 font-medium">{{ __('common.status') }}</th>
-                                <th class="py-2 pr-2 font-medium">{{ __('common.action') }}</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                            @foreach ($institutionAdmins->concat($institutionPimpinan) as $user)
-                                <tr>
-                                    <td class="py-2 pr-2 text-slate-400 dark:text-slate-500">{{ $loop->iteration }}</td>
-                                    <td class="py-2 pr-2">
-                                        @include('admin.users.partials.name-email', ['user' => $user])
-                                    </td>
-                                    <td class="py-2 pr-2 text-slate-500 dark:text-slate-400">{{ $user->role->label() }}</td>
-                                    <td class="py-2 pr-2 text-slate-500 dark:text-slate-400">{{ $user->institution?->name ?? '—' }}</td>
-                                    <td class="py-2 pr-2">
-                                        @include('admin.users.partials.status-badges', ['user' => $user])
-                                    </td>
-                                    <td class="py-2 pr-2">
-                                        <div class="flex items-center justify-end gap-3">
-                                            <form
-                                                method="POST"
-                                                action="{{ route('admin.users.revoke', $user) }}"
-                                                data-confirm="{{ __('users.revoke_confirm', ['name' => $user->name]) }}"
-                                            >
-                                                @csrf
-                                                <button type="submit" class="text-xs font-medium text-red-600 hover:underline dark:text-red-400">
-                                                    {{ __('users.revoke') }}
-                                                </button>
-                                            </form>
-                                            @include('admin.users.partials.row-actions', ['user' => $user, 'tab' => 'institusi'])
-                                        </div>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                @endif
-            </div>
+                <thead>
+                    <tr class="text-slate-500 dark:text-slate-400">
+                        <th class="py-2 pr-2 font-medium">#</th>
+                        <th class="py-2 pr-2 font-medium">{{ __('users.col_user') }}</th>
+                        <th class="py-2 pr-2 font-medium">{{ __('users.col_role') }}</th>
+                        <th class="py-2 pr-2 font-medium">{{ __('common.institution') }}</th>
+                        <th class="py-2 pr-2 font-medium">{{ __('common.status') }}</th>
+                        <th class="py-2 pr-2 font-medium">{{ __('common.action') }}</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                    @foreach ($institutionAdmins->concat($institutionPimpinan) as $user)
+                        <tr>
+                            <td class="py-2 pr-2 text-slate-400 dark:text-slate-500">{{ $loop->iteration }}</td>
+                            <td class="py-2 pr-2">
+                                @include('admin.users.partials.name-email', ['user' => $user])
+                            </td>
+                            <td class="py-2 pr-2 text-slate-500 dark:text-slate-400">{{ $user->role->label() }}</td>
+                            <td class="py-2 pr-2 text-slate-500 dark:text-slate-400">{{ $user->institution?->name ?? '—' }}</td>
+                            <td class="py-2 pr-2">
+                                @include('admin.users.partials.status-badges', ['user' => $user])
+                            </td>
+                            <td class="py-2 pr-2">
+                                <div class="flex items-center justify-end gap-3">
+                                    <form
+                                        method="POST"
+                                        action="{{ route('admin.users.revoke', $user) }}"
+                                        data-confirm="{{ __('users.revoke_confirm', ['name' => $user->name]) }}"
+                                    >
+                                        @csrf
+                                        <button type="submit" class="text-xs font-medium text-red-600 hover:underline dark:text-red-400">
+                                            {{ __('users.revoke') }}
+                                        </button>
+                                    </form>
+                                    @include('admin.users.partials.row-actions', ['user' => $user, 'tab' => 'institusi'])
+                                </div>
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </x-admin-list-card>
         </div>
     @endif
 
     @if ($isSuperAdmin)
-        <div data-tab-panel="terhapus" class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
-            <p class="mb-1 font-bold text-slate-900 dark:text-white">{{ __('users.trashed_title') }}</p>
-            <p class="mb-4 border-b border-black/5 pb-4 text-sm text-slate-500 dark:border-white/5 dark:text-slate-400">
-                {{ __('users.trashed_subtitle') }}
-            </p>
-
-            @if ($trashedUsers->isEmpty())
-                <p class="py-6 text-center text-sm text-slate-400 dark:text-slate-500">{{ __('users.no_trashed') }}</p>
-            @else
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left text-sm">
-                        <thead>
-                            <tr class="text-slate-500 dark:text-slate-400">
-                                <th class="py-2 pr-2 font-medium">#</th>
-                                <th class="py-2 pr-2 font-medium">{{ __('users.col_user') }}</th>
-                                <th class="py-2 pr-2 font-medium">{{ __('users.col_role') }}</th>
-                                <th class="py-2 pr-2 font-medium">{{ __('users.col_scope') }}</th>
-                                <th class="py-2 pr-2 font-medium">{{ __('users.col_deleted_at') }}</th>
-                                <th class="py-2 text-right font-medium">{{ __('common.action') }}</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                            @foreach ($trashedUsers as $user)
-                                <tr>
-                                    <td class="py-2 pr-2 text-slate-400 dark:text-slate-500">{{ $loop->iteration }}</td>
-                                    <td class="py-2 pr-2">
-                                        @include('admin.users.partials.name-email', ['user' => $user])
-                                    </td>
-                                    <td class="py-2 pr-2 text-slate-500 dark:text-slate-400">{{ $user->role?->label() ?? '—' }}</td>
-                                    <td class="py-2 pr-2 text-slate-500 dark:text-slate-400">
-                                        {{ $user->church?->name ?? $user->conference?->name ?? $user->union?->name ?? $user->institution?->name ?? ($user->assignedUnions->isNotEmpty() ? $user->assignedUnions->pluck('name')->implode(', ') : '—') }}
-                                    </td>
-                                    <td class="py-2 pr-2 text-slate-500 dark:text-slate-400">{{ $user->deleted_at->translatedFormat('d M Y H:i') }}</td>
-                                    <td class="py-2">
-                                        <div class="flex flex-nowrap items-center justify-end gap-3">
-                                            <form method="POST" action="{{ route('admin.users.restore', $user) }}">
-                                                @csrf
-                                                <button
-                                                    type="submit"
-                                                    title="{{ __('users.restore') }}"
-                                                    aria-label="{{ __('users.restore') }}"
-                                                    class="shrink-0 text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400"
-                                                >
-                                                    <x-icon name="arrow-path" class="h-5 w-5" />
-                                                </button>
-                                            </form>
-                                            <form
-                                                method="POST"
-                                                action="{{ route('admin.users.force-delete', $user) }}"
-                                                data-confirm="{{ __('users.force_delete_confirm', ['name' => $user->name]) }}"
-                                            >
-                                                @csrf
-                                                @method('DELETE')
-                                                <button
-                                                    type="submit"
-                                                    title="{{ __('users.force_delete') }}"
-                                                    aria-label="{{ __('users.force_delete') }}"
-                                                    class="shrink-0 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-                                                >
-                                                    <x-icon name="trash" class="h-5 w-5" />
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            @endif
+        <div data-tab-panel="terhapus">
+            <x-admin-list-card :items="$trashedUsers" :title="__('users.trashed_title')" :subtitle="__('users.trashed_subtitle')" :empty-message="__('users.no_trashed')" :paginated="false">
+                <thead>
+                    <tr class="text-slate-500 dark:text-slate-400">
+                        <th class="py-2 pr-2 font-medium">#</th>
+                        <th class="py-2 pr-2 font-medium">{{ __('users.col_user') }}</th>
+                        <th class="py-2 pr-2 font-medium">{{ __('users.col_role') }}</th>
+                        <th class="py-2 pr-2 font-medium">{{ __('users.col_scope') }}</th>
+                        <th class="py-2 pr-2 font-medium">{{ __('users.col_deleted_at') }}</th>
+                        <th class="py-2 text-right font-medium">{{ __('common.action') }}</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                    @foreach ($trashedUsers as $user)
+                        <tr>
+                            <td class="py-2 pr-2 text-slate-400 dark:text-slate-500">{{ $loop->iteration }}</td>
+                            <td class="py-2 pr-2">
+                                @include('admin.users.partials.name-email', ['user' => $user])
+                            </td>
+                            <td class="py-2 pr-2 text-slate-500 dark:text-slate-400">{{ $user->role?->label() ?? '—' }}</td>
+                            <td class="py-2 pr-2 text-slate-500 dark:text-slate-400">
+                                {{ $user->church?->name ?? $user->conference?->name ?? $user->union?->name ?? $user->division?->name ?? $user->institution?->name ?? ($user->assignedUnions->isNotEmpty() ? $user->assignedUnions->pluck('name')->implode(', ') : '—') }}
+                            </td>
+                            <td class="py-2 pr-2 text-slate-500 dark:text-slate-400">{{ $user->deleted_at->translatedFormat('d M Y H:i') }}</td>
+                            <td class="py-2">
+                                <div class="flex flex-nowrap items-center justify-end gap-3">
+                                    <form method="POST" action="{{ route('admin.users.restore', $user) }}">
+                                        @csrf
+                                        <button
+                                            type="submit"
+                                            title="{{ __('users.restore') }}"
+                                            aria-label="{{ __('users.restore') }}"
+                                            class="shrink-0 text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400"
+                                        >
+                                            <x-icon name="arrow-path" class="h-5 w-5" />
+                                        </button>
+                                    </form>
+                                    <form
+                                        method="POST"
+                                        action="{{ route('admin.users.force-delete', $user) }}"
+                                        data-confirm="{{ __('users.force_delete_confirm', ['name' => $user->name]) }}"
+                                    >
+                                        @csrf
+                                        @method('DELETE')
+                                        <button
+                                            type="submit"
+                                            title="{{ __('users.force_delete') }}"
+                                            aria-label="{{ __('users.force_delete') }}"
+                                            class="shrink-0 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                                        >
+                                            <x-icon name="trash" class="h-5 w-5" />
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </x-admin-list-card>
         </div>
+    @endif
+
+    @if ($groupedAdminUsers !== null || $groupedPimpinanUsers !== null)
+        @include('partials.analytics-group-toggle', ['expandGroupsByDefault' => true])
     @endif
 
     @include('partials.tab-script', ['activeTab' => $activeTab])

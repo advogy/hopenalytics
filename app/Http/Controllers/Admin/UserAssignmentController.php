@@ -6,6 +6,7 @@ use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\Church;
 use App\Models\Conference;
+use App\Models\Division;
 use App\Models\Institution;
 use App\Models\Union;
 use App\Models\User;
@@ -41,9 +42,9 @@ class UserAssignmentController extends Controller
         // Nasional bootstraps only within their own assigned Unions (uni/daerah/gereja), same
         // reach as before, just no longer unrestricted.
         $bootstrapLevels = match (true) {
-            $isSuperAdmin => ['global', 'nasional', 'uni', 'daerah', 'gereja'],
-            $actor->role === UserRole::AdminGlobal => ['nasional', 'uni', 'daerah', 'gereja'],
-            default => ['uni', 'daerah', 'gereja'],
+            $isSuperAdmin => ['global', 'nasional', 'divisi', 'uni', 'daerah', 'gereja'],
+            $actor->role === UserRole::AdminGlobal => ['nasional', 'divisi', 'uni', 'daerah', 'gereja'],
+            default => ['divisi', 'uni', 'daerah', 'gereja'],
         };
 
         // Only ever non-null for a scoped Admin Nasional — used below to restrict every
@@ -65,9 +66,10 @@ class UserAssignmentController extends Controller
         $unassigned = User::query()
             ->whereNull('role')
             ->when(
-                $targetLevel === 'uni' && $actor->role === UserRole::AdminNasional,
+                $targetLevel === 'divisi' && $actor->role === UserRole::AdminNasional,
                 fn ($q) => $q->whereIn('union_id', $assignedUnionIds)
             )
+            ->when($targetLevel === 'uni', fn ($q) => $q->whereHas('union', fn ($q2) => $q2->where('division_id', $actor->division_id)))
             ->when($targetLevel === 'daerah', fn ($q) => $q->where('union_id', $actor->union_id))
             ->when($targetLevel === 'gereja', fn ($q) => $q->where('conference_id', $actor->conference_id))
             ->when($search, fn ($q) => $q->where(
@@ -81,7 +83,7 @@ class UserAssignmentController extends Controller
             $adminRoleValues = array_map(fn ($level) => $this->adminRoleForLevel($level)->value, $bootstrapLevels);
             $pimpinanRoleValues = array_map(fn ($level) => $this->pimpinanRoleForLevel($level)->value, $bootstrapLevels);
 
-            $scopeRelations = ['union', 'conference.union', 'church.conference.union', 'assignedUnions'];
+            $scopeRelations = ['division', 'union.division', 'conference.union', 'church.conference.union', 'assignedUnions'];
 
             // Unrestricted for SuperAdmin/Admin Global ($assignedUnionIds === null). A scoped
             // Admin Nasional only sees admin/pimpinan accounts whose own scope (directly, or via
@@ -136,6 +138,15 @@ class UserAssignmentController extends Controller
                     ->map(fn ($u) => ['id' => $u->id, 'label' => $u->name])->values();
             }
 
+            // Not Union-set-scoped for Admin Nasional the way 'uni'/'daerah'/'gereja' below are —
+            // Division is independent of Admin Nasional's own assigned Union set (per the user's
+            // explicit call), so any active Division qualifies, mirroring
+            // UserPolicy::scopeBelongsToAssignedUnions()'s own 'divisi' arm.
+            if (in_array('divisi', $bootstrapLevels, true)) {
+                $scopeDataByLevel['divisi'] = Division::where('is_active', true)->orderBy('name')->get()
+                    ->map(fn ($d) => ['id' => $d->id, 'label' => $d->name])->values();
+            }
+
             if (in_array('uni', $bootstrapLevels, true)) {
                 $scopeDataByLevel['uni'] = Union::where('is_active', true)
                     ->when($assignedUnionIds !== null, fn ($q) => $q->whereIn('id', $assignedUnionIds))
@@ -177,7 +188,7 @@ class UserAssignmentController extends Controller
         // Superadmin reaches in to either restore one or purge it for good (manage-deleted-users
         // gate, see AppServiceProvider). Everyone else never sees this tab at all.
         $trashedUsers = $isSuperAdmin
-            ? User::onlyTrashed()->with(['union', 'conference.union', 'church.conference.union', 'institution', 'assignedUnions'])->orderByDesc('deleted_at')->get()
+            ? User::onlyTrashed()->with(['division', 'union', 'conference.union', 'church.conference.union', 'institution', 'assignedUnions'])->orderByDesc('deleted_at')->get()
             : collect();
 
         return view('admin.users.index', [
@@ -227,12 +238,13 @@ class UserAssignmentController extends Controller
 
         Gate::authorize('promote', [$target, $newRole, $data['scope_id'] ?? null, $data['scope_ids'] ?? null]);
 
-        $update = ['role' => $newRole, 'union_id' => null, 'conference_id' => null, 'church_id' => null, 'institution_id' => null];
+        $update = ['role' => $newRole, 'division_id' => null, 'union_id' => null, 'conference_id' => null, 'church_id' => null, 'institution_id' => null];
 
         // Keyed by the role being assigned, not the actor's own targetLevel — those only
         // diverge for superadmin's bootstrap capability and for institusi (see class
         // docblock), where a single actor may assign into any of several levels.
         $scopeColumn = match ($newRole->level()) {
+            'divisi' => 'division_id',
             'uni' => 'union_id',
             'daerah' => 'conference_id',
             'gereja' => 'church_id',
@@ -253,6 +265,7 @@ class UserAssignmentController extends Controller
 
         $scopeLabel = match (true) {
             $newRole->level() === 'nasional' => Union::whereIn('id', $data['scope_ids'])->pluck('name')->implode(', '),
+            $scopeColumn === 'division_id' => Division::find($data['scope_id'])?->name,
             $scopeColumn === 'union_id' => Union::find($data['scope_id'])?->name,
             $scopeColumn === 'conference_id' => Conference::find($data['scope_id'])?->name,
             $scopeColumn === 'church_id' => Church::find($data['scope_id'])?->name,
@@ -312,11 +325,11 @@ class UserAssignmentController extends Controller
     {
         Gate::authorize('releaseRegion', $target);
 
-        $regionLabel = collect([$target->union?->name, $target->conference?->name, $target->church?->name])
+        $regionLabel = collect([$target->division?->name, $target->union?->name, $target->conference?->name, $target->church?->name])
             ->filter()
             ->implode(', ');
 
-        $target->update(['union_id' => null, 'conference_id' => null, 'church_id' => null]);
+        $target->update(['division_id' => null, 'union_id' => null, 'conference_id' => null, 'church_id' => null]);
 
         AuditLogger::log('user.region_released', $target, "Melepas wilayah \"{$regionLabel}\" dari \"{$target->name}\".");
 
@@ -349,7 +362,7 @@ class UserAssignmentController extends Controller
 
         $names = $targets->pluck('name')->implode(', ');
 
-        User::whereIn('id', $targets->pluck('id'))->update(['union_id' => null, 'conference_id' => null, 'church_id' => null]);
+        User::whereIn('id', $targets->pluck('id'))->update(['division_id' => null, 'union_id' => null, 'conference_id' => null, 'church_id' => null]);
 
         foreach ($targets as $target) {
             AuditLogger::log('user.region_released', $target, "Melepas wilayah dari \"{$target->name}\" (aksi massal dari Kelola Akun).");
@@ -478,7 +491,12 @@ class UserAssignmentController extends Controller
     {
         return match ($targetLevel) {
             'nasional' => User::query()->whereIn('role', $roleValues),
-            'uni' => User::query()->whereIn('role', $roleValues),
+            'divisi' => User::query()->whereIn('role', $roleValues),
+            // Tightened to the actor's own Division — this arm's caller is now Admin Divisi
+            // (targetLevel === 'uni' is their own promotesToLevel()), not Admin Nasional as
+            // before Divisi existed, so it's no longer left unfiltered.
+            'uni' => User::query()->whereIn('role', $roleValues)
+                ->whereHas('union', fn ($q) => $q->where('division_id', $actor->division_id)),
             'daerah' => User::query()->whereIn('role', $roleValues)
                 ->whereHas('conference', fn ($q) => $q->where('union_id', $actor->union_id)),
             'gereja' => User::query()->whereIn('role', $roleValues)
@@ -490,7 +508,7 @@ class UserAssignmentController extends Controller
     private function scopeOptions(User $actor, string $targetLevel)
     {
         return match ($targetLevel) {
-            'uni' => Union::where('is_active', true)->orderBy('name')->get(),
+            'uni' => Union::where('division_id', $actor->division_id)->where('is_active', true)->orderBy('name')->get(),
             'daerah' => Conference::where('union_id', $actor->union_id)->where('is_active', true)->orderBy('name')->get(),
             'gereja' => Church::where('conference_id', $actor->conference_id)->where('is_active', true)->orderBy('name')->get(),
             default => collect(),
@@ -502,6 +520,7 @@ class UserAssignmentController extends Controller
         return match ($level) {
             'global' => UserRole::AdminGlobal,
             'nasional' => UserRole::AdminNasional,
+            'divisi' => UserRole::AdminDivisi,
             'uni' => UserRole::AdminUni,
             'daerah' => UserRole::AdminDaerah,
             'gereja' => UserRole::AdminGereja,
@@ -513,6 +532,7 @@ class UserAssignmentController extends Controller
         return match ($level) {
             'global' => UserRole::PimpinanGlobal,
             'nasional' => UserRole::PimpinanNasional,
+            'divisi' => UserRole::PimpinanDivisi,
             'uni' => UserRole::PimpinanUni,
             'daerah' => UserRole::PimpinanDaerah,
             'gereja' => UserRole::PimpinanGereja,
@@ -523,6 +543,7 @@ class UserAssignmentController extends Controller
     {
         return match ($level) {
             'nasional' => [UserRole::AdminNasional, UserRole::PimpinanNasional],
+            'divisi' => [UserRole::AdminDivisi, UserRole::PimpinanDivisi],
             'uni' => [UserRole::AdminUni, UserRole::PimpinanUni],
             'daerah' => [UserRole::AdminDaerah, UserRole::PimpinanDaerah],
             'gereja' => [UserRole::AdminGereja, UserRole::PimpinanGereja],

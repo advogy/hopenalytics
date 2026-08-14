@@ -2,7 +2,9 @@
 
 use App\Http\Controllers\Admin\AccountController;
 use App\Http\Controllers\Admin\AuditLogController;
+use App\Http\Controllers\Admin\BrandController;
 use App\Http\Controllers\Admin\ConferenceController;
+use App\Http\Controllers\Admin\DivisionController;
 use App\Http\Controllers\Admin\HashtagController;
 use App\Http\Controllers\Admin\InstitutionController;
 use App\Http\Controllers\Admin\OrganizationSocialController;
@@ -121,6 +123,15 @@ Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group
     Route::middleware('can:manage-settings')->group(function () {
         Route::get('/settings', [SettingsController::class, 'edit'])->name('settings.edit');
         Route::put('/settings', [SettingsController::class, 'update'])->name('settings.update');
+    });
+
+    Route::middleware('can:manage-settings')->prefix('admin/brands')->name('admin.brands.')->group(function () {
+        Route::get('/', [BrandController::class, 'index'])->name('index');
+        Route::get('/create', [BrandController::class, 'create'])->name('create');
+        Route::post('/', [BrandController::class, 'store'])->name('store');
+        Route::get('/{brand}/edit', [BrandController::class, 'edit'])->name('edit');
+        Route::put('/{brand}', [BrandController::class, 'update'])->name('update');
+        Route::delete('/{brand}', [BrandController::class, 'destroy'])->name('destroy');
     });
 
     Route::middleware('can:manage-settings')->prefix('admin/hashtags')->name('admin.hashtags.')->group(function () {
@@ -313,6 +324,16 @@ Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group
     Route::get('/admin/organization/tanpa-akun-sosial', [AccountController::class, 'noSocials'])->name('admin.accounts.no-socials')->middleware('can:manage-people');
 
     Route::middleware('can:manage-hierarchy')->prefix('admin')->name('admin.')->group(function () {
+        Route::middleware('can:create,App\Models\Division')->group(function () {
+            Route::get('/divisions/create', [DivisionController::class, 'create'])->name('divisions.create');
+            Route::post('/divisions', [DivisionController::class, 'store'])->name('divisions.store');
+        });
+        Route::get('/divisions/similar', [DivisionController::class, 'similar'])->name('divisions.similar');
+        Route::get('/divisions/{division:slug}/edit', [DivisionController::class, 'edit'])->name('divisions.edit')->middleware('can:update,division');
+        Route::put('/divisions/{division:slug}', [DivisionController::class, 'update'])->name('divisions.update')->middleware('can:update,division');
+        Route::patch('/divisions/{division:slug}/toggle-active', [DivisionController::class, 'toggleActive'])->name('divisions.toggle-active')->middleware('can:update,division');
+        Route::delete('/divisions/{division:slug}', [DivisionController::class, 'destroy'])->name('divisions.destroy')->middleware('can:delete,division');
+
         Route::middleware('can:create,App\Models\Union')->group(function () {
             Route::get('/unions/create', [UnionController::class, 'create'])->name('unions.create');
             Route::post('/unions', [UnionController::class, 'store'])->name('unions.store');
@@ -320,6 +341,9 @@ Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group
         Route::get('/unions/similar', [UnionController::class, 'similar'])->name('unions.similar');
         Route::get('/unions/{union:slug}/edit', [UnionController::class, 'edit'])->name('unions.edit')->middleware('can:update,union');
         Route::put('/unions/{union:slug}', [UnionController::class, 'update'])->name('unions.update')->middleware('can:update,union');
+        // Narrower than the above (manage-settings, not update,union) — see
+        // UnionController::updateCoordinator()'s own docblock for why this needs its own gate.
+        Route::patch('/unions/{union:slug}/coordinator', [UnionController::class, 'updateCoordinator'])->name('unions.update-coordinator')->middleware('can:manage-settings');
         Route::patch('/unions/{union:slug}/toggle-active', [UnionController::class, 'toggleActive'])->name('unions.toggle-active')->middleware('can:update,union');
         Route::delete('/unions/{union:slug}', [UnionController::class, 'destroy'])->name('unions.destroy')->middleware('can:delete,union');
 

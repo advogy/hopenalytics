@@ -3,12 +3,7 @@
 @section('title', __('users.edit_title') . ' — ' . config('app.name'))
 
 @section('content')
-    <a
-        href="{{ route('admin.users.index', ['tab' => $tab]) }}"
-        class="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400"
-    >
-        &larr; {{ __('common.back') }}
-    </a>
+    <x-back-link :href="route('admin.users.index', ['tab' => $tab])">{{ __('common.back') }}</x-back-link>
 
     <h1 class="mb-1 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{{ __('users.edit_title') }}</h1>
     <p class="mb-8 text-sm text-slate-500 dark:text-slate-400">{{ $target->email }}</p>

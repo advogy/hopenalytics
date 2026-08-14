@@ -2,7 +2,7 @@
 
 return [
     'title' => 'Kelola Tujuan',
-    'subtitle' => 'Atur target nasional untuk setiap metrik. Target ini dibagi rata ke setiap Uni, lalu bagian tiap Uni dibagi rata lagi ke setiap Daerah di bawahnya — dihitung dari data gereja dan institusi.',
+    'subtitle' => 'Atur target global untuk setiap metrik. Target ini dibagi rata ke setiap Uni, lalu bagian tiap Uni dibagi rata lagi ke setiap Daerah di bawahnya — dihitung dari data gereja dan institusi.',
     'metric_reach' => 'Followers / Subscribers',
     'metric_views' => 'Views',
     'metric_likes' => 'Likes',
@@ -15,6 +15,7 @@ return [
     'goal_title' => ':year Tujuan :metric',
     'scope_global' => 'Global',
     'scope_nasional_scoped' => 'Uni :names',
+    'scope_divisi' => 'Divisi :name',
     'scope_uni' => 'Uni :name',
     'scope_daerah' => 'Daerah :name',
 ];

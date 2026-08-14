@@ -13,19 +13,20 @@ trait BuildsLeaderboards
 {
     /**
      * True for a viewer who sees data spanning MULTIPLE Unions — Admin/Pimpinan Global (every
-     * Union), a plain member (unscoped), AND Admin/Pimpinan Nasional (scoped to their own
-     * assigned set of Unions, but still potentially more than one — see User::assignedUnions()).
-     * All three get the same "grouped by Union > Conference, with a Union filter" UI treatment;
-     * the only thing that actually differs between them is WHICH Unions populate that filter —
-     * see regionFilterOptions() below, the one place that distinction matters. Shared by every
-     * page that offers the Uni/Daerah region filter + collapsible grouping (Analitik & Grafik,
+     * Union), a plain member (unscoped), Admin/Pimpinan Nasional (scoped to their own assigned
+     * set of Unions, but still potentially more than one — see User::assignedUnions()), AND
+     * Admin/Pimpinan Divisi (every Union under their Division, also potentially more than one).
+     * All get the same "grouped by Union > Conference, with a Union filter" UI treatment; the
+     * only thing that actually differs between them is WHICH Unions populate that filter — see
+     * regionFilterOptions() below, the one place that distinction matters. Shared by every page
+     * that offers the Uni/Daerah region filter + collapsible grouping (Analitik & Grafik,
      * Perbandingan Metrik, and the per-metric leaderboard pages).
      */
     protected function isNasionalView(): bool
     {
         $role = auth()->user()->role;
 
-        return $role === null || ($role->hasGlobalAccess() ?? false) || in_array($role->level(), ['global', 'nasional'], true);
+        return $role === null || ($role->hasGlobalAccess() ?? false) || in_array($role->level(), ['global', 'nasional', 'divisi'], true);
     }
 
     /** A uni-level viewer gets Daerah > entity grouping (no Uni tier — it'd always be their own single Uni). */
@@ -48,17 +49,23 @@ trait BuildsLeaderboards
         $isUniView = $this->isUniView();
         $user = auth()->user();
         $isTrulyGlobal = $user->role === null || ($user->role->hasGlobalAccess() ?? false) || $user->role->level() === 'global';
-        $isScopedNasional = $isNasionalView && ! $isTrulyGlobal;
+        // Derived from the actual level, not from isNasionalView() (which now also returns true
+        // for 'divisi') — otherwise a Divisi viewer would incorrectly run the assignedUnionIds()
+        // branch below (Admin Nasional's own Union set, meaningless to a Divisi user).
+        $isScopedNasional = $user->role?->level() === 'nasional';
+        $isDivisiView = $user->role?->level() === 'divisi';
 
         $unionOptions = match (true) {
             $isTrulyGlobal => Union::where('is_active', true)->orderBy('name')->get(),
             $isScopedNasional => Union::where('is_active', true)->whereIn('id', $user->assignedUnionIds())->orderBy('name')->get(),
+            $isDivisiView => Union::where('is_active', true)->where('division_id', $user->division_id)->orderBy('name')->get(),
             default => collect(),
         };
 
         $conferenceOptions = Conference::where('is_active', true)
             ->when($isUniView, fn ($query) => $query->where('union_id', $user->union_id))
             ->when($isScopedNasional && ! $selectedUnionId, fn ($query) => $query->whereIn('union_id', $user->assignedUnionIds()))
+            ->when($isDivisiView && ! $selectedUnionId, fn ($query) => $query->whereHas('union', fn ($q) => $q->where('division_id', $user->division_id)))
             ->when($isNasionalView && $selectedUnionId, fn ($query) => $query->where('union_id', $selectedUnionId))
             ->with('union')
             ->orderBy('name')
@@ -372,6 +379,12 @@ trait BuildsLeaderboards
                 ->orWhereHas('conference', fn ($q2) => $q2->whereIn('union_id', $unionIds)));
         }
 
+        if ($user->role->level() === 'divisi') {
+            return $query->where(fn ($q) => $q
+                ->whereHas('union', fn ($q2) => $q2->where('division_id', $user->division_id))
+                ->orWhereHas('conference.union', fn ($q2) => $q2->where('division_id', $user->division_id)));
+        }
+
         if ($user->role->level() === 'uni') {
             return $query->where(fn ($q) => $q
                 ->where('union_id', $user->union_id)
@@ -402,6 +415,7 @@ trait BuildsLeaderboards
         return match (true) {
             $user->role === null || ($user->role->hasGlobalAccess() ?? false) || $user->role->level() === 'global' => $query,
             $user->role->level() === 'nasional' => $query->whereIn('id', $user->assignedUnionIds()),
+            $user->role->level() === 'divisi' => $query->where('division_id', $user->division_id),
             $user->role->level() === 'uni' => $query->where('id', $user->union_id),
             $user->role->level() === 'gereja' => $query->where('id', $user->church?->conference?->union_id),
             default => $query->where('id', $user->conference?->union_id), // daerah-level
@@ -416,6 +430,7 @@ trait BuildsLeaderboards
         return match (true) {
             $user->role === null || ($user->role->hasGlobalAccess() ?? false) || $user->role->level() === 'global' => $query,
             $user->role->level() === 'nasional' => $query->whereIn('union_id', $user->assignedUnionIds()),
+            $user->role->level() === 'divisi' => $query->whereHas('union', fn ($q) => $q->where('division_id', $user->division_id)),
             $user->role->level() === 'uni' => $query->where('union_id', $user->union_id),
             $user->role->level() === 'gereja' => $query->where('id', $user->church?->conference_id),
             default => $query->where('id', $user->conference_id), // daerah-level

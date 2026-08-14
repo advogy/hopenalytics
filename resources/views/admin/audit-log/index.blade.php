@@ -19,14 +19,10 @@
         <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('audit.subtitle') }}</p>
     </div>
 
-    <div class="mb-6 flex gap-2 overflow-x-auto border-b border-black/5 dark:border-white/5">
-        <button type="button" data-tab-button="aksi" class="border-b-2 px-4 py-2.5 text-sm font-medium transition">
-            {{ __('audit.tab_actions') }}
-        </button>
-        <button type="button" data-tab-button="login" class="border-b-2 px-4 py-2.5 text-sm font-medium transition">
-            {{ __('audit.tab_login') }}
-        </button>
-    </div>
+    <x-tab-bar>
+        <x-tab-button tab-key="aksi">{{ __('audit.tab_actions') }}</x-tab-button>
+        <x-tab-button tab-key="login">{{ __('audit.tab_login') }}</x-tab-button>
+    </x-tab-bar>
 
     <div data-tab-panel="aksi">
         <div class="mb-6 rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/5 dark:bg-slate-900">

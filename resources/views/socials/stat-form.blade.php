@@ -19,9 +19,7 @@
 @section('title', ($editing ? __('entity.edit_stat_title') : __('entity.manual_stat_title')) . ' — ' . $social->display_handle)
 
 @section('content')
-    <a href="{{ $backRoute }}" class="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
-        &larr; {{ $backLabel }}
-    </a>
+    <x-back-link :href="$backRoute">{{ $backLabel }}</x-back-link>
 
     <div class="mb-8 flex items-center gap-3">
         <x-platform-icon :platform="$social->platform" class="h-10 w-10 shrink-0 text-lg" />

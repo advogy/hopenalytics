@@ -76,6 +76,7 @@ return [
     'city_placeholder' => 'Contoh: Bekasi',
     'conference' => 'Daerah / Konferens',
     'conference_unassigned' => 'Belum ditugaskan ke Daerah manapun',
+    'search_divisi_placeholder' => 'Cari Divisi…',
     'search_uni_placeholder' => 'Cari Uni…',
     'search_daerah_placeholder' => 'Cari Daerah…',
     'waiting_for_daerah' => 'Pilih Daerah terlebih dahulu…',

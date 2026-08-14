@@ -35,15 +35,16 @@ class UnionPolicy
     }
 
     /**
-     * A Uni is the top of the chain, so only unrestricted (global) actors create one — a scoped
-     * Admin Nasional's whole point is being pinned to a fixed, pre-existing Union set, so
-     * minting a brand new one (which they'd then need adding to their own assignment to even
-     * see) doesn't fit their mandate; an admin_uni is bound to a single existing union, not
-     * authorized to add new ones either (same reasoning as ChurchPolicy::create() for
-     * gereja-level).
+     * A Uni's parent is now a Divisi (see the Division model), so unrestricted (global) actors
+     * and admin_divisi (creating one under their own division) may create one — mirroring
+     * ConferencePolicy::create() one tier up. A scoped Admin Nasional's whole point is being
+     * pinned to a fixed, pre-existing Union set, so minting a brand new one (which they'd then
+     * need adding to their own assignment to even see) still doesn't fit their mandate, same as
+     * before Divisi existed; an admin_uni is bound to a single existing union, not authorized to
+     * add new ones either (same reasoning as ChurchPolicy::create() for gereja-level).
      */
     public function create(User $user): bool
     {
-        return $user->role?->hasGlobalAccess() ?? false;
+        return ($user->role?->hasGlobalAccess() ?? false) || $user->role?->level() === 'divisi';
     }
 }

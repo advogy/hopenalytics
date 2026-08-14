@@ -74,6 +74,7 @@ return [
     'city_placeholder' => 'e.g.: Bekasi',
     'conference' => 'Daerah / Conference',
     'conference_unassigned' => 'Not assigned to any Daerah yet',
+    'search_divisi_placeholder' => 'Search Division…',
     'search_uni_placeholder' => 'Search Union…',
     'search_daerah_placeholder' => 'Search Conference…',
     'waiting_for_daerah' => 'Choose a Conference first…',

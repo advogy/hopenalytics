@@ -144,15 +144,15 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('delegate-users', fn (User $user) => $user->role?->promotesToLevel() !== null);
 
         // Exporting (directory, analytics, leaderboards, comparisons) stays superadmin/
-        // admin_global/admin_nasional/admin_uni/admin_daerah only, per the user's explicit
-        // call — deliberately excludes admin_gereja, admin_institusi, and every Pimpinan
-        // (read-only) role. level() is null for SuperAdmin and 'global' for Admin Global
-        // (see UserRole::level()), hence both being in the allow-list below alongside the
-        // three named levels. *Viewing* the Analytics page itself is a separate, broader
-        // gate — see view-analytics below.
+        // admin_global/admin_nasional/admin_divisi/admin_uni/admin_daerah only, per the user's
+        // explicit call — deliberately excludes admin_gereja, admin_institusi, and every
+        // Pimpinan (read-only) role. level() is null for SuperAdmin and 'global' for Admin
+        // Global (see UserRole::level()), hence both being in the allow-list below alongside
+        // the named levels. *Viewing* the Analytics page itself is a separate, broader gate —
+        // see view-analytics below.
         Gate::define('browse-directory-analytics', fn (User $user) => $user->role !== null
             && ! $user->role->isReadOnly()
-            && in_array($user->role->level(), [null, 'global', 'nasional', 'uni', 'daerah'], true));
+            && in_array($user->role->level(), [null, 'global', 'nasional', 'divisi', 'uni', 'daerah'], true));
 
         // Viewing Analytics & Statistik (as opposed to exporting it — browse-directory-
         // analytics above) is open to a plain member, admin_gereja, admin_daerah, and

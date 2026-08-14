@@ -16,9 +16,7 @@
 
 @section('content')
     @can('view-analytics')
-        <a href="{{ route('churches.analytics', ['tab' => 'organisasi']) }}" class="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
-            &larr; {{ __('nav.back_to_analytics') }}
-        </a>
+        <x-back-link :href="route('churches.analytics', ['tab' => 'organisasi'])">{{ __('nav.back_to_analytics') }}</x-back-link>
     @endcan
 
     <div class="mb-8 flex flex-wrap items-center justify-between gap-3">
@@ -39,30 +37,14 @@
         </div>
     </div>
 
-    @if ($organization->socials->isEmpty())
-        <div class="rounded-2xl border border-dashed border-slate-300 p-12 text-center dark:border-slate-700">
-            <p class="text-slate-500 dark:text-slate-400">{{ __('entity.no_socials') }}</p>
-        </div>
-    @endif
-
-    @if ($organization->socials->isNotEmpty())
-        <x-growth-score-summary
-            :score-history="$scoreHistory"
-            :score-metrics="$scoreMetrics"
-            :score-breakdown="$scoreBreakdown"
-            :score-sample-count="$scoreSampleCount"
-            :score-sample-sum="$scoreSampleSum"
-            :anchored="true"
-        />
-
-        <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            @foreach ($organization->socials as $social)
-                <x-social-account-card :social="$social" :history-rows="$history[$social->id] ?? collect()" />
-            @endforeach
-        </div>
-    @endif
-
-    @foreach ($organization->socials as $social)
-        <x-social-history-table :social="$social" :history-rows="$history[$social->id] ?? collect()" />
-    @endforeach
+    <x-entity-social-summary
+        :socials="$organization->socials"
+        :history="$history"
+        :score-history="$scoreHistory"
+        :score-metrics="$scoreMetrics"
+        :score-breakdown="$scoreBreakdown"
+        :score-sample-count="$scoreSampleCount"
+        :score-sample-sum="$scoreSampleSum"
+        :anchored="true"
+    />
 @endsection

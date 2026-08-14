@@ -14,14 +14,10 @@
 @section('content')
     @if ($isOrgLevel)
         @can('view-analytics')
-            <a href="{{ route('churches.analytics', ['tab' => 'gereja']) }}" class="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
-                &larr; {{ __('nav.back_to_analytics') }}
-            </a>
+            <x-back-link :href="route('churches.analytics', ['tab' => 'gereja'])">{{ __('nav.back_to_analytics') }}</x-back-link>
         @endcan
     @else
-        <a href="{{ route(...$backRoute) }}" class="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
-            &larr; {{ __('common.back') }}
-        </a>
+        <x-back-link :href="route(...$backRoute)">{{ __('common.back') }}</x-back-link>
     @endif
 
     <div class="mb-8 flex flex-wrap items-center justify-between gap-3">

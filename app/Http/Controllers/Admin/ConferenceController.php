@@ -97,6 +97,7 @@ class ConferenceController extends Controller
         return match ($user->role->level()) {
             'uni' => $user->union_id,
             'nasional' => $submitted && in_array($submitted, $user->assignedUnionIds(), true) ? $submitted : $current,
+            'divisi' => $submitted && Union::whereKey($submitted)->where('division_id', $user->division_id)->exists() ? $submitted : $current,
             default => $submitted ?? $current,
         };
     }
@@ -122,6 +123,13 @@ class ConferenceController extends Controller
             return [
                 'canPickUnion' => true,
                 'unions' => Union::whereIn('id', $user->assignedUnionIds())->where('is_active', true)->orderBy('name')->get(),
+            ];
+        }
+
+        if ($user->role?->level() === 'divisi') {
+            return [
+                'canPickUnion' => true,
+                'unions' => Union::where('division_id', $user->division_id)->where('is_active', true)->orderBy('name')->get(),
             ];
         }
 

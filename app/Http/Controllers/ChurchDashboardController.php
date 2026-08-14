@@ -262,6 +262,8 @@ class ChurchDashboardController extends Controller
                 => __('goals.scope_global'),
             $scopeUser->role?->level() === 'nasional'
                 => __('goals.scope_nasional_scoped', ['names' => $scopeUser->assignedUnions()->pluck('name')->implode(', ') ?: '—']),
+            $scopeUser->role?->level() === 'divisi'
+                => __('goals.scope_divisi', ['name' => $scopeUser->division?->name ?? '—']),
             $scopeUser->role?->level() === 'uni'
                 => __('goals.scope_uni', ['name' => $scopeUser->union?->name ?? '—']),
             $scopeUser->role?->level() === 'daerah' || $isGerejaLevel
@@ -321,6 +323,8 @@ class ChurchDashboardController extends Controller
                 => __('dashboard.scope_global'),
             $user->role?->level() === 'nasional'
                 => __('dashboard.scope_nasional_scoped', ['names' => $user->assignedUnions()->pluck('name')->implode(', ') ?: '—']),
+            $user->role?->level() === 'divisi'
+                => __('dashboard.scope_divisi', ['name' => $user->division?->name ?? '—']),
             $user->role?->level() === 'uni'
                 => __('dashboard.scope_uni', ['name' => $user->union?->name ?? '—']),
             $user->role?->level() === 'daerah'
@@ -415,15 +419,19 @@ class ChurchDashboardController extends Controller
         // rather than the full national total (Global) or a single Union's third (Uni-level) —
         // see User::assignedUnions().
         $isScopedNasional = ! $isGlobal && $level === 'nasional';
-        $isUni = ! $isGlobal && ! $isScopedNasional && $level === 'uni';
-        $isDaerahOrGereja = ! $isGlobal && ! $isScopedNasional && ! $isUni && in_array($level, ['daerah', 'gereja'], true);
+        // Admin/Pimpinan Divisi: same fair-share shape as Nasional above, just counting only
+        // the active Unions that belong to their own Division instead of an arbitrary set.
+        $isDivisi = ! $isGlobal && ! $isScopedNasional && $level === 'divisi';
+        $isUni = ! $isGlobal && ! $isScopedNasional && ! $isDivisi && $level === 'uni';
+        $isDaerahOrGereja = ! $isGlobal && ! $isScopedNasional && ! $isDivisi && ! $isUni && in_array($level, ['daerah', 'gereja'], true);
 
-        if (! $isGlobal && ! $isScopedNasional && ! $isUni && ! $isDaerahOrGereja) {
+        if (! $isGlobal && ! $isScopedNasional && ! $isDivisi && ! $isUni && ! $isDaerahOrGereja) {
             return collect();
         }
 
         $unionCount = Union::where('is_active', true)->count();
         $assignedUnionCount = $isScopedNasional ? count($user->assignedUnionIds()) : 0;
+        $divisionUnionCount = $isDivisi ? Union::where('is_active', true)->where('division_id', $user->division_id)->count() : 0;
 
         // admin_gereja has no $user->conference of its own (only $user->church) — same
         // conference_id derivation as analyticsChurchScope()'s gereja-level branch.
@@ -432,6 +440,7 @@ class ChurchDashboardController extends Controller
         $scopeLabel = match (true) {
             $isGlobal => __('goals.scope_global'),
             $isScopedNasional => __('goals.scope_nasional_scoped', ['names' => $user->assignedUnions()->pluck('name')->implode(', ') ?: '—']),
+            $isDivisi => __('goals.scope_divisi', ['name' => $user->division?->name ?? '—']),
             $isUni => __('goals.scope_uni', ['name' => $user->union?->name ?? '—']),
             default => __('goals.scope_daerah', ['name' => $conference?->name ?? '—']),
         };
@@ -442,12 +451,13 @@ class ChurchDashboardController extends Controller
         // re-derives it from this total.
         $combinedSocials = $churchSocials->merge($institutionSocials)->merge($personalSocials)->merge($organizationSocials);
 
-        return collect(Goal::METRICS)->map(function ($metric) use ($combinedSocials, $isGlobal, $isScopedNasional, $isUni, $unionCount, $assignedUnionCount, $conference, $scopeLabel) {
+        return collect(Goal::METRICS)->map(function ($metric) use ($combinedSocials, $isGlobal, $isScopedNasional, $isDivisi, $isUni, $unionCount, $assignedUnionCount, $divisionUnionCount, $conference, $scopeLabel) {
             $goal = Goal::forMetric($metric);
 
             $target = match (true) {
                 $isGlobal => $goal->target_value,
                 $isScopedNasional => $unionCount > 0 ? (int) round($goal->target_value / $unionCount * $assignedUnionCount) : 0,
+                $isDivisi => $unionCount > 0 ? (int) round($goal->target_value / $unionCount * $divisionUnionCount) : 0,
                 $isUni => $unionCount > 0 ? (int) round($goal->target_value / $unionCount) : 0,
                 default => (function () use ($goal, $unionCount, $conference) {
                     if ($unionCount === 0) {

@@ -15,9 +15,7 @@
 @endphp
 
 @if ($socials->isEmpty())
-    <div class="rounded-2xl border border-dashed border-slate-300 p-12 text-center dark:border-slate-700">
-        <p class="text-slate-500 dark:text-slate-400">{{ __('entity.no_socials') }}</p>
-    </div>
+    <x-empty-state>{{ __('entity.no_socials') }}</x-empty-state>
 @elseif ($groupByCategory)
     @php $socialsByCategory = $socials->groupBy(fn ($social) => $social->category->value); @endphp
     @foreach (['gereja', 'umum'] as $category)

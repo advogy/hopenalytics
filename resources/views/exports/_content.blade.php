@@ -35,9 +35,7 @@
 </div>
 
 @if (empty($dataset['rows']))
-    <div class="rounded-2xl border border-dashed border-slate-300 p-12 text-center dark:border-slate-700">
-        <p class="text-slate-500 dark:text-slate-400">{{ __('export.no_data') }}</p>
-    </div>
+    <x-empty-state>{{ __('export.no_data') }}</x-empty-state>
 @else
     <div class="overflow-x-auto rounded-2xl border border-black/5 dark:border-white/5">
         <table class="w-full text-left text-sm">

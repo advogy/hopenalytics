@@ -3,51 +3,29 @@
 @section('title', ($conference->exists ? __('accounts.title_edit_daerah') : __('accounts.title_add_daerah')) . ' — ' . config('app.name'))
 
 @section('content')
-    <a href="{{ route('admin.accounts.index', ['tab' => 'daerah']) }}" class="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
-        &larr; {{ __('common.back') }}
-    </a>
-
-    <h1 class="mb-8 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
-        {{ $conference->exists ? __('accounts.title_edit_daerah') : __('accounts.title_add_daerah') }}
-    </h1>
-
-    <form
-        method="POST"
-        action="{{ $conference->exists ? route('admin.conferences.update', $conference) : route('admin.conferences.store') }}"
-        class="max-w-lg rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/5 dark:bg-slate-900"
+    <x-entity-crud-form
+        :entity="$conference"
+        :action="$conference->exists ? route('admin.conferences.update', $conference) : route('admin.conferences.store')"
+        :back-url="route('admin.accounts.index', ['tab' => 'daerah'])"
+        :title="$conference->exists ? __('accounts.title_edit_daerah') : __('accounts.title_add_daerah')"
+        :submit-label="$conference->exists ? __('common.save_changes') : __('accounts.title_add_daerah')"
+        :destroy-action="$conference->exists ? route('admin.conferences.destroy', $conference) : null"
+        :destroy-confirm="__('accounts.deactivate_daerah_confirm', ['name' => $conference->name])"
+        :destroy-label="__('accounts.deactivate_daerah')"
     >
-        @csrf
-        @if ($conference->exists)
-            @method('PUT')
-        @endif
-
         <x-form-field name="name" :label="__('accounts.daerah_name')" required :value="$conference->name" />
-        <div id="name-similar-results" class="hidden mb-5 -mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm dark:border-amber-900 dark:bg-amber-950"></div>
-        <script>
-            window.initSimilarNameCheck(document.getElementById('name'), document.getElementById('name-similar-results'), {
-                url: '{{ route('admin.conferences.similar') }}',
-                excludeId: {{ $conference->exists ? $conference->id : 'null' }},
-            });
-        </script>
+        <x-similar-name-check :route="route('admin.conferences.similar')" :exclude-id="$conference->exists ? $conference->id : null" />
 
         <div class="mb-5">
-            <label class="mb-1.5 block text-sm font-medium">{{ __('common.union') }}</label>
             @if ($canPickUnion)
-                <select
-                    id="union_id"
-                    name="union_id"
-                    required
-                    class="w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none dark:border-white/10 dark:bg-slate-800"
-                >
+                <x-select-field name="union_id" :label="__('common.union')" required wrapper-class="">
                     <option value="">{{ __('accounts.choose_uni_placeholder') }}</option>
                     @foreach ($unions as $union)
                         <option value="{{ $union->id }}" @selected(old('union_id', $conference->union_id) == $union->id)>{{ $union->name }}</option>
                     @endforeach
-                </select>
-                @error('union_id')
-                    <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
-                @enderror
+                </x-select-field>
             @else
+                <label class="mb-1.5 block text-sm font-medium">{{ __('common.union') }}</label>
                 {{-- admin_uni: always their own union, submitted server-side regardless of this field. --}}
                 <input type="hidden" name="union_id" value="{{ $ownUnion->id ?? '' }}">
                 <p class="rounded-lg border border-black/10 bg-slate-50 px-3 py-2 text-sm text-slate-500 dark:border-white/10 dark:bg-slate-800 dark:text-slate-400">
@@ -57,29 +35,5 @@
         </div>
 
         <x-coordinate-fields :latitude="$conference->latitude" :longitude="$conference->longitude" />
-
-        <div class="flex items-center gap-3">
-            <button type="submit" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700">
-                {{ $conference->exists ? __('common.save_changes') : __('accounts.title_add_daerah') }}
-            </button>
-            <a href="{{ route('admin.accounts.index', ['tab' => 'daerah']) }}" class="text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
-                {{ __('common.cancel') }}
-            </a>
-        </div>
-    </form>
-
-    @if ($conference->exists)
-        <form
-            method="POST"
-            action="{{ route('admin.conferences.destroy', $conference) }}"
-            class="mt-6 max-w-lg"
-            data-confirm="{{ __('accounts.deactivate_daerah_confirm', ['name' => $conference->name]) }}"
-        >
-            @csrf
-            @method('DELETE')
-            <button type="submit" class="text-sm text-red-600 hover:underline dark:text-red-400">
-                {{ __('accounts.deactivate_daerah') }}
-            </button>
-        </form>
-    @endif
+    </x-entity-crud-form>
 @endsection

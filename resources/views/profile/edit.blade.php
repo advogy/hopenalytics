@@ -23,27 +23,17 @@
         </div>
     @endif
 
-    <div class="mb-6 flex gap-2 overflow-x-auto border-b border-black/5 dark:border-white/5">
-        <button type="button" data-tab-button="username" class="border-b-2 px-4 py-2.5 text-sm font-medium transition">
-            Username
-        </button>
-        <button type="button" data-tab-button="password" class="border-b-2 px-4 py-2.5 text-sm font-medium transition">
-            Kata Sandi
-        </button>
+    <x-tab-bar>
+        <x-tab-button tab-key="username">Username</x-tab-button>
+        <x-tab-button tab-key="password">Kata Sandi</x-tab-button>
         @if ($person)
-            <button type="button" data-tab-button="personal" class="border-b-2 px-4 py-2.5 text-sm font-medium transition">
-                Info Personal
-            </button>
-            <button type="button" data-tab-button="sosial" class="border-b-2 px-4 py-2.5 text-sm font-medium transition">
-                Media Sosial
-            </button>
+            <x-tab-button tab-key="personal">Info Personal</x-tab-button>
+            <x-tab-button tab-key="sosial">Media Sosial</x-tab-button>
         @endif
         @if ($canEditRegion)
-            <button type="button" data-tab-button="wilayah" class="border-b-2 px-4 py-2.5 text-sm font-medium transition">
-                Wilayah
-            </button>
+            <x-tab-button tab-key="wilayah">Wilayah</x-tab-button>
         @endif
-    </div>
+    </x-tab-bar>
 
     <div data-tab-panel="username" class="max-w-lg rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/5 dark:bg-slate-900">
         <form method="POST" action="{{ route('profile.update') }}" data-disable-on-submit>
@@ -108,7 +98,7 @@
 
             @php $activeSocials = $person->socials->where('is_active', true); @endphp
             @if ($activeSocials->isEmpty())
-                <p class="py-6 text-center text-sm text-slate-400 dark:text-slate-500">{{ __('entity.no_socials') }}</p>
+                <x-empty-state variant="inline">{{ __('entity.no_socials') }}</x-empty-state>
             @else
                 <ul class="-mx-6 divide-y divide-slate-100 dark:divide-slate-800">
                     @foreach ($activeSocials as $social)

@@ -29,7 +29,7 @@
         </div>
 
         @if ($pendingByQueue->isEmpty())
-            <p class="py-6 text-center text-sm text-slate-400 dark:text-slate-500">{{ __('queue.pending_empty') }}</p>
+            <x-empty-state variant="inline">{{ __('queue.pending_empty') }}</x-empty-state>
         @else
             <div class="overflow-x-auto">
                 <table class="w-full text-left text-sm">
@@ -66,7 +66,7 @@
         <p class="mb-4 font-bold text-slate-900 dark:text-white">{{ __('queue.batches_title') }}</p>
 
         @if ($activeBatches->isEmpty())
-            <p class="py-6 text-center text-sm text-slate-400 dark:text-slate-500">{{ __('queue.batches_empty') }}</p>
+            <x-empty-state variant="inline">{{ __('queue.batches_empty') }}</x-empty-state>
         @else
             <div class="divide-y divide-slate-100 dark:divide-slate-800">
                 @foreach ($activeBatches as $batch)
@@ -116,7 +116,7 @@
         </div>
 
         @if ($completedBatches->isEmpty())
-            <p class="py-6 text-center text-sm text-slate-400 dark:text-slate-500">{{ __('queue.completed_empty') }}</p>
+            <x-empty-state variant="inline">{{ __('queue.completed_empty') }}</x-empty-state>
         @else
             <div class="divide-y divide-slate-100 dark:divide-slate-800">
                 @foreach ($completedBatches as $batch)
@@ -176,7 +176,7 @@
         </div>
 
         @if ($failedJobs->isEmpty())
-            <p class="py-6 text-center text-sm text-slate-400 dark:text-slate-500">{{ __('queue.failed_empty') }}</p>
+            <x-empty-state variant="inline">{{ __('queue.failed_empty') }}</x-empty-state>
         @else
             {{--
                 table-fixed + explicit widths on every column except Error (which takes

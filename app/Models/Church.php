@@ -59,6 +59,9 @@ class Church extends Model
             $user->role->level() === 'nasional' => $query->whereHas(
                 'conference', fn (Builder $q) => $q->whereIn('union_id', $user->assignedUnionIds())
             ),
+            $user->role->level() === 'divisi' => $query->whereHas(
+                'conference.union', fn (Builder $q) => $q->where('division_id', $user->division_id)
+            ),
             $user->role->level() === 'uni' => $query->whereHas(
                 'conference', fn (Builder $q) => $q->where('union_id', $user->union_id)
             ),

@@ -1,4 +1,4 @@
-@props(['class' => 'h-8 w-8'])
+@props(['class' => 'h-8 w-8', 'label' => null])
 
 @php
     // Unique per render so multiple instances on one page (header + footer, etc.) don't
@@ -6,7 +6,7 @@
     $uid = 'hn-sun-'.uniqid();
 @endphp
 
-<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hopenalytics" {{ $attributes->merge(['class' => $class]) }}>
+<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="{{ $label ?? config('app.name') }}" {{ $attributes->merge(['class' => $class]) }}>
     <defs>
         <radialGradient id="{{ $uid }}" cx="38%" cy="30%" r="78%">
             <stop offset="0%" stop-color="#f7cd9a" />

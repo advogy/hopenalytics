@@ -79,6 +79,11 @@ class Institution extends Model
             $user->role->level() === 'nasional' => $query->where(
                 fn (Builder $q) => $q->whereIn('union_id', $user->assignedUnionIds())->orWhereNull('union_id')
             ),
+            // Unlike 'nasional' above, no orWhereNull() carve-out for nasional institutions —
+            // same strict, region-only reasoning as the 'uni' arm right below (an
+            // admin_uni/admin_daerah only sees institutions in their own wilayah, not also
+            // nasional ones; Divisi is one tier up from Uni and stays just as strict).
+            $user->role->level() === 'divisi' => $query->whereHas('union', fn (Builder $q) => $q->where('division_id', $user->division_id)),
             $user->role->level() === 'uni' => $query->where('union_id', $user->union_id),
             $user->role->level() === 'daerah' => $query->where('conference_id', $user->conference_id),
             $user->role->level() === 'institusi' => $query->where('id', $user->institution_id),
@@ -104,6 +109,11 @@ class Institution extends Model
             $user->role->level() === 'nasional' => $query->where(
                 fn (Builder $q) => $q->whereIn('union_id', $user->assignedUnionIds())->orWhereNull('union_id')
             ),
+            // Unlike 'nasional' above, no orWhereNull() carve-out for nasional institutions —
+            // same strict, region-only reasoning as the 'uni' arm right below (an
+            // admin_uni/admin_daerah only sees institutions in their own wilayah, not also
+            // nasional ones; Divisi is one tier up from Uni and stays just as strict).
+            $user->role->level() === 'divisi' => $query->whereHas('union', fn (Builder $q) => $q->where('division_id', $user->division_id)),
             $user->role->level() === 'uni' => $query->where('union_id', $user->union_id),
             $user->role->level() === 'daerah' => $query->where('conference_id', $user->conference_id),
             $user->role->level() === 'institusi' => $query->where('id', $user->institution_id),

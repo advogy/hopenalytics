@@ -23,9 +23,9 @@
         </a>
 
         @can('releaseRegion', $user)
-            @if ($user->union_id || $user->conference_id || $user->church_id)
+            @if ($user->division_id || $user->union_id || $user->conference_id || $user->church_id)
                 @php
-                    $hasScopedActiveRole = $user->role !== null && in_array($user->role->level(), ['uni', 'daerah', 'gereja'], true);
+                    $hasScopedActiveRole = $user->role !== null && in_array($user->role->level(), ['divisi', 'uni', 'daerah', 'gereja'], true);
                     $releaseRegionConfirm = $hasScopedActiveRole
                         ? __('users.release_region_confirm_active_role', ['name' => $user->name, 'role' => $user->role->label()])
                         : __('users.release_region_confirm', ['name' => $user->name]);

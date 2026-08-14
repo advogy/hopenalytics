@@ -63,6 +63,10 @@ class Person extends Model
                 $q->whereIn('union_id', $unionIds)
                     ->orWhereHas('conference', fn (Builder $q2) => $q2->whereIn('union_id', $unionIds));
             }),
+            $user->role->level() === 'divisi' => $query->where(function (Builder $q) use ($user) {
+                $q->whereHas('union', fn (Builder $q2) => $q2->where('division_id', $user->division_id))
+                    ->orWhereHas('conference.union', fn (Builder $q2) => $q2->where('division_id', $user->division_id));
+            }),
             $user->role->level() === 'uni' => $query->where(function (Builder $q) use ($user) {
                 $q->where('union_id', $user->union_id)
                     ->orWhereHas('conference', fn (Builder $q2) => $q2->where('union_id', $user->union_id));

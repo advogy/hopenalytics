@@ -6,6 +6,7 @@ use App\Http\Controllers\Concerns\BuildsLeaderboards;
 use App\Http\Controllers\Controller;
 use App\Models\Church;
 use App\Models\Conference;
+use App\Models\Division;
 use App\Models\Institution;
 use App\Models\Person;
 use App\Models\Union;
@@ -37,26 +38,33 @@ class AccountController extends Controller
             ? $requestedTab
             : array_key_first(array_filter($visibleTabs));
 
+        $searchDivisi = trim((string) $request->query('search_divisi'));
         $searchUni = trim((string) $request->query('search_uni'));
         $searchDaerah = trim((string) $request->query('search_daerah'));
         $searchGereja = trim((string) $request->query('search_gereja'));
         $searchInstitusi = trim((string) $request->query('search_institusi'));
         $searchPersonal = trim((string) $request->query('search_personal'));
 
+        $sortDivisi = $request->query('sort_divisi', 'name_asc');
         $sortUni = $request->query('sort_uni', 'name_asc');
         $sortDaerah = $request->query('sort_daerah', 'name_asc');
         $sortGereja = $request->query('sort_gereja', 'name_asc');
         $sortInstitusi = $request->query('sort_institusi', 'name_asc');
         $sortPersonal = $request->query('sort_personal', 'name_asc');
 
-        // Region filter — one per tab (Uni gets none, it's the top tier already), since every
+        // Region filter — one per tab (Divisi gets none, it's the top tier now), since every
         // tab here is already independently searched/sorted/paginated; the shared region-filter
         // partial's field-name override (see its own doc comment) keeps each tab's own
         // union_id/conference_id from colliding when several of them sit on the same page.
         // regionFilterOptions() (from BuildsLeaderboards, shared with Analitik & Grafik etc.)
         // scopes the pickers themselves to what the viewer may pick from — unlike the public,
         // unscoped Direktori Akun, this management page should only ever offer the viewer's own
-        // region.
+        // region. The Uni tab's own Division filter isn't a regionFilterOptions() pair — that
+        // helper is Union/Conference-specific — so it's a bare Division::visibleTo() list
+        // instead, same idea as the Daerah tab's single Uni combobox one tier up.
+        $selectedDivisionIdUni = $request->query('division_id_uni');
+        $divisionOptionsUni = Division::where('is_active', true)->visibleTo($request->user())->orderBy('name')->get();
+
         $selectedUnionIdDaerah = $request->query('union_id_daerah');
         $selectedUnionIdGereja = $request->query('union_id_gereja');
         $selectedConferenceIdGereja = $request->query('conference_id_gereja');
@@ -99,11 +107,25 @@ class AccountController extends Controller
         // looking at when they click it. appends(['tab' => ...]) forces each paginator's own
         // links to always point back to its own tab, regardless of what was in the URL when
         // the page was first rendered.
+        $divisions = Division::withCount(['unions', 'users'])
+            ->with('users:id,name,role,division_id')
+            ->visibleTo($request->user())
+            ->when($searchDivisi, fn ($q) => $q->where('name', 'like', "%{$searchDivisi}%"))
+            ->tap(fn ($q) => $this->applyNameOrStatusSort($q, $sortDivisi))
+            ->paginate(30, ['*'], 'divisi_page')
+            ->withQueryString()
+            ->appends(['tab' => 'divisi']);
+
         $unions = Union::withCount(['conferences', 'people', 'users'])
-            ->with('users:id,name,role,union_id')
+            ->with('users:id,name,role,union_id', 'division')
             ->visibleTo($request->user())
             ->when($searchUni, fn ($q) => $q->where('name', 'like', "%{$searchUni}%"))
-            ->tap(fn ($q) => $this->applyNameOrStatusSort($q, $sortUni))
+            ->when($selectedDivisionIdUni, fn ($q) => $q->where('division_id', $selectedDivisionIdUni))
+            ->tap(fn ($q) => match ($sortUni) {
+                'division_asc' => $q->orderBy(Division::select('name')->whereColumn('divisions.id', 'unions.division_id'))->orderBy('name'),
+                'division_desc' => $q->orderByDesc(Division::select('name')->whereColumn('divisions.id', 'unions.division_id'))->orderBy('name'),
+                default => $this->applyNameOrStatusSort($q, $sortUni),
+            })
             ->paginate(30, ['*'], 'uni_page')
             ->withQueryString()
             ->appends(['tab' => 'uni']);
@@ -205,16 +227,19 @@ class AccountController extends Controller
             'accountsNeedingAttention' => $accountsNeedingAttention,
             'autoFetchAccountsCount' => $autoFetchAccountsCount,
             'entitiesWithoutSocials' => $entitiesWithoutSocials,
+            'divisions' => $divisions,
             'unions' => $unions,
             'conferences' => $conferences,
             'churches' => $churches,
             'institutions' => $institutions,
             'people' => $people,
+            'searchDivisi' => $searchDivisi,
             'searchUni' => $searchUni,
             'searchDaerah' => $searchDaerah,
             'searchGereja' => $searchGereja,
             'searchInstitusi' => $searchInstitusi,
             'searchPersonal' => $searchPersonal,
+            'sortDivisi' => $sortDivisi,
             'sortUni' => $sortUni,
             'sortDaerah' => $sortDaerah,
             'sortGereja' => $sortGereja,
@@ -222,6 +247,8 @@ class AccountController extends Controller
             'sortPersonal' => $sortPersonal,
             'isNasionalView' => $this->isNasionalView(),
             'isUniView' => $this->isUniView(),
+            'selectedDivisionIdUni' => $selectedDivisionIdUni,
+            'divisionOptionsUni' => $divisionOptionsUni,
             'unionOptionsDaerah' => $unionOptionsDaerah,
             'unionOptionsGereja' => $unionOptionsGereja,
             'conferenceOptionsGereja' => $conferenceOptionsGereja,
@@ -344,11 +371,12 @@ class AccountController extends Controller
         $level = ($user->role?->hasGlobalAccess() ?? false) ? 'nasional' : $user->role?->level();
 
         return match ($level) {
-            'nasional' => ['uni' => true, 'daerah' => true, 'gereja' => true, 'institusi' => true, 'personal' => true],
-            'uni' => ['uni' => false, 'daerah' => true, 'gereja' => true, 'institusi' => true, 'personal' => true],
-            'daerah' => ['uni' => false, 'daerah' => false, 'gereja' => true, 'institusi' => true, 'personal' => true],
-            'institusi' => ['uni' => false, 'daerah' => false, 'gereja' => false, 'institusi' => true, 'personal' => true],
-            default => ['uni' => false, 'daerah' => false, 'gereja' => false, 'institusi' => false, 'personal' => true],
+            'nasional' => ['divisi' => true, 'uni' => true, 'daerah' => true, 'gereja' => true, 'institusi' => true, 'personal' => true],
+            'divisi' => ['divisi' => false, 'uni' => true, 'daerah' => true, 'gereja' => true, 'institusi' => true, 'personal' => true],
+            'uni' => ['divisi' => false, 'uni' => false, 'daerah' => true, 'gereja' => true, 'institusi' => true, 'personal' => true],
+            'daerah' => ['divisi' => false, 'uni' => false, 'daerah' => false, 'gereja' => true, 'institusi' => true, 'personal' => true],
+            'institusi' => ['divisi' => false, 'uni' => false, 'daerah' => false, 'gereja' => false, 'institusi' => true, 'personal' => true],
+            default => ['divisi' => false, 'uni' => false, 'daerah' => false, 'gereja' => false, 'institusi' => false, 'personal' => true],
         };
     }
 }

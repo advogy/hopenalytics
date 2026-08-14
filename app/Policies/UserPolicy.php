@@ -5,6 +5,7 @@ namespace App\Policies;
 use App\Enums\UserRole;
 use App\Models\Church;
 use App\Models\Conference;
+use App\Models\Division;
 use App\Models\Institution;
 use App\Models\Union;
 use App\Models\User;
@@ -165,6 +166,7 @@ class UserPolicy
             }
 
             return $this->scopeBelongsToAssignedUnions($actor, $target->role->level(), match ($target->role->level()) {
+                'divisi' => $target->division_id,
                 'uni' => $target->union_id,
                 'daerah' => $target->conference_id,
                 'gereja' => $target->church_id,
@@ -188,7 +190,15 @@ class UserPolicy
         }
 
         return match ($target->role->level()) {
-            'nasional', 'uni' => true,
+            // Reachable target levels here are 'nasional' (actor: Admin Global, unconditional —
+            // see promote()'s own AdminGlobal branch) and 'uni' (actor: Admin Divisi, now
+            // tightened to their own Division — this arm used to be reached by Admin Nasional,
+            // whose promotesToLevel() was 'uni' before Divisi was inserted into the chain, hence
+            // the old unconditional true; Admin Nasional's own promotions go through its
+            // dedicated branch above and never reach this generic path).
+            'nasional' => true,
+            'uni' => $target->union_id !== null
+                && Union::whereKey($target->union_id)->where('division_id', $actor->division_id)->exists(),
             'daerah' => $target->conference_id !== null
                 && Conference::whereKey($target->conference_id)->where('union_id', $actor->union_id)->exists(),
             'gereja' => $target->church_id !== null
@@ -201,8 +211,11 @@ class UserPolicy
     {
         return match ($level) {
             // Admin Nasional's own promotions are handled by its dedicated branch in
-            // promote() above (via scopeBelongsToAssignedUnions()), never this generic path.
-            'uni' => $scopeId !== null,
+            // promote() above (via scopeBelongsToAssignedUnions()), never this generic path —
+            // the actor reaching 'uni' here is Admin Divisi (promotesToLevel() === 'uni'),
+            // so it's checked against the actor's own Division, not left unconditional.
+            'uni' => $scopeId !== null
+                && Union::whereKey($scopeId)->where('division_id', $actor->division_id)->exists(),
             'daerah' => $scopeId !== null
                 && Conference::whereKey($scopeId)->where('union_id', $actor->union_id)->exists(),
             'gereja' => $scopeId !== null
@@ -226,6 +239,11 @@ class UserPolicy
         $unionIds = $actor->assignedUnionIds();
 
         return match ($level) {
+            // Division is NOT nested under Admin Nasional's assigned Union set — that set is
+            // independent of Division (per the user's explicit call) — so any real Division
+            // qualifies, same "existence is enough" reasoning as scopeExists() below uses for
+            // Superadmin/Admin Global bootstrapping.
+            'divisi' => Division::whereKey($scopeId)->exists(),
             'uni' => Union::whereKey($scopeId)->whereIn('id', $unionIds)->exists(),
             'daerah' => Conference::whereKey($scopeId)->whereIn('union_id', $unionIds)->exists(),
             'gereja' => Church::whereKey($scopeId)->whereHas(
@@ -244,6 +262,7 @@ class UserPolicy
     {
         return match ($level) {
             'global' => true,
+            'divisi' => $scopeId !== null && Division::whereKey($scopeId)->exists(),
             'uni' => $scopeId !== null && Union::whereKey($scopeId)->exists(),
             'daerah' => $scopeId !== null && Conference::whereKey($scopeId)->exists(),
             'gereja' => $scopeId !== null && Church::whereKey($scopeId)->exists(),

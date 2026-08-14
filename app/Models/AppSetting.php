@@ -8,7 +8,7 @@ class AppSetting extends Model
 {
     protected $fillable = [
         'auto_fetch_enabled', 'auto_fetch_day', 'auto_fetch_time',
-        'cs_whatsapp_number', 'cs_whatsapp_group_link',
+        'cs_whatsapp_number',
         'apify_fallback_to_manual', 'apify_token', 'youtube_api_key',
         'youtube_enabled', 'instagram_enabled', 'tiktok_enabled', 'facebook_enabled', 'x_enabled',
     ];

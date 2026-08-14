@@ -3,9 +3,7 @@
 @section('title', __('accounts.no_socials_title') . ' — ' . config('app.name'))
 
 @section('content')
-    <a href="{{ route('admin.accounts.index') }}" class="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
-        &larr; {{ __('nav.manage_accounts') }}
-    </a>
+    <x-back-link :href="route('admin.accounts.index')">{{ __('nav.manage_accounts') }}</x-back-link>
 
     <div class="mb-6">
         <h1 class="mb-1 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{{ __('accounts.no_socials_title') }}</h1>
@@ -13,9 +11,7 @@
     </div>
 
     @if ($churches->isEmpty() && $institutions->isEmpty() && $people->isEmpty())
-        <div class="rounded-2xl border border-dashed border-slate-300 p-12 text-center dark:border-slate-700">
-            <p class="text-slate-500 dark:text-slate-400">{{ __('accounts.no_socials_empty') }}</p>
-        </div>
+        <x-empty-state>{{ __('accounts.no_socials_empty') }}</x-empty-state>
     @else
         <div class="space-y-8">
             <section>

@@ -133,6 +133,14 @@ class InstitutionController extends Controller
                     ? $submittedConferenceId
                     : null,
             ],
+            'divisi' => [
+                $submittedUnionId && Union::whereKey($submittedUnionId)->where('division_id', $user->division_id)->exists()
+                    ? $submittedUnionId
+                    : null,
+                $submittedConferenceId && Conference::whereKey($submittedConferenceId)->whereHas('union', fn ($q) => $q->where('division_id', $user->division_id))->exists()
+                    ? $submittedConferenceId
+                    : null,
+            ],
             default => [$submittedUnionId ?? $currentUnionId, $submittedConferenceId ?? $currentConferenceId],
         };
 
@@ -168,6 +176,14 @@ class InstitutionController extends Controller
                 'canPickUnion' => true,
                 'unions' => Union::whereIn('id', $unionIds)->orderBy('name')->get(),
                 'conferences' => Conference::whereIn('union_id', $unionIds)->where('is_active', true)->orderBy('name')->get(['id', 'union_id', 'name']),
+            ];
+        }
+
+        if ($user->role?->level() === 'divisi') {
+            return [
+                'canPickUnion' => true,
+                'unions' => Union::where('division_id', $user->division_id)->where('is_active', true)->orderBy('name')->get(),
+                'conferences' => Conference::whereHas('union', fn ($q) => $q->where('division_id', $user->division_id))->where('is_active', true)->orderBy('name')->get(['id', 'union_id', 'name']),
             ];
         }
 

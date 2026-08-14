@@ -1,18 +1,19 @@
 {{--
     Two independent floating controls, bottom-right on every page:
     - A "back to top" button that only appears once the page is scrolled down.
-    - A Customer Service bubble linking out to WhatsApp — always includes the National
-      Coordinator/group (superadmin-configured in Pengaturan, see AppSetting::csWhatsappUrl()/
-      cs_whatsapp_group_link), plus:
-        - a superadmin/admin_global sees EVERY active Union's own coordinator/group that's
+    - A Customer Service bubble linking out to WhatsApp/Messenger — always includes the Global
+      Coordinator (superadmin-configured in Pengaturan, see AppSetting::csWhatsappUrl()) and
+      every Global chat group (see CoordinatorGroup, union_id null), plus:
+        - a superadmin/admin_global sees EVERY active Union's own coordinator/group(s) that are
           actually set (Kelola Akun → Uni), since they oversee all of them;
-        - a scoped admin_nasional sees just their own assigned Unions' coordinators/groups;
+        - a scoped admin_nasional sees just their own assigned Unions' coordinators/group(s);
+        - admin_divisi sees every active Union under their own Division;
         - anyone scoped to a single Union (admin_uni/daerah/gereja) sees just their own Union's,
-          if it has one set.
+          if it has any set.
       A guest/plain member/institusi-level viewer has no Union of their own (institutions sit
-      outside the nasional→uni→daerah→gereja chain, see UserRole::level()), so they only ever
-      see the national entries. Renders nothing at all if there's nothing to show, rather than
-      a dead button.
+      outside the global→nasional→divisi→uni→daerah→gereja chain, see UserRole::level()), so
+      they only ever see the global entries. Renders nothing at all if there's nothing to show,
+      rather than a dead button.
 
     Stacked at bottom-6/bottom-24 to leave the layout's #refresh-progress-widget (a temporary
     card only shown during an active bulk refresh, see layouts/app.blade.php) room to sit above
@@ -22,6 +23,7 @@
     $floatingWidgetUser = auth()->user();
     $hasGlobalCsAccess = $floatingWidgetUser?->role?->hasGlobalAccess() ?? false;
     $isScopedNasionalCsAdmin = $floatingWidgetUser?->role?->level() === 'nasional';
+    $isDivisiCsAdmin = $floatingWidgetUser?->role?->level() === 'divisi';
 
     $floatingWidgetUnion = match ($floatingWidgetUser?->role?->level()) {
         'uni' => $floatingWidgetUser->union,
@@ -34,15 +36,16 @@
     $csEntries = collect();
 
     if ($url = $floatingWidgetSettings->csWhatsappUrl()) {
-        $csEntries->push(['url' => $url, 'label' => __('common.cs_whatsapp_link_national'), 'icon' => 'chat-bubble']);
+        $csEntries->push(['url' => $url, 'label' => __('common.cs_whatsapp_link_global'), 'icon' => 'chat-bubble']);
     }
-    if ($link = $floatingWidgetSettings->cs_whatsapp_group_link) {
-        $csEntries->push(['url' => $link, 'label' => __('common.cs_group_link_national'), 'icon' => 'users']);
+    foreach (\App\Models\CoordinatorGroup::whereNull('union_id')->get() as $group) {
+        $csEntries->push(['url' => $group->url, 'label' => __('common.cs_group_link_global', ['platform' => $group->platform->label()]), 'icon' => 'users']);
     }
 
     $floatingWidgetUnions = match (true) {
-        $hasGlobalCsAccess => \App\Models\Union::where('is_active', true)->orderBy('name')->get(),
-        $isScopedNasionalCsAdmin => \App\Models\Union::whereIn('id', $floatingWidgetUser->assignedUnionIds())->where('is_active', true)->orderBy('name')->get(),
+        $hasGlobalCsAccess => \App\Models\Union::where('is_active', true)->orderBy('name')->with('groups')->get(),
+        $isScopedNasionalCsAdmin => \App\Models\Union::whereIn('id', $floatingWidgetUser->assignedUnionIds())->where('is_active', true)->orderBy('name')->with('groups')->get(),
+        $isDivisiCsAdmin => \App\Models\Union::where('division_id', $floatingWidgetUser->division_id)->where('is_active', true)->orderBy('name')->with('groups')->get(),
         default => collect([$floatingWidgetUnion])->filter(),
     };
 
@@ -50,8 +53,8 @@
         if ($url = $union->coordinatorWhatsappUrl()) {
             $csEntries->push(['url' => $url, 'label' => __('common.cs_whatsapp_link_union', ['union' => $union->name]), 'icon' => 'chat-bubble']);
         }
-        if ($union->whatsapp_group_link) {
-            $csEntries->push(['url' => $union->whatsapp_group_link, 'label' => __('common.cs_group_link_union', ['union' => $union->name]), 'icon' => 'users']);
+        foreach ($union->groups as $group) {
+            $csEntries->push(['url' => $group->url, 'label' => __('common.cs_group_link_union', ['platform' => $group->platform->label(), 'union' => $union->name]), 'icon' => 'users']);
         }
     }
 @endphp

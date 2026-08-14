@@ -5,19 +5,25 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Union extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'slug', 'is_active', 'coordinator_whatsapp_number', 'whatsapp_group_link', 'latitude', 'longitude'];
+    protected $fillable = ['division_id', 'name', 'slug', 'is_active', 'coordinator_whatsapp_number', 'latitude', 'longitude'];
 
     protected $casts = [
         'is_active' => 'boolean',
         'latitude' => 'float',
         'longitude' => 'float',
     ];
+
+    public function division(): BelongsTo
+    {
+        return $this->belongsTo(Division::class);
+    }
 
     public function conferences(): HasMany
     {
@@ -46,6 +52,7 @@ class Union extends Model
             // User::assignedUnions()) rather than a single region — one country can have
             // multiple Unions and one Union can span multiple countries.
             $user->role->level() === 'nasional' => $query->whereIn('id', $user->assignedUnionIds()),
+            $user->role->level() === 'divisi' => $query->where('division_id', $user->division_id),
             $user->role->level() === 'uni' => $query->where('id', $user->union_id),
             $user->role->level() === 'daerah' => $query->whereHas(
                 'conferences', fn (Builder $q) => $q->where('id', $user->conference_id)
@@ -67,6 +74,11 @@ class Union extends Model
     public function socials(): HasMany
     {
         return $this->hasMany(ChurchSocial::class);
+    }
+
+    public function groups(): HasMany
+    {
+        return $this->hasMany(CoordinatorGroup::class);
     }
 
     public function getRouteKeyName(): string

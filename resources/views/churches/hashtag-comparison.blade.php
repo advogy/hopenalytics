@@ -9,9 +9,7 @@
 @section('title', __('hashtag.comparison_title') . $scope->titleSuffix() . ' — ' . config('app.name'))
 
 @section('content')
-    <a href="{{ $scope->analyticsUrl() }}" class="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
-        &larr; {{ __('comparison.leaderboard_back_analytics') }}
-    </a>
+    <x-back-link :href="$scope->analyticsUrl()">{{ __('comparison.leaderboard_back_analytics') }}</x-back-link>
 
     <div class="mb-6">
         <h1 class="mb-1 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{{ __('hashtag.comparison_title') }}</h1>
@@ -19,14 +17,12 @@
     </div>
 
     @if ($hashtags->isEmpty())
-        <div class="rounded-2xl border border-dashed border-slate-300 p-12 text-center dark:border-slate-700">
-            <p class="text-slate-500 dark:text-slate-400">
-                {{ __('hashtag.no_hashtags_tracked') }}
-                @can('manage-settings')
-                    <a href="{{ route('admin.hashtags.index') }}" class="text-blue-600 hover:underline dark:text-blue-400">{{ __('nav.hashtags') }} →</a>
-                @endcan
-            </p>
-        </div>
+        <x-empty-state>
+            {{ __('hashtag.no_hashtags_tracked') }}
+            @can('manage-settings')
+                <a href="{{ route('admin.hashtags.index') }}" class="text-blue-600 hover:underline dark:text-blue-400">{{ __('nav.hashtags') }} →</a>
+            @endcan
+        </x-empty-state>
     @else
         <div class="mb-8 overflow-x-auto rounded-2xl border border-black/5 dark:border-white/5">
             <table class="w-full text-left text-sm">

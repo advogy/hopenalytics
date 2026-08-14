@@ -22,9 +22,10 @@ return [
     // Scope label shown under the dashboard title — see ChurchDashboardController::index().
     'scope_global' => 'Global overview — all Unions, Conferences/Districts, Churches, Institutions, and Personal accounts.',
     'scope_nasional_scoped' => ':names Union region.',
+    'scope_divisi' => ':name Division region.',
     'scope_uni' => ':name Union region.',
     'scope_daerah' => ':name Conference region.',
-    'scope_gereja' => ':church — stat cards and Top 5/Bottom show your Conference/Union region; Map and Platform Score are shown nationally for comparison.',
+    'scope_gereja' => ':church — stat cards and Top 5/Bottom show your Conference/Union region; Map and Platform Score are shown globally for comparison.',
     'scope_gereja_fallback_name' => 'your church',
     // scope_institusi already exists further below, reused by both this scopeLabel and
     // goalProgressRows()'s $regionScopeLabel — not redefined here to avoid a duplicate key.

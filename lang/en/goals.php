@@ -2,7 +2,7 @@
 
 return [
     'title' => 'Manage Goals',
-    'subtitle' => 'Set the national target for each metric. This target is split evenly across every Union, then each Union\'s share is split evenly again across its own Conferences — computed from church and institution data.',
+    'subtitle' => 'Set the global target for each metric. This target is split evenly across every Union, then each Union\'s share is split evenly again across its own Conferences — computed from church and institution data.',
     'metric_reach' => 'Followers / Subscribers',
     'metric_views' => 'Views',
     'metric_likes' => 'Likes',
@@ -15,6 +15,7 @@ return [
     'goal_title' => ':year :metric goal',
     'scope_global' => 'Global',
     'scope_nasional_scoped' => ':names Union',
+    'scope_divisi' => ':name Division',
     'scope_uni' => ':name Union',
     'scope_daerah' => ':name Conference',
 ];

@@ -126,6 +126,9 @@ class ChurchController extends Controller
             'nasional' => $submitted && Conference::whereKey($submitted)->whereIn('union_id', $user->assignedUnionIds())->exists()
                 ? $submitted
                 : $current,
+            'divisi' => $submitted && Conference::whereKey($submitted)->whereHas('union', fn ($q) => $q->where('division_id', $user->division_id))->exists()
+                ? $submitted
+                : $current,
             'uni' => $submitted && Conference::whereKey($submitted)->where('union_id', $user->union_id)->exists()
                 ? $submitted
                 : $current,
@@ -159,6 +162,14 @@ class ChurchController extends Controller
                 'canPickConference' => true,
                 'unions' => Union::whereIn('id', $unionIds)->orderBy('name')->get(),
                 'conferences' => Conference::whereIn('union_id', $unionIds)->where('is_active', true)->orderBy('name')->get(['id', 'union_id', 'name']),
+            ];
+        }
+
+        if ($user->role?->level() === 'divisi') {
+            return [
+                'canPickConference' => true,
+                'unions' => Union::where('division_id', $user->division_id)->orderBy('name')->get(),
+                'conferences' => Conference::whereHas('union', fn ($q) => $q->where('division_id', $user->division_id))->where('is_active', true)->orderBy('name')->get(['id', 'union_id', 'name']),
             ];
         }
 

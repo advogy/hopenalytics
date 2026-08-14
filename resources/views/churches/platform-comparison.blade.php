@@ -16,9 +16,7 @@
 @endphp
 
 @section('content')
-    <a href="{{ $scope->platformComparisonUrl(array_filter(['platform' => $platformParam])) }}" class="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
-        &larr; {{ __('comparison.back_to_overview') }}
-    </a>
+    <x-back-link :href="$scope->platformComparisonUrl(array_filter(['platform' => $platformParam]))">{{ __('comparison.back_to_overview') }}</x-back-link>
 
     <div class="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
@@ -77,19 +75,7 @@
                 @endif
 
                 @if ($scope->type === 'gereja')
-                    <label class="relative">
-                        <x-icon name="building-office" class="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                        <select
-                            name="category"
-                            onchange="this.form.submit()"
-                            class="appearance-none rounded-full border border-black/10 bg-slate-50 py-2.5 pr-10 pl-9 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-100 dark:border-white/10 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-                        >
-                            <option value="">{{ __('common.all_categories') }}</option>
-                            <option value="gereja" @selected(($selectedCategory ?? null) === 'gereja')>{{ __('directory.church_accounts') }}</option>
-                            <option value="umum" @selected(($selectedCategory ?? null) === 'umum')>{{ __('directory.general_accounts') }}</option>
-                        </select>
-                        <x-icon name="chevron-down" class="pointer-events-none absolute top-1/2 right-3.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                    </label>
+                    <x-category-filter :selected-category="$selectedCategory ?? null" />
                 @endif
             </form>
         </x-filter-card>
@@ -117,44 +103,15 @@
                 </thead>
                 <tbody class="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-900">
                     @if ($groupedRows !== null)
-                        @foreach ($groupedRows as $unionKey => $unionGroup)
-                            @if ($isNasionalView)
-                                <x-analytics-group-row
-                                    :label="$unionGroup['label']"
-                                    :count="$unionGroup['conferences']->sum(fn ($c) => $c['rows']->count()) + $unionGroup['rows']->count()"
-                                    :colspan="4"
-                                    :toggle-id="'platform-detail-union-'.$unionKey"
-                                />
-                            @endif
-                            @foreach ($unionGroup['rows'] as $i => $row)
-                                @include('partials.platform-comparison-row', [
-                                    'row' => $row,
-                                    'index' => $i,
-                                    'depth' => 1,
-                                    'scope' => $scope,
-                                    'ancestors' => $isNasionalView ? 'platform-detail-union-'.$unionKey : null,
-                                ])
-                            @endforeach
-                            @foreach ($unionGroup['conferences'] as $conferenceKey => $conferenceGroup)
-                                <x-analytics-group-row
-                                    :label="$conferenceGroup['label']"
-                                    :count="$conferenceGroup['rows']->count()"
-                                    :colspan="4"
-                                    :toggle-id="'platform-detail-conf-'.$unionKey.'-'.$conferenceKey"
-                                    :ancestors="$isNasionalView ? 'platform-detail-union-'.$unionKey : null"
-                                    :depth="1"
-                                />
-                                @foreach ($conferenceGroup['rows'] as $i => $row)
-                                    @include('partials.platform-comparison-row', [
-                                        'row' => $row,
-                                        'index' => $i,
-                                        'depth' => 2,
-                                        'scope' => $scope,
-                                        'ancestors' => ($isNasionalView ? 'platform-detail-union-'.$unionKey.' ' : '').'platform-detail-conf-'.$unionKey.'-'.$conferenceKey,
-                                    ])
-                                @endforeach
-                            @endforeach
-                        @endforeach
+                        <x-grouped-rows
+                            :grouped="$groupedRows"
+                            prefix="platform-detail"
+                            :colspan="4"
+                            row-view="partials.platform-comparison-row"
+                            row-key="row"
+                            :row-extra="['scope' => $scope]"
+                            :show-union-header="$isNasionalView"
+                        />
                     @else
                         @foreach ($rows as $i => $row)
                             @include('partials.platform-comparison-row', ['row' => $row, 'index' => $i, 'scope' => $scope])

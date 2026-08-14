@@ -33,9 +33,7 @@
 @section('title', __('entity.history_manage_title') . ' — ' . $social->display_handle)
 
 @section('content')
-    <a href="{{ route($backRouteName, $owner) }}" class="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
-        &larr; {{ __('entity.back_to', ['name' => $owner->name]) }}
-    </a>
+    <x-back-link :href="route($backRouteName, $owner)">{{ __('entity.back_to', ['name' => $owner->name]) }}</x-back-link>
 
     <div class="mb-8 flex flex-wrap items-center justify-between gap-3">
         <div class="flex items-center gap-3">
@@ -55,9 +53,7 @@
     </div>
 
     @if ($stats->isEmpty())
-        <div class="rounded-2xl border border-dashed border-slate-300 p-12 text-center dark:border-slate-700">
-            <p class="text-slate-500 dark:text-slate-400">{{ __('entity.no_stats_yet') }}</p>
-        </div>
+        <x-empty-state>{{ __('entity.no_stats_yet') }}</x-empty-state>
     @else
         <div class="overflow-x-auto rounded-2xl border border-black/5 dark:border-white/5">
             <table class="w-full text-left text-sm">

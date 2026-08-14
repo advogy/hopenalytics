@@ -1,0 +1,22 @@
+<?php
+
+return [
+    'title' => 'Manage Brands',
+    'subtitle' => 'Register other domains that show this app under their own name and logo, instead of the built-in Hopenalytics branding.',
+    'add_button' => 'Add Brand',
+    'title_add' => 'Add Brand',
+    'title_edit' => 'Edit Brand',
+    'name' => 'Brand Name',
+    'domain' => 'Domain',
+    'domain_hint' => 'Just the domain name, no "https://" or "www.". Example: example.com',
+    'logo' => 'Logo',
+    'logo_hint_create' => 'PNG, JPG, SVG, or WebP, max 2MB. Leave blank to use the built-in Hopenalytics logo.',
+    'logo_hint_edit' => 'PNG, JPG, SVG, or WebP, max 2MB. Leave blank to keep the current logo.',
+    'logo_current' => 'Current logo',
+    'default_logo' => 'Default',
+    'none_registered' => 'No brands/domains registered yet — every domain shows the built-in Hopenalytics branding.',
+    'col_logo' => 'Logo',
+    'col_name' => 'Name',
+    'col_domain' => 'Domain',
+    'delete_confirm' => 'Delete brand ":name"? This domain will go back to showing the built-in Hopenalytics branding.',
+];

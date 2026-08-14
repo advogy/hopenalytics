@@ -32,9 +32,7 @@
     <p class="mb-4 text-sm text-slate-500 dark:text-slate-400">{{ $subtitle }}</p>
 
     @if ($rows->isEmpty())
-        <p class="py-6 text-center text-sm text-slate-400 dark:text-slate-500">
-            {{ __('common.no_growth_data') }}
-        </p>
+        <x-empty-state variant="inline">{{ __('common.no_growth_data') }}</x-empty-state>
     @else
         <div class="overflow-x-auto">
             <table class="w-full text-left text-sm">
@@ -49,42 +47,14 @@
                 </thead>
                 <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
                     @if ($groupedRows !== null)
-                        @foreach ($groupedRows as $unionKey => $unionGroup)
-                            @if ($isNasionalView)
-                                <x-analytics-group-row
-                                    :label="$unionGroup['label']"
-                                    :count="$unionGroup['conferences']->sum(fn ($c) => $c['rows']->count()) + $unionGroup['rows']->count()"
-                                    :colspan="5"
-                                    :toggle-id="$groupPrefix.'-union-'.$unionKey"
-                                />
-                            @endif
-                            @foreach ($unionGroup['rows'] as $i => $row)
-                                @include('partials.leaderboard-row', [
-                                    'row' => $row,
-                                    'index' => $i,
-                                    'depth' => 1,
-                                    'ancestors' => $isNasionalView ? $groupPrefix.'-union-'.$unionKey : null,
-                                ])
-                            @endforeach
-                            @foreach ($unionGroup['conferences'] as $conferenceKey => $conferenceGroup)
-                                <x-analytics-group-row
-                                    :label="$conferenceGroup['label']"
-                                    :count="$conferenceGroup['rows']->count()"
-                                    :colspan="5"
-                                    :toggle-id="$groupPrefix.'-conf-'.$unionKey.'-'.$conferenceKey"
-                                    :ancestors="$isNasionalView ? $groupPrefix.'-union-'.$unionKey : null"
-                                    :depth="1"
-                                />
-                                @foreach ($conferenceGroup['rows'] as $i => $row)
-                                    @include('partials.leaderboard-row', [
-                                        'row' => $row,
-                                        'index' => $i,
-                                        'depth' => 2,
-                                        'ancestors' => ($isNasionalView ? $groupPrefix.'-union-'.$unionKey.' ' : '').$groupPrefix.'-conf-'.$unionKey.'-'.$conferenceKey,
-                                    ])
-                                @endforeach
-                            @endforeach
-                        @endforeach
+                        <x-grouped-rows
+                            :grouped="$groupedRows"
+                            :prefix="$groupPrefix"
+                            :colspan="5"
+                            row-view="partials.leaderboard-row"
+                            row-key="row"
+                            :show-union-header="$isNasionalView"
+                        />
                     @else
                         @foreach ($rows as $i => $row)
                             @include('partials.leaderboard-row', ['row' => $row, 'index' => $i])

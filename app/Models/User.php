@@ -31,11 +31,17 @@ class User extends Authenticatable implements MustVerifyEmail
         'password',
         'role',
         'is_active',
+        'division_id',
         'union_id',
         'conference_id',
         'church_id',
         'institution_id',
     ];
+
+    public function division(): BelongsTo
+    {
+        return $this->belongsTo(Division::class);
+    }
 
     public function union(): BelongsTo
     {

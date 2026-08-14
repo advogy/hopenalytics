@@ -10,29 +10,19 @@
 @section('title', __('nav.directory') . ' — ' . config('app.name'))
 
 @section('content')
-    <a href="{{ route('churches.index') }}" class="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
-        &larr; {{ __('common.back_to_dashboard') }}
-    </a>
+    <x-back-link :href="route('churches.index')">{{ __('common.back_to_dashboard') }}</x-back-link>
 
     <div class="mb-6">
         <h1 class="mb-1 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{{ __('nav.directory') }}</h1>
         <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('directory.subtitle') }}</p>
     </div>
 
-    <div class="mb-6 flex gap-2 overflow-x-auto border-b border-black/5 dark:border-white/5">
-        <button type="button" data-tab-button="organisasi" class="border-b-2 px-4 py-2.5 text-sm font-medium transition">
-            {{ __('comparison.organization_label') }}
-        </button>
-        <button type="button" data-tab-button="gereja" class="border-b-2 px-4 py-2.5 text-sm font-medium transition">
-            {{ __('common.church') }}
-        </button>
-        <button type="button" data-tab-button="institusi" class="border-b-2 px-4 py-2.5 text-sm font-medium transition">
-            {{ __('common.institution') }}
-        </button>
-        <button type="button" data-tab-button="personal" class="border-b-2 px-4 py-2.5 text-sm font-medium transition">
-            {{ __('common.personal') }}
-        </button>
-    </div>
+    <x-tab-bar>
+        <x-tab-button tab-key="organisasi">{{ __('comparison.organization_label') }}</x-tab-button>
+        <x-tab-button tab-key="gereja">{{ __('common.church') }}</x-tab-button>
+        <x-tab-button tab-key="institusi">{{ __('common.institution') }}</x-tab-button>
+        <x-tab-button tab-key="personal">{{ __('common.personal') }}</x-tab-button>
+    </x-tab-bar>
 
     <x-filter-card :clear-url="$hasDirectoryFilters ? route('churches.directory', ['tab' => $activeTab]) : null">
         <form id="directory-filter-form" method="GET" class="flex flex-wrap items-stretch gap-3">
@@ -182,38 +172,13 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-900">
-                            @foreach ($groupedOrganizations as $unionKey => $unionGroup)
-                                <x-analytics-group-row
-                                    :label="$unionGroup['label']"
-                                    :count="$unionGroup['conferences']->sum(fn ($c) => $c['rows']->count()) + $unionGroup['rows']->count()"
-                                    :colspan="2"
-                                    :toggle-id="'directory-organization-union-'.$unionKey"
-                                />
-                                @foreach ($unionGroup['rows'] as $organization)
-                                    @include('partials.directory-organization-row', [
-                                        'organization' => $organization,
-                                        'depth' => 1,
-                                        'ancestors' => 'directory-organization-union-'.$unionKey,
-                                    ])
-                                @endforeach
-                                @foreach ($unionGroup['conferences'] as $conferenceKey => $conferenceGroup)
-                                    <x-analytics-group-row
-                                        :label="$conferenceGroup['label']"
-                                        :count="$conferenceGroup['rows']->count()"
-                                        :colspan="2"
-                                        :toggle-id="'directory-organization-conf-'.$unionKey.'-'.$conferenceKey"
-                                        :ancestors="'directory-organization-union-'.$unionKey"
-                                        :depth="1"
-                                    />
-                                    @foreach ($conferenceGroup['rows'] as $organization)
-                                        @include('partials.directory-organization-row', [
-                                            'organization' => $organization,
-                                            'depth' => 2,
-                                            'ancestors' => 'directory-organization-union-'.$unionKey.' directory-organization-conf-'.$unionKey.'-'.$conferenceKey,
-                                        ])
-                                    @endforeach
-                                @endforeach
-                            @endforeach
+                            <x-grouped-rows
+                                :grouped="$groupedOrganizations"
+                                prefix="directory-organization"
+                                :colspan="2"
+                                row-view="partials.directory-organization-row"
+                                row-key="organization"
+                            />
                         </tbody>
                     </table>
                 </div>
@@ -255,31 +220,13 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-900">
-                            @foreach ($groupedChurches as $unionKey => $unionGroup)
-                                <x-analytics-group-row
-                                    :label="$unionGroup['label']"
-                                    :count="$unionGroup['conferences']->sum(fn ($c) => $c['rows']->count())"
-                                    :colspan="3"
-                                    :toggle-id="'directory-church-union-'.$unionKey"
-                                />
-                                @foreach ($unionGroup['conferences'] as $conferenceKey => $conferenceGroup)
-                                    <x-analytics-group-row
-                                        :label="$conferenceGroup['label']"
-                                        :count="$conferenceGroup['rows']->count()"
-                                        :colspan="3"
-                                        :toggle-id="'directory-church-conf-'.$unionKey.'-'.$conferenceKey"
-                                        :ancestors="'directory-church-union-'.$unionKey"
-                                        :depth="1"
-                                    />
-                                    @foreach ($conferenceGroup['rows'] as $church)
-                                        @include('partials.directory-church-row', [
-                                            'church' => $church,
-                                            'depth' => 2,
-                                            'ancestors' => 'directory-church-union-'.$unionKey.' directory-church-conf-'.$unionKey.'-'.$conferenceKey,
-                                        ])
-                                    @endforeach
-                                @endforeach
-                            @endforeach
+                            <x-grouped-rows
+                                :grouped="$groupedChurches"
+                                prefix="directory-church"
+                                :colspan="3"
+                                row-view="partials.directory-church-row"
+                                row-key="church"
+                            />
                         </tbody>
                     </table>
                 </div>
@@ -320,31 +267,13 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-900">
-                            @foreach ($groupedInstitutions as $unionKey => $unionGroup)
-                                <x-analytics-group-row
-                                    :label="$unionGroup['label']"
-                                    :count="$unionGroup['conferences']->sum(fn ($c) => $c['rows']->count())"
-                                    :colspan="2"
-                                    :toggle-id="'directory-institution-union-'.$unionKey"
-                                />
-                                @foreach ($unionGroup['conferences'] as $conferenceKey => $conferenceGroup)
-                                    <x-analytics-group-row
-                                        :label="$conferenceGroup['label']"
-                                        :count="$conferenceGroup['rows']->count()"
-                                        :colspan="2"
-                                        :toggle-id="'directory-institution-conf-'.$unionKey.'-'.$conferenceKey"
-                                        :ancestors="'directory-institution-union-'.$unionKey"
-                                        :depth="1"
-                                    />
-                                    @foreach ($conferenceGroup['rows'] as $institution)
-                                        @include('partials.directory-institution-row', [
-                                            'institution' => $institution,
-                                            'depth' => 2,
-                                            'ancestors' => 'directory-institution-union-'.$unionKey.' directory-institution-conf-'.$unionKey.'-'.$conferenceKey,
-                                        ])
-                                    @endforeach
-                                @endforeach
-                            @endforeach
+                            <x-grouped-rows
+                                :grouped="$groupedInstitutions"
+                                prefix="directory-institution"
+                                :colspan="2"
+                                row-view="partials.directory-institution-row"
+                                row-key="institution"
+                            />
                         </tbody>
                     </table>
                 </div>
@@ -385,31 +314,13 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-900">
-                            @foreach ($groupedPeople as $unionKey => $unionGroup)
-                                <x-analytics-group-row
-                                    :label="$unionGroup['label']"
-                                    :count="$unionGroup['conferences']->sum(fn ($c) => $c['rows']->count())"
-                                    :colspan="2"
-                                    :toggle-id="'directory-person-union-'.$unionKey"
-                                />
-                                @foreach ($unionGroup['conferences'] as $conferenceKey => $conferenceGroup)
-                                    <x-analytics-group-row
-                                        :label="$conferenceGroup['label']"
-                                        :count="$conferenceGroup['rows']->count()"
-                                        :colspan="2"
-                                        :toggle-id="'directory-person-conf-'.$unionKey.'-'.$conferenceKey"
-                                        :ancestors="'directory-person-union-'.$unionKey"
-                                        :depth="1"
-                                    />
-                                    @foreach ($conferenceGroup['rows'] as $person)
-                                        @include('partials.directory-person-row', [
-                                            'person' => $person,
-                                            'depth' => 2,
-                                            'ancestors' => 'directory-person-union-'.$unionKey.' directory-person-conf-'.$unionKey.'-'.$conferenceKey,
-                                        ])
-                                    @endforeach
-                                @endforeach
-                            @endforeach
+                            <x-grouped-rows
+                                :grouped="$groupedPeople"
+                                prefix="directory-person"
+                                :colspan="2"
+                                row-view="partials.directory-person-row"
+                                row-key="person"
+                            />
                         </tbody>
                     </table>
                 </div>

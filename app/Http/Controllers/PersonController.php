@@ -6,6 +6,7 @@ use App\Enums\UserRole;
 use App\Http\Controllers\Concerns\BuildsLeaderboards;
 use App\Models\Conference;
 use App\Models\Person;
+use App\Models\Union;
 use App\Models\User;
 use App\Services\GeocodingService;
 use App\Support\AuditLogger;
@@ -173,6 +174,13 @@ class PersonController extends Controller
                     => ['union_id' => null, 'conference_id' => $submittedConferenceId],
                 $submittedUnionId === $user->union_id
                     => ['union_id' => $user->union_id, 'conference_id' => null],
+                default => ['union_id' => $currentUnionId, 'conference_id' => $currentConferenceId],
+            },
+            'divisi' => match (true) {
+                $submittedConferenceId && Conference::whereKey($submittedConferenceId)->whereHas('union', fn ($q) => $q->where('division_id', $user->division_id))->exists()
+                    => ['union_id' => null, 'conference_id' => $submittedConferenceId],
+                $submittedUnionId && Union::whereKey($submittedUnionId)->where('division_id', $user->division_id)->exists()
+                    => ['union_id' => $submittedUnionId, 'conference_id' => null],
                 default => ['union_id' => $currentUnionId, 'conference_id' => $currentConferenceId],
             },
             default => $submittedUnionId || $submittedConferenceId

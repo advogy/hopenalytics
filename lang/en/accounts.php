@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'subtitle' => 'Union → Conference → Church, Institution, and Personal.',
+    'subtitle' => 'Division → Union → Conference → Church, Institution, and Personal.',
 
     'stat_no_socials' => 'No social accounts yet',
     'no_socials_title' => 'No Social Accounts Yet',
@@ -10,14 +10,17 @@ return [
     'no_socials_section_empty' => 'Every :entity already has a social media account.',
     'no_socials_add_link' => 'Add account',
 
+    'add_divisi' => '+ Add Division',
     'add_uni' => '+ Add Union',
     'add_daerah' => '+ Add Conference',
     'add_gereja' => '+ Add Church',
     'add_institusi' => '+ Add Institution',
     'add_personal' => '+ Add Personal',
 
+    'divisi_list_title' => 'Division List',
+    'divisi_list_subtitle' => 'The highest-tier work areas in the organizational structure, overseeing several Unions.',
     'uni_list_title' => 'Union List',
-    'uni_list_subtitle' => 'National-level work areas, the highest tier in the organizational structure.',
+    'uni_list_subtitle' => 'Work areas under a Division, overseeing the Conferences within them.',
     'daerah_list_title' => 'Conference List',
     'daerah_list_subtitle' => 'Work areas under a Union, overseeing the churches within them.',
     'gereja_list_title' => 'Church List',
@@ -27,6 +30,7 @@ return [
     'personal_list_title' => 'Personal List',
     'personal_list_subtitle' => 'People whose social media is monitored, regardless of whether they have a login.',
 
+    'search_divisi_placeholder' => 'Search Division…',
     'search_uni_placeholder' => 'Search Union…',
     'search_daerah_placeholder' => 'Search Conference…',
     'search_gereja_placeholder' => 'Search Church…',
@@ -40,6 +44,8 @@ return [
     'sort_name_desc' => 'Name (Z-A)',
     'sort_city_asc' => 'City (A-Z)',
     'sort_city_desc' => 'City (Z-A)',
+    'sort_division_asc' => 'Division (A-Z)',
+    'sort_division_desc' => 'Division (Z-A)',
     'sort_union_asc' => 'Union (A-Z)',
     'sort_union_desc' => 'Union (Z-A)',
     'sort_daerah_asc' => 'Conference (A-Z)',
@@ -53,6 +59,7 @@ return [
 
     'filter_all_uni' => 'All Unions',
 
+    'count_uni' => 'Union Count',
     'count_daerah' => 'Conference Count',
     'count_person' => 'Person Count',
     'count_gereja' => 'Church Count',
@@ -64,6 +71,7 @@ return [
     'has_login' => 'Has a login account (:name)',
     'no_login' => 'No login account yet',
 
+    'blocked_divisi' => 'Still has a Union and/or an assigned user.',
     'blocked_uni' => 'Still has a Conference and/or an assigned user.',
     'blocked_daerah' => 'Still has a Church and/or an assigned user.',
     'blocked_gereja' => 'Still has a user assigned to this church.',
@@ -77,13 +85,16 @@ return [
     'deactivate_confirm' => 'Deactivate ":name"?',
     'delete_confirm' => 'Delete ":name"? This action is permanent and cannot be undone.',
 
+    'title_edit_divisi' => 'Edit Division',
+    'title_add_divisi' => 'Add Division',
+    'divisi_name' => 'Division Name',
     'title_edit_uni' => 'Edit Union',
     'title_add_uni' => 'Add Union',
     'uni_name' => 'Union Name',
     'uni_coordinator_whatsapp' => 'Union Coordinator WhatsApp Number',
-    'uni_coordinator_whatsapp_hint' => 'International format, no "+" or leading 0, e.g. 628123456789. Leave blank to use the National Coordinator number (Settings) instead.',
-    'uni_whatsapp_group_link' => 'Union WhatsApp Group Link',
-    'uni_whatsapp_group_link_hint' => 'The WhatsApp group invite link (chat.whatsapp.com/…). Leave blank to use the national group (Settings) instead.',
+    'uni_coordinator_whatsapp_hint' => 'International format, no "+" or leading 0, e.g. 628123456789. Leave blank to use the Global Coordinator number (Settings) instead.',
+    'uni_groups' => 'Union Chat Groups',
+    'uni_groups_hint' => 'WhatsApp/Messenger group(s) for this Union — more than one is fine. Leave empty to use the global group(s) (Settings) instead.',
     'title_edit_daerah' => 'Edit Conference',
     'title_add_daerah' => 'Add Conference',
     'daerah_name' => 'Conference Name',
@@ -97,8 +108,11 @@ return [
     'search_daerah_optional' => 'Search Conference… (optional)',
     'search_daerah_optional_own_union' => 'Search Conference… (optional — leave blank for the whole Union)',
     'choose_uni_placeholder' => 'Choose Union…',
+    'choose_divisi_placeholder' => 'Choose Division… (optional)',
     'waiting_for_uni' => 'Choose a Union first…',
 
+    'deactivate_divisi_confirm' => 'Deactivate Division ":name"?',
+    'deactivate_divisi' => 'Deactivate Division',
     'deactivate_uni_confirm' => 'Deactivate Union ":name"?',
     'deactivate_uni' => 'Deactivate Union',
     'deactivate_daerah_confirm' => 'Deactivate Conference ":name"?',
@@ -115,6 +129,7 @@ return [
     'entity_deleted' => ':entity ":name" was deleted successfully.',
     'status_reactivated' => 'reactivated',
     'status_deactivated' => 'deactivated',
+    'delete_blocked_divisi' => 'Division ":name" can\'t be deleted because it still has Unions and/or assigned users. Deactivate it instead, or move/delete the related data first.',
     'delete_blocked_uni' => 'Union ":name" can\'t be deleted because it still has Conferences and/or assigned users. Deactivate it instead, or move/delete the related data first.',
     'delete_blocked_daerah' => 'Conference ":name" can\'t be deleted because it still has Churches and/or assigned users. Deactivate it instead, or move/delete the related data first.',
     'delete_blocked_gereja' => 'Church ":name" can\'t be deleted because it still has assigned users. Deactivate it instead, or reassign those users first.',

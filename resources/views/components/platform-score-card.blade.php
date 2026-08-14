@@ -16,9 +16,7 @@
     <p class="mb-4 text-sm text-slate-500 dark:text-slate-400">{{ $subtitle }}</p>
 
     @if ($rows->isEmpty())
-        <p class="py-6 text-center text-sm text-slate-400 dark:text-slate-500">
-            {{ __('common.no_growth_data') }}
-        </p>
+        <x-empty-state variant="inline">{{ __('common.no_growth_data') }}</x-empty-state>
     @else
         <div class="divide-y divide-slate-100 dark:divide-slate-800">
             @foreach ($rows as $i => $row)
