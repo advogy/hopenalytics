@@ -13,7 +13,7 @@
 
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>@yield('title', 'Hopenalytics')</title>
+        <title>@yield('title', config('app.name'))</title>
 
         <link rel="icon" type="image/svg+xml" href="{{ asset('images/hopenalytics-mark.svg') }}">
 
@@ -54,8 +54,8 @@
             <div class="mx-auto max-w-6xl px-4 sm:px-6">
                 <div class="flex items-center justify-between py-2">
                     <a href="{{ route('churches.index') }}" class="flex items-center gap-2.5">
-                        <x-logo-mark class="h-16 w-16 shrink-0 text-blue-600 dark:text-[#f3ead9]" />
-                        <span class="hidden text-xl font-semibold tracking-tight sm:inline">Hopenalytics</span>
+                        <x-brand-mark class="h-16 w-16 text-blue-600 dark:text-[#f3ead9]" />
+                        <span class="hidden text-xl font-semibold tracking-tight sm:inline">{{ config('app.name') }}</span>
                     </a>
 
                     <div class="flex items-center gap-2 sm:gap-4">
@@ -189,9 +189,14 @@
                                                 </a>
                                             @endcan
                                             @can('manage-settings')
+                                                <div class="my-1 border-t border-black/5 dark:border-white/5"></div>
                                                 <a href="{{ route('settings.edit') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
                                                     <x-icon name="cog-6-tooth" class="h-4 w-4 shrink-0 text-slate-400" />
                                                     {{ __('nav.settings') }}
+                                                </a>
+                                                <a href="{{ route('admin.brands.index') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                                                    <x-icon name="globe-alt" class="h-4 w-4 shrink-0 text-slate-400" />
+                                                    {{ __('brands.title') }}
                                                 </a>
                                                 <a href="{{ route('admin.hashtags.index') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
                                                     <x-icon name="hashtag" class="h-4 w-4 shrink-0 text-slate-400" />
@@ -326,9 +331,14 @@
                                         </a>
                                     @endcan
                                     @can('manage-settings')
+                                        <div class="my-1 border-t border-black/5 dark:border-white/5"></div>
                                         <a href="{{ route('settings.edit') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
                                             <x-icon name="cog-6-tooth" class="h-4 w-4 shrink-0 text-slate-400" />
                                             {{ __('nav.settings') }}
+                                        </a>
+                                        <a href="{{ route('admin.brands.index') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                                            <x-icon name="globe-alt" class="h-4 w-4 shrink-0 text-slate-400" />
+                                            {{ __('brands.title') }}
                                         </a>
                                     @endcan
                                 @endcanany
