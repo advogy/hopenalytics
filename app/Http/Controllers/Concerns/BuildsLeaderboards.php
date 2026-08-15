@@ -129,84 +129,106 @@ trait BuildsLeaderboards
     /**
      * The Union a region-groupable entity belongs under — itself, if the entity IS a Union
      * (the organisasi scope's Uni-level rows); its own union relation, if it's a Conference
-     * (organisasi's Daerah-level rows); otherwise the usual Church/Person/Institution chain.
+     * (organisasi's Daerah-level rows); null for a Division (it sits ABOVE Uni — see
+     * regionEntityDivision() below, and groupByRegion()'s own 'rows' bucket at the Divisi tier);
+     * otherwise the usual Church/Person/Institution chain.
      */
     private function regionEntityUnion($entity): ?Union
     {
         return match (true) {
             $entity instanceof Union => $entity,
             $entity instanceof Conference => $entity->union,
+            $entity instanceof Division => null,
             default => $entity->conference?->union ?? $entity->union ?? null,
         };
     }
 
     /**
      * The Conference a region-groupable entity belongs under — itself, if the entity IS a
-     * Conference; null for a Union (it has no single Daerah — it sits at the Uni-level tier,
-     * same bucket as an entity with no conference_id at all); otherwise the usual chain.
+     * Conference; null for a Union or a Division (neither has a single Daerah of its own — a
+     * Union sits at the Uni-level tier, same bucket as an entity with no conference_id at all;
+     * a Division sits a tier above that again); otherwise the usual chain.
      */
     private function regionEntityConference($entity): ?Conference
     {
         return match (true) {
             $entity instanceof Conference => $entity,
-            $entity instanceof Union => null,
+            $entity instanceof Union, $entity instanceof Division => null,
             default => $entity->conference ?? null,
         };
     }
 
-    /** The Divisi a region-groupable entity's Union belongs to (or null — a Union not yet placed under any Divisi). */
+    /**
+     * The Divisi a region-groupable entity belongs under — itself, if the entity IS a Division
+     * (the organisasi scope's Divisi-level rows); otherwise whichever Divisi its resolved Union
+     * belongs to (or null — a Union not yet placed under any Divisi).
+     */
     private function regionEntityDivision($entity): ?Division
     {
+        if ($entity instanceof Division) {
+            return $entity;
+        }
+
         return $this->regionEntityUnion($entity)?->division;
     }
 
     /**
-     * Groups any rows collection into the same Uni > Daerah > entity nesting used across the
-     * region-filterable pages — $entityAccessor plucks the Church/Person/Institution/Union/
-     * Conference out of one row, since each caller's row shape differs (analytics'
+     * Groups any rows collection into the same Divisi > Uni > Daerah > entity nesting used
+     * across the region-filterable pages — $entityAccessor plucks the Church/Person/Institution/
+     * Union/Conference/Division out of one row, since each caller's row shape differs (analytics'
      * ['church'=>...], metricComparison's ['entity'=>...], leaderboard's ['social'=>...] where
-     * the entity is $social->church, organisasi's ['organization'=>...] which is a Union OR a
-     * Conference — see regionEntityUnion()/regionEntityConference() above).
+     * the entity is $social->church, organisasi's ['organization'=>...] which is a Union,
+     * Conference, OR Division — see regionEntity*() above). Every tier (Divisi/Uni/Daerah) has
+     * its own 'rows' bucket for entities owned directly at that level (e.g. a Divisi-owned social
+     * account sits in the Divisi group's own 'rows', not nested under any Uni) — 'rows' is always
+     * present, just possibly empty, at all three tiers.
      */
     protected function groupByRegion(Collection $rows, callable $entityAccessor): Collection
     {
         return $rows
             ->groupBy(function ($row) use ($entityAccessor) {
-                $union = $this->regionEntityUnion($entityAccessor($row));
+                $division = $this->regionEntityDivision($entityAccessor($row));
 
-                return $union?->id ?? 'nasional';
+                return $division?->id ?? 'no-division';
             })
-            ->map(function ($unionRows) use ($entityAccessor) {
-                $sample = $entityAccessor($unionRows->first());
-                $union = $this->regionEntityUnion($sample);
+            ->map(function ($divisionRows) use ($entityAccessor) {
+                $sample = $entityAccessor($divisionRows->first());
                 $division = $this->regionEntityDivision($sample);
 
-                // A row whose entity IS the Union itself sits directly under the Union's own
-                // header — Union sits above Daerah in the hierarchy, so it can never itself
-                // "not have a Daerah yet" the way a church/institution/conference-owned row can.
-                $ownRows = $unionRows->filter(fn ($row) => $entityAccessor($row) instanceof Union);
-                $nestedRows = $unionRows->reject(fn ($row) => $entityAccessor($row) instanceof Union);
+                $ownRows = $divisionRows->filter(fn ($row) => $entityAccessor($row) instanceof Division);
+                $nestedRows = $divisionRows->reject(fn ($row) => $entityAccessor($row) instanceof Division);
 
                 return [
-                    'label' => $union?->name ?? __('analytics.group_national'),
-                    // Not part of the grouping key/nesting itself (the tree below stays Union >
-                    // Conference > rows, unchanged) — just tagged onto each Union-group so a
-                    // caller that wants a Divisi tier (see components/grouped-rows.blade.php's
-                    // showDivisionHeader) can re-bucket these top-level entries by division for
-                    // rendering, without this method needing to know or care whether that's
-                    // actually happening on any given page.
-                    'divisionId' => $division?->id ?? 'no-division',
-                    'divisionName' => $division?->name ?? __('analytics.group_no_division'),
+                    'label' => $division?->name ?? __('analytics.group_no_division'),
                     'rows' => $ownRows,
-                    'conferences' => $nestedRows
-                        ->groupBy(fn ($row) => $this->regionEntityConference($entityAccessor($row))?->id ?? 'uni-level')
-                        ->map(function ($conferenceRows) use ($entityAccessor) {
-                            $sample = $entityAccessor($conferenceRows->first());
-                            $conference = $this->regionEntityConference($sample);
+                    'unions' => $nestedRows
+                        ->groupBy(fn ($row) => $this->regionEntityUnion($entityAccessor($row))?->id ?? 'nasional')
+                        ->map(function ($unionRows) use ($entityAccessor) {
+                            $sample = $entityAccessor($unionRows->first());
+                            $union = $this->regionEntityUnion($sample);
+
+                            // A row whose entity IS the Union itself sits directly under the
+                            // Union's own header — Union sits above Daerah in the hierarchy, so
+                            // it can never itself "not have a Daerah yet" the way a church/
+                            // institution/conference-owned row can.
+                            $ownRows = $unionRows->filter(fn ($row) => $entityAccessor($row) instanceof Union);
+                            $nestedRows = $unionRows->reject(fn ($row) => $entityAccessor($row) instanceof Union);
 
                             return [
-                                'label' => $conference?->name ?? __('analytics.group_union_level'),
-                                'rows' => $conferenceRows,
+                                'label' => $union?->name ?? __('analytics.group_national'),
+                                'rows' => $ownRows,
+                                'conferences' => $nestedRows
+                                    ->groupBy(fn ($row) => $this->regionEntityConference($entityAccessor($row))?->id ?? 'uni-level')
+                                    ->map(function ($conferenceRows) use ($entityAccessor) {
+                                        $sample = $entityAccessor($conferenceRows->first());
+                                        $conference = $this->regionEntityConference($sample);
+
+                                        return [
+                                            'label' => $conference?->name ?? __('analytics.group_union_level'),
+                                            'rows' => $conferenceRows,
+                                        ];
+                                    })
+                                    ->sortBy('label'),
                             ];
                         })
                         ->sortBy('label'),
@@ -294,19 +316,20 @@ trait BuildsLeaderboards
     }
 
     /**
-     * Union- and Conference-owned accounts together (the "Organisasi" scope — a ChurchSocial row
-     * is owned by exactly one of union_id/conference_id here, never both, per
-     * OrganizationSocialController). Unlike the other activeSocials*() variants, there's no
-     * single owner relation to whereHas() an is_active check through, since a row's owner is one
-     * of two different columns — both branches are checked directly instead.
+     * Divisi-, Union-, and Conference-owned accounts together (the "Organisasi" scope — a
+     * ChurchSocial row is owned by exactly one of division_id/union_id/conference_id here, never
+     * more than one, per OrganizationSocialController). Unlike the other activeSocials*()
+     * variants, there's no single owner relation to whereHas() an is_active check through, since
+     * a row's owner is one of three different columns — each branch is checked directly instead.
      */
     protected function activeSocialsOrganization(bool $scoped = true): Collection
     {
         return ChurchSocial::query()
-            ->with(['union', 'conference.union'])
+            ->with(['division', 'union.division', 'conference.union.division'])
             ->where('is_active', true)
             ->where(fn ($q) => $q
-                ->where(fn ($q2) => $q2->whereNotNull('union_id')->whereHas('union', fn ($q3) => $q3->where('is_active', true)))
+                ->where(fn ($q2) => $q2->whereNotNull('division_id')->whereHas('division', fn ($q3) => $q3->where('is_active', true)))
+                ->orWhere(fn ($q2) => $q2->whereNotNull('union_id')->whereHas('union', fn ($q3) => $q3->where('is_active', true)))
                 ->orWhere(fn ($q2) => $q2->whereNotNull('conference_id')->whereHas('conference', fn ($q3) => $q3->where('is_active', true)))
             )
             ->when($scoped, fn ($q) => $this->analyticsOrganizationScope($q))
@@ -382,12 +405,17 @@ trait BuildsLeaderboards
 
     /**
      * Same reasoning as analyticsChurchScope()/analyticsPersonScope()/analyticsInstitutionScope(),
-     * for Union/Conference-owned accounts — but operating directly on the ChurchSocial query
-     * itself (union_id/conference_id are columns right there), not via a whereHas() on an owner
-     * relation, since a row's owner here is one of two different columns rather than one single
-     * FK. Unlike Institution, there's no "nasional-level organization account" case to handle —
-     * every organisasi-category row is owned by exactly one real Union or Conference (see
-     * OrganizationSocialController), never neither.
+     * for Divisi/Union/Conference-owned accounts — but operating directly on the ChurchSocial
+     * query itself (division_id/union_id/conference_id are columns right there), not via a
+     * whereHas() on an owner relation, since a row's owner here is one of three different columns
+     * rather than one single FK. Unlike Institution, there's no "nasional-level organization
+     * account" case to handle — every organisasi-category row is owned by exactly one real
+     * Divisi, Union, or Conference (see OrganizationSocialController), never neither.
+     *
+     * A Divisi-owned account is only ever visible to a viewer whose own scope covers that whole
+     * Divisi (global, a scoped Admin Nasional with at least one assigned Union under it, or that
+     * Divisi's own admin_divisi) — uni/daerah/gereja-level viewers don't get their parent Divisi's
+     * own accounts folded in, same as they don't get a sibling Union's accounts today.
      */
     private function analyticsOrganizationScope($query)
     {
@@ -401,13 +429,15 @@ trait BuildsLeaderboards
             $unionIds = $user->assignedUnionIds();
 
             return $query->where(fn ($q) => $q
-                ->whereIn('union_id', $unionIds)
+                ->whereHas('division', fn ($q2) => $q2->whereHas('unions', fn ($q3) => $q3->whereIn('id', $unionIds)))
+                ->orWhereIn('union_id', $unionIds)
                 ->orWhereHas('conference', fn ($q2) => $q2->whereIn('union_id', $unionIds)));
         }
 
         if ($user->role->level() === 'divisi') {
             return $query->where(fn ($q) => $q
-                ->whereHas('union', fn ($q2) => $q2->where('division_id', $user->division_id))
+                ->where('division_id', $user->division_id)
+                ->orWhereHas('union', fn ($q2) => $q2->where('division_id', $user->division_id))
                 ->orWhereHas('conference.union', fn ($q2) => $q2->where('division_id', $user->division_id)));
         }
 
@@ -423,6 +453,26 @@ trait BuildsLeaderboards
         return $query->where(fn ($q) => $q
             ->when($ownUnionId, fn ($q2) => $q2->orWhere('union_id', $ownUnionId))
             ->orWhere('conference_id', $conferenceId));
+    }
+
+    /**
+     * Which Division rows the Organisasi tab's "Data Per Organisasi" table shows — same
+     * reasoning as analyticsUnionScope() below, one tier up: every level down to gereja sees
+     * their own ancestor Divisi row too (context, same as a daerah-level viewer already sees
+     * their own parent Union).
+     */
+    private function analyticsDivisionScope($query)
+    {
+        $user = auth()->user();
+
+        return match (true) {
+            $user->role === null || ($user->role->hasGlobalAccess() ?? false) || $user->role->level() === 'global' => $query,
+            $user->role->level() === 'nasional' => $query->whereHas('unions', fn ($q) => $q->whereIn('id', $user->assignedUnionIds())),
+            $user->role->level() === 'divisi' => $query->where('id', $user->division_id),
+            $user->role->level() === 'uni' => $query->whereHas('unions', fn ($q) => $q->where('id', $user->union_id)),
+            $user->role->level() === 'gereja' => $query->whereHas('unions', fn ($q) => $q->where('id', $user->church?->conference?->union_id)),
+            default => $query->whereHas('unions', fn ($q) => $q->where('id', $user->conference?->union_id)), // daerah-level
+        };
     }
 
     /**
@@ -463,11 +513,15 @@ trait BuildsLeaderboards
         };
     }
 
-    /** Parses the Organisasi tab's composite entity-picker value ("union-3"/"conference-5") into a [type, id] pair, or [null, null] if empty/malformed. */
+    /** Parses the Organisasi tab's composite entity-picker value ("division-1"/"union-3"/"conference-5") into a [type, id] pair, or [null, null] if empty/malformed. */
     protected function parseOrganizationKey(?string $key): array
     {
         if (! $key) {
             return [null, null];
+        }
+
+        if (str_starts_with($key, 'division-')) {
+            return ['division', substr($key, 9)];
         }
 
         if (str_starts_with($key, 'union-')) {
@@ -704,10 +758,14 @@ trait BuildsLeaderboards
         }
 
         $rows = $socials
-            ->groupBy(fn (ChurchSocial $social) => $social->union_id ? "union-{$social->union_id}" : "conference-{$social->conference_id}")
+            ->groupBy(fn (ChurchSocial $social) => match (true) {
+                $social->division_id !== null => "division-{$social->division_id}",
+                $social->union_id !== null => "union-{$social->union_id}",
+                default => "conference-{$social->conference_id}",
+            })
             ->map(function (Collection $orgSocials) use ($fieldResolver) {
                 $sample = $orgSocials->first();
-                $organization = $sample->union ?? $sample->conference;
+                $organization = $sample->division ?? $sample->union ?? $sample->conference;
                 $currentTotal = 0;
                 $deltaTotal = 0;
                 $hasDelta = false;
@@ -751,7 +809,7 @@ trait BuildsLeaderboards
             ->orWhereHas('person', fn ($q2) => $this->analyticsPersonScope($q2))
             ->orWhereHas('institution', fn ($q2) => $this->analyticsInstitutionScope($q2))
             ->orWhere(fn ($q2) => $this->analyticsOrganizationScope(
-                $q2->where(fn ($q3) => $q3->whereNotNull('union_id')->orWhereNotNull('conference_id'))
+                $q2->where(fn ($q3) => $q3->whereNotNull('division_id')->orWhereNotNull('union_id')->orWhereNotNull('conference_id'))
             )));
     }
 
@@ -1075,8 +1133,12 @@ trait BuildsLeaderboards
                     continue;
                 }
 
-                $percentBySocial[$social->id]['organization'] = $social->union ?? $social->conference;
-                $percentBySocial[$social->id]['groupKey'] = $social->union_id ? "union-{$social->union_id}" : "conference-{$social->conference_id}";
+                $percentBySocial[$social->id]['organization'] = $social->division ?? $social->union ?? $social->conference;
+                $percentBySocial[$social->id]['groupKey'] = match (true) {
+                    $social->division_id !== null => "division-{$social->division_id}",
+                    $social->union_id !== null => "union-{$social->union_id}",
+                    default => "conference-{$social->conference_id}",
+                };
                 $percentBySocial[$social->id]['metrics'][$metric] = round((($current - $previous) / $previous) * 100, 2);
             }
         }

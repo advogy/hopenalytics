@@ -3,11 +3,13 @@
         $owner instanceof \App\Models\Union => 'admin.unions.socials.index',
         $owner instanceof \App\Models\Conference => 'admin.conferences.socials.index',
         $owner instanceof \App\Models\Institution => 'admin.institutions.socials.index',
+        $owner instanceof \App\Models\Division => 'admin.divisions.socials.index',
     };
     $storeRouteName = match (true) {
         $owner instanceof \App\Models\Union => 'admin.unions.socials.store',
         $owner instanceof \App\Models\Conference => 'admin.conferences.socials.store',
         $owner instanceof \App\Models\Institution => 'admin.institutions.socials.store',
+        $owner instanceof \App\Models\Division => 'admin.divisions.socials.store',
     };
 @endphp
 

@@ -217,7 +217,7 @@ class ComparisonScope
         };
     }
 
-    /** Union/Conference's own read-only "show" page — see ChurchDashboardController::showUnion()/showConference(). */
+    /** Divisi/Union/Conference's own read-only "show" page — see ChurchDashboardController::showDivision()/showUnion()/showConference(). */
     public function showUrl($entity): ?string
     {
         return match ($this->type) {
@@ -225,6 +225,7 @@ class ComparisonScope
             'personal' => route('people.show', $entity),
             'institusi' => route('institutions.show', $entity),
             'organisasi' => match (true) {
+                $entity instanceof \App\Models\Division => route('divisions.show', $entity),
                 $entity instanceof \App\Models\Union => route('unions.show', $entity),
                 $entity instanceof \App\Models\Conference => route('conferences.show', $entity),
                 default => null,

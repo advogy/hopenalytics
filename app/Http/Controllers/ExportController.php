@@ -7,6 +7,7 @@ use App\Models\AppSetting;
 use App\Models\Church;
 use App\Models\ChurchSocial;
 use App\Models\Conference;
+use App\Models\Division;
 use App\Models\Institution;
 use App\Models\Person;
 use App\Models\Union;
@@ -767,12 +768,12 @@ class ExportController extends Controller
         $title = $sortBy === 'value' ? $titles[$metric]['title'] : 'Pertumbuhan '.$titles[$metric]['title'];
 
         return [
-            'title' => "{$title} Uni/Daerah",
+            'title' => "{$title} Divisi/Uni/Daerah",
             'subtitle' => $sortBy === 'value' ? 'Diurutkan berdasarkan nilai saat ini' : $titles[$metric]['subtitle'],
-            'headers' => ['#', 'Uni/Daerah', 'Platform', 'Akun', 'Pertumbuhan', 'Saat Ini'],
+            'headers' => ['#', 'Divisi/Uni/Daerah', 'Platform', 'Akun', 'Pertumbuhan', 'Saat Ini'],
             'rows' => $rows->values()->map(fn ($row, $i) => [
                 $i + 1,
-                $row['social']->union?->name ?? $row['social']->conference?->name,
+                $row['social']->division?->name ?? $row['social']->union?->name ?? $row['social']->conference?->name,
                 $this->platformLabels[$row['social']->platform->value],
                 $row['social']->display_handle,
                 ($row['delta'] > 0 ? '+' : '').number_format($row['delta']),
@@ -799,7 +800,7 @@ class ExportController extends Controller
                 $rows[] = [
                     $title['title'],
                     $i + 1,
-                    $row['social']->union?->name ?? $row['social']->conference?->name,
+                    $row['social']->division?->name ?? $row['social']->union?->name ?? $row['social']->conference?->name,
                     $this->platformLabels[$row['social']->platform->value],
                     $row['social']->display_handle,
                     ($row['delta'] > 0 ? '+' : '').number_format($row['delta']),
@@ -809,27 +810,31 @@ class ExportController extends Controller
         }
 
         $subtitle = $sortBy === 'value'
-            ? 'Peringkat akun media sosial berdasarkan nilai saat ini — subscriber/followers, views, likes, dan post, untuk semua Uni/Daerah'
-            : 'Peringkat akun media sosial berdasarkan pertumbuhan mingguan tertinggi — subscriber/followers, views, likes, dan post, untuk semua Uni/Daerah';
+            ? 'Peringkat akun media sosial berdasarkan nilai saat ini — subscriber/followers, views, likes, dan post, untuk semua Divisi/Uni/Daerah'
+            : 'Peringkat akun media sosial berdasarkan pertumbuhan mingguan tertinggi — subscriber/followers, views, likes, dan post, untuk semua Divisi/Uni/Daerah';
 
         return [
-            'title' => 'Perbandingan Metrik Uni/Daerah',
+            'title' => 'Perbandingan Metrik Divisi/Uni/Daerah',
             'subtitle' => $subtitle,
-            'headers' => ['Metrik', '#', 'Uni/Daerah', 'Platform', 'Akun', 'Pertumbuhan', 'Saat Ini'],
+            'headers' => ['Metrik', '#', 'Divisi/Uni/Daerah', 'Platform', 'Akun', 'Pertumbuhan', 'Saat Ini'],
             'rows' => $rows,
             'summary' => collect($titles)->map(fn ($title, $metric) => ['label' => "Total {$title['title']}", 'value' => number_format($totals[$metric] ?? 0)])->values()->all(),
         ];
     }
 
     /**
-     * [type, id] composite key ("union-3"/"conference-5") for a Union/Conference row — same
-     * format as BuildsLeaderboards::parseOrganizationKey() expects, used here just to
-     * disambiguate Union #3 from Conference #3 when keying a collection by id alone would
-     * collide (they're different tables, so nothing stops both from having the same id).
+     * [type, id] composite key ("union-3"/"conference-5"/"division-2") for a Division/Union/
+     * Conference row — same format as BuildsLeaderboards::parseOrganizationKey() expects, used
+     * here just to disambiguate Union #3 from Conference #3 when keying a collection by id alone
+     * would collide (they're different tables, so nothing stops both from having the same id).
      */
-    private function organizationKey(Union|Conference $organization): string
+    private function organizationKey(Division|Union|Conference $organization): string
     {
-        return $organization instanceof Union ? "union-{$organization->id}" : "conference-{$organization->id}";
+        return match (true) {
+            $organization instanceof Division => "division-{$organization->id}",
+            $organization instanceof Union => "union-{$organization->id}",
+            default => "conference-{$organization->id}",
+        };
     }
 
     private function platformOverviewDatasetOrganization(string $platform): array
@@ -848,7 +853,7 @@ class ExportController extends Controller
             ->sortBy('name')
             ->values();
 
-        $headers = ['Uni/Daerah'];
+        $headers = ['Divisi/Uni/Daerah'];
         $valueHeaders = [];
         foreach ($applicableMetrics as $metric) {
             $valueHeader = match (true) {
@@ -879,8 +884,8 @@ class ExportController extends Controller
         $metricNames = $applicableMetrics->map(fn ($m) => $this->metricLabels[$m])->implode(', ');
 
         return [
-            'title' => "Ringkasan Perbandingan {$platformLabel} Uni/Daerah",
-            'subtitle' => "{$metricNames} — semua Uni/Daerah, diurutkan berdasarkan nama.",
+            'title' => "Ringkasan Perbandingan {$platformLabel} Divisi/Uni/Daerah",
+            'subtitle' => "{$metricNames} — semua Divisi/Uni/Daerah, diurutkan berdasarkan nama.",
             'headers' => $headers,
             'rows' => $rows,
             'summary' => $applicableMetrics->map(fn ($metric) => ['label' => "Total {$valueHeaders[$metric]}", 'value' => number_format($rowsByMetric[$metric]->sum('value'))])->values()->all(),
@@ -899,13 +904,13 @@ class ExportController extends Controller
         };
 
         $subtitle = $sortBy === 'delta'
-            ? "Peringkat Uni/Daerah berdasarkan pertumbuhan mingguan {$valueHeader} {$platformLabel}"
-            : "Peringkat Uni/Daerah berdasarkan {$valueHeader} {$platformLabel} saat ini";
+            ? "Peringkat Divisi/Uni/Daerah berdasarkan pertumbuhan mingguan {$valueHeader} {$platformLabel}"
+            : "Peringkat Divisi/Uni/Daerah berdasarkan {$valueHeader} {$platformLabel} saat ini";
 
         return [
-            'title' => "Perbandingan {$valueHeader} {$platformLabel} Uni/Daerah",
+            'title' => "Perbandingan {$valueHeader} {$platformLabel} Divisi/Uni/Daerah",
             'subtitle' => $subtitle,
-            'headers' => ['#', 'Uni/Daerah', $valueHeader, 'Pertumbuhan Mingguan'],
+            'headers' => ['#', 'Divisi/Uni/Daerah', $valueHeader, 'Pertumbuhan Mingguan'],
             'rows' => $rows->values()->map(fn ($row, $i) => [
                 $i + 1,
                 $row['label'],
@@ -927,6 +932,10 @@ class ExportController extends Controller
     {
         [$selectedType, $selectedId] = $this->parseOrganizationKey($organizationKey);
 
+        $divisions = $this->analyticsDivisionScope(Division::query()->where('is_active', true))
+            ->with(['socials' => fn ($q) => $q->where('is_active', true)->with('latestStat')])
+            ->get();
+
         $unions = $this->analyticsUnionScope(Union::query()->where('is_active', true))
             ->with(['socials' => fn ($q) => $q->where('is_active', true)->with('latestStat')])
             ->get();
@@ -935,10 +944,11 @@ class ExportController extends Controller
             ->with(['socials' => fn ($q) => $q->where('is_active', true)->with('latestStat')])
             ->get();
 
-        $organizations = $unions->concat($conferences)
+        $organizations = $divisions->concat($unions)->concat($conferences)
             ->sortBy('name')
             ->values()
             ->when($organizationKey, fn ($collection) => $collection->filter(fn ($org) => match ($selectedType) {
+                'division' => $org instanceof Division && (string) $org->id === (string) $selectedId,
                 'union' => $org instanceof Union && (string) $org->id === (string) $selectedId,
                 'conference' => $org instanceof Conference && (string) $org->id === (string) $selectedId,
                 default => true,
@@ -961,7 +971,11 @@ class ExportController extends Controller
 
             return [
                 $organization->name,
-                $organization instanceof Union ? 'Uni' : 'Daerah',
+                match (true) {
+                    $organization instanceof Division => 'Divisi',
+                    $organization instanceof Union => 'Uni',
+                    default => 'Daerah',
+                },
                 $displaySocials->count(),
                 number_format($reach),
                 $views ? number_format($views) : '—',
@@ -975,12 +989,12 @@ class ExportController extends Controller
             $platform ? ($this->platformLabels[$platform] ?? null) : null,
         ]);
 
-        $subtitle = $filterParts ? 'Filter: '.implode(', ', $filterParts) : 'Semua Uni/Daerah, semua media sosial';
+        $subtitle = $filterParts ? 'Filter: '.implode(', ', $filterParts) : 'Semua Divisi/Uni/Daerah, semua media sosial';
 
         return [
-            'title' => 'Analitik & Grafik Uni/Daerah',
+            'title' => 'Analitik & Grafik Divisi/Uni/Daerah',
             'subtitle' => $subtitle,
-            'headers' => ['Uni/Daerah', 'Level', 'Jumlah Akun', 'Total Jangkauan', 'Total Views', 'Total Likes', 'Total Post'],
+            'headers' => ['Divisi/Uni/Daerah', 'Level', 'Jumlah Akun', 'Total Jangkauan', 'Total Views', 'Total Likes', 'Total Post'],
             'rows' => $rows,
         ];
     }

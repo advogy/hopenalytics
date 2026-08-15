@@ -185,6 +185,7 @@
                                 'editRoute' => 'admin.divisions.edit',
                                 'toggleRoute' => 'admin.divisions.toggle-active',
                                 'deleteRoute' => 'admin.divisions.destroy',
+                                'viewRoute' => 'admin.divisions.socials.index',
                                 'name' => $division->name,
                                 'canDelete' => $division->unions_count === 0 && $division->users_count === 0,
                                 'blockedReason' => $division->users->isEmpty()

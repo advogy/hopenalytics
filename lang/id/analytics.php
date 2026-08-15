@@ -76,6 +76,7 @@ return [
     'hide_empty_personal' => 'Sembunyikan personal tanpa data',
     'hide_empty_institutions' => 'Sembunyikan institusi tanpa data',
     'hide_empty_organizations' => 'Sembunyikan Divisi/Uni/Daerah tanpa data',
+    'organization_level_division' => 'Tingkat Divisi',
     'organization_level_union' => 'Tingkat Uni',
     'organization_level_conference' => 'Tingkat Daerah',
 ];

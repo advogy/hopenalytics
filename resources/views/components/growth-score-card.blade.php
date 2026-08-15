@@ -32,112 +32,74 @@
     @else
         <div class="divide-y divide-slate-100 dark:divide-slate-800">
             @if ($groupedRows !== null)
-                @if ($showDivisionHeader)
-                    {{-- preserveKeys: true — see components/grouped-rows.blade.php's identical note. --}}
-                    @php $divisionGroups = $groupedRows->groupBy('divisionId', true)->sortBy(fn ($unions) => $unions->first()['divisionName']); @endphp
+                @php $chain = fn (...$parts) => trim(implode(' ', array_filter($parts))); @endphp
 
-                    @foreach ($divisionGroups as $divisionKey => $unionsInDivision)
+                @foreach ($groupedRows as $divisionKey => $divisionGroup)
+                    @php
+                        $divisionId = $groupPrefix.'-division-'.$divisionKey;
+                        $divisionChain = $showDivisionHeader ? $divisionId : null;
+                    @endphp
+
+                    @if ($showDivisionHeader)
+                        <x-analytics-group-header-div
+                            :label="$divisionGroup['label']"
+                            :count="$divisionGroup['rows']->count() + $divisionGroup['unions']->sum(fn ($u) => $u['rows']->count() + $u['conferences']->sum(fn ($c) => $c['rows']->count()))"
+                            :toggle-id="$divisionId"
+                        />
+                    @endif
+
+                    @foreach ($divisionGroup['rows'] as $i => $row)
+                        @include('partials.growth-score-row', [
+                            'row' => $row, 'index' => $i, 'depth' => 0,
+                            'showMetrics' => $showMetrics, 'metricLabels' => $metricLabels, 'scope' => $scope,
+                            'ancestors' => $divisionChain,
+                        ])
+                    @endforeach
+
+                    @foreach ($divisionGroup['unions'] as $unionKey => $unionGroup)
                         @php
-                            $divisionAncestors = $groupPrefix.'-division-'.$divisionKey;
-                            $divisionCount = $unionsInDivision->sum(fn ($u) => $u['rows']->count() + $u['conferences']->sum(fn ($c) => $c['rows']->count()));
+                            $unionId = $divisionId.'-union-'.$unionKey;
+                            $unionChain = $isNasionalView ? $chain($divisionChain, $unionId) : $divisionChain;
                         @endphp
 
-                        <x-analytics-group-header-div
-                            :label="$unionsInDivision->first()['divisionName']"
-                            :count="$divisionCount"
-                            :toggle-id="$divisionAncestors"
-                        />
-
-                        @foreach ($unionsInDivision as $unionKey => $unionGroup)
-                            @php $unionAncestors = $divisionAncestors.'-union-'.$unionKey; @endphp
-
-                            <x-analytics-group-header-div
-                                :label="$unionGroup['label']"
-                                :count="$unionGroup['conferences']->sum(fn ($c) => $c['rows']->count()) + $unionGroup['rows']->count()"
-                                :toggle-id="$unionAncestors"
-                                :ancestors="$divisionAncestors"
-                                :depth="1"
-                            />
-
-                            @foreach ($unionGroup['rows'] as $i => $row)
-                                @include('partials.growth-score-row', [
-                                    'row' => $row,
-                                    'index' => $i,
-                                    'depth' => 1,
-                                    'showMetrics' => $showMetrics,
-                                    'metricLabels' => $metricLabels,
-                                    'scope' => $scope,
-                                    'ancestors' => trim($divisionAncestors.' '.$unionAncestors),
-                                ])
-                            @endforeach
-
-                            @foreach ($unionGroup['conferences'] as $conferenceKey => $conferenceGroup)
-                                @php $conferenceAncestors = $unionAncestors.'-conf-'.$conferenceKey; @endphp
-                                @php $conferenceParentChain = trim($divisionAncestors.' '.$unionAncestors); @endphp
-
-                                <x-analytics-group-header-div
-                                    :label="$conferenceGroup['label']"
-                                    :count="$conferenceGroup['rows']->count()"
-                                    :toggle-id="$conferenceAncestors"
-                                    :ancestors="$conferenceParentChain"
-                                    :depth="2"
-                                />
-                                @foreach ($conferenceGroup['rows'] as $i => $row)
-                                    @include('partials.growth-score-row', [
-                                        'row' => $row,
-                                        'index' => $i,
-                                        'depth' => 2,
-                                        'showMetrics' => $showMetrics,
-                                        'metricLabels' => $metricLabels,
-                                        'scope' => $scope,
-                                        'ancestors' => trim($conferenceParentChain.' '.$conferenceAncestors),
-                                    ])
-                                @endforeach
-                            @endforeach
-                        @endforeach
-                    @endforeach
-                @else
-                    @foreach ($groupedRows as $unionKey => $unionGroup)
                         @if ($isNasionalView)
                             <x-analytics-group-header-div
                                 :label="$unionGroup['label']"
                                 :count="$unionGroup['conferences']->sum(fn ($c) => $c['rows']->count()) + $unionGroup['rows']->count()"
-                                :toggle-id="$groupPrefix.'-union-'.$unionKey"
+                                :toggle-id="$unionId"
+                                :ancestors="$divisionChain"
+                                :depth="$showDivisionHeader ? 1 : 0"
                             />
                         @endif
+
                         @foreach ($unionGroup['rows'] as $i => $row)
                             @include('partials.growth-score-row', [
-                                'row' => $row,
-                                'index' => $i,
-                                'depth' => 1,
-                                'showMetrics' => $showMetrics,
-                                'metricLabels' => $metricLabels,
-                                'scope' => $scope,
-                                'ancestors' => $isNasionalView ? $groupPrefix.'-union-'.$unionKey : null,
+                                'row' => $row, 'index' => $i, 'depth' => 1,
+                                'showMetrics' => $showMetrics, 'metricLabels' => $metricLabels, 'scope' => $scope,
+                                'ancestors' => $unionChain,
                             ])
                         @endforeach
+
                         @foreach ($unionGroup['conferences'] as $conferenceKey => $conferenceGroup)
+                            @php $conferenceId = $unionId.'-conf-'.$conferenceKey; @endphp
+
                             <x-analytics-group-header-div
                                 :label="$conferenceGroup['label']"
                                 :count="$conferenceGroup['rows']->count()"
-                                :toggle-id="$groupPrefix.'-conf-'.$unionKey.'-'.$conferenceKey"
-                                :ancestors="$isNasionalView ? $groupPrefix.'-union-'.$unionKey : null"
-                                :depth="1"
+                                :toggle-id="$conferenceId"
+                                :ancestors="$unionChain"
+                                :depth="($showDivisionHeader ? 1 : 0) + ($isNasionalView ? 1 : 0)"
                             />
                             @foreach ($conferenceGroup['rows'] as $i => $row)
                                 @include('partials.growth-score-row', [
-                                    'row' => $row,
-                                    'index' => $i,
-                                    'depth' => 2,
-                                    'showMetrics' => $showMetrics,
-                                    'metricLabels' => $metricLabels,
-                                    'scope' => $scope,
-                                    'ancestors' => ($isNasionalView ? $groupPrefix.'-union-'.$unionKey.' ' : '').$groupPrefix.'-conf-'.$unionKey.'-'.$conferenceKey,
+                                    'row' => $row, 'index' => $i, 'depth' => 2,
+                                    'showMetrics' => $showMetrics, 'metricLabels' => $metricLabels, 'scope' => $scope,
+                                    'ancestors' => $chain($unionChain, $conferenceId),
                                 ])
                             @endforeach
                         @endforeach
                     @endforeach
-                @endif
+                @endforeach
             @else
                 @foreach ($rows as $i => $row)
                     @include('partials.growth-score-row', ['row' => $row, 'index' => $i, 'showMetrics' => $showMetrics, 'metricLabels' => $metricLabels, 'scope' => $scope])

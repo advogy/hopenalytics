@@ -1,10 +1,10 @@
 @php
-    // Union/Conference ("Uni Saya"/"Daerah Saya") go back to Analitik & Statistik instead of
-    // $backRoute (Kelola Akun) for consistency with churches.show ("Gereja Saya") — all
-    // three "Saya" pages point back to the same place. Institution has no "Saya" nav shortcut
-    // (its own tab isn't hidden from admin_institusi, unlike Uni/Daerah), so it keeps going
-    // back to Kelola Akun as before.
-    $isOrgLevel = $owner instanceof \App\Models\Union || $owner instanceof \App\Models\Conference;
+    // Divisi/Union/Conference ("Divisi Saya"/"Uni Saya"/"Daerah Saya") go back to Analitik &
+    // Statistik instead of $backRoute (Kelola Akun) for consistency with churches.show
+    // ("Gereja Saya") — all four "Saya" pages point back to the same place. Institution has no
+    // "Saya" nav shortcut (its own tab isn't hidden from admin_institusi, unlike Divisi/Uni/
+    // Daerah), so it keeps going back to Kelola Akun as before.
+    $isOrgLevel = $owner instanceof \App\Models\Union || $owner instanceof \App\Models\Conference || $owner instanceof \App\Models\Division;
 @endphp
 
 @extends('layouts.app')

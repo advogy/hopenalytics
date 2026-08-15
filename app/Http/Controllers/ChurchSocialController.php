@@ -43,12 +43,12 @@ class ChurchSocialController extends Controller
                 $q->when($handle !== '', fn ($q2) => $q2->whereRaw('LOWER(handle) = ?', [$handle]));
                 $q->when($normalizedUrl !== null, fn ($q2) => $q2->orWhereRaw('LOWER(profile_url) LIKE ?', ["%{$normalizedUrl}%"]));
             })
-            ->with(['church', 'person', 'institution', 'union', 'conference'])
+            ->with(['church', 'person', 'institution', 'union', 'conference', 'division'])
             ->limit(5)
             ->get();
 
         return response()->json($matches->map(function (ChurchSocial $social) use ($request) {
-            $owner = $social->church ?? $social->person ?? $social->institution ?? $social->union ?? $social->conference;
+            $owner = $social->church ?? $social->person ?? $social->institution ?? $social->union ?? $social->conference ?? $social->division;
 
             return [
                 'handle' => $social->display_handle,
@@ -112,14 +112,14 @@ class ChurchSocialController extends Controller
                 $q->whereRaw('LOWER(handle) = ?', [$normalizedHandle]);
                 $q->when($normalizedUrl !== null, fn ($q2) => $q2->orWhereRaw('LOWER(profile_url) LIKE ?', ["%{$normalizedUrl}%"]));
             })
-            ->with(['church', 'person', 'institution', 'union', 'conference'])
+            ->with(['church', 'person', 'institution', 'union', 'conference', 'division'])
             ->first();
 
         if (! $duplicate) {
             return;
         }
 
-        $owner = $duplicate->church ?? $duplicate->person ?? $duplicate->institution ?? $duplicate->union ?? $duplicate->conference;
+        $owner = $duplicate->church ?? $duplicate->person ?? $duplicate->institution ?? $duplicate->union ?? $duplicate->conference ?? $duplicate->division;
 
         throw ValidationException::withMessages([
             'handle' => $owner
@@ -205,10 +205,10 @@ class ChurchSocialController extends Controller
     }
 
     /**
-     * Shared across all five owner types (church/person/union/conference/institution) via the
-     * single /socials/{social}/edit route — church and person each get their own existing form
-     * view (church's has a gereja/umum category picker; person's is fixed to 'personal'), the
-     * other three share the generic admin.organization.social-form view (fixed to 'organisasi').
+     * Shared across all six owner types (church/person/union/conference/institution/division) via
+     * the single /socials/{social}/edit route — church and person each get their own existing
+     * form view (church's has a gereja/umum category picker; person's is fixed to 'personal'),
+     * the other four share the generic admin.organization.social-form view (fixed to 'organisasi').
      */
     public function edit(ChurchSocial $social)
     {
@@ -221,7 +221,7 @@ class ChurchSocialController extends Controller
         }
 
         return view('admin.organization.social-form', [
-            'owner' => $social->union ?? $social->conference ?? $social->institution,
+            'owner' => $social->union ?? $social->conference ?? $social->institution ?? $social->division,
             'social' => $social,
         ]);
     }
@@ -234,6 +234,7 @@ class ChurchSocialController extends Controller
             $social->union_id !== null => $this->validatedOrganization($request, 'union_id', $social->union_id, $social->id),
             $social->conference_id !== null => $this->validatedOrganization($request, 'conference_id', $social->conference_id, $social->id),
             $social->institution_id !== null => $this->validatedOrganization($request, 'institution_id', $social->institution_id, $social->id),
+            $social->division_id !== null => $this->validatedOrganization($request, 'division_id', $social->division_id, $social->id),
         };
 
         $social->update($data);

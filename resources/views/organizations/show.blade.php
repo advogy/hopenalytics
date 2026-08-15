@@ -1,13 +1,21 @@
 {{--
-    Shared "show" page for both Union and Conference (see ChurchDashboardController::showUnion()/
-    showConference()) — same shape as churches.show/institutions.show, minus their $ownStats
-    shortcut cards (no "this is my one entity" viewer concept exists for Union/Conference; an
-    admin_uni/admin_daerah already manages their whole region via Kelola Akun instead).
+    Shared "show" page for Divisi, Union, and Conference (see ChurchDashboardController::
+    showDivision()/showUnion()/showConference()) — same shape as churches.show/institutions.show,
+    minus their $ownStats shortcut cards (no "this is my one entity" viewer concept exists for
+    Divisi/Union/Conference; an admin_divisi/admin_uni/admin_daerah already manages their whole
+    region via Kelola Akun instead).
 --}}
 @php
-    $isUnion = $organization instanceof \App\Models\Union;
-    $manageRoute = $isUnion ? 'admin.unions.socials.index' : 'admin.conferences.socials.index';
-    $levelLabel = $isUnion ? __('analytics.organization_level_union') : __('analytics.organization_level_conference');
+    $manageRoute = match (true) {
+        $organization instanceof \App\Models\Division => 'admin.divisions.socials.index',
+        $organization instanceof \App\Models\Union => 'admin.unions.socials.index',
+        default => 'admin.conferences.socials.index',
+    };
+    $levelLabel = match (true) {
+        $organization instanceof \App\Models\Division => __('analytics.organization_level_division'),
+        $organization instanceof \App\Models\Union => __('analytics.organization_level_union'),
+        default => __('analytics.organization_level_conference'),
+    };
 @endphp
 
 @extends('layouts.app')

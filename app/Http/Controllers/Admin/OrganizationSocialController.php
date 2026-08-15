@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AppSetting;
 use App\Models\ChurchSocial;
 use App\Models\Conference;
+use App\Models\Division;
 use App\Models\Institution;
 use App\Models\Union;
 use Illuminate\Http\RedirectResponse;
@@ -16,12 +17,12 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Manage-accounts flow (index/create/store) for the three organization-level owner types —
- * a social account belonging directly to a Union, Conference, or Institution itself (e.g. an
- * official Instagram for "Uni Indonesia Kawasan Barat"), not any one church under it. Mirrors
- * ChurchSocialController/PersonSocialController's shape; edit/update/destroy stay centralized
- * there (see ChurchSocialController::edit()) since those are shared /socials/{social}/* routes
- * across all five owner types.
+ * Manage-accounts flow (index/create/store) for the four organization-level owner types —
+ * a social account belonging directly to a Divisi, Union, Conference, or Institution itself
+ * (e.g. an official Instagram for "Uni Indonesia Kawasan Barat"), not any one church under it.
+ * Mirrors ChurchSocialController/PersonSocialController's shape; edit/update/destroy stay
+ * centralized there (see ChurchSocialController::edit()) since those are shared
+ * /socials/{social}/* routes across all six owner types.
  */
 class OrganizationSocialController extends Controller
 {
@@ -97,6 +98,30 @@ class OrganizationSocialController extends Controller
         return redirect()->route('admin.institutions.socials.index', $institution)->with('status', __('entity.social_created', ['handle' => $social->display_handle]));
     }
 
+    public function divisionIndex(Division $division)
+    {
+        return view('admin.organization.social-list', [
+            'owner' => $division,
+            'backRoute' => ['admin.accounts.index', ['tab' => 'divisi']],
+            'createRoute' => ['admin.divisions.socials.create', $division],
+        ]);
+    }
+
+    public function divisionCreate(Division $division)
+    {
+        return view('admin.organization.social-form', ['owner' => $division, 'social' => new ChurchSocial]);
+    }
+
+    public function divisionStore(Request $request, Division $division): RedirectResponse
+    {
+        $data = $this->validated($request, 'division_id', $division->id, null);
+        $social = $this->createOrReactivate($division, $data);
+
+        // Deliberately no immediate fetch dispatch here — see ChurchSocialController::store()'s
+        // comment for why.
+        return redirect()->route('admin.divisions.socials.index', $division)->with('status', __('entity.social_created', ['handle' => $social->display_handle]));
+    }
+
     /**
      * A deactivated ("deleted" — see ChurchSocialController::destroy()'s doc comment) row
      * already occupying this exact owner+platform+category+handle slot gets reactivated
@@ -105,7 +130,7 @@ class OrganizationSocialController extends Controller
      * same handle is re-added. validated()'s Rule::unique already lets this exact case through
      * (is_active-filtered, since this is always called from a store(), never edit).
      */
-    private function createOrReactivate(Union|Conference|Institution $owner, array $data): ChurchSocial
+    private function createOrReactivate(Union|Conference|Institution|Division $owner, array $data): ChurchSocial
     {
         $existing = $owner->socials()
             ->where('platform', $data['platform'])->where('category', $data['category'])
@@ -179,14 +204,14 @@ class OrganizationSocialController extends Controller
                 $q->whereRaw('LOWER(handle) = ?', [$normalizedHandle]);
                 $q->when($normalizedUrl !== null, fn ($q2) => $q2->orWhereRaw('LOWER(profile_url) LIKE ?', ["%{$normalizedUrl}%"]));
             })
-            ->with(['church', 'person', 'institution', 'union', 'conference'])
+            ->with(['church', 'person', 'institution', 'union', 'conference', 'division'])
             ->first();
 
         if (! $duplicate) {
             return;
         }
 
-        $owner = $duplicate->church ?? $duplicate->person ?? $duplicate->institution ?? $duplicate->union ?? $duplicate->conference;
+        $owner = $duplicate->church ?? $duplicate->person ?? $duplicate->institution ?? $duplicate->union ?? $duplicate->conference ?? $duplicate->division;
 
         throw ValidationException::withMessages([
             'handle' => $owner

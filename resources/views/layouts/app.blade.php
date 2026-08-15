@@ -124,6 +124,18 @@
                                                 Gereja Saya
                                             </a>
                                         @endif
+                                        @if (auth()->user()->division && auth()->user()->can('update', auth()->user()->division))
+                                            {{-- Same gap as Gereja Saya, for admin_divisi: Kelola Akun hides
+                                                 the Divisi tab from admin_divisi themselves (each level skips
+                                                 editing its own entity's identity there), so this is their only
+                                                 path to their own Division's Kelola Akun. can:update (not just
+                                                 division_id being set) keeps this from dead-ending for
+                                                 pimpinan_divisi. --}}
+                                            <a href="{{ route('admin.divisions.socials.index', auth()->user()->division) }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                                                <x-icon name="building-office" class="h-4 w-4 shrink-0 text-slate-400" />
+                                                Divisi Saya
+                                            </a>
+                                        @endif
                                         @if (auth()->user()->union && auth()->user()->can('update', auth()->user()->union))
                                             {{-- Same gap as Gereja Saya, for admin_uni: Kelola Akun hides
                                                  the Uni tab from admin_uni themselves (each level skips editing
@@ -277,6 +289,12 @@
                                     <a href="{{ route('churches.show', auth()->user()->church) }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
                                         <x-icon name="building-office" class="h-4 w-4 shrink-0 text-slate-400" />
                                         Gereja Saya
+                                    </a>
+                                @endif
+                                @if (auth()->user()->division && auth()->user()->can('update', auth()->user()->division))
+                                    <a href="{{ route('admin.divisions.socials.index', auth()->user()->division) }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                                        <x-icon name="building-office" class="h-4 w-4 shrink-0 text-slate-400" />
+                                        Divisi Saya
                                     </a>
                                 @endif
                                 @if (auth()->user()->union && auth()->user()->can('update', auth()->user()->union))

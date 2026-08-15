@@ -16,7 +16,7 @@ class ChurchSocial extends Model
     use HasFactory;
 
     protected $fillable = [
-        'church_id', 'person_id', 'union_id', 'conference_id', 'institution_id', 'platform', 'category', 'handle',
+        'church_id', 'person_id', 'union_id', 'conference_id', 'institution_id', 'division_id', 'platform', 'category', 'handle',
         'platform_account_id', 'profile_url', 'is_active', 'is_auto_fetch', 'last_fetched_at', 'last_fetch_status', 'last_fetch_error',
     ];
 
@@ -74,6 +74,11 @@ class ChurchSocial extends Model
         return $this->belongsTo(Institution::class);
     }
 
+    public function division(): BelongsTo
+    {
+        return $this->belongsTo(Division::class);
+    }
+
     public function stats(): HasMany
     {
         return $this->hasMany(ChurchStat::class)->orderByDesc('recorded_at');
@@ -96,7 +101,8 @@ class ChurchSocial extends Model
                 ->orWhereHas('person', fn (Builder $q2) => $q2->visibleTo($user))
                 ->orWhereHas('union', fn (Builder $q2) => $q2->visibleTo($user))
                 ->orWhereHas('conference', fn (Builder $q2) => $q2->visibleTo($user))
-                ->orWhereHas('institution', fn (Builder $q2) => $q2->visibleTo($user));
+                ->orWhereHas('institution', fn (Builder $q2) => $q2->visibleTo($user))
+                ->orWhereHas('division', fn (Builder $q2) => $q2->visibleTo($user));
         });
     }
 
@@ -114,7 +120,8 @@ class ChurchSocial extends Model
             ->orWhereHas('person', fn (Builder $q2) => $q2->where('is_active', true))
             ->orWhereHas('institution', fn (Builder $q2) => $q2->where('is_active', true))
             ->orWhereHas('union', fn (Builder $q2) => $q2->where('is_active', true))
-            ->orWhereHas('conference', fn (Builder $q2) => $q2->where('is_active', true)));
+            ->orWhereHas('conference', fn (Builder $q2) => $q2->where('is_active', true))
+            ->orWhereHas('division', fn (Builder $q2) => $q2->where('is_active', true)));
     }
 
     /**
@@ -131,7 +138,7 @@ class ChurchSocial extends Model
     public function getDisplayNameAttribute(): string
     {
         return $this->church?->name ?? $this->person?->name ?? $this->union?->name
-            ?? $this->conference?->name ?? $this->institution?->name ?? '—';
+            ?? $this->conference?->name ?? $this->institution?->name ?? $this->division?->name ?? '—';
     }
 
     /**
@@ -147,6 +154,7 @@ class ChurchSocial extends Model
             $this->union_id !== null => __('common.union'),
             $this->conference_id !== null => __('common.conference'),
             $this->institution_id !== null => __('common.institution'),
+            $this->division_id !== null => __('common.division'),
             default => '—',
         };
     }
@@ -164,6 +172,7 @@ class ChurchSocial extends Model
             $this->union_id !== null => ['admin.unions.socials.index', $this->union],
             $this->conference_id !== null => ['admin.conferences.socials.index', $this->conference],
             $this->institution_id !== null => ['admin.institutions.socials.index', $this->institution],
+            $this->division_id !== null => ['admin.divisions.socials.index', $this->division],
         };
     }
 
@@ -182,6 +191,7 @@ class ChurchSocial extends Model
             $this->union_id !== null => ['unions.show', $this->union],
             $this->conference_id !== null => ['conferences.show', $this->conference],
             $this->institution_id !== null => ['institutions.show', $this->institution],
+            $this->division_id !== null => ['divisions.show', $this->division],
         };
     }
 

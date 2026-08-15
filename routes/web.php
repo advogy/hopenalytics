@@ -186,6 +186,7 @@ Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group
     Route::get('/organisasi/metrik/{metric}', [ChurchDashboardController::class, 'organizationLeaderboard'])->name('organizations.leaderboard')->middleware('can:view-analytics');
     Route::get('/organisasi/platform/{platform?}', [ChurchDashboardController::class, 'organizationPlatformComparison'])->name('organizations.platform-comparison')->middleware('can:view-analytics');
     Route::get('/organisasi/hastag', [ChurchDashboardController::class, 'organizationHashtagComparison'])->name('organizations.hashtag-comparison')->middleware('can:view-analytics');
+    Route::get('/organisasi/divisi/{division:slug}', [ChurchDashboardController::class, 'showDivision'])->name('divisions.show')->middleware('can:view,division');
     Route::get('/organisasi/uni/{union:slug}', [ChurchDashboardController::class, 'showUnion'])->name('unions.show')->middleware('can:view,union');
     Route::get('/organisasi/daerah/{conference:slug}', [ChurchDashboardController::class, 'showConference'])->name('conferences.show')->middleware('can:view,conference');
     Route::get('/institusi/{institution:slug}', [ChurchDashboardController::class, 'showInstitution'])->name('institutions.show')->middleware('can:view,institution');
@@ -333,6 +334,12 @@ Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group
         Route::put('/divisions/{division:slug}', [DivisionController::class, 'update'])->name('divisions.update')->middleware('can:update,division');
         Route::patch('/divisions/{division:slug}/toggle-active', [DivisionController::class, 'toggleActive'])->name('divisions.toggle-active')->middleware('can:update,division');
         Route::delete('/divisions/{division:slug}', [DivisionController::class, 'destroy'])->name('divisions.destroy')->middleware('can:delete,division');
+
+        Route::middleware('can:update,division')->group(function () {
+            Route::get('/divisions/{division:slug}/socials', [OrganizationSocialController::class, 'divisionIndex'])->name('divisions.socials.index');
+            Route::get('/divisions/{division:slug}/socials/create', [OrganizationSocialController::class, 'divisionCreate'])->name('divisions.socials.create');
+            Route::post('/divisions/{division:slug}/socials', [OrganizationSocialController::class, 'divisionStore'])->name('divisions.socials.store');
+        });
 
         Route::middleware('can:create,App\Models\Union')->group(function () {
             Route::get('/unions/create', [UnionController::class, 'create'])->name('unions.create');

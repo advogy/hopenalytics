@@ -76,6 +76,7 @@ return [
     'hide_empty_personal' => 'Hide personal accounts with no data',
     'hide_empty_institutions' => 'Hide institutions with no data',
     'hide_empty_organizations' => 'Hide Divisions/Unions/Conferences with no data',
+    'organization_level_division' => 'Division level',
     'organization_level_union' => 'Union level',
     'organization_level_conference' => 'Conference level',
 ];

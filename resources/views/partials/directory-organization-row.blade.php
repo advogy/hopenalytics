@@ -1,13 +1,16 @@
 {{--
-    One row of the Direktori Akun "Uni/Daerah" tab table — same shape as
-    directory-institution-row.blade.php, except $organization is a Union OR a Conference model.
+    One row of the Direktori Akun "Divisi/Uni/Daerah" tab table — same shape as
+    directory-institution-row.blade.php, except $organization is a Division, Union, OR Conference
+    model.
 
     Expected: $organization, $ancestors (optional, space-separated group ids this row is nested under).
 --}}
 @php
-    $organizationUrl = $organization instanceof \App\Models\Union
-        ? route('unions.show', $organization)
-        : route('conferences.show', $organization);
+    $organizationUrl = match (true) {
+        $organization instanceof \App\Models\Division => route('divisions.show', $organization),
+        $organization instanceof \App\Models\Union => route('unions.show', $organization),
+        default => route('conferences.show', $organization),
+    };
     $namePaddingClass = match ($depth ?? 0) {
         1 => 'pl-8',
         2 => 'pl-12',
@@ -23,7 +26,11 @@
             <div class="min-w-0">
                 <a href="{{ $organizationUrl }}" class="font-medium hover:text-blue-600 dark:hover:text-blue-400">{{ $organization->name }}</a>
                 <p class="text-xs text-slate-400 dark:text-slate-500">
-                    {{ $organization instanceof \App\Models\Union ? __('analytics.organization_level_union') : __('analytics.organization_level_conference') }}
+                    {{ match (true) {
+                        $organization instanceof \App\Models\Division => __('analytics.organization_level_division'),
+                        $organization instanceof \App\Models\Union => __('analytics.organization_level_union'),
+                        default => __('analytics.organization_level_conference'),
+                    } }}
                 </p>
             </div>
         </div>

@@ -27,6 +27,11 @@ class Division extends Model
         return $this->hasMany(User::class);
     }
 
+    public function socials(): HasMany
+    {
+        return $this->hasMany(ChurchSocial::class);
+    }
+
     /**
      * Mirrors Union::scopeVisibleTo() one tier up: 'nasional' sees whichever Divisions its
      * assigned Unions happen to belong to (Admin Nasional's Union set is independent of

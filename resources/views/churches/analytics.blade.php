@@ -33,59 +33,77 @@
 
     // $rows is a Collection of the ['church'|'person'|'institution'|'organization' => $entity,
     // ...] arrays already built per tab below; $entityAccessor plucks the entity out of one row
-    // so this one closure can group all four tables' rows identically. The Organisasi tab's own
-    // entity is a Union OR a Conference model directly (not something with a further ->union/
-    // ->conference relation chain to walk) — a Union groups under itself; a Conference groups
-    // under its own ->union and bucket-keys under itself (never falling to 'uni-level', unlike
-    // every other entity type, which has no conference_id of its own to be *the* Daerah tier).
+    // so this one closure can group all four tables' rows identically — same Divisi > Uni >
+    // Daerah > entity shape as BuildsLeaderboards::groupByRegion() (this is its Blade-side twin,
+    // since this file's own $filteredX collections aren't ChurchSocial rows the trait method can
+    // take directly). The Organisasi tab's own entity is a Division, Union, OR Conference model
+    // directly (not something with a further ->union/->conference relation chain to walk) — a
+    // Division groups under itself; a Union groups under its own ->division and bucket-keys
+    // under itself; a Conference groups under its own ->union and bucket-keys under itself
+    // (never falling to 'uni-level', unlike every other entity type, which has no conference_id
+    // of its own to be *the* Daerah tier).
     $groupEntityRows = function ($rows, $entityAccessor) {
         $resolveUnion = fn ($entity) => match (true) {
             $entity instanceof \App\Models\Union => $entity,
             $entity instanceof \App\Models\Conference => $entity->union,
+            $entity instanceof \App\Models\Division => null,
             default => $entity->conference?->union ?? $entity->union ?? null,
         };
         $resolveConference = fn ($entity) => match (true) {
             $entity instanceof \App\Models\Conference => $entity,
-            $entity instanceof \App\Models\Union => null,
+            $entity instanceof \App\Models\Union, $entity instanceof \App\Models\Division => null,
             default => $entity->conference ?? null,
         };
-        $resolveDivision = fn ($entity) => $resolveUnion($entity)?->division;
+        $resolveDivision = fn ($entity) => $entity instanceof \App\Models\Division ? $entity : $resolveUnion($entity)?->division;
 
         return $rows
-            ->groupBy(function ($row) use ($entityAccessor, $resolveUnion) {
-                $union = $resolveUnion($entityAccessor($row));
+            ->groupBy(function ($row) use ($entityAccessor, $resolveDivision) {
+                $division = $resolveDivision($entityAccessor($row));
 
-                return $union?->id ?? 'nasional';
+                return $division?->id ?? 'no-division';
             })
-            ->map(function ($unionRows) use ($entityAccessor, $resolveUnion, $resolveConference, $resolveDivision) {
-                $sample = $entityAccessor($unionRows->first());
-                $union = $resolveUnion($sample);
+            ->map(function ($divisionRows) use ($entityAccessor, $resolveUnion, $resolveConference, $resolveDivision) {
+                $sample = $entityAccessor($divisionRows->first());
                 $division = $resolveDivision($sample);
 
-                // A row whose entity IS the Union itself sits directly under the Union's own
-                // header — Union sits above Daerah, so it can never itself "not have a Daerah
-                // yet" the way a church/institution/conference-owned row can.
-                $ownRows = $unionRows->filter(fn ($row) => $entityAccessor($row) instanceof \App\Models\Union);
-                $nestedRows = $unionRows->reject(fn ($row) => $entityAccessor($row) instanceof \App\Models\Union);
+                $ownRows = $divisionRows->filter(fn ($row) => $entityAccessor($row) instanceof \App\Models\Division);
+                $nestedRows = $divisionRows->reject(fn ($row) => $entityAccessor($row) instanceof \App\Models\Division);
 
                 return [
-                    'label' => $union?->name ?? __('analytics.group_national'),
-                    // Not part of the grouping key/nesting (Union > Conference > rows stays as-is)
-                    // — just tagged on so x-grouped-rows can re-bucket these entries by division
-                    // when showDivisionHeader is on. See BuildsLeaderboards::groupByRegion()'s
-                    // identical shape, which this mirrors.
-                    'divisionId' => $division?->id ?? 'no-division',
-                    'divisionName' => $division?->name ?? __('analytics.group_no_division'),
+                    'label' => $division?->name ?? __('analytics.group_no_division'),
                     'rows' => $ownRows,
-                    'conferences' => $nestedRows
-                        ->groupBy(fn ($row) => $resolveConference($entityAccessor($row))?->id ?? 'uni-level')
-                        ->map(function ($conferenceRows) use ($entityAccessor, $resolveConference) {
-                            $sample = $entityAccessor($conferenceRows->first());
-                            $conference = $resolveConference($sample);
+                    'unions' => $nestedRows
+                        ->groupBy(function ($row) use ($entityAccessor, $resolveUnion) {
+                            $union = $resolveUnion($entityAccessor($row));
+
+                            return $union?->id ?? 'nasional';
+                        })
+                        ->map(function ($unionRows) use ($entityAccessor, $resolveUnion, $resolveConference) {
+                            $sample = $entityAccessor($unionRows->first());
+                            $union = $resolveUnion($sample);
+
+                            // A row whose entity IS the Union itself sits directly under the
+                            // Union's own header — Union sits above Daerah, so it can never
+                            // itself "not have a Daerah yet" the way a church/institution/
+                            // conference-owned row can.
+                            $ownRows = $unionRows->filter(fn ($row) => $entityAccessor($row) instanceof \App\Models\Union);
+                            $nestedRows = $unionRows->reject(fn ($row) => $entityAccessor($row) instanceof \App\Models\Union);
 
                             return [
-                                'label' => $conference?->name ?? __('analytics.group_union_level'),
-                                'rows' => $conferenceRows,
+                                'label' => $union?->name ?? __('analytics.group_national'),
+                                'rows' => $ownRows,
+                                'conferences' => $nestedRows
+                                    ->groupBy(fn ($row) => $resolveConference($entityAccessor($row))?->id ?? 'uni-level')
+                                    ->map(function ($conferenceRows) use ($entityAccessor, $resolveConference) {
+                                        $sample = $entityAccessor($conferenceRows->first());
+                                        $conference = $resolveConference($sample);
+
+                                        return [
+                                            'label' => $conference?->name ?? __('analytics.group_union_level'),
+                                            'rows' => $conferenceRows,
+                                        ];
+                                    })
+                                    ->sortBy('label'),
                             ];
                         })
                         ->sortBy('label'),
@@ -202,7 +220,11 @@
 
     // Organisasi tab
     $selectedOrganizationName = $selectedOrganizationKey ? $organizations->first(function ($org) use ($selectedOrganizationKey) {
-        $key = ($org instanceof \App\Models\Union ? 'union-' : 'conference-').$org->id;
+        $key = match (true) {
+            $org instanceof \App\Models\Division => 'division-',
+            $org instanceof \App\Models\Union => 'union-',
+            default => 'conference-',
+        }.$org->id;
 
         return $key === $selectedOrganizationKey;
     })?->name : null;
@@ -311,7 +333,11 @@
                     'placeholder' => __('analytics.all_organizations'),
                     'selectedId' => $selectedOrganizationKey,
                     'options' => $organizations->map(fn ($org) => [
-                        'id' => ($org instanceof \App\Models\Union ? 'union-' : 'conference-').$org->id,
+                        'id' => match (true) {
+                            $org instanceof \App\Models\Division => 'division-',
+                            $org instanceof \App\Models\Union => 'union-',
+                            default => 'conference-',
+                        }.$org->id,
                         'label' => $org->name,
                     ])->values(),
                 ])

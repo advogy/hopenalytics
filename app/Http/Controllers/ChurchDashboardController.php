@@ -1128,11 +1128,17 @@ class ChurchDashboardController extends Controller
                 fn ($institution) => $institution->socials->contains(fn ($social) => $social->platform->value === $selectedPlatform)
             ));
 
-        // Organisasi tab: Union- and Conference-owned accounts shown together as one flat list
-        // (each row is either a Union or a Conference model), grouped Uni > Daerah the same way
-        // as the other three tabs — a Union row sits at the "uni-level" tier under itself, a
-        // Conference row at its own Daerah tier under its parent Union (see BuildsLeaderboards::
+        // Organisasi tab: Divisi-, Union-, and Conference-owned accounts shown together as one
+        // flat list (each row is a Division, Union, or Conference model), grouped Divisi > Uni >
+        // Daerah the same way as the other three tabs — a Divisi row sits at its own top tier, a
+        // Union row sits at the "uni-level" tier under its Divisi, a Conference row at its own
+        // Daerah tier under its parent Union (see BuildsLeaderboards::regionEntityDivision()/
         // regionEntityUnion()/regionEntityConference()).
+        $visibleDivisions = $this->analyticsDivisionScope(Division::query()->where('is_active', true))
+            ->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat')])
+            ->orderBy('name')
+            ->get();
+
         $visibleUnions = $this->analyticsUnionScope(Union::query()->where('is_active', true))
             ->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat'), 'division'])
             ->orderBy('name')
@@ -1143,7 +1149,7 @@ class ChurchDashboardController extends Controller
             ->orderBy('name')
             ->get();
 
-        $organizations = $visibleUnions->concat($visibleConferences)
+        $organizations = $visibleDivisions->concat($visibleUnions)->concat($visibleConferences)
             ->filter($matchesRegionFilter)
             ->values();
 
@@ -1151,11 +1157,12 @@ class ChurchDashboardController extends Controller
         [$selectedOrgType, $selectedOrgId] = $this->parseOrganizationKey($selectedOrganizationKey);
 
         $growthOverTimeOrganization = $this->growthOverTimeOrganization(
-            $selectedOrganizationKey, $selectedPlatform, $visibleUnions->pluck('id'), $visibleConferences->pluck('id'), $selectedStartDate, $selectedEndDate
+            $selectedOrganizationKey, $selectedPlatform, $visibleUnions->pluck('id'), $visibleConferences->pluck('id'), $visibleDivisions->pluck('id'), $selectedStartDate, $selectedEndDate
         );
 
         $filteredOrganizations = $organizations
             ->when($selectedOrganizationKey, fn ($collection) => $collection->filter(fn ($org) => match ($selectedOrgType) {
+                'division' => $org instanceof Division && (string) $org->id === (string) $selectedOrgId,
                 'union' => $org instanceof Union && (string) $org->id === (string) $selectedOrgId,
                 'conference' => $org instanceof Conference && (string) $org->id === (string) $selectedOrgId,
                 default => true,
@@ -1256,7 +1263,7 @@ class ChurchDashboardController extends Controller
      * $selectedOrganizationKey is the composite "union-ID"/"conference-ID" entity-picker value
      * (see BuildsLeaderboards::parseOrganizationKey()).
      */
-    private function growthOverTimeOrganization(?string $selectedOrganizationKey, ?string $platform, Collection $visibleUnionIds, Collection $visibleConferenceIds, ?string $startDate = null, ?string $endDate = null)
+    private function growthOverTimeOrganization(?string $selectedOrganizationKey, ?string $platform, Collection $visibleUnionIds, Collection $visibleConferenceIds, Collection $visibleDivisionIds, ?string $startDate = null, ?string $endDate = null)
     {
         [$selectedType, $selectedId] = $this->parseOrganizationKey($selectedOrganizationKey);
 
@@ -1265,12 +1272,14 @@ class ChurchDashboardController extends Controller
             ->where('church_socials.is_active', true)
             // See growthOverTime()'s same comment — a raw join bypasses the model scope.
             ->whereIn('church_socials.platform', AppSetting::current()->enabledPlatformValues())
-            ->where(function ($query) use ($visibleUnionIds, $visibleConferenceIds) {
+            ->where(function ($query) use ($visibleUnionIds, $visibleConferenceIds, $visibleDivisionIds) {
                 $query->whereIn('church_socials.union_id', $visibleUnionIds)
-                    ->orWhereIn('church_socials.conference_id', $visibleConferenceIds);
+                    ->orWhereIn('church_socials.conference_id', $visibleConferenceIds)
+                    ->orWhereIn('church_socials.division_id', $visibleDivisionIds);
             })
             ->when($selectedType === 'union', fn ($query) => $query->where('church_socials.union_id', $selectedId))
             ->when($selectedType === 'conference', fn ($query) => $query->where('church_socials.conference_id', $selectedId))
+            ->when($selectedType === 'division', fn ($query) => $query->where('church_socials.division_id', $selectedId))
             ->when($platform, fn ($query) => $query->where('church_socials.platform', $platform))
             ->when($startDate, fn ($query) => $query->whereDate('church_stats.recorded_at', '>=', $startDate))
             ->when($endDate, fn ($query) => $query->whereDate('church_stats.recorded_at', '<=', $endDate))
@@ -1445,7 +1454,19 @@ class ChurchDashboardController extends Controller
             ->orderBy('name', $sortOrganisasi === 'name_desc' ? 'desc' : 'asc')
             ->get();
 
-        $organizations = $unions->concat($conferences)->values();
+        // Division has no union_id/conference_id column of its own, so — unlike Union/Conference
+        // above — it isn't affected by the union_id/conference_id region-filter picker at all:
+        // every Division is always shown here regardless of the selected filter (the filter only
+        // narrows within a Divisi's own Uni/Daerah descendants).
+        $divisions = Division::query()
+            ->where('is_active', true)
+            ->when($search, fn ($q) => $q->where('name', 'like', "%{$search}%"))
+            ->when($hideEmptyOrganizations, fn ($q) => $q->whereHas('socials', $socialsFilter))
+            ->with(['socials' => $socialsFilter])
+            ->orderBy('name', $sortOrganisasi === 'name_desc' ? 'desc' : 'asc')
+            ->get();
+
+        $organizations = $divisions->concat($unions)->concat($conferences)->values();
         $groupedOrganizations = $this->groupByRegion($organizations, fn ($organization) => $organization);
 
         return view('churches.directory', [
@@ -2030,6 +2051,28 @@ class ChurchDashboardController extends Controller
 
         return view('organizations.show', [
             'organization' => $conference,
+            'history' => $history,
+            'scoreHistory' => $growthScore['history'],
+            'scoreMetrics' => $growthScore['metrics'],
+            'scoreBreakdown' => $growthScore['breakdown'],
+            'scoreSampleCount' => $growthScore['sampleCount'],
+            'scoreSampleSum' => $growthScore['sampleSum'],
+        ]);
+    }
+
+    /** Same as showUnion(), for Division instead of Union. */
+    public function showDivision(Division $division)
+    {
+        $division->load(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat')]);
+
+        $history = $division->socials->mapWithKeys(
+            fn ($social) => [$social->id => $social->stats()->limit(30)->get()]
+        );
+
+        $growthScore = $this->growthScoreHistory($division->socials);
+
+        return view('organizations.show', [
+            'organization' => $division,
             'history' => $history,
             'scoreHistory' => $growthScore['history'],
             'scoreMetrics' => $growthScore['metrics'],
