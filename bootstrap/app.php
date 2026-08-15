@@ -24,5 +24,17 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        // A stale CSRF token (session/tab left open past SESSION_LIFETIME) throws
+        // TokenMismatchException on the next form submit. Laravel's own prepareException()
+        // converts that to a plain 419 HttpException before any render() callback keyed on
+        // TokenMismatchException would ever see it, so this has to hook the final response
+        // instead — redirecting back reloads the form with a fresh token rather than dumping
+        // the user on Laravel's bare "419 | Page Expired" page.
+        $exceptions->respond(function ($response, $e, $request) {
+            if ($response->getStatusCode() === 419 && ! $request->expectsJson()) {
+                return redirect()->back()->with('error', __('auth.session_expired'));
+            }
+
+            return $response;
+        });
     })->create();

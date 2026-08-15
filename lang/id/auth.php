@@ -9,6 +9,7 @@ return [
     'login_failed' => 'Email atau kata sandi salah.',
     'login_unverified' => 'Email Anda belum diverifikasi. Silakan cek kode OTP yang dikirim ke email Anda.',
     'account_deactivated' => 'Akun Anda telah dinonaktifkan. Hubungi admin.',
+    'session_expired' => 'Sesi Anda telah berakhir karena terlalu lama tidak aktif. Silakan coba lagi.',
     'no_account_yet' => 'Belum punya akun?',
     'register_link' => 'Daftar di sini',
     'forgot_password_link' => 'Lupa kata sandi?',

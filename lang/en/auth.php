@@ -9,6 +9,7 @@ return [
     'login_failed' => 'Incorrect email or password.',
     'login_unverified' => 'Your email hasn\'t been verified yet. Please check the OTP code sent to your email.',
     'account_deactivated' => 'Your account has been deactivated. Contact an admin.',
+    'session_expired' => 'Your session expired from inactivity. Please try again.',
     'no_account_yet' => 'Don\'t have an account yet?',
     'register_link' => 'Register here',
     'forgot_password_link' => 'Forgot password?',
