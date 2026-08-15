@@ -19,6 +19,7 @@ return [
     'export_preview_failed' => 'Gagal memuat preview.',
     'footer_copyright' => 'Seluruh hak cipta dilindungi.',
     'footer_by' => 'oleh',
+    'footer_and' => 'dan',
     'footer_developer' => 'Dikembangkan oleh',
     'footer_version' => 'v:version',
     'my_account' => 'Akun Saya',

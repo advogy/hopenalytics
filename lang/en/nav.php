@@ -19,6 +19,7 @@ return [
     'export_preview_failed' => 'Failed to load preview.',
     'footer_copyright' => 'All rights reserved.',
     'footer_by' => 'by',
+    'footer_and' => 'and',
     'footer_developer' => 'Developed by',
     'footer_version' => 'v:version',
     'my_account' => 'My Account',
