@@ -360,16 +360,6 @@ class ChurchDashboardController extends Controller
             default => __('dashboard.subtitle'),
         };
 
-        // Same scope as ChurchRefreshController::all() (the "Dapatkan Data Terbaru" button
-        // itself) — is_active + visibleTo($user), not is_auto_fetch-restricted, since a
-        // manually-entered account's last update is still relevant context for "how fresh is
-        // this data" even though the button itself only refreshes the auto-fetch ones.
-        // max() is a raw aggregate query — it returns the column's raw DB value, not run
-        // through ChurchSocial's own 'last_fetched_at' => 'datetime' cast, so it needs parsing
-        // into a Carbon instance here before the view can call translatedFormat() on it.
-        $lastFetchedAtRaw = ChurchSocial::where('is_active', true)->visibleTo($user)->max('last_fetched_at');
-        $lastFetchedAt = $lastFetchedAtRaw ? Carbon::parse($lastFetchedAtRaw) : null;
-
         // Global, not scoped to $user — same reasoning as hashtagComparisonData(): hashtag
         // posts have no owner/region in this system, so every viewer sees the same numbers.
         $topHashtagPost = HashtagPost::query()
@@ -388,10 +378,8 @@ class ChurchDashboardController extends Controller
 
         return view('churches.index', [
             'scopeLabel' => $scopeLabel,
-            'lastFetchedAt' => $lastFetchedAt,
             'hashtagSummary' => $hashtagSummary,
             'totalChurches' => $churches->count(),
-            'totalSocials' => $allSocials->count(),
             'totalPeople' => $people->count(),
             'totalInstitutions' => $institutions->count(),
             'weeklyGrowth' => $weeklyGrowth,
@@ -1192,8 +1180,26 @@ class ChurchDashboardController extends Controller
         // see hashtagComparisonData()'s doc comment.
         $hashtagData = $this->hashtagComparisonData($request->query('hashtag'), $request->query('hashtag_platform'));
 
+        // "Dapatkan Data Terbaru" — moved here from the dashboard, per the user's explicit call;
+        // same can:trigger-refresh gate and ChurchRefreshController::all() target as before, just
+        // relocated. max() is a raw aggregate query — it returns the column's raw DB value, not
+        // run through ChurchSocial's own 'last_fetched_at' => 'datetime' cast, so it needs
+        // parsing into a Carbon instance before the view can call translatedFormat() on it.
+        $lastFetchedAtRaw = ChurchSocial::where('is_active', true)->visibleTo($user)->max('last_fetched_at');
+        $lastFetchedAt = $lastFetchedAtRaw ? Carbon::parse($lastFetchedAtRaw) : null;
+
+        // Matches ChurchRefreshController::all()'s own query exactly, so the confirm dialog's
+        // count reflects the true number of accounts that button is about to refresh.
+        $totalRefreshableSocials = ChurchSocial::where('is_active', true)
+            ->where('is_auto_fetch', true)
+            ->ownerActive()
+            ->visibleTo($user)
+            ->count();
+
         return view('churches.analytics', [
             'hashtagData' => $hashtagData,
+            'lastFetchedAt' => $lastFetchedAt,
+            'totalRefreshableSocials' => $totalRefreshableSocials,
             'churches' => $churches,
             'filteredChurches' => $filteredChurches,
             'growthOverTime' => $growthOverTimeChurch,

@@ -3,35 +3,9 @@
 @section('title', config('app.name') . ' — ' . __('dashboard.title'))
 
 @section('content')
-    <div class="mb-6 flex items-center justify-between">
-        <div>
-            <h1 class="mb-1 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{{ __('dashboard.heading') }}</h1>
-            <p class="text-sm text-slate-500 dark:text-slate-400">{{ $scopeLabel }}</p>
-        </div>
-
-        @can('trigger-refresh')
-            <div class="flex flex-col items-end gap-1.5">
-                <form
-                    method="POST"
-                    action="{{ route('socials.refresh-all') }}"
-                    data-confirm="{{ __('dashboard.refresh_confirm', ['count' => $totalSocials]) }}"
-                    data-progress-form
-                >
-                    @csrf
-                    <button
-                        type="submit"
-                        data-progress-button
-                        class="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
-                    >
-                        <x-icon name="arrow-path" class="h-4 w-4" />
-                        {{ __('dashboard.refresh_button') }}
-                    </button>
-                </form>
-                <p class="text-xs text-slate-400 dark:text-slate-500">
-                    {{ $lastFetchedAt ? __('dashboard.last_updated_at', ['time' => $lastFetchedAt->translatedFormat('d M Y H:i')]) : __('dashboard.last_updated_never') }}
-                </p>
-            </div>
-        @endcan
+    <div class="mb-6">
+        <h1 class="mb-1 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{{ __('dashboard.heading') }}</h1>
+        <p class="text-sm text-slate-500 dark:text-slate-400">{{ $scopeLabel }}</p>
     </div>
 
     <div class="mb-3 flex items-center justify-between">
