@@ -539,6 +539,22 @@ class ChurchDashboardController extends Controller
         return view('churches.auto-fetch-accounts', ['socials' => $socials]);
     }
 
+    /**
+     * "Akun Manual" — the mirror image of autoFetchAccounts() above (is_auto_fetch = false
+     * instead of true), so an admin can audit every manually-entered account's last update the
+     * same way they audit automatic ones.
+     */
+    public function manualAccounts()
+    {
+        $socials = $this->manualAccountsQuery()
+            ->with(['church', 'person', 'institution', 'union', 'conference'])
+            ->orderByRaw('last_fetched_at IS NULL DESC')
+            ->orderBy('last_fetched_at')
+            ->get();
+
+        return view('churches.manual-accounts', ['socials' => $socials]);
+    }
+
     public function personalMetricComparison(Request $request)
     {
         $metricLabels = ['reach' => 'Followers/Subscribers', 'views' => 'Views', 'likes' => 'Likes', 'posts' => 'Post / Video'];

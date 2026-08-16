@@ -849,6 +849,22 @@ trait BuildsLeaderboards
     }
 
     /**
+     * Every active, manually-entered account across all five owner types, scoped to what the
+     * viewer may see — the mirror image of autoFetchAccountsQuery() (is_auto_fetch = false
+     * instead of true), so an admin can audit every manual account's last entry the same way,
+     * on the "Akun Manual" list.
+     */
+    protected function manualAccountsQuery()
+    {
+        return $this->analyticsAnyOwnerScope(
+            ChurchSocial::query()
+                ->where('is_active', true)
+                ->where('is_auto_fetch', false)
+                ->ownerActive()
+        );
+    }
+
+    /**
      * Rank every church by a fair composite weekly-growth score.
      *
      * Each account's growth is measured as a percentage change (not a raw delta), so a

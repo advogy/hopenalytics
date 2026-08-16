@@ -214,6 +214,7 @@ class AccountController extends Controller
 
         $accountsNeedingAttention = $this->accountsNeedingAttentionQuery()->count();
         $autoFetchAccountsCount = $this->autoFetchAccountsQuery()->count();
+        $manualAccountsCount = $this->manualAccountsQuery()->count();
 
         // Active entities the current user manages that have never had a single social account
         // added — summed across the three entity types for the stat card; the detail page
@@ -226,6 +227,7 @@ class AccountController extends Controller
             'activeTab' => $activeTab,
             'accountsNeedingAttention' => $accountsNeedingAttention,
             'autoFetchAccountsCount' => $autoFetchAccountsCount,
+            'manualAccountsCount' => $manualAccountsCount,
             'entitiesWithoutSocials' => $entitiesWithoutSocials,
             'divisions' => $divisions,
             'unions' => $unions,

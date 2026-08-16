@@ -115,6 +115,7 @@ Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group
     Route::get('/directory', [ChurchDashboardController::class, 'directory'])->name('churches.directory')->middleware('can:view-directory');
     Route::get('/akun-bermasalah', [ChurchDashboardController::class, 'needsAttention'])->name('churches.needs-attention')->middleware('can:view-analytics');
     Route::get('/akun-otomatis', [ChurchDashboardController::class, 'autoFetchAccounts'])->name('churches.auto-fetch-accounts')->middleware('can:view-analytics');
+    Route::get('/akun-manual', [ChurchDashboardController::class, 'manualAccounts'])->name('churches.manual-accounts')->middleware('can:view-analytics');
     Route::get('/gereja/platform/{platform?}', [ChurchDashboardController::class, 'platformComparison'])->name('churches.platform-comparison')->middleware('can:view-analytics');
     Route::get('/gereja/hastag', [ChurchDashboardController::class, 'hashtagComparison'])->name('churches.hashtag-comparison')->middleware('can:view-analytics');
 
