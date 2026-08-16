@@ -45,6 +45,10 @@ class TikTokStatsFetcher
             'recent_video_plays' => (int) $videos->sum('playCount'),
             'recent_video_shares' => (int) $videos->sum('shareCount'),
             'raw_payload' => $items[0],
+            // The full video sample (not just $items[0]) — a free ride on the same call above,
+            // picked back out by HashtagCandidateExtractor for hashtag matching. Never persisted
+            // to church_stats itself; FetchSingleChurchData strips this key before saving.
+            '_recent_posts_raw' => $videos->all(),
         ];
     }
 }

@@ -17,6 +17,7 @@ return [
     'deactivate' => 'Deactivate',
     'delete_confirm' => 'Permanently delete hashtag ":tag"?',
 
+    'tab_label' => 'Hashtag',
     'comparison_title' => 'Hashtag Comparison',
     'comparison_subtitle' => 'Posts found for tracked hashtags, on Instagram, TikTok, and YouTube.',
     'comparison_link' => 'Hashtag Comparison',

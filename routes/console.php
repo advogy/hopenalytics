@@ -12,15 +12,10 @@ Artisan::command('inspire', function () {
 $settings = AppSetting::current();
 
 if ($settings->auto_fetch_enabled) {
+    // Hashtag matching is no longer a separate weekly job here — each account's own
+    // FetchSingleChurchData dispatches MatchAccountHashtags right after a successful fetch (see
+    // its own doc comment), so it already runs on this exact schedule without a second entry.
     Schedule::command('church-stats:fetch-all')
-        ->weeklyOn($settings->auto_fetch_day, $settings->auto_fetch_time)
-        ->timezone('Asia/Jakarta')
-        ->withoutOverlapping()
-        ->onOneServer();
-
-    // Same schedule as the account auto-fetch above, per the user's explicit call — hashtag
-    // tracking piggybacks on the existing weekly cadence rather than its own separate toggle.
-    Schedule::command('hashtags:fetch-all')
         ->weeklyOn($settings->auto_fetch_day, $settings->auto_fetch_time)
         ->timezone('Asia/Jakarta')
         ->withoutOverlapping()

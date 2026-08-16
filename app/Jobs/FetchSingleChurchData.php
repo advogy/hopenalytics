@@ -8,6 +8,7 @@ use App\Models\ChurchSocial;
 use App\Models\ChurchStat;
 use App\Services\SocialStats\ApifyCreditsExhaustedException;
 use App\Services\SocialStats\FacebookStatsFetcher;
+use App\Services\SocialStats\HashtagCandidateExtractor;
 use App\Services\SocialStats\InstagramStatsFetcher;
 use App\Services\SocialStats\TikTokStatsFetcher;
 use App\Services\SocialStats\XStatsFetcher;
@@ -58,6 +59,7 @@ class FetchSingleChurchData implements ShouldQueue
         TikTokStatsFetcher $tikTokStatsFetcher,
         FacebookStatsFetcher $facebookStatsFetcher,
         XStatsFetcher $xStatsFetcher,
+        HashtagCandidateExtractor $hashtagCandidateExtractor,
     ): void {
         try {
             $data = match ($this->churchSocial->platform) {
@@ -67,6 +69,14 @@ class FetchSingleChurchData implements ShouldQueue
                 SocialPlatform::Facebook => $this->fetchFacebook($facebookStatsFetcher),
                 SocialPlatform::X => $xStatsFetcher->fetch($this->churchSocial->handle),
             };
+
+            // Instagram/TikTok/Facebook's regular fetch above already returned a sample of the
+            // account's own recent content as a side effect (see HashtagCandidateExtractor's own
+            // doc comment) — pulled out here, before _recent_posts_raw (never a real ChurchStat
+            // column) would otherwise just get silently dropped by mass assignment below.
+            $hashtagCandidates = $hashtagCandidateExtractor->extract($this->churchSocial->platform, $data, (string) $this->churchSocial->handle);
+            $youtubeUploadsPlaylistId = $data['raw_payload']['contentDetails']['relatedPlaylists']['uploads'] ?? null;
+            unset($data['_recent_posts_raw']);
 
             ChurchStat::updateOrCreate(
                 [
@@ -81,6 +91,17 @@ class FetchSingleChurchData implements ShouldQueue
                 'last_fetch_status' => 'success',
                 'last_fetch_error' => null,
             ]);
+
+            // Instagram/TikTok/Facebook pass their already-fetched sample straight through (zero
+            // extra API calls); YouTube/X get null here and fetch their own recent content
+            // inside the job instead — but only once it's actually confirmed there's a hashtag
+            // to check for, since unlike the other three, that fetch always costs real quota/
+            // credits (see MatchAccountHashtags).
+            MatchAccountHashtags::dispatch(
+                $this->churchSocial,
+                in_array($this->churchSocial->platform, [SocialPlatform::Instagram, SocialPlatform::TikTok, SocialPlatform::Facebook], true) ? $hashtagCandidates : null,
+                $youtubeUploadsPlaylistId,
+            )->afterCommit();
         } catch (ApifyCreditsExhaustedException $e) {
             // Retrying won't help — the credit shortfall won't resolve itself within a few
             // seconds — so this skips FetchSingleChurchData's own retries via fail() (still

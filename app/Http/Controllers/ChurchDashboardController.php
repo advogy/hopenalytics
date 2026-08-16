@@ -1187,7 +1187,13 @@ class ChurchDashboardController extends Controller
                 fn ($org) => $org->socials->contains(fn ($social) => $social->platform->value === $selectedPlatform)
             ));
 
+        // The "Hastag" tab's own filter uses hashtag_platform (not platform) so picking a
+        // platform there doesn't also filter the other four tabs' shared platform query param —
+        // see hashtagComparisonData()'s doc comment.
+        $hashtagData = $this->hashtagComparisonData($request->query('hashtag'), $request->query('hashtag_platform'));
+
         return view('churches.analytics', [
+            'hashtagData' => $hashtagData,
             'churches' => $churches,
             'filteredChurches' => $filteredChurches,
             'growthOverTime' => $growthOverTimeChurch,
@@ -1858,7 +1864,7 @@ class ChurchDashboardController extends Controller
     public function hashtagComparison(Request $request)
     {
         return view('churches.hashtag-comparison', array_merge(
-            $this->hashtagComparisonData($request),
+            $this->hashtagComparisonData($request->query('hashtag'), $request->query('platform')),
             ['scope' => ComparisonScope::church()],
         ));
     }
@@ -1866,7 +1872,7 @@ class ChurchDashboardController extends Controller
     public function personalHashtagComparison(Request $request)
     {
         return view('churches.hashtag-comparison', array_merge(
-            $this->hashtagComparisonData($request),
+            $this->hashtagComparisonData($request->query('hashtag'), $request->query('platform')),
             ['scope' => ComparisonScope::personal()],
         ));
     }
@@ -1874,7 +1880,7 @@ class ChurchDashboardController extends Controller
     public function institutionHashtagComparison(Request $request)
     {
         return view('churches.hashtag-comparison', array_merge(
-            $this->hashtagComparisonData($request),
+            $this->hashtagComparisonData($request->query('hashtag'), $request->query('platform')),
             ['scope' => ComparisonScope::institution()],
         ));
     }
@@ -1882,21 +1888,24 @@ class ChurchDashboardController extends Controller
     public function organizationHashtagComparison(Request $request)
     {
         return view('churches.hashtag-comparison', array_merge(
-            $this->hashtagComparisonData($request),
+            $this->hashtagComparisonData($request->query('hashtag'), $request->query('platform')),
             ['scope' => ComparisonScope::organization()],
         ));
     }
 
     /**
-     * Shared by all four hashtagComparison*() methods above. $platforms is fixed to the three
-     * with a working hashtag-search fetcher (see FetchHashtagPosts) — Facebook never appears
-     * here since no hashtag_posts rows for it can ever exist.
+     * Shared by all four hashtagComparison*() methods above, and by analytics()'s "Hastag" tab
+     * (which reads its own filter values from hashtag_platform/hashtag instead of platform, so
+     * its filter form doesn't collide with the other four tabs' shared "platform" query param on
+     * that same page). $platforms follows the app-wide platform toggle (see
+     * AppSetting::enabledPlatformValues()) the same way every other analytics view does — a
+     * disabled platform's accounts are excluded from every ChurchSocial query app-wide (see its
+     * own enabledPlatform global scope), so they stop being fetched — and therefore stop being
+     * scanned for hashtag matches — too, keeping this summary table honest.
      */
-    private function hashtagComparisonData(Request $request): array
+    private function hashtagComparisonData(?string $selectedHashtagId, ?string $selectedPlatform): array
     {
-        $selectedHashtagId = $request->query('hashtag');
-        $selectedPlatform = $request->query('platform');
-        $platforms = ['instagram', 'tiktok', 'youtube'];
+        $platforms = AppSetting::current()->enabledPlatformValues();
 
         $hashtags = Hashtag::where('is_active', true)->orderBy('tag')->get();
 
@@ -1923,17 +1932,25 @@ class ChurchDashboardController extends Controller
             $platform => $rows->sum(fn ($row) => $row['counts'][$platform]),
         ]);
 
+        // Same "last updated" convention as the dashboard's own refresh-status line (see
+        // index()'s $lastFetchedAt) — last_seen_at is touched every time the weekly
+        // hashtags:fetch-all job re-detects a post as still up, so its max is the most recent
+        // sign the hashtag summary table actually reflects a real fetch run.
+        $lastUpdatedAtRaw = HashtagPost::max('last_seen_at');
+        $lastUpdatedAt = $lastUpdatedAtRaw ? Carbon::parse($lastUpdatedAtRaw) : null;
+
         $posts = HashtagPost::query()
-            ->with('hashtag')
+            ->with(['hashtag', 'churchSocial'])
             ->when($selectedHashtagId, fn ($q) => $q->where('hashtag_id', $selectedHashtagId))
             ->when($selectedPlatform, fn ($q) => $q->where('platform', $selectedPlatform))
             ->orderByDesc('posted_at')
-            ->limit(100)
-            ->get();
+            ->paginate(30, ['*'], 'hashtag_page')
+            ->withQueryString();
 
         return [
             'hashtags' => $hashtags,
             'platforms' => $platforms,
+            'lastUpdatedAt' => $lastUpdatedAt,
             'rows' => $rows,
             'grandTotal' => $rows->sum('total'),
             'grandTotalByPlatform' => $grandTotalByPlatform,

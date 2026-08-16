@@ -17,6 +17,7 @@ return [
     'deactivate' => 'Nonaktifkan',
     'delete_confirm' => 'Hapus hashtag ":tag" secara permanen?',
 
+    'tab_label' => 'Hastag',
     'comparison_title' => 'Perbandingan Hastag',
     'comparison_subtitle' => 'Post yang ditemukan dari hashtag yang dilacak, di Instagram, TikTok, dan YouTube.',
     'comparison_link' => 'Perbandingan Hastag',

@@ -7,7 +7,7 @@
     $viewsField = ['youtube' => 'views_count', 'instagram' => 'recent_reels_views', 'tiktok' => 'recent_video_plays'];
     $platformLabels = \App\Models\AppSetting::current()->enabledPlatformLabels();
 
-    $activeTab = in_array(request()->query('tab'), ['personal', 'institusi', 'gereja'], true) ? request()->query('tab') : 'organisasi';
+    $activeTab = in_array(request()->query('tab'), ['personal', 'institusi', 'gereja', 'hastag'], true) ? request()->query('tab') : 'organisasi';
 
     // Data Per * tables: a nasional-level viewer (or a plain member, whose analytics scope is
     // unscoped — see BuildsLeaderboards::analyticsChurchScope()) gets a 3-tier Uni > Daerah >
@@ -276,6 +276,7 @@
         <x-tab-button tab-key="gereja">{{ __('common.church') }}</x-tab-button>
         <x-tab-button tab-key="institusi">{{ __('common.institution') }}</x-tab-button>
         <x-tab-button tab-key="personal">{{ __('common.personal') }}</x-tab-button>
+        <x-tab-button tab-key="hastag">{{ __('hashtag.tab_label') }}</x-tab-button>
     </x-tab-bar>
 
     {{-- ===================== TAB: ORGANISASI ===================== --}}
@@ -295,13 +296,6 @@
                 >
                     <x-icon name="arrow-trending-up" class="h-4 w-4" />
                     {{ __('analytics.platform_comparison_organization') }}
-                </a>
-                <a
-                    href="{{ route('organizations.hashtag-comparison') }}"
-                    class="inline-flex items-center gap-1.5 rounded-lg border border-black/10 bg-white px-4 py-2 text-sm font-medium shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:hover:bg-slate-700"
-                >
-                    <x-icon name="hashtag" class="h-4 w-4" />
-                    {{ __('hashtag.comparison_link') }}
                 </a>
             </div>
             @can('browse-directory-analytics')
@@ -520,13 +514,6 @@
                 >
                     <x-icon name="arrow-trending-up" class="h-4 w-4" />
                     {{ __('analytics.platform_comparison_church') }}
-                </a>
-                <a
-                    href="{{ route('churches.hashtag-comparison') }}"
-                    class="inline-flex items-center gap-1.5 rounded-lg border border-black/10 bg-white px-4 py-2 text-sm font-medium shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:hover:bg-slate-700"
-                >
-                    <x-icon name="hashtag" class="h-4 w-4" />
-                    {{ __('hashtag.comparison_link') }}
                 </a>
             </div>
             @can('browse-directory-analytics')
@@ -751,13 +738,6 @@
                     <x-icon name="arrow-trending-up" class="h-4 w-4" />
                     {{ __('analytics.platform_comparison_institution') }}
                 </a>
-                <a
-                    href="{{ route('institutions.hashtag-comparison') }}"
-                    class="inline-flex items-center gap-1.5 rounded-lg border border-black/10 bg-white px-4 py-2 text-sm font-medium shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:hover:bg-slate-700"
-                >
-                    <x-icon name="hashtag" class="h-4 w-4" />
-                    {{ __('hashtag.comparison_link') }}
-                </a>
             </div>
             @can('browse-directory-analytics')
                 <x-export-button :url="route('export.institution-analytics.preview', array_filter(['institution_id' => $selectedInstitutionId, 'platform' => $selectedPlatform]))" />
@@ -969,13 +949,6 @@
                     <x-icon name="arrow-trending-up" class="h-4 w-4" />
                     {{ __('analytics.platform_comparison_personal') }}
                 </a>
-                <a
-                    href="{{ route('people.hashtag-comparison') }}"
-                    class="inline-flex items-center gap-1.5 rounded-lg border border-black/10 bg-white px-4 py-2 text-sm font-medium shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:hover:bg-slate-700"
-                >
-                    <x-icon name="hashtag" class="h-4 w-4" />
-                    {{ __('hashtag.comparison_link') }}
-                </a>
             </div>
             @can('browse-directory-analytics')
                 <x-export-button :url="route('export.personal-analytics.preview', array_filter(['person_id' => $selectedPersonId, 'platform' => $selectedPlatform]))" />
@@ -1167,6 +1140,29 @@
 
             @include('partials.hide-empty-rows')
         @endif
+    </div>
+
+    {{-- ===================== TAB: HASTAG ===================== --}}
+    <div data-tab-panel="hastag">
+        <div class="mb-6">
+            <h2 class="text-lg font-bold text-slate-900 dark:text-white">{{ __('hashtag.comparison_title') }}</h2>
+            <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('hashtag.comparison_subtitle') }}</p>
+        </div>
+
+        @include('partials.hashtag-comparison-content', [
+            'hashtags' => $hashtagData['hashtags'],
+            'platforms' => $hashtagData['platforms'],
+            'lastUpdatedAt' => $hashtagData['lastUpdatedAt'],
+            'rows' => $hashtagData['rows'],
+            'grandTotalByPlatform' => $hashtagData['grandTotalByPlatform'],
+            'grandTotal' => $hashtagData['grandTotal'],
+            'posts' => $hashtagData['posts'],
+            'selectedHashtagId' => $hashtagData['selectedHashtagId'],
+            'selectedPlatform' => $hashtagData['selectedPlatform'],
+            'clearUrl' => route('churches.analytics', ['tab' => 'hastag']),
+            'platformParam' => 'hashtag_platform',
+            'hiddenFields' => ['tab' => 'hastag'],
+        ])
     </div>
 
     @include('partials.tab-script', ['activeTab' => $activeTab])
