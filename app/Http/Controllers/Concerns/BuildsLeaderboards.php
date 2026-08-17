@@ -7,6 +7,7 @@ use App\Models\AppSetting;
 use App\Models\ChurchSocial;
 use App\Models\Conference;
 use App\Models\Division;
+use App\Models\Goal;
 use App\Models\Union;
 use Illuminate\Support\Collection;
 
@@ -334,6 +335,106 @@ trait BuildsLeaderboards
             )
             ->when($scoped, fn ($q) => $this->analyticsOrganizationScope($q))
             ->get();
+    }
+
+    /**
+     * The dashboard's Goal widget rows — one per metric (reach/views/likes/posts), each showing
+     * the viewer's own fair-share target against their own scope's actual current total.
+     *
+     * The national target (Kelola Tujuan) is divided evenly across every active Union, and each
+     * Union's share is divided evenly again across its own active Conferences — a uni-level
+     * viewer sees their Union's third; a daerah/gereja-level viewer (gereja gets the same
+     * Daerah/Konferens breadth as admin_daerah elsewhere on this dashboard) sees their
+     * Conference's share of that. Institusi-level viewers get nothing back (empty collection) —
+     * institutions sit outside the nasional→uni→daerah chain (see UserRole::level()), so there's
+     * no natural fair-share scope for them here.
+     *
+     * Protected here (not private on one controller) since both ChurchDashboardController's
+     * admin "Ringkasan" dashboard AND PersonController's personal dashboard (people/show —
+     * "Tujuan Bersama") call this with the SAME viewer-scoping shape, just different callers; a
+     * role === null viewer always lands on the isGlobal branch below regardless of which page
+     * called it, so this needs no change to work for a plain member's own dashboard too.
+     *
+     * $churchSocials/$institutionSocials/$personalSocials/$organizationSocials are the SAME
+     * already-viewer-scoped collections the caller computed elsewhere (via
+     * activeSocials()/activeSocialsInstitution()/activeSocialsPersonal()/
+     * activeSocialsOrganization() above), reused here so the "current" total matches the
+     * viewer's own scope without re-querying.
+     */
+    protected function goalProgressRows(Collection $churchSocials, Collection $institutionSocials, Collection $personalSocials, Collection $organizationSocials): Collection
+    {
+        $user = auth()->user();
+        $level = $user->role?->level();
+        $isGlobal = $user->role === null || ($user->role?->hasGlobalAccess() ?? false) || $level === 'global';
+        // Admin/Pimpinan Nasional: sums the fair share of every Union they're assigned to,
+        // rather than the full national total (Global) or a single Union's third (Uni-level) —
+        // see User::assignedUnions().
+        $isScopedNasional = ! $isGlobal && $level === 'nasional';
+        // Admin/Pimpinan Divisi: same fair-share shape as Nasional above, just counting only
+        // the active Unions that belong to their own Division instead of an arbitrary set.
+        $isDivisi = ! $isGlobal && ! $isScopedNasional && $level === 'divisi';
+        $isUni = ! $isGlobal && ! $isScopedNasional && ! $isDivisi && $level === 'uni';
+        $isDaerahOrGereja = ! $isGlobal && ! $isScopedNasional && ! $isDivisi && ! $isUni && in_array($level, ['daerah', 'gereja'], true);
+
+        if (! $isGlobal && ! $isScopedNasional && ! $isDivisi && ! $isUni && ! $isDaerahOrGereja) {
+            return collect();
+        }
+
+        $unionCount = Union::where('is_active', true)->count();
+        $assignedUnionCount = $isScopedNasional ? count($user->assignedUnionIds()) : 0;
+        $divisionUnionCount = $isDivisi ? Union::where('is_active', true)->where('division_id', $user->division_id)->count() : 0;
+
+        // admin_gereja has no $user->conference of its own (only $user->church) — same
+        // conference_id derivation as analyticsChurchScope()'s gereja-level branch.
+        $conference = $user->conference ?? $user->church?->conference;
+
+        $scopeLabel = match (true) {
+            $isGlobal => __('goals.scope_global'),
+            $isScopedNasional => __('goals.scope_nasional_scoped', ['names' => $user->assignedUnions()->pluck('name')->implode(', ') ?: '—']),
+            $isDivisi => __('goals.scope_divisi', ['name' => $user->division?->name ?? '—']),
+            $isUni => __('goals.scope_uni', ['name' => $user->union?->name ?? '—']),
+            default => __('goals.scope_daerah', ['name' => $conference?->name ?? '—']),
+        };
+
+        // Personal and Organisasi (union/conference-owned) accounts count toward "current" too,
+        // so this total matches the Distribution Channels widget's total reach — union/daerah
+        // target splitting above is unaffected, it only divides $goal->target_value, never
+        // re-derives it from this total.
+        $combinedSocials = $churchSocials->merge($institutionSocials)->merge($personalSocials)->merge($organizationSocials);
+
+        return collect(Goal::METRICS)->map(function ($metric) use ($combinedSocials, $isGlobal, $isScopedNasional, $isDivisi, $isUni, $unionCount, $assignedUnionCount, $divisionUnionCount, $conference, $scopeLabel) {
+            $goal = Goal::forMetric($metric);
+
+            $target = match (true) {
+                $isGlobal => $goal->target_value,
+                $isScopedNasional => $unionCount > 0 ? (int) round($goal->target_value / $unionCount * $assignedUnionCount) : 0,
+                $isDivisi => $unionCount > 0 ? (int) round($goal->target_value / $unionCount * $divisionUnionCount) : 0,
+                $isUni => $unionCount > 0 ? (int) round($goal->target_value / $unionCount) : 0,
+                default => (function () use ($goal, $unionCount, $conference) {
+                    if ($unionCount === 0) {
+                        return 0;
+                    }
+
+                    $unionShare = $goal->target_value / $unionCount;
+                    $conferenceCount = $conference?->union?->conferences()->where('is_active', true)->count() ?? 0;
+
+                    return $conferenceCount > 0 ? (int) round($unionShare / $conferenceCount) : 0;
+                })(),
+            };
+
+            [$filteredSocials, $fieldResolver] = $this->metricDefinition($metric, $combinedSocials);
+            $current = $filteredSocials->sum(fn ($social) => $social->latestStat?->{$fieldResolver($social)} ?? 0);
+
+            return [
+                'metric' => $metric,
+                'label' => __('goals.metric_'.$metric),
+                'year' => $goal->target_year,
+                'target' => $target,
+                'current' => $current,
+                'percent' => $target > 0 ? round(min($current / $target, 1) * 100, 1) : 0,
+                'scopeLabel' => $scopeLabel,
+            ];
+        })->values();
     }
 
     /**

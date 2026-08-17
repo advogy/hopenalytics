@@ -43,14 +43,17 @@ class ProfileController extends Controller
             $person = Person::create(['user_id' => $user->id, 'name' => $user->name]);
         }
 
-        // The "Wilayah" tab reuses the Lengkapi Profil fields (see
-        // CompleteProfileController) so a member who skipped it during registration can
-        // still complete it later. It's plain-member-only — union_id/conference_id/church_id
-        // double as an assigned admin's scope once they hold a role, so editing it here would
-        // risk silently changing that assignment (see CompleteProfileController::store()).
-        $canEditRegion = $user->role === null;
+        // The Wilayah section (folded into the "Info Personal" tab alongside the Person fields
+        // — see profile/edit.blade.php) reuses the Lengkapi Profil fields (see
+        // CompleteProfileController) so a member who skipped it during registration can still
+        // complete it later — writing directly to $person's own union_id/conference_id/
+        // church_id (see CompleteProfileController::store()). Plain-member-only: a role-holder's
+        // own union_id/conference_id/church_id means their assigned admin scope instead (a
+        // completely different, User-level field — see UserAssignmentController::promote()),
+        // so editing that here would risk silently changing an admin assignment.
+        $canEditRegion = $user->role === null && $person !== null;
 
-        $activeTab = in_array($request->query('tab'), ['personal', 'sosial', 'username', 'password', 'wilayah'], true)
+        $activeTab = in_array($request->query('tab'), ['personal', 'sosial', 'username', 'password'], true)
             ? $request->query('tab')
             : 'username';
 

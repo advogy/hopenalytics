@@ -61,17 +61,28 @@ class UserAssignmentController extends Controller
         // "their own region" to filter by. A scoped Admin Nasional only sees unassigned members
         // who self-reported a union within their own assigned set. Admin Uni/Daerah only see
         // members who self-reported (or were previously assigned) a union/conference matching
-        // their own, via the "Lengkapi Profil" step (see CompleteProfileController) — anyone
-        // who skipped it stays invisible to regional admins until they fill it in.
+        // their own, via the "Lengkapi Profil" step / Wilayah section (see
+        // CompleteProfileController) — anyone who skipped it stays invisible to regional admins
+        // until they fill it in. The report itself lives on the member's own linked Person (not
+        // the User row — see CompleteProfileController::store()), so every branch below reaches
+        // through that relation; a Person may report a bare union_id OR a conference_id (never
+        // both — see PersonController::resolveOrgScope()), so matching "does this person fall
+        // under Union X" always checks both, mirroring Person::scopeVisibleTo()'s own shape.
         $unassigned = User::query()
             ->whereNull('role')
             ->when(
                 $targetLevel === 'divisi' && $actor->role === UserRole::AdminNasional,
-                fn ($q) => $q->whereIn('union_id', $assignedUnionIds)
+                fn ($q) => $q->whereHas('person', fn ($q2) => $q2
+                    ->whereIn('union_id', $assignedUnionIds)
+                    ->orWhereHas('conference', fn ($q3) => $q3->whereIn('union_id', $assignedUnionIds)))
             )
-            ->when($targetLevel === 'uni', fn ($q) => $q->whereHas('union', fn ($q2) => $q2->where('division_id', $actor->division_id)))
-            ->when($targetLevel === 'daerah', fn ($q) => $q->where('union_id', $actor->union_id))
-            ->when($targetLevel === 'gereja', fn ($q) => $q->where('conference_id', $actor->conference_id))
+            ->when($targetLevel === 'uni', fn ($q) => $q->whereHas('person', fn ($q2) => $q2
+                ->whereHas('union', fn ($q3) => $q3->where('division_id', $actor->division_id))
+                ->orWhereHas('conference.union', fn ($q3) => $q3->where('division_id', $actor->division_id))))
+            ->when($targetLevel === 'daerah', fn ($q) => $q->whereHas('person', fn ($q2) => $q2
+                ->where('union_id', $actor->union_id)
+                ->orWhereHas('conference', fn ($q3) => $q3->where('union_id', $actor->union_id))))
+            ->when($targetLevel === 'gereja', fn ($q) => $q->whereHas('person', fn ($q2) => $q2->where('conference_id', $actor->conference_id)))
             ->when($search, fn ($q) => $q->where(
                 fn ($q2) => $q2->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%")
             ))

@@ -28,10 +28,9 @@
         <x-tab-button tab-key="password">Kata Sandi</x-tab-button>
         @if ($person)
             <x-tab-button tab-key="personal">Info Personal</x-tab-button>
-            <x-tab-button tab-key="sosial">Media Sosial</x-tab-button>
         @endif
-        @if ($canEditRegion)
-            <x-tab-button tab-key="wilayah">Wilayah</x-tab-button>
+        @if ($person)
+            <x-tab-button tab-key="sosial">Media Sosial</x-tab-button>
         @endif
     </x-tab-bar>
 
@@ -67,20 +66,53 @@
 
     @if ($person)
         <div data-tab-panel="personal" class="max-w-lg rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/5 dark:bg-slate-900">
-            <form method="POST" action="{{ route('people.update', $person) }}">
+            {{-- One form, one Simpan button — Lokasi and Wilayah both end up on this same Person
+                 record now (see PersonController::update()/resolveOrgScope()), so there's no
+                 reason left to make this two separate submits the way it briefly was when
+                 Wilayah still wrote to the User row instead. --}}
+            <form method="POST" action="{{ route('people.update', $person) }}" data-disable-on-submit>
                 @csrf
                 @method('PUT')
                 <input type="hidden" name="name" value="{{ $person->name }}">
 
-                <x-form-field id="person_city" name="city" label="Kota" hint="opsional, untuk peta" :value="old('city', $person->city)" />
-                <x-coordinate-fields :latitude="$person->latitude" :longitude="$person->longitude" />
+                <div class="{{ $canEditRegion ? 'mb-6 border-b border-black/5 pb-6 dark:border-white/5' : '' }}">
+                    {{-- Sub-heading only shown alongside the Wilayah section below — on its own,
+                         "Lokasi" under a tab already called "Info Personal" would just repeat
+                         itself. --}}
+                    @if ($canEditRegion)
+                        <h2 class="mb-1 text-sm font-bold text-slate-900 dark:text-white">Lokasi</h2>
+                    @endif
 
-                <button type="submit" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700">
+                    <x-form-field id="person_city" name="city" label="Kota" hint="opsional, untuk peta" :value="old('city', $person->city)" />
+                    <x-coordinate-fields :latitude="$person->latitude" :longitude="$person->longitude" />
+                </div>
+
+                @if ($canEditRegion)
+                    <div>
+                        <h2 class="mb-1 text-sm font-bold text-slate-900 dark:text-white">Wilayah</h2>
+                        <p class="mb-4 text-sm text-slate-500 dark:text-slate-400">
+                            Uni, Daerah, dan Gereja Anda saat ini — supaya admin di wilayah Anda bisa menemukan Anda.
+                        </p>
+
+                        @include('partials.region-fields', [
+                            'unions' => $unions,
+                            'conferences' => $conferences,
+                            'churches' => $churches,
+                            'selectedUnionId' => $person->union_id,
+                            'selectedConferenceId' => $person->conference_id,
+                            'selectedChurchName' => $person->church?->name,
+                        ])
+                    </div>
+                @endif
+
+                <button type="submit" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70">
                     Simpan
                 </button>
             </form>
         </div>
+    @endif
 
+    @if ($person)
         <div data-tab-panel="sosial" class="max-w-lg rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/5 dark:bg-slate-900">
             {{-- This tab is where edit/delete of your own accounts actually happens now — data
                  display (stats, growth score, history) lives on people.show instead, reached
@@ -106,31 +138,6 @@
                     @endforeach
                 </ul>
             @endif
-        </div>
-    @endif
-
-    @if ($canEditRegion)
-        <div data-tab-panel="wilayah" class="max-w-lg rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/5 dark:bg-slate-900">
-            <p class="mb-4 text-sm text-slate-500 dark:text-slate-400">
-                Uni, Daerah, dan Gereja Anda saat ini — supaya admin di wilayah Anda bisa menemukan Anda.
-            </p>
-
-            <form method="POST" action="{{ route('profile.complete.store') }}" data-disable-on-submit>
-                @csrf
-
-                @include('partials.region-fields', [
-                    'unions' => $unions,
-                    'conferences' => $conferences,
-                    'churches' => $churches,
-                    'selectedUnionId' => $user->union_id,
-                    'selectedConferenceId' => $user->conference_id,
-                    'selectedChurchName' => $user->church?->name,
-                ])
-
-                <button type="submit" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70">
-                    Simpan
-                </button>
-            </form>
         </div>
     @endif
 

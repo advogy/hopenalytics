@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Enums\UserRole;
 use App\Http\Controllers\Concerns\BuildsLeaderboards;
+use App\Http\Controllers\Concerns\FindsOrCreatesChurch;
+use App\Models\Church;
+use App\Models\ChurchSocial;
 use App\Models\Conference;
 use App\Models\Person;
 use App\Models\Union;
@@ -15,10 +18,11 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Validator;
 
 class PersonController extends Controller
 {
-    use BuildsLeaderboards;
+    use BuildsLeaderboards, FindsOrCreatesChurch;
 
     /**
      * The list-with-search-and-pagination view ("Kelola Akun"'s Personal tab) lives in
@@ -37,6 +41,52 @@ class PersonController extends Controller
 
         $growthScore = $this->growthScoreHistory($person->socials);
 
+        // The dashboard-only widgets below (Tujuan Bersama, Pertumbuhan Wilayah, onboarding) are
+        // only ever relevant to the Person's own linked account looking at their own page (see
+        // MyAccountController::index() / akun-saya) — computed here so they never run the extra
+        // queries when this same view renders for an admin looking at someone else's Person.
+        $isOwnPerson = auth()->check() && $person->user_id === auth()->id();
+
+        $goalRows = collect();
+        $hasRegion = false;
+        $regionLabel = null;
+        $regionScoreHistory = [];
+        $regionScoreMetrics = [];
+        $regionScoreBreakdown = [];
+        $regionScoreSampleCount = 0;
+        $regionScoreSampleSum = 0;
+
+        if ($isOwnPerson) {
+            $hasRegion = (bool) ($person->union_id || $person->conference_id || $person->church_id);
+
+            // "Tujuan Bersama" — reuses the exact same Goal-progress logic the admin "Ringkasan"
+            // dashboard uses (BuildsLeaderboards::goalProgressRows()), scoped by the CURRENT
+            // VIEWER's own role — for a role === null member that's already the isGlobal branch
+            // (the one shared national goal), no extra logic needed here.
+            $goalRows = $this->goalProgressRows(
+                $this->activeSocials(),
+                $this->activeSocialsInstitution(),
+                $this->activeSocialsPersonal(),
+                $this->activeSocialsOrganization(),
+            );
+
+            // "Pertumbuhan Wilayah Anda" — a different concept from the goal rows above: this is
+            // scoped to the Person's own self-reported union/conference/church, not the viewer's
+            // admin role, so an admin who also happens to attend a specific Gereja sees both
+            // their admin-scope goal share AND their own congregation's growth, independently.
+            $regionScope = $this->resolvePersonRegionSocials($person);
+
+            if ($regionScope) {
+                $regionLabel = $regionScope['label'];
+                $regionGrowth = $this->growthScoreHistory($regionScope['socials']);
+                $regionScoreHistory = $regionGrowth['history'];
+                $regionScoreMetrics = $regionGrowth['metrics'];
+                $regionScoreBreakdown = $regionGrowth['breakdown'];
+                $regionScoreSampleCount = $regionGrowth['sampleCount'];
+                $regionScoreSampleSum = $regionGrowth['sampleSum'];
+            }
+        }
+
         return view('people.show', [
             'person' => $person,
             'history' => $history,
@@ -45,7 +95,67 @@ class PersonController extends Controller
             'scoreBreakdown' => $growthScore['breakdown'],
             'scoreSampleCount' => $growthScore['sampleCount'],
             'scoreSampleSum' => $growthScore['sampleSum'],
+            'isOwnPerson' => $isOwnPerson,
+            'goalRows' => $goalRows,
+            'hasRegion' => $hasRegion,
+            'regionLabel' => $regionLabel,
+            'regionScoreHistory' => $regionScoreHistory,
+            'regionScoreMetrics' => $regionScoreMetrics,
+            'regionScoreBreakdown' => $regionScoreBreakdown,
+            'regionScoreSampleCount' => $regionScoreSampleCount,
+            'regionScoreSampleSum' => $regionScoreSampleSum,
         ]);
+    }
+
+    /**
+     * Most-specific-wins (church > conference > union) rollup of the ChurchSocial accounts
+     * within a Person's own self-reported region — same whereHas('conference', ...)/
+     * whereHas('church.conference', ...) idiom as Church::scopeVisibleTo(), just keyed off the
+     * Person's own field instead of the viewer's admin scope. Null when the Person has no region
+     * set, or whatever it points to was since deleted.
+     */
+    private function resolvePersonRegionSocials(Person $person): ?array
+    {
+        if ($person->church_id) {
+            $church = Church::with('conference')->find($person->church_id);
+
+            if (! $church) {
+                return null;
+            }
+
+            return [
+                'label' => $church->conference ? "{$church->name} ({$church->conference->name})" : $church->name,
+                'socials' => ChurchSocial::where('church_id', $church->id)->where('is_active', true)->get(),
+            ];
+        }
+
+        if ($person->conference_id) {
+            $conference = Conference::with('union')->find($person->conference_id);
+
+            if (! $conference) {
+                return null;
+            }
+
+            return [
+                'label' => $conference->union ? "{$conference->name} ({$conference->union->name})" : $conference->name,
+                'socials' => ChurchSocial::whereHas('church', fn ($q) => $q->where('conference_id', $conference->id))->where('is_active', true)->get(),
+            ];
+        }
+
+        if ($person->union_id) {
+            $union = Union::find($person->union_id);
+
+            if (! $union) {
+                return null;
+            }
+
+            return [
+                'label' => $union->name,
+                'socials' => ChurchSocial::whereHas('church.conference', fn ($q) => $q->where('union_id', $union->id))->where('is_active', true)->get(),
+            ];
+        }
+
+        return null;
     }
 
     public function create(Request $request)
@@ -93,7 +203,7 @@ class PersonController extends Controller
             $this->applyGeocoding($data, $geocoding);
         }
 
-        $data = array_merge($data, $this->resolveOrgScope($request, null, null));
+        $data = array_merge($data, $this->resolveOrgScope($request, null, null, null, null));
 
         $person = Person::create($data);
 
@@ -112,12 +222,26 @@ class PersonController extends Controller
 
     public function update(Request $request, Person $person, GeocodingService $geocoding): RedirectResponse
     {
-        $data = $request->validate([
+        // A self-editing member always lands back on Profil Saya's own "Info Personal" tab —
+        // both on success and on a validation failure below — rather than the read-only
+        // people.show page an admin gets redirected to instead; tab switching there is
+        // client-side only (see partials/tab-script.blade.php), so the browser's own "previous
+        // URL" can't be trusted to still say ?tab=personal by the time this request lands.
+        $isOwnPerson = $person->user_id === $request->user()->id;
+        $redirectTarget = $isOwnPerson ? route('profile.edit', ['tab' => 'personal']) : route('people.show', $person);
+
+        $validator = Validator::make($request->all(), [
             'name' => ['required', 'string', 'max:255'],
             'city' => ['nullable', 'string', 'max:255'],
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
         ]);
+
+        if ($validator->fails()) {
+            return redirect($redirectTarget)->withErrors($validator)->withInput();
+        }
+
+        $data = $validator->validated();
 
         $data['latitude'] = $request->filled('latitude') ? (float) $data['latitude'] : null;
         $data['longitude'] = $request->filled('longitude') ? (float) $data['longitude'] : null;
@@ -130,7 +254,7 @@ class PersonController extends Controller
             $this->applyGeocoding($data, $geocoding);
         }
 
-        $data = array_merge($data, $this->resolveOrgScope($request, $person->union_id, $person->conference_id));
+        $data = array_merge($data, $this->resolveOrgScope($request, $person->union_id, $person->conference_id, $person->church_id, $person->user_id));
 
         $person->update($data);
 
@@ -139,62 +263,111 @@ class PersonController extends Controller
         // kind of thing this log is for, even when the actor happens to also hold a role
         // elsewhere. Editing anyone else's Person always implies a real non-read-only role
         // already (see PersonPolicy::update()), so no extra role check is needed here.
-        if ($person->user_id !== $request->user()->id) {
+        if (! $isOwnPerson) {
             AuditLogger::log('person.updated', $person, "Memperbarui data Personal \"{$person->name}\".");
         }
 
-        return redirect()->route('people.show', $person)->with('status', __('entity.person_updated', ['name' => $person->name]));
+        return redirect($redirectTarget)->with('status', __('entity.person_updated', ['name' => $person->name]));
     }
 
     /**
      * Never trust a client-submitted org assignment (mirrors ChurchController's
      * resolveConferenceId() / Admin\InstitutionController's resolveRegion()). A Person may be
-     * independent (both null, decision #2), scoped to a Union, or scoped to a Conference — never
-     * both at once. The scope-picker UI (see personOrgScopeData()) submits union_id/conference_id
-     * accordingly; every branch below re-validates whatever's submitted against the actor's own
-     * reach rather than trusting it outright.
+     * independent (all three null, decision #2), scoped to a Union, or scoped to a
+     * Conference — never union_id and conference_id both at once. The scope-picker UI (see
+     * personOrgScopeData()) submits union_id/conference_id accordingly; every admin-facing
+     * branch below re-validates whatever's submitted against the actor's own reach rather than
+     * trusting it outright — except the self-report branch (see resolveSelfReportedScope()),
+     * the one case where there's no "actor's own scope" to check against.
      */
-    private function resolveOrgScope(Request $request, ?int $currentUnionId, ?int $currentConferenceId): array
+    private function resolveOrgScope(Request $request, ?int $currentUnionId, ?int $currentConferenceId, ?int $currentChurchId, ?int $personUserId): array
     {
         $user = $request->user();
 
-        // A self-registered member editing their own Person (PersonPolicy's self-ownership
-        // carve-out) holds no role and can never assign an org scope — they can only ever
-        // stay independent (decision #2).
+        // A member editing their own linked Person — Profil Saya's "Info Personal" tab folds
+        // the Wilayah section into this very same form/submit (see profile/edit.blade.php), so
+        // this is the one branch that trusts the submission outright: free choice of any Uni/
+        // Daerah/Gereja, same as the original standalone Lengkapi Profil interstitial always
+        // allowed (see CompleteProfileController::store()) — there's no "actor's own scope" to
+        // validate a member's own self-report against.
+        if ($personUserId !== null && $personUserId === $user->id) {
+            return $this->resolveSelfReportedScope($request, $currentUnionId, $currentConferenceId, $currentChurchId);
+        }
+
+        // Linked to a DIFFERENT user — that user's own Wilayah section is the only place this
+        // Person's scope is ever edited, so nobody else (admin included) changes it here.
+        if ($personUserId !== null) {
+            return ['union_id' => $currentUnionId, 'conference_id' => $currentConferenceId, 'church_id' => $currentChurchId];
+        }
+
+        // A self-registered member editing an unlinked Person holds no role and can never
+        // assign its org scope (decision #2) — in practice unreachable, since PersonPolicy
+        // never lets a role === null actor near a Person that isn't their own, but stays as a
+        // defensive fallback.
         if ($user->role === null) {
-            return ['union_id' => $currentUnionId, 'conference_id' => $currentConferenceId];
+            return ['union_id' => $currentUnionId, 'conference_id' => $currentConferenceId, 'church_id' => $currentChurchId];
         }
 
         $submittedUnionId = $request->filled('union_id') ? (int) $request->input('union_id') : null;
         $submittedConferenceId = $request->filled('conference_id') ? (int) $request->input('conference_id') : null;
 
         return match ($user->role->level()) {
-            'daerah' => ['union_id' => null, 'conference_id' => $user->conference_id],
+            'daerah' => ['union_id' => null, 'conference_id' => $user->conference_id, 'church_id' => $currentChurchId],
             // A uni-level admin can only ever narrow a Person down to a Daerah within their own
             // Union, or leave it at their own Union — never past it, and never back out to fully
             // independent (matches Admin\InstitutionController::resolveRegion()'s uni arm, which
             // trusts $user->union_id directly rather than requiring the form to round-trip it).
             'uni' => $submittedConferenceId && Conference::whereKey($submittedConferenceId)->where('union_id', $user->union_id)->exists()
-                ? ['union_id' => null, 'conference_id' => $submittedConferenceId]
-                : ['union_id' => $user->union_id, 'conference_id' => null],
+                ? ['union_id' => null, 'conference_id' => $submittedConferenceId, 'church_id' => $currentChurchId]
+                : ['union_id' => $user->union_id, 'conference_id' => null, 'church_id' => $currentChurchId],
             'divisi' => match (true) {
                 $submittedConferenceId && Conference::whereKey($submittedConferenceId)->whereHas('union', fn ($q) => $q->where('division_id', $user->division_id))->exists()
-                    => ['union_id' => null, 'conference_id' => $submittedConferenceId],
+                    => ['union_id' => null, 'conference_id' => $submittedConferenceId, 'church_id' => $currentChurchId],
                 $submittedUnionId && Union::whereKey($submittedUnionId)->where('division_id', $user->division_id)->exists()
-                    => ['union_id' => $submittedUnionId, 'conference_id' => null],
-                default => ['union_id' => $currentUnionId, 'conference_id' => $currentConferenceId],
+                    => ['union_id' => $submittedUnionId, 'conference_id' => null, 'church_id' => $currentChurchId],
+                default => ['union_id' => $currentUnionId, 'conference_id' => $currentConferenceId, 'church_id' => $currentChurchId],
             },
             'nasional' => match (true) {
                 $submittedConferenceId && Conference::whereKey($submittedConferenceId)->whereIn('union_id', $user->assignedUnionIds())->exists()
-                    => ['union_id' => null, 'conference_id' => $submittedConferenceId],
+                    => ['union_id' => null, 'conference_id' => $submittedConferenceId, 'church_id' => $currentChurchId],
                 $submittedUnionId && in_array($submittedUnionId, $user->assignedUnionIds(), true)
-                    => ['union_id' => $submittedUnionId, 'conference_id' => null],
-                default => ['union_id' => $currentUnionId, 'conference_id' => $currentConferenceId],
+                    => ['union_id' => $submittedUnionId, 'conference_id' => null, 'church_id' => $currentChurchId],
+                default => ['union_id' => $currentUnionId, 'conference_id' => $currentConferenceId, 'church_id' => $currentChurchId],
             },
             default => $submittedUnionId || $submittedConferenceId
-                ? ['union_id' => $submittedUnionId, 'conference_id' => $submittedConferenceId]
-                : ['union_id' => $currentUnionId, 'conference_id' => $currentConferenceId],
+                ? ['union_id' => $submittedUnionId, 'conference_id' => $submittedConferenceId, 'church_id' => $currentChurchId]
+                : ['union_id' => $currentUnionId, 'conference_id' => $currentConferenceId, 'church_id' => $currentChurchId],
         };
+    }
+
+    /**
+     * The one resolveOrgScope() branch that trusts the submission outright — a member editing
+     * their own linked Person's Wilayah section has no "actor's own scope" to be validated
+     * against, unlike every admin-facing branch above. Falls back to preserving whatever was
+     * already there if union_id/conference_id are missing or don't actually pair up (a
+     * Conference always belongs to exactly one Union) — the same "never silently clear on a bad
+     * submission" caution every branch above already follows, rather than treating an
+     * incomplete/malformed request as "clear it back to independent".
+     */
+    private function resolveSelfReportedScope(Request $request, ?int $currentUnionId, ?int $currentConferenceId, ?int $currentChurchId): array
+    {
+        $unchanged = ['union_id' => $currentUnionId, 'conference_id' => $currentConferenceId, 'church_id' => $currentChurchId];
+
+        if (! $request->filled('union_id') || ! $request->filled('conference_id')) {
+            return $unchanged;
+        }
+
+        $conference = Conference::find((int) $request->input('conference_id'));
+
+        if (! $conference || $conference->union_id !== (int) $request->input('union_id')) {
+            return $unchanged;
+        }
+
+        $church = $request->filled('church_name')
+            ? $this->findOrCreateChurch($conference->id, (string) $request->input('church_name'))
+            : null;
+
+        return ['union_id' => null, 'conference_id' => $conference->id, 'church_id' => $church?->id ?? $currentChurchId];
     }
 
     /**
@@ -319,6 +492,10 @@ class PersonController extends Controller
 
         abort_if(! $user, 422, 'Pengguna tidak ditemukan atau sudah tertaut ke Personal lain.');
 
+        // Whatever region this Person already had (admin-set, or blank) stays as-is — linking
+        // doesn't move any data around anymore, since Person is already the sole place a
+        // member's own region lives (see CompleteProfileController::store()); the newly-linked
+        // user can now change it themselves going forward, from their own Wilayah section.
         $person->update(['user_id' => $user->id]);
 
         return redirect()->route('people.edit', $person)->with('status', __('entity.person_linked', ['name' => $person->name, 'user' => $user->name]));

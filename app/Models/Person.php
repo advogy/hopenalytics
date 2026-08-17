@@ -12,7 +12,7 @@ class Person extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['union_id', 'conference_id', 'user_id', 'name', 'is_active', 'city', 'latitude', 'longitude', 'geocoded_at'];
+    protected $fillable = ['union_id', 'conference_id', 'church_id', 'user_id', 'name', 'is_active', 'city', 'latitude', 'longitude', 'geocoded_at'];
 
     protected $casts = [
         'is_active' => 'boolean',
@@ -29,6 +29,16 @@ class Person extends Model
     public function conference(): BelongsTo
     {
         return $this->belongsTo(Conference::class);
+    }
+
+    /**
+     * Which Gereja this Person reported at Lengkapi Profil / the Wilayah section of Profil
+     * Saya — purely a discovery aid (see UserAssignmentController::index()'s $unassigned query),
+     * not itself used by scopeVisibleTo() below, which only ever needs union_id/conference_id.
+     */
+    public function church(): BelongsTo
+    {
+        return $this->belongsTo(Church::class);
     }
 
     public function user(): BelongsTo

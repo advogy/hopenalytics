@@ -2,28 +2,46 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\FindsOrCreatesChurch;
 use App\Models\Church;
 use App\Models\Conference;
 use App\Models\Union;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 
 class CompleteProfileController extends Controller
 {
+    use FindsOrCreatesChurch;
+
     /**
      * A one-time interstitial shown right after email verification (see
-     * RegisterController::verifyOtp()) — asks a brand-new member which Uni/Daerah/Gereja
-     * they belong to, so regional admins can find them later on the Kelola Pengguna page
-     * (see UserAssignmentController) instead of that list staying an unscoped global dump.
-     * Skippable; a skip leaves union_id/conference_id/church_id null, which is exactly the
-     * "nasional" (unscoped, nasional-admins-only) visibility bucket — but it can always be
-     * completed later from the "Wilayah" tab on Profil Saya (see ProfileController::edit()),
-     * which posts to the same store() below.
+     * RegisterController::verifyOtp()) — asks a brand-new member which Uni/Daerah/Gereja they
+     * belong to, so regional admins can find them later on the Kelola Pengguna page (see
+     * UserAssignmentController) instead of that list staying an unscoped global dump. The
+     * answer is stored on the member's own linked Person (see store() below), not on the User
+     * row — every role === null member reaching this page is guaranteed to already have one,
+     * either auto-created or linked to an existing admin-made record (see
+     * RegisterController::verifyOtp() / LinkPersonController::store()).
+     *
+     * Skippable; a skip leaves the Person's union_id/conference_id/church_id null, which is
+     * exactly the "nasional" (unscoped, nasional-admins-only) visibility bucket — but it can
+     * always be completed later from the Wilayah section folded into Profil Saya's "Info
+     * Personal" tab (see ProfileController::edit()), which posts to the same store() below.
+     * Also skipped automatically — profile_step_completed_at backfilled without asking again —
+     * when the linked Person already reports a region, e.g. an admin pre-created it with one
+     * already set before this member ever registered.
      */
     public function show(Request $request)
     {
-        if ($request->user()->role !== null || $request->user()->profile_step_completed_at !== null) {
+        $user = $request->user();
+
+        if ($user->role !== null || $user->profile_step_completed_at !== null) {
+            return redirect()->route('akun-saya');
+        }
+
+        if ($user->person && ($user->person->union_id || $user->person->conference_id)) {
+            $user->forceFill(['profile_step_completed_at' => now()])->save();
+
             return redirect()->route('akun-saya');
         }
 
@@ -36,11 +54,13 @@ class CompleteProfileController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        // union_id/conference_id/church_id double as an assigned admin's scope once they hold
-        // a role (see UserAssignmentController::promote()) — this endpoint is only for a plain
-        // member's own self-reported home region, so a role-holder must go through the proper
-        // promote/revoke flow instead of quietly overwriting their assignment here.
-        abort_if($request->user()->role !== null, 403);
+        $user = $request->user();
+
+        // A role-holder's own union_id/conference_id/church_id means their assigned admin scope
+        // (see UserAssignmentController::promote()), entirely unrelated to this endpoint (a
+        // plain member's own self-reported home region, stored on their Person instead) — a
+        // role-holder must go through the proper promote/revoke flow, never this one.
+        abort_if($user->role !== null, 403);
 
         $data = $request->validate([
             'union_id' => ['required', 'integer', 'exists:unions,id'],
@@ -53,14 +73,21 @@ class CompleteProfileController extends Controller
 
         $church = $this->findOrCreateChurch($conference->id, $data['church_name']);
 
-        $request->user()->forceFill([
-            'union_id' => $data['union_id'],
+        // Every role === null member reaching this endpoint already has a linked Person (see
+        // this class's own doc comment above) — union_id stays null here, matching
+        // PersonController::resolveOrgScope()'s "never both union_id and conference_id at once"
+        // invariant elsewhere, since a Conference already implies its own Union.
+        $user->person->update([
+            'union_id' => null,
             'conference_id' => $conference->id,
             'church_id' => $church->id,
-            'profile_step_completed_at' => now(),
-        ])->save();
+        ]);
 
-        return redirect()->route('profile.edit', ['tab' => 'wilayah'])->with('status', __('entity.profile_completed'));
+        $user->forceFill(['profile_step_completed_at' => now()])->save();
+
+        // The Wilayah fields now live folded into the "Info Personal" tab — see
+        // profile/edit.blade.php.
+        return redirect()->route('profile.edit', ['tab' => 'personal'])->with('status', __('entity.profile_completed'));
     }
 
     public function skip(Request $request): RedirectResponse
@@ -70,49 +97,5 @@ class CompleteProfileController extends Controller
         $request->user()->forceFill(['profile_step_completed_at' => now()])->save();
 
         return redirect()->route('akun-saya');
-    }
-
-    /**
-     * Reuses an existing church by name within the chosen conference (case-insensitive, so
-     * "GMAHK Kelapa Gading" and "gmahk kelapa gading" don't create duplicates) or creates a
-     * new one — same slug-uniqueness pattern as ChurchController::store().
-     */
-    private function findOrCreateChurch(int $conferenceId, string $name): Church
-    {
-        $existing = Church::where('conference_id', $conferenceId)
-            ->whereRaw('LOWER(name) = ?', [Str::lower(trim($name))])
-            ->first();
-
-        if ($existing) {
-            return $existing;
-        }
-
-        $original = Str::slug($name);
-        $slug = $original;
-        $i = 1;
-
-        for ($attempt = 0; $attempt < 5; $attempt++) {
-            while (Church::where('slug', $slug)->exists()) {
-                $slug = "{$original}-{$i}";
-                $i++;
-            }
-
-            try {
-                return Church::create([
-                    'conference_id' => $conferenceId,
-                    'name' => trim($name),
-                    'slug' => $slug,
-                    'is_active' => true,
-                ]);
-            } catch (\Illuminate\Database\UniqueConstraintViolationException) {
-                // Another request created a church with this exact slug between our check
-                // above and this insert (e.g. two people completing profiles for the same
-                // new church at once) — recompute against the now-current state and retry.
-                $slug = "{$original}-{$i}";
-                $i++;
-            }
-        }
-
-        throw new \RuntimeException('Could not generate a unique church slug after 5 attempts.');
     }
 }

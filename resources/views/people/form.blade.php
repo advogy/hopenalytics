@@ -46,6 +46,20 @@
 
         <div class="mb-5">
             <label class="mb-1.5 block text-sm font-medium">{{ __('entity.person_org_scope_label') }}</label>
+
+            @if ($person->exists && $person->user)
+                {{-- Linked to a login account — its own union_id/conference_id are edited
+                     exclusively via that user's own Profil Saya "Wilayah" section (see
+                     CompleteProfileController::store()), never here; resolveOrgScope() ignores
+                     this form's union_id/conference_id entirely for a linked Person, so there's
+                     nothing editable to show, only where it comes from. --}}
+                <p class="mb-2 text-xs text-slate-400">{{ __('entity.person_org_scope_follows_user_hint') }}</p>
+                <p class="rounded-lg border border-black/10 bg-slate-50 px-3 py-2 text-sm text-slate-500 dark:border-white/10 dark:bg-slate-800 dark:text-slate-400">
+                    {{ __('entity.person_org_scope_follows_user', ['name' => $person->user->name]) }}
+                    —
+                    {{ $person->conference ? "{$person->conference->name} ({$person->conference->union->name})" : ($person->union?->name ?? __('entity.person_org_scope_independent')) }}
+                </p>
+            @else
             <p class="mb-2 text-xs text-slate-400">{{ __('entity.person_org_scope_hint') }}</p>
 
             @if ($canPickUnion || ($ownUnion ?? null))
@@ -109,6 +123,7 @@
                 <p class="rounded-lg border border-black/10 bg-slate-50 px-3 py-2 text-sm text-slate-500 dark:border-white/10 dark:bg-slate-800 dark:text-slate-400">
                     {{ $person->conference ? "{$person->conference->name} ({$person->conference->union->name})" : ($person->union?->name ?? __('entity.person_org_scope_independent')) }}
                 </p>
+            @endif
             @endif
         </div>
 
