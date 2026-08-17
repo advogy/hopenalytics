@@ -48,9 +48,9 @@ class PersonController extends Controller
         ]);
     }
 
-    public function create()
+    public function create(Request $request)
     {
-        return view('people.form', ['person' => new Person, 'linkableUsers' => collect()]);
+        return view('people.form', ['person' => new Person, 'linkableUsers' => collect()] + $this->personOrgScopeData($request));
     }
 
     /**
@@ -107,7 +107,7 @@ class PersonController extends Controller
         return view('people.form', [
             'person' => $person,
             'linkableUsers' => Gate::allows('delete', $person) ? $this->linkableUsers() : collect(),
-        ]);
+        ] + $this->personOrgScopeData($request));
     }
 
     public function update(Request $request, Person $person, GeocodingService $geocoding): RedirectResponse
@@ -148,10 +148,11 @@ class PersonController extends Controller
 
     /**
      * Never trust a client-submitted org assignment (mirrors ChurchController's
-     * resolveConferenceId()). A Person may be independent (both null, decision #2), scoped
-     * to a Union, or scoped to a Conference — never both at once. There's no scope-picker UI
-     * yet (Phase 5), so today this only ever preserves the current values; it exists so that
-     * UI can be added later without reopening this write path.
+     * resolveConferenceId() / Admin\InstitutionController's resolveRegion()). A Person may be
+     * independent (both null, decision #2), scoped to a Union, or scoped to a Conference — never
+     * both at once. The scope-picker UI (see personOrgScopeData()) submits union_id/conference_id
+     * accordingly; every branch below re-validates whatever's submitted against the actor's own
+     * reach rather than trusting it outright.
      */
     private function resolveOrgScope(Request $request, ?int $currentUnionId, ?int $currentConferenceId): array
     {
@@ -169,13 +170,13 @@ class PersonController extends Controller
 
         return match ($user->role->level()) {
             'daerah' => ['union_id' => null, 'conference_id' => $user->conference_id],
-            'uni' => match (true) {
-                $submittedConferenceId && Conference::whereKey($submittedConferenceId)->where('union_id', $user->union_id)->exists()
-                    => ['union_id' => null, 'conference_id' => $submittedConferenceId],
-                $submittedUnionId === $user->union_id
-                    => ['union_id' => $user->union_id, 'conference_id' => null],
-                default => ['union_id' => $currentUnionId, 'conference_id' => $currentConferenceId],
-            },
+            // A uni-level admin can only ever narrow a Person down to a Daerah within their own
+            // Union, or leave it at their own Union — never past it, and never back out to fully
+            // independent (matches Admin\InstitutionController::resolveRegion()'s uni arm, which
+            // trusts $user->union_id directly rather than requiring the form to round-trip it).
+            'uni' => $submittedConferenceId && Conference::whereKey($submittedConferenceId)->where('union_id', $user->union_id)->exists()
+                ? ['union_id' => null, 'conference_id' => $submittedConferenceId]
+                : ['union_id' => $user->union_id, 'conference_id' => null],
             'divisi' => match (true) {
                 $submittedConferenceId && Conference::whereKey($submittedConferenceId)->whereHas('union', fn ($q) => $q->where('division_id', $user->division_id))->exists()
                     => ['union_id' => null, 'conference_id' => $submittedConferenceId],
@@ -183,10 +184,72 @@ class PersonController extends Controller
                     => ['union_id' => $submittedUnionId, 'conference_id' => null],
                 default => ['union_id' => $currentUnionId, 'conference_id' => $currentConferenceId],
             },
+            'nasional' => match (true) {
+                $submittedConferenceId && Conference::whereKey($submittedConferenceId)->whereIn('union_id', $user->assignedUnionIds())->exists()
+                    => ['union_id' => null, 'conference_id' => $submittedConferenceId],
+                $submittedUnionId && in_array($submittedUnionId, $user->assignedUnionIds(), true)
+                    => ['union_id' => $submittedUnionId, 'conference_id' => null],
+                default => ['union_id' => $currentUnionId, 'conference_id' => $currentConferenceId],
+            },
             default => $submittedUnionId || $submittedConferenceId
                 ? ['union_id' => $submittedUnionId, 'conference_id' => $submittedConferenceId]
                 : ['union_id' => $currentUnionId, 'conference_id' => $currentConferenceId],
         };
+    }
+
+    /**
+     * Which Uni/Daerah picker (if any) the form shows depends on the actor's own level, mirroring
+     * resolveOrgScope() above and Admin\InstitutionController::regionPickerData()'s shape exactly
+     * (Person and Institution share the same independent/Union/Conference tri-state) —
+     * nasional/global/divisi get the full Uni → Daerah cascade (both optional, for a fully
+     * independent Person), admin_uni gets a flat Daerah list scoped to their own union (read-only
+     * "own Union" label alongside it, no picker for the Union itself), admin_daerah and everyone
+     * else (gereja/institusi-level, or a self-editing member) get no picker at all — just the
+     * current assignment as read-only text.
+     */
+    private function personOrgScopeData(Request $request): array
+    {
+        $user = $request->user();
+
+        if ($user->role?->hasGlobalAccess() || $user->role?->level() === 'global') {
+            return [
+                'canPickUnion' => true,
+                'ownUnion' => null,
+                'unions' => Union::where('is_active', true)->orderBy('name')->get(),
+                'conferences' => Conference::where('is_active', true)->orderBy('name')->get(['id', 'union_id', 'name']),
+            ];
+        }
+
+        if ($user->role?->level() === 'nasional') {
+            $unionIds = $user->assignedUnionIds();
+
+            return [
+                'canPickUnion' => true,
+                'ownUnion' => null,
+                'unions' => Union::whereIn('id', $unionIds)->orderBy('name')->get(),
+                'conferences' => Conference::whereIn('union_id', $unionIds)->where('is_active', true)->orderBy('name')->get(['id', 'union_id', 'name']),
+            ];
+        }
+
+        if ($user->role?->level() === 'divisi') {
+            return [
+                'canPickUnion' => true,
+                'ownUnion' => null,
+                'unions' => Union::where('division_id', $user->division_id)->where('is_active', true)->orderBy('name')->get(),
+                'conferences' => Conference::whereHas('union', fn ($q) => $q->where('division_id', $user->division_id))->where('is_active', true)->orderBy('name')->get(['id', 'union_id', 'name']),
+            ];
+        }
+
+        if ($user->role?->level() === 'uni') {
+            return [
+                'canPickUnion' => false,
+                'ownUnion' => Union::find($user->union_id),
+                'unions' => collect(),
+                'conferences' => Conference::where('union_id', $user->union_id)->where('is_active', true)->orderBy('name')->get(['id', 'union_id', 'name']),
+            ];
+        }
+
+        return ['canPickUnion' => false, 'ownUnion' => null, 'unions' => collect(), 'conferences' => collect()];
     }
 
     /**

@@ -34,6 +34,84 @@
 
         <x-coordinate-fields :latitude="$person->latitude" :longitude="$person->longitude" />
 
+        @php
+            // admin_uni's $conferences is already scoped to their own union by
+            // personOrgScopeData(), so the same conference list works whether or not a Uni step
+            // renders — only the placeholder wording ("kosongkan untuk seluruh Uni" only makes
+            // sense once a Uni is already implied) differs between the two pickable cases.
+            $conferencePlaceholder = $canPickUnion
+                ? __('accounts.search_daerah_optional')
+                : __('accounts.search_daerah_optional_own_union');
+        @endphp
+
+        <div class="mb-5">
+            <label class="mb-1.5 block text-sm font-medium">{{ __('entity.person_org_scope_label') }}</label>
+            <p class="mb-2 text-xs text-slate-400">{{ __('entity.person_org_scope_hint') }}</p>
+
+            @if ($canPickUnion || ($ownUnion ?? null))
+                @if ($canPickUnion)
+                    {{-- Nasional/Divisi/Global-level: full Uni → Daerah cascade, both optional. --}}
+                    <div class="mb-2 relative" data-searchable-select data-person-union>
+                        <input type="hidden" name="union_id" data-searchable-select-value value="{{ old('union_id', $person->union_id) }}">
+                        <input
+                            type="text"
+                            data-searchable-select-search
+                            autocomplete="off"
+                            placeholder="{{ __('accounts.search_uni_optional') }}"
+                            class="w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none dark:border-white/10 dark:bg-slate-800"
+                        >
+                        <ul data-searchable-select-list class="absolute left-0 top-full z-20 mt-1 hidden max-h-52 w-full overflow-y-auto rounded-lg border border-black/10 bg-white p-1 text-sm shadow-lg dark:border-white/10 dark:bg-slate-800"></ul>
+                    </div>
+                @else
+                    {{-- admin_uni: pinned to their own Uni server-side (PersonController::
+                         resolveOrgScope() trusts $user->union_id, never the request), only the
+                         Daerah beneath it is a real choice — so there's no union_id field to
+                         submit here at all, just this read-only label. --}}
+                    <p class="mb-2 rounded-lg border border-black/10 bg-slate-50 px-3 py-2 text-sm text-slate-500 dark:border-white/10 dark:bg-slate-800 dark:text-slate-400">
+                        {{ $ownUnion->name }}
+                    </p>
+                @endif
+
+                <div class="relative" data-searchable-select data-person-conference>
+                    <input type="hidden" name="conference_id" data-searchable-select-value value="{{ old('conference_id', $person->conference_id) }}">
+                    <input
+                        type="text"
+                        data-searchable-select-search
+                        autocomplete="off"
+                        placeholder="{{ $conferencePlaceholder }}"
+                        class="w-full rounded-lg border border-black/10 bg-white px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none dark:border-white/10 dark:bg-slate-800"
+                    >
+                    <ul data-searchable-select-list class="absolute left-0 top-full z-20 mt-1 hidden max-h-52 w-full overflow-y-auto rounded-lg border border-black/10 bg-white p-1 text-sm shadow-lg dark:border-white/10 dark:bg-slate-800"></ul>
+                </div>
+                @error('union_id')
+                    <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
+                @enderror
+                @error('conference_id')
+                    <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
+                @enderror
+
+                <script>
+                    window.initUnionConferenceCascade({
+                        unionSelector: @json($canPickUnion ? '[data-person-union]' : null),
+                        conferenceSelector: '[data-person-conference]',
+                        unions: @json($unions->map(fn ($u) => ['id' => $u->id, 'label' => $u->name])),
+                        conferences: @json($conferences->map(fn ($c) => ['id' => $c->id, 'union_id' => $c->union_id, 'label' => $c->name])),
+                        unionPlaceholder: @json(__('accounts.search_uni_optional')),
+                        conferencePlaceholder: @json($conferencePlaceholder),
+                        conferenceWaitingPlaceholder: @json(__('accounts.waiting_for_uni')),
+                    });
+                </script>
+            @else
+                {{-- admin_daerah (pinned to their own Daerah, no picker), gereja/institusi-level,
+                     or a self-editing member (PersonPolicy's self-ownership carve-out) — none of
+                     these submit a union_id/conference_id field at all, so resolveOrgScope()
+                     simply keeps whatever this Person already had. --}}
+                <p class="rounded-lg border border-black/10 bg-slate-50 px-3 py-2 text-sm text-slate-500 dark:border-white/10 dark:bg-slate-800 dark:text-slate-400">
+                    {{ $person->conference ? "{$person->conference->name} ({$person->conference->union->name})" : ($person->union?->name ?? __('entity.person_org_scope_independent')) }}
+                </p>
+            @endif
+        </div>
+
         <x-slot:footerExtra>
             @if ($canManagePerson)
                 <div class="mt-6 max-w-lg rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/5 dark:bg-slate-900">
