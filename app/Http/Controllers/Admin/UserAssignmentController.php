@@ -8,6 +8,7 @@ use App\Models\Church;
 use App\Models\Conference;
 use App\Models\Division;
 use App\Models\Institution;
+use App\Models\Person;
 use App\Models\Union;
 use App\Models\User;
 use App\Support\AuditLogger;
@@ -327,10 +328,18 @@ class UserAssignmentController extends Controller
      * Clears union_id/conference_id/church_id only — role and institution_id are left alone,
      * unlike revoke() above. Lets an admin detach a bogus or unwanted region link (e.g. a
      * church someone typed their own name into via Lengkapi Profil — see
-     * CompleteProfileController::findOrCreateChurch()) without also stripping an active
+     * FindsOrCreatesChurch::findOrCreateChurch()) without also stripping an active
      * Admin/Pimpinan's role. Deliberately allowed on an active role-holder too, per the user's
      * explicit call — this can leave a uni/daerah/gereja-level role without a working scope
      * until reassigned; the confirm dialog (see admin.users.index) warns about exactly that.
+     *
+     * For a role === null target, the bogus self-report this was built to clean up actually
+     * lives on their linked Person now (see PersonController::resolveSelfReportedScope()), not
+     * on this User row at all — so this also clears the linked Person's own
+     * union_id/conference_id/church_id, or "release region" would silently do nothing for the
+     * exact scenario in the doc comment above. An active role-holder's own Person self-report
+     * is left untouched: that's a deliberate act from their own Profil Saya, a different thing
+     * from releasing their admin-assigned scope here.
      */
     public function releaseRegion(Request $request, User $target): RedirectResponse
     {
@@ -340,7 +349,17 @@ class UserAssignmentController extends Controller
             ->filter()
             ->implode(', ');
 
+        if ($regionLabel === '' && $target->role === null) {
+            $regionLabel = collect([$target->person?->union?->name, $target->person?->conference?->name, $target->person?->church?->name])
+                ->filter()
+                ->implode(', ');
+        }
+
         $target->update(['division_id' => null, 'union_id' => null, 'conference_id' => null, 'church_id' => null]);
+
+        if ($target->role === null) {
+            $target->person?->update(['union_id' => null, 'conference_id' => null, 'church_id' => null]);
+        }
 
         AuditLogger::log('user.region_released', $target, "Melepas wilayah \"{$regionLabel}\" dari \"{$target->name}\".");
 
@@ -352,11 +371,13 @@ class UserAssignmentController extends Controller
      * delete tooltip (see AccountController::index()) already names the blocking user(s), but
      * hunting them down in Kelola Pengguna's easy-to-miss "Belum Ditugaskan" tab one at a time
      * was still the only way to actually clear them. This does the same union_id/conference_id/
-     * church_id release as releaseRegion() above, but for a whole batch of ids submitted
-     * straight from that Kelola Akun row — and deliberately restricted to role === null targets
-     * only: an active Admin/Pimpinan losing their working scope should stay a deliberate,
-     * one-at-a-time decision (see releaseRegion()'s confirm-dialog warning), not something a
-     * single bulk click on an unrelated entity's row can do in passing.
+     * church_id release as releaseRegion() above — on both the User row and, since every target
+     * here is role === null, their linked Person's own self-reported region too (see
+     * releaseRegion()'s doc comment) — but for a whole batch of ids submitted straight from that
+     * Kelola Akun row. Deliberately restricted to role === null targets only: an active
+     * Admin/Pimpinan losing their working scope should stay a deliberate, one-at-a-time decision
+     * (see releaseRegion()'s confirm-dialog warning), not something a single bulk click on an
+     * unrelated entity's row can do in passing.
      */
     public function releaseRegionBulk(Request $request): RedirectResponse
     {
@@ -374,6 +395,7 @@ class UserAssignmentController extends Controller
         $names = $targets->pluck('name')->implode(', ');
 
         User::whereIn('id', $targets->pluck('id'))->update(['division_id' => null, 'union_id' => null, 'conference_id' => null, 'church_id' => null]);
+        Person::whereIn('user_id', $targets->pluck('id'))->update(['union_id' => null, 'conference_id' => null, 'church_id' => null]);
 
         foreach ($targets as $target) {
             AuditLogger::log('user.region_released', $target, "Melepas wilayah dari \"{$target->name}\" (aksi massal dari Kelola Akun).");
