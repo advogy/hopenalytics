@@ -23,9 +23,22 @@ return new class extends Migration
 
     public function down(): void
     {
+        // Three separate ALTER statements, deliberately not combined into one
+        // Schema::table() call: the (division_id, platform, category, handle) unique is
+        // division_id's only supporting index, so MySQL refuses to drop it (or the column)
+        // while the FK constraint still references it. Dropping the FK constraint first, on
+        // its own, needs no supporting index to still exist — only then can the unique, and
+        // finally the now-unconstrained column, come off safely.
+        Schema::table('church_socials', function (Blueprint $table) {
+            $table->dropForeign(['division_id']);
+        });
+
         Schema::table('church_socials', function (Blueprint $table) {
             $table->dropUnique(['division_id', 'platform', 'category', 'handle']);
-            $table->dropConstrainedForeignId('division_id');
+        });
+
+        Schema::table('church_socials', function (Blueprint $table) {
+            $table->dropColumn('division_id');
         });
     }
 };

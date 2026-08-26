@@ -12,6 +12,7 @@ use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 
@@ -37,15 +38,20 @@ class AppServiceProvider extends ServiceProvider
         // constructor), so overriding them here means either key can be rotated from the UI
         // without touching .env or redeploying, per the user's explicit call. Only overrides
         // when a DB value is actually set, so a fresh install (or one where nobody's used the
-        // settings UI yet) keeps working off .env exactly as before.
-        $appSettings = AppSetting::current();
+        // settings UI yet) keeps working off .env exactly as before. Guarded by hasTable()
+        // because boot() runs on every artisan command, including the very first `migrate` on
+        // a brand new database — before that command creates app_settings, querying it here
+        // would throw and migrate could never run at all on a fresh clone.
+        if (Schema::hasTable('app_settings')) {
+            $appSettings = AppSetting::current();
 
-        if ($appSettings->apify_token) {
-            config(['services.apify.token' => $appSettings->apify_token]);
-        }
+            if ($appSettings->apify_token) {
+                config(['services.apify.token' => $appSettings->apify_token]);
+            }
 
-        if ($appSettings->youtube_api_key) {
-            config(['services.youtube.api_key' => $appSettings->youtube_api_key]);
+            if ($appSettings->youtube_api_key) {
+                config(['services.youtube.api_key' => $appSettings->youtube_api_key]);
+            }
         }
 
         // Feeds the Audit Log page's Login/Session tab (see AuditLogController) — Laravel

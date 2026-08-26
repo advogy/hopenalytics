@@ -17,11 +17,15 @@ return new class extends Migration
      * gone by the time this migration was written (only a plain, non-unique church_id index
      * remains, added by an earlier migration precisely so this day would come without an FK
      * headache). person_id's equivalent still needs its own standalone index added first —
-     * MySQL refuses to drop a unique index an FK is still leaning on for lookups.
+     * MySQL refuses to drop a unique index an FK is still leaning on for lookups: the
+     * (person_id, platform, category) unique added alongside person_id's own FK (see
+     * add_person_id_to_church_socials_table) is the *only* index that covers person_id, so it
+     * has to stay a leftmost-covering index until a plain one exists to take its place.
      */
     public function up(): void
     {
         Schema::table('church_socials', function (Blueprint $table) {
+            $table->index('person_id');
             $table->dropUnique(['person_id', 'platform', 'category']);
             $table->unique(['church_id', 'platform', 'category', 'handle']);
             $table->unique(['person_id', 'platform', 'category', 'handle']);
@@ -37,6 +41,7 @@ return new class extends Migration
             $table->dropUnique(['church_id', 'platform', 'category', 'handle']);
             $table->dropUnique(['person_id', 'platform', 'category', 'handle']);
             $table->unique(['person_id', 'platform', 'category']);
+            $table->dropIndex(['person_id']);
         });
     }
 };
