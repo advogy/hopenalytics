@@ -23,7 +23,7 @@ return [
     'cs_groups' => 'Global Chat Groups',
     'cs_groups_hint' => 'WhatsApp/Messenger group(s) used as the default — more than one is fine. Leave empty to not show a group link at all.',
     'group_link_placeholder' => 'https://chat.whatsapp.com/… or https://m.me/…',
-    'add_group' => '+ Add Group',
+    'add_group' => 'Add Group',
 
     'union_coordinators_title' => 'Per-Union Coordinators',
     'union_coordinators_subtitle' => 'Each Union can have its own WhatsApp coordinator and chat group(s), usually filled in by that Union\'s own Admin via Manage Accounts → Union — but it can also be set or changed directly from here. A Union with nothing set uses the Global Coordinator above instead.',

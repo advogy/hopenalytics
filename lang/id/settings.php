@@ -23,7 +23,7 @@ return [
     'cs_groups' => 'Grup Chat Global',
     'cs_groups_hint' => 'Grup WhatsApp/Messenger yang dipakai sebagai default — bisa lebih dari satu. Kosongkan untuk tidak menampilkan tautan grup sama sekali.',
     'group_link_placeholder' => 'https://chat.whatsapp.com/… atau https://m.me/…',
-    'add_group' => '+ Tambah Grup',
+    'add_group' => 'Tambah Grup',
 
     'union_coordinators_title' => 'Koordinator per Uni',
     'union_coordinators_subtitle' => 'Setiap Uni bisa punya koordinator WhatsApp dan grup chat sendiri, biasanya diisi oleh Admin Uni-nya masing-masing lewat Kelola Akun → Uni — tapi bisa juga diisi/diubah langsung dari sini. Uni yang belum diisi memakai Koordinator Global di atas sebagai gantinya.',
