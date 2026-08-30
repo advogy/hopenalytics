@@ -513,10 +513,12 @@ trait BuildsLeaderboards
      * account" case to handle — every organisasi-category row is owned by exactly one real
      * Divisi, Union, or Conference (see OrganizationSocialController), never neither.
      *
-     * A Divisi-owned account is only ever visible to a viewer whose own scope covers that whole
-     * Divisi (global, a scoped Admin Nasional with at least one assigned Union under it, or that
-     * Divisi's own admin_divisi) — uni/daerah/gereja-level viewers don't get their parent Divisi's
-     * own accounts folded in, same as they don't get a sibling Union's accounts today.
+     * A Divisi- or Union-owned account is only ever visible to a viewer whose own scope covers
+     * that whole Divisi/Union (global, a scoped Admin Nasional with at least one assigned Union
+     * under it, that Divisi's own admin_divisi, or — for a Union's own accounts — that Union's
+     * own admin_uni) — daerah/gereja-level viewers don't get their parent Union's own accounts
+     * folded in either, per the user's explicit call: an admin only ever counts their own level
+     * and everything below it, never anything above.
      */
     private function analyticsOrganizationScope($query)
     {
@@ -549,18 +551,16 @@ trait BuildsLeaderboards
         }
 
         $conferenceId = $user->role->level() === 'gereja' ? $user->church?->conference_id : $user->conference_id;
-        $ownUnionId = $user->role->level() === 'gereja' ? $user->church?->conference?->union_id : $user->conference?->union_id;
 
-        return $query->where(fn ($q) => $q
-            ->when($ownUnionId, fn ($q2) => $q2->orWhere('union_id', $ownUnionId))
-            ->orWhere('conference_id', $conferenceId));
+        return $query->where('conference_id', $conferenceId);
     }
 
     /**
-     * Which Division rows the Organisasi tab's "Data Per Organisasi" table shows — same
-     * reasoning as analyticsUnionScope() below, one tier up: every level down to gereja sees
-     * their own ancestor Divisi row too (context, same as a daerah-level viewer already sees
-     * their own parent Union).
+     * Which Division rows the Organisasi tab's "Data Per Organisasi" table shows. A Divisi is
+     * always above uni/daerah level, so — per the user's explicit call: an admin only ever
+     * counts/sees their own level and everything below it, never anything above — uni and
+     * daerah-level viewers see none at all; only divisi level (their own Divisi) and above see
+     * any Division row.
      */
     private function analyticsDivisionScope($query)
     {
@@ -570,9 +570,8 @@ trait BuildsLeaderboards
             $user->role === null || ($user->role->hasGlobalAccess() ?? false) || $user->role->level() === 'global' => $query,
             $user->role->level() === 'nasional' => $query->whereHas('unions', fn ($q) => $q->whereIn('id', $user->assignedUnionIds())),
             $user->role->level() === 'divisi' => $query->where('id', $user->division_id),
-            $user->role->level() === 'uni' => $query->whereHas('unions', fn ($q) => $q->where('id', $user->union_id)),
             $user->role->level() === 'gereja' => $query->whereHas('unions', fn ($q) => $q->where('id', $user->church?->conference?->union_id)),
-            default => $query->whereHas('unions', fn ($q) => $q->where('id', $user->conference?->union_id)), // daerah-level
+            default => $query->whereRaw('1 = 0'), // uni/daerah-level: Divisi is above their own level
         };
     }
 
@@ -581,9 +580,10 @@ trait BuildsLeaderboards
      * analyticsOrganizationScope() above (which scopes ChurchSocial rows for the leaderboard/
      * metric-comparison pages), this scopes the Union entities themselves directly, since the
      * analytics tab lists Unions/Conferences as rows (with their own eager-loaded ->socials),
-     * not individual accounts. A uni-level viewer sees only their own Union (one row, for
-     * context); daerah/gereja-level sees their own Union too (their own Daerah's parent, same
-     * "this union's own" context Institution::scopeVisibleTo() gives daerah-level viewers).
+     * not individual accounts. A uni-level viewer sees their own Union — that's their own level,
+     * not an ancestor. A daerah-level viewer's own Union is one tier *above* their own level
+     * though, so per the user's explicit call it's excluded entirely: daerah starts directly at
+     * their own Daerah row (see analyticsConferenceScope() below), nothing above it.
      */
     private function analyticsUnionScope($query)
     {
@@ -595,7 +595,7 @@ trait BuildsLeaderboards
             $user->role->level() === 'divisi' => $query->where('division_id', $user->division_id),
             $user->role->level() === 'uni' => $query->where('id', $user->union_id),
             $user->role->level() === 'gereja' => $query->where('id', $user->church?->conference?->union_id),
-            default => $query->where('id', $user->conference?->union_id), // daerah-level
+            default => $query->whereRaw('1 = 0'), // daerah-level: Union is above their own level
         };
     }
 
