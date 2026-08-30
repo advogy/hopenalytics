@@ -114,8 +114,8 @@ class FetchSingleChurchData implements ShouldQueue
                 'last_fetched_at' => now(),
                 'last_fetch_status' => 'failed',
                 'last_fetch_error' => $fallbackToManual
-                    ? 'Kredit Apify habis — auto-fetch dinonaktifkan, isi data secara manual.'
-                    : 'Kredit Apify habis.',
+                    ? 'Kredit habis — auto-fetch dinonaktifkan otomatis. Tambah kredit atau isi data secara manual.'
+                    : 'Kredit habis — auto-fetch tetap aktif tapi gagal. Tambah kredit, atau isi data secara manual sementara.',
                 'is_auto_fetch' => $fallbackToManual ? false : $this->churchSocial->is_auto_fetch,
             ]);
 

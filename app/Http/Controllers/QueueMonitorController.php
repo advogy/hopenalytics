@@ -105,7 +105,7 @@ class QueueMonitorController extends Controller
             str_contains($message, 'Missing Facebook page URL') =>
                 'Akun Facebook ini belum diisi link halamannya.',
             str_contains(strtolower($message), 'usage hard limit') || str_contains(strtolower($message), 'insufficient-funds') =>
-                'Kredit Apify habis untuk bulan ini.',
+                'Kredit habis untuk bulan ini.',
             str_contains($message, 'returned no data') =>
                 'Tidak ada data ditemukan untuk akun ini — cek lagi handle/link-nya.',
             str_starts_with($message, 'YouTube API error') =>
