@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\FetchSingleChurchData;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -49,6 +51,7 @@ class QueueMonitorController extends Controller
                 'queue' => $row->queue,
                 'failedAt' => $row->failed_at,
                 'message' => $this->humanizeFailedJobMessage(strtok($row->exception, "\n")),
+                'account' => $this->failedJobAccountLabel($row->payload),
             ]);
 
         $completedBatches = DB::table('job_batches')
@@ -117,6 +120,31 @@ class QueueMonitorController extends Controller
     }
 
     /**
+     * A failed_jobs row only ever stores queue/timestamp/exception — nothing about which
+     * account it was fetching, unlike churches/needs-attention.blade.php which reads that
+     * straight off a live ChurchSocial. The account is still recoverable here: SerializesModels
+     * swaps every Eloquent argument for a lightweight ModelIdentifier at serialize time, so
+     * unserializing payload.data.command re-hydrates a real FetchSingleChurchData whose
+     * ->churchSocial is a freshly-queried, live model — same display_name accessor reused for
+     * consistency with every other social-account listing. Returns null (rendered as "—" in the
+     * view) for any other job type, or if the account/job itself no longer exists (unserialize()
+     * throws a ModelNotFoundException while waking up the ModelIdentifier in that case).
+     */
+    private function failedJobAccountLabel(string $rawPayload): ?string
+    {
+        try {
+            $payload = json_decode($rawPayload, true, flags: JSON_THROW_ON_ERROR);
+            $command = unserialize($payload['data']['command'] ?? '');
+
+            return $command instanceof FetchSingleChurchData
+                ? $command->churchSocial->display_name
+                : null;
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /**
      * Cancel a batch — remaining un-run jobs skip their work (see
      * FetchSingleChurchData::middleware()) instead of the queue worker
      * continuing to burn through them after the user asked to stop.
@@ -174,6 +202,29 @@ class QueueMonitorController extends Controller
         DB::table('failed_jobs')->where('id', $id)->delete();
 
         return back()->with('status', __('queue.failed_deleted'));
+    }
+
+    /**
+     * Re-queue a single failed job — e.g. after topping up Apify credit, an admin can retry
+     * just that one account instead of waiting for next week's auto-fetch (or, if
+     * apify_fallback_to_manual already flipped is_auto_fetch off, waiting forever — see
+     * FetchSingleChurchData's ApifyCreditsExhaustedException handling). Delegates to Laravel's
+     * own queue:retry rather than reimplementing pushRaw()/attempts-reset by hand — it already
+     * re-queues the original payload on its original queue and removes the failed_jobs row.
+     *
+     * QUEUE_FAILED_DRIVER is database-uuids (see config/queue.php), so the failer resolves jobs
+     * by uuid, not the numeric id every other method on this controller keys by (see
+     * DatabaseUuidFailedJobProvider::find()) — that uuid has to be looked up first.
+     */
+    public function retryFailed(int $id): RedirectResponse
+    {
+        $uuid = DB::table('failed_jobs')->where('id', $id)->value('uuid');
+
+        if ($uuid) {
+            Artisan::call('queue:retry', ['id' => [$uuid]]);
+        }
+
+        return back()->with('status', __('queue.failed_retried'));
     }
 
     /**

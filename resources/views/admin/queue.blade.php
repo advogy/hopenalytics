@@ -192,26 +192,36 @@
                     <thead>
                         <tr class="text-slate-500 dark:text-slate-400">
                             <th class="w-20 py-2 pr-2 font-medium">{{ __('queue.failed_queue_col') }}</th>
+                            <th class="w-36 py-2 pr-2 font-medium">{{ __('queue.failed_account_col') }}</th>
                             <th class="w-36 py-2 pr-2 font-medium">{{ __('queue.failed_date_col') }}</th>
                             <th class="py-2 pr-2 font-medium">{{ __('queue.failed_error_col') }}</th>
-                            <th class="w-16 py-2"></th>
+                            <th class="w-32 py-2"></th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
                         @foreach ($failedJobs as $job)
                             <tr>
                                 <td class="truncate py-2 pr-2 align-top font-medium">{{ $job['queue'] }}</td>
+                                <td class="truncate py-2 pr-2 align-top">{{ $job['account'] ?? '—' }}</td>
                                 <td class="truncate py-2 pr-2 align-top tabular-nums text-slate-500 dark:text-slate-400">
                                     {{ \Illuminate\Support\Carbon::parse($job['failedAt'])->translatedFormat('d M Y, H:i') }}
                                 </td>
                                 <td class="py-2 pr-2 align-top break-words text-red-600 dark:text-red-400">{{ $job['message'] }}</td>
                                 <td class="py-2 align-top text-right">
-                                    <form method="POST" action="{{ route('queue.delete-failed', $job['id']) }}" data-confirm="{{ __('queue.delete_failed_confirm') }}">
-                                        @csrf
-                                        <button type="submit" class="text-xs font-medium text-red-600 hover:underline dark:text-red-400 whitespace-nowrap">
-                                            {{ __('queue.delete') }}
-                                        </button>
-                                    </form>
+                                    <div class="flex justify-end gap-3">
+                                        <form method="POST" action="{{ route('queue.retry-failed', $job['id']) }}" data-confirm="{{ __('queue.retry_failed_confirm') }}">
+                                            @csrf
+                                            <button type="submit" class="text-xs font-medium text-blue-600 hover:underline dark:text-blue-400 whitespace-nowrap">
+                                                {{ __('queue.retry') }}
+                                            </button>
+                                        </form>
+                                        <form method="POST" action="{{ route('queue.delete-failed', $job['id']) }}" data-confirm="{{ __('queue.delete_failed_confirm') }}">
+                                            @csrf
+                                            <button type="submit" class="text-xs font-medium text-red-600 hover:underline dark:text-red-400 whitespace-nowrap">
+                                                {{ __('queue.delete') }}
+                                            </button>
+                                        </form>
+                                    </div>
                                 </td>
                             </tr>
                         @endforeach

@@ -37,11 +37,14 @@ return [
     'failed_title' => 'Job Gagal Terakhir',
     'failed_empty' => 'Tidak ada job yang gagal.',
     'failed_queue_col' => 'Antrean',
+    'failed_account_col' => 'Akun',
     'failed_date_col' => 'Waktu',
     'failed_error_col' => 'Error',
     'clear_failed_confirm' => 'Bersihkan seluruh riwayat job gagal? Ini hanya menghapus catatan riwayat, tidak memproses ulang job yang gagal.',
     'delete_failed_confirm' => 'Hapus riwayat job gagal ini?',
     'delete' => 'Hapus',
+    'retry_failed_confirm' => 'Coba jalankan ulang job ini?',
+    'retry' => 'Coba Lagi',
 
     'batch_cancelled' => 'Batch ":name" dibatalkan.',
     'batch_not_found' => 'Batch tidak ditemukan (mungkin sudah selesai).',
@@ -49,6 +52,7 @@ return [
     'queue_cleared_all' => ':count job dibersihkan dari semua antrean.',
     'failed_cleared' => ':count riwayat job gagal dibersihkan.',
     'failed_deleted' => 'Riwayat job gagal dihapus.',
+    'failed_retried' => 'Job dimasukkan kembali ke antrean.',
     'completed_cleared' => ':count riwayat batch selesai dibersihkan.',
     'completed_deleted' => 'Riwayat batch dihapus.',
 ];

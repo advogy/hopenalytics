@@ -37,11 +37,14 @@ return [
     'failed_title' => 'Recent Failed Jobs',
     'failed_empty' => 'No failed jobs.',
     'failed_queue_col' => 'Queue',
+    'failed_account_col' => 'Account',
     'failed_date_col' => 'Time',
     'failed_error_col' => 'Error',
     'clear_failed_confirm' => 'Clear the entire failed-job history? This only deletes the history record, it does not retry the failed jobs.',
     'delete_failed_confirm' => 'Delete this failed-job record?',
     'delete' => 'Delete',
+    'retry_failed_confirm' => 'Retry this job?',
+    'retry' => 'Retry',
 
     'batch_cancelled' => 'Batch ":name" cancelled.',
     'batch_not_found' => 'Batch not found (it may have already finished).',
@@ -49,6 +52,7 @@ return [
     'queue_cleared_all' => ':count job(s) cleared from every queue.',
     'failed_cleared' => ':count failed-job record(s) cleared.',
     'failed_deleted' => 'Failed-job record deleted.',
+    'failed_retried' => 'Job re-queued.',
     'completed_cleared' => ':count completed-batch record(s) cleared.',
     'completed_deleted' => 'Batch history record deleted.',
 ];

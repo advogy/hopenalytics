@@ -104,6 +104,7 @@ Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group
         Route::post('/queue/clear', [QueueMonitorController::class, 'clearQueue'])->name('queue.clear');
         Route::post('/queue/failed/clear', [QueueMonitorController::class, 'clearFailed'])->name('queue.clear-failed');
         Route::post('/queue/failed/{id}/delete', [QueueMonitorController::class, 'deleteFailed'])->name('queue.delete-failed');
+        Route::post('/queue/failed/{id}/retry', [QueueMonitorController::class, 'retryFailed'])->name('queue.retry-failed');
         Route::post('/queue/batches/clear', [QueueMonitorController::class, 'clearCompletedBatches'])->name('queue.clear-completed-batches');
         Route::post('/queue/batches/{batch}/delete', [QueueMonitorController::class, 'deleteBatch'])->name('queue.delete-batch');
     });
