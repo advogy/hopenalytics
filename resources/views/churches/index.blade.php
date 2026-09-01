@@ -370,6 +370,15 @@
                 baseLayers[mapI18n.layerStandard].addTo(map);
                 L.control.layers(baseLayers, null, { position: 'topright' }).addTo(map);
 
+                // The default "Standard" basemap's own greens (forest/park tiles) compete
+                // visually with the growth map's green dots — auto-switching to the muted
+                // "Light" layer on that tab specifically (never overriding a base layer the
+                // viewer already picked some other way) fixes that without touching the other
+                // tabs' basemap at all. The layer control still lets them pick anything else
+                // afterward — this only ever nudges the very first time.
+                var currentBaseLayerName = mapI18n.layerStandard;
+                map.on('baselayerchange', function (e) { currentBaseLayerName = e.name; });
+
                 function buildMarker(item) {
                     var popup = '<p class="font-semibold">' + item.name + '</p>' +
                         (item.city ? '<p class="text-xs text-slate-500">' + item.city + '</p>' : '') +
@@ -701,6 +710,12 @@
                         activeLayer = null;
                         items = dataByTab.organisasi;
                     } else if (tab === 'heatmap') {
+                        if (currentBaseLayerName === mapI18n.layerStandard) {
+                            map.removeLayer(baseLayers[mapI18n.layerStandard]);
+                            map.addLayer(baseLayers[mapI18n.layerLight]);
+                            currentBaseLayerName = mapI18n.layerLight;
+                        }
+
                         var built = buildGrowthMap(combined);
                         activeLayer = built.layer;
                         items = built.points;
