@@ -42,18 +42,6 @@ class ChurchDashboardController extends Controller
             ->orderBy('name')
             ->get();
 
-        // Map markers don't carry their own Uni/Daerah color — churches only reach a Union
-        // through their Conference, while Person/Institution can also attach directly to a
-        // Union — so this mirrors BuildsLeaderboards::regionEntityUnion()'s fallback chain
-        // rather than reusing it (that one takes ChurchSocial-shaped rows, not these entities).
-        $resolveUnion = fn ($entity) => $entity->conference?->union ?? $entity->union ?? null;
-        $resolveDivision = fn ($entity) => $resolveUnion($entity)?->division;
-
-        // Church/Person/Institution each have their own direct conference() relation (unlike
-        // resolveUnion() above, this needs no fallback chain — an entity is either attached to a
-        // Conference or it isn't, there's nothing else to fall back to).
-        $resolveConference = fn ($entity) => $entity->conference;
-
         $allSocials = $churches->flatMap->socials;
 
         $reachCountField = fn ($social) => $social->platform === SocialPlatform::YouTube ? 'subscribers_count' : 'followers_count';
@@ -84,20 +72,14 @@ class ChurchDashboardController extends Controller
                 'name' => $church->name,
                 'city' => $church->city,
                 'url' => route('churches.show', $church),
-                // Only offered to whoever can actually fix it — the Uni/Daerah map tab's own
-                // church-point markers link here so a wrongly-placed pin can be corrected right
-                // from the map instead of hunting the church down in Kelola Akun first.
+                // Only offered to whoever can actually fix it — the growth map's own dots link
+                // here so a wrongly-placed pin can be corrected right from the map instead of
+                // hunting the church down in Kelola Akun first.
                 'editUrl' => in_array($church->id, $editableChurchIds, true) ? route('churches.edit', $church) : null,
                 'lat' => $church->latitude,
                 'lng' => $church->longitude,
                 'reach' => $church->socials->sum(fn ($social) => $social->latestStat?->{$reachCountField($social)} ?? 0),
                 'growthScore' => $churchGrowthScores->get($church->id)['score'] ?? null,
-                'divisionId' => $resolveDivision($church)?->id,
-                'divisionName' => $resolveDivision($church)?->name,
-                'unionId' => $resolveUnion($church)?->id,
-                'unionName' => $resolveUnion($church)?->name,
-                'conferenceId' => $resolveConference($church)?->id,
-                'conferenceName' => $resolveConference($church)?->name,
             ])
             ->values();
 
@@ -126,12 +108,6 @@ class ChurchDashboardController extends Controller
                 'lng' => $person->longitude,
                 'reach' => $person->socials->sum(fn ($social) => $social->latestStat?->{$reachCountField($social)} ?? 0),
                 'growthScore' => $personGrowthScores->get($person->id)['score'] ?? null,
-                'divisionId' => $resolveDivision($person)?->id,
-                'divisionName' => $resolveDivision($person)?->name,
-                'unionId' => $resolveUnion($person)?->id,
-                'unionName' => $resolveUnion($person)?->name,
-                'conferenceId' => $resolveConference($person)?->id,
-                'conferenceName' => $resolveConference($person)?->name,
             ])
             ->values();
 
@@ -160,73 +136,10 @@ class ChurchDashboardController extends Controller
                 'lng' => $institution->longitude,
                 'reach' => $institution->socials->sum(fn ($social) => $social->latestStat?->{$reachCountField($social)} ?? 0),
                 'growthScore' => $institutionGrowthScores->get($institution->id)['score'] ?? null,
-                'divisionId' => $resolveDivision($institution)?->id,
-                'divisionName' => $resolveDivision($institution)?->name,
-                'unionId' => $resolveUnion($institution)?->id,
-                'unionName' => $resolveUnion($institution)?->name,
-                'conferenceId' => $resolveConference($institution)?->id,
-                'conferenceName' => $resolveConference($institution)?->name,
             ])
             ->values();
 
         $unmappedInstitutionsCount = $mapInstitutionSource->count() - $mapInstitutions->count();
-
-        // The map's "Uni/Daerah" tab recolors the same church/personal/institution pins by
-        // region instead of adding new markers (Union/Conference have no lat/lng of their own)
-        // — pins whose Uni/Daerah can't be resolved are left out of that tab entirely (rather
-        // than lumped into a catch-all bucket) to avoid visually overlapping real territory they
-        // don't belong to, so both the legend and this tab's own summary count only cover pins
-        // that actually have a Union.
-        $mapOrganizationItems = $mapChurches->concat($mapPeople)->concat($mapInstitutions)
-            ->filter(fn ($item) => $item['unionId'] !== null);
-
-        $unionIds = $mapOrganizationItems->pluck('unionId')->unique();
-        $unionOffices = Union::whereIn('id', $unionIds)->get(['id', 'latitude', 'longitude'])->keyBy('id');
-
-        $mapUnions = $mapOrganizationItems
-            ->unique('unionId')
-            ->sortBy('unionName')
-            ->values()
-            ->map(fn ($item) => [
-                'id' => $item['unionId'],
-                'name' => $item['unionName'],
-                'officeLat' => $unionOffices[$item['unionId']]->latitude ?? null,
-                'officeLng' => $unionOffices[$item['unionId']]->longitude ?? null,
-            ]);
-
-        // The Divisi-level layer shown when the viewer is zoomed out furthest — a Union not yet
-        // placed under any Divisi (still common right after the Divisi feature ships) simply has
-        // no Divisi-tier representation, same "no catch-all bucket" principle as unionId above.
-        // Division has no latitude/longitude columns of its own (unlike Union/Conference), so
-        // there's no office marker for this tier — buildOfficeMarker() in the view already
-        // no-ops on a null officeLat/officeLng.
-        $mapDivisions = $mapOrganizationItems
-            ->filter(fn ($item) => $item['divisionId'] !== null)
-            ->unique('divisionId')
-            ->sortBy('divisionName')
-            ->values()
-            ->map(fn ($item) => [
-                'id' => $item['divisionId'],
-                'name' => $item['divisionName'],
-            ]);
-
-        $conferenceIds = $mapOrganizationItems->pluck('conferenceId')->filter()->unique();
-        $conferenceOffices = Conference::whereIn('id', $conferenceIds)->get(['id', 'latitude', 'longitude'])->keyBy('id');
-
-        // The Daerah-level layer shown once the viewer zooms into a Union — inherits its color
-        // from the parent Union (assigned in JS) so the two zoom tiers read as the same region.
-        $mapConferences = $mapOrganizationItems
-            ->filter(fn ($item) => $item['conferenceId'] !== null)
-            ->unique('conferenceId')
-            ->sortBy('conferenceName')
-            ->values()
-            ->map(fn ($item) => [
-                'id' => $item['conferenceId'],
-                'name' => $item['conferenceName'],
-                'unionId' => $item['unionId'],
-                'officeLat' => $conferenceOffices[$item['conferenceId']]->latitude ?? null,
-                'officeLng' => $conferenceOffices[$item['conferenceId']]->longitude ?? null,
-            ]);
 
         // Unlike the map/platform-score below, Top 5/Bottom 5 use the normal scoped call —
         // analyticsChurchScope() already resolves a gereja-level viewer to their whole
@@ -434,10 +347,6 @@ class ChurchDashboardController extends Controller
             'totalPeople' => $people->count(),
             'totalInstitutions' => $institutions->count(),
             'weeklyGrowth' => $weeklyGrowth,
-            'mapDivisions' => $mapDivisions,
-            'mapUnions' => $mapUnions,
-            'mapConferences' => $mapConferences,
-            'mapOrganizationCount' => $mapOrganizationItems->count(),
             'mapChurches' => $mapChurches,
             'unmappedCount' => $unmappedCount,
             'mapPeople' => $mapPeople,

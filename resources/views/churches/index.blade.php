@@ -189,8 +189,8 @@
     <div class="mb-8 rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
         <div class="mb-4 flex flex-wrap items-start justify-between gap-2">
             <div class="min-w-0 flex-1">
-                <p class="text-sm text-slate-500 dark:text-slate-400" data-map-summary="organisasi">
-                    {{ __('dashboard.map_summary_organization', ['count' => $mapOrganizationCount, 'unionCount' => $mapUnions->count()]) }}
+                <p class="text-sm text-slate-500 dark:text-slate-400" data-map-summary="heatmap">
+                    {{ __('dashboard.map_summary_heatmap', ['count' => $mapGrowthDataCount, 'noDataCount' => $mapNoGrowthDataCount]) }}
                 </p>
                 <p class="hidden text-sm text-slate-500 dark:text-slate-400" data-map-summary="gereja">
                     {{ __('dashboard.map_summary_church', ['count' => $mapChurches->count()]) }}
@@ -203,9 +203,6 @@
                 </p>
                 <p class="hidden text-sm text-slate-500 dark:text-slate-400" data-map-summary="gabungan">
                     {{ __('dashboard.map_summary_combined', ['churchCount' => $mapChurches->count(), 'peopleCount' => $mapPeople->count(), 'institutionCount' => $mapInstitutions->count()]) }}
-                </p>
-                <p class="hidden text-sm text-slate-500 dark:text-slate-400" data-map-summary="heatmap">
-                    {{ __('dashboard.map_summary_heatmap', ['count' => $mapGrowthDataCount, 'noDataCount' => $mapNoGrowthDataCount]) }}
                 </p>
                 <p class="hidden text-sm text-slate-500 dark:text-slate-400" data-map-summary="wilayah">
                     {{ __('dashboard.map_summary_region_heatmap', ['count' => $mapRegionGrowth->count()]) }}
@@ -227,11 +224,14 @@
         </div>
 
         <div class="mb-4 flex gap-2 overflow-x-auto border-b border-black/5 dark:border-white/5">
-            <button type="button" data-map-tab="organisasi" class="border-b-2 px-4 py-2 text-sm font-medium transition">
-                {{ __('comparison.organization_label') }}
+            <button type="button" data-map-tab="heatmap" class="border-b-2 px-4 py-2 text-sm font-medium transition">
+                {{ __('dashboard.map_tab_heatmap') }}
+            </button>
+            <button type="button" data-map-tab="wilayah" class="border-b-2 px-4 py-2 text-sm font-medium transition">
+                {{ __('dashboard.map_tab_region_heatmap') }}
             </button>
             <button type="button" data-map-tab="gereja" class="border-b-2 px-4 py-2 text-sm font-medium transition">
-                {{ __('common.church') }}
+                {{ __('dashboard.map_tab_church') }}
             </button>
             <button type="button" data-map-tab="personal" class="border-b-2 px-4 py-2 text-sm font-medium transition">
                 {{ __('common.personal') }}
@@ -241,12 +241,6 @@
             </button>
             <button type="button" data-map-tab="gabungan" class="border-b-2 px-4 py-2 text-sm font-medium transition">
                 {{ __('common.combined') }}
-            </button>
-            <button type="button" data-map-tab="heatmap" class="border-b-2 px-4 py-2 text-sm font-medium transition">
-                {{ __('dashboard.map_tab_heatmap') }}
-            </button>
-            <button type="button" data-map-tab="wilayah" class="border-b-2 px-4 py-2 text-sm font-medium transition">
-                {{ __('dashboard.map_tab_region_heatmap') }}
             </button>
         </div>
 
@@ -295,7 +289,6 @@
                 {{ __('dashboard.map_empty') }}
             </div>
         @else
-            <div id="church-map-union-legend" class="mb-3 flex flex-wrap gap-x-4 gap-y-1.5"></div>
             <div id="church-map" class="relative z-0 h-[350px] w-full rounded-xl sm:h-[450px] lg:h-[650px]"></div>
         @endif
     </div>
@@ -333,50 +326,6 @@
                 var institutions = @json($mapInstitutions, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_INVALID_UTF8_SUBSTITUTE).map(function (i) { i.type = 'institusi'; return i; });
                 var combined = churches.concat(people).concat(institutions);
 
-                // "Uni/Daerah" tab: no per-church markers (Union/Conference have no lat/lng of
-                // their own, and church-level detail already lives in the Gereja tab) — zoomed
-                // out it shows one region per Union, zoomed in one region per Daerah, each just
-                // an outline (still built from that region's own churches' coordinates) plus a
-                // summary popup — see buildRegionLayer()/refreshOrganizationLayer() below.
-                var mapDivisions = @json($mapDivisions);
-                var mapUnions = @json($mapUnions);
-                var mapConferences = @json($mapConferences);
-                var unionColorPalette = ['#2563eb', '#dc2626', '#059669', '#d97706', '#7c3aed', '#db2777', '#0891b2', '#65a30d', '#ea580c', '#4f46e5'];
-                // Divisi gets its own independent color assignment (not inherited by Uni/Daerah
-                // below it) — every Uni keeps a visually distinct color at its own zoom tier
-                // exactly as before Divisi existed; only the Divisi tier itself, one zoom step
-                // further out, uses this separate palette.
-                var divisionColorById = {};
-                mapDivisions.forEach(function (d, i) { divisionColorById[d.id] = unionColorPalette[i % unionColorPalette.length]; });
-                var unionColorById = {};
-                mapUnions.forEach(function (u, i) { unionColorById[u.id] = unionColorPalette[i % unionColorPalette.length]; });
-                var conferenceColorById = {};
-                mapConferences.forEach(function (c) { conferenceColorById[c.id] = unionColorById[c.unionId]; });
-
-                // Monotone chain convex hull (Andrew's algorithm) — draws each Union's rough
-                // service-area outline from its own churches' coordinates, since there's no
-                // official administrative boundary data to draw against. Returns null under 3
-                // points (no polygon is meaningful yet).
-                function convexHull(points) {
-                    if (points.length < 3) return null;
-                    var pts = points.slice().sort(function (a, b) { return a[0] - b[0] || a[1] - b[1]; });
-                    function cross(o, a, b) { return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]); }
-                    var lower = [];
-                    for (var i = 0; i < pts.length; i++) {
-                        while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], pts[i]) <= 0) lower.pop();
-                        lower.push(pts[i]);
-                    }
-                    var upper = [];
-                    for (var i = pts.length - 1; i >= 0; i--) {
-                        while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], pts[i]) <= 0) upper.pop();
-                        upper.push(pts[i]);
-                    }
-                    lower.pop();
-                    upper.pop();
-                    var hull = lower.concat(upper);
-                    return hull.length >= 3 ? hull : null;
-                }
-
                 var map = L.map('church-map');
 
                 var osmAttribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
@@ -405,15 +354,6 @@
 
                 baseLayers[mapI18n.layerStandard].addTo(map);
                 L.control.layers(baseLayers, null, { position: 'topright' }).addTo(map);
-
-                // The default "Standard" basemap's own greens (forest/park tiles) compete
-                // visually with the growth map's green dots — auto-switching to the muted
-                // "Light" layer on that tab specifically (never overriding a base layer the
-                // viewer already picked some other way) fixes that without touching the other
-                // tabs' basemap at all. The layer control still lets them pick anything else
-                // afterward — this only ever nudges the very first time.
-                var currentBaseLayerName = mapI18n.layerStandard;
-                map.on('baselayerchange', function (e) { currentBaseLayerName = e.name; });
 
                 function buildMarker(item) {
                     var popup = '<p class="font-semibold">' + item.name + '</p>' +
@@ -470,186 +410,20 @@
                     return group;
                 }
 
-                // Items with no resolvable Union are left out of this tab entirely (not lumped
-                // into a catch-all "Other" bucket) — showing them risked visually overlapping
-                // real Union/Daerah territory they don't actually belong to.
-                var organizationItems = combined.filter(function (item) { return item.unionId && unionColorById[item.unionId]; });
-
-                function churchPointsOf(items) {
-                    return items.filter(function (item) { return item.type === 'gereja'; }).map(function (item) { return [item.lat, item.lng]; });
-                }
-
-                function regionCentroid(points) {
-                    var totals = points.reduce(function (acc, p) { return [acc[0] + p[0], acc[1] + p[1]]; }, [0, 0]);
-                    return [totals[0] / points.length, totals[1] / points.length];
-                }
-
-                function regionSummaryPopup(name, items) {
-                    var churchCount = items.filter(function (item) { return item.type === 'gereja'; }).length;
-                    var personCount = items.filter(function (item) { return item.type === 'personal'; }).length;
-                    var institutionCount = items.filter(function (item) { return item.type === 'institusi'; }).length;
-                    var totalReach = items.reduce(function (sum, item) { return sum + item.reach; }, 0);
-
-                    var summaryParts = [churchCount + ' ' + mapI18n.churchLabel];
-                    if (personCount > 0) summaryParts.push(personCount + ' ' + mapI18n.personalLabel);
-                    if (institutionCount > 0) summaryParts.push(institutionCount + ' ' + mapI18n.institutionLabel);
-
-                    return '<p class="font-semibold">' + name + '</p>' +
-                        '<p class="mt-1 text-xs">' + summaryParts.join(', ') + '</p>' +
-                        '<p class="text-xs">' + mapI18n.reachLabel + totalReach.toLocaleString(mapI18n.numberLocale) + '</p>';
-                }
-
-                // The region's outline is still only ever built from its own churches' coordinates
-                // (personal/institution pins don't factor into the shape, only into the popup's
-                // summary counts) — a region with zero mapped churches renders nothing at all,
-                // rather than falling back to some other point source.
-                function buildRegionLayer(items, name, color) {
-                    var churchPoints = churchPointsOf(items);
-                    if (churchPoints.length === 0) return null;
-
-                    var hullPoints = convexHull(churchPoints);
-                    var shape = hullPoints
-                        ? L.polygon(hullPoints, { color: color, weight: 2, fillColor: color, fillOpacity: 0.15 })
-                        : L.circleMarker(regionCentroid(churchPoints), { radius: 10, color: color, weight: 2, fillColor: color, fillOpacity: 0.5 });
-
-                    return shape.bindPopup(regionSummaryPopup(name, items));
-                }
-
-                // A distinct small solid marker for the region's actual office location (set via
-                // Kelola Akun → Uni/Daerah) — separate from buildRegionLayer()'s territory outline
-                // (built purely from church coordinates) and its own centroid-fallback marker, so
-                // the three never get visually confused for one another.
-                function buildOfficeMarker(region, color) {
-                    if (region.officeLat == null || region.officeLng == null) return null;
-
-                    return L.circleMarker([region.officeLat, region.officeLng], {
-                        radius: 6,
-                        color: '#ffffff',
-                        weight: 2,
-                        fillColor: color,
-                        fillOpacity: 1,
-                    }).bindPopup('<p class="font-semibold">' + mapI18n.officeLabel + ' ' + region.name + '</p>');
-                }
-
-                // The individual church points a region's outline is built from — shown as their
-                // own small dots (not full detail, that's the Gereja tab's job) specifically so a
-                // wrongly-placed one is identifiable and fixable: the popup names the church and,
-                // for whoever's allowed to, links straight to its coordinate fields.
-                function buildChurchPointMarker(item, color) {
-                    var popup = '<p class="font-semibold">' + item.name + '</p>' +
-                        (item.city ? '<p class="text-xs text-slate-500">' + item.city + '</p>' : '') +
-                        (item.editUrl ? '<a href="' + item.editUrl + '" class="text-xs text-blue-600">' + mapI18n.editCoordinatesLabel + '</a>' : '');
-
-                    return L.circleMarker([item.lat, item.lng], {
-                        radius: 3,
-                        color: '#ffffff',
-                        weight: 1,
-                        fillColor: color,
-                        fillOpacity: 0.9,
-                    }).bindPopup(popup);
-                }
-
-                function buildChurchPointMarkers(items, color) {
-                    return items
-                        .filter(function (item) { return item.type === 'gereja'; })
-                        .map(function (item) { return buildChurchPointMarker(item, color); });
-                }
-
-                var divisionRegionLayers = mapDivisions.map(function (d) {
-                    return buildRegionLayer(organizationItems.filter(function (item) { return item.divisionId === d.id; }), d.name, divisionColorById[d.id]);
-                }).filter(function (layer) { return layer !== null; });
-
-                // No office markers for this tier — Division has no latitude/longitude of its own.
-                var divisionChurchPointMarkers = [];
-                mapDivisions.forEach(function (d) {
-                    divisionChurchPointMarkers = divisionChurchPointMarkers.concat(
-                        buildChurchPointMarkers(organizationItems.filter(function (item) { return item.divisionId === d.id; }), divisionColorById[d.id])
-                    );
-                });
-
-                var unionRegionLayers = mapUnions.map(function (u) {
-                    return buildRegionLayer(organizationItems.filter(function (item) { return item.unionId === u.id; }), u.name, unionColorById[u.id]);
-                }).filter(function (layer) { return layer !== null; });
-
-                var unionOfficeMarkers = mapUnions.map(function (u) {
-                    return buildOfficeMarker(u, unionColorById[u.id]);
-                }).filter(function (marker) { return marker !== null; });
-
-                var unionChurchPointMarkers = [];
-                mapUnions.forEach(function (u) {
-                    unionChurchPointMarkers = unionChurchPointMarkers.concat(
-                        buildChurchPointMarkers(organizationItems.filter(function (item) { return item.unionId === u.id; }), unionColorById[u.id])
-                    );
-                });
-
-                var conferenceRegionLayers = mapConferences.map(function (c) {
-                    return buildRegionLayer(organizationItems.filter(function (item) { return item.conferenceId === c.id; }), c.name, conferenceColorById[c.id]);
-                }).filter(function (layer) { return layer !== null; });
-
-                var conferenceOfficeMarkers = mapConferences.map(function (c) {
-                    return buildOfficeMarker(c, conferenceColorById[c.id]);
-                }).filter(function (marker) { return marker !== null; });
-
-                var conferenceChurchPointMarkers = [];
-                mapConferences.forEach(function (c) {
-                    conferenceChurchPointMarkers = conferenceChurchPointMarkers.concat(
-                        buildChurchPointMarkers(organizationItems.filter(function (item) { return item.conferenceId === c.id; }), conferenceColorById[c.id])
-                    );
-                });
-
-                var divisionLayer = L.layerGroup(divisionRegionLayers.concat(divisionChurchPointMarkers));
-                var unionLayer = L.layerGroup(unionRegionLayers.concat(unionOfficeMarkers).concat(unionChurchPointMarkers));
-                var conferenceLayer = L.layerGroup(conferenceRegionLayers.concat(conferenceOfficeMarkers).concat(conferenceChurchPointMarkers));
-                // Below DIVISION_ZOOM_THRESHOLD: one region per Divisi. Between the two
-                // thresholds: one region per Uni (unchanged from before Divisi existed). At or
-                // above ORGANIZATION_ZOOM_THRESHOLD: one region per Daerah.
-                var DIVISION_ZOOM_THRESHOLD = 6;
-                var ORGANIZATION_ZOOM_THRESHOLD = 9;
-
-                var legendEl = document.getElementById('church-map-union-legend');
-
-                // Swaps the legend's contents to match whichever tier is currently on screen —
-                // called from refreshOrganizationLayer() below, since the visible tier (and thus
-                // which colors are actually on the map) changes with zoom.
-                function renderLegend(items, colorById, labelKey) {
-                    if (! legendEl) return;
-
-                    var legendItems = items.map(function (item) {
-                        return { color: colorById[item.id], label: item[labelKey] || item.name };
-                    });
-                    legendEl.innerHTML = legendItems.map(function (item) {
-                        return '<span class="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">' +
-                            '<span class="inline-block h-2.5 w-2.5 shrink-0 rounded-full" style="background:' + item.color + '"></span>' +
-                            item.label + '</span>';
-                    }).join('');
-                }
-
-                // Office coordinates can sit well outside where any of that region's mapped
-                // church/personal/institution pins happen to be, so they're folded into this
-                // tab's own bounds-fit too — otherwise switching to it wouldn't necessarily bring
-                // the office marker into view. Divisi has no office coordinates of its own (see
-                // $mapDivisions above), so there's nothing to add for that tier here.
-                var organizationBoundsItems = organizationItems.concat(
-                    mapUnions.filter(function (u) { return u.officeLat != null && u.officeLng != null; })
-                        .map(function (u) { return { lat: u.officeLat, lng: u.officeLng }; }),
-                    mapConferences.filter(function (c) { return c.officeLat != null && c.officeLng != null; })
-                        .map(function (c) { return { lat: c.officeLat, lng: c.officeLng }; })
-                );
-
-                // Weekly growth map — solid colored dots (green = growth, red = decline) rather
-                // than a blurred heat layer. A real density heatmap only reads well with many
-                // overlapping points; with a few dozen scattered churches/personal/institutions,
-                // a blurred layer either washes out to near-invisible or, tuned solid enough to
-                // see, just renders as isolated blobs with no actual blending between them —
-                // confirmed looking wrong both ways. Individual dots are what this data actually
-                // is: one clear, clickable value per location, same marker language the map's own
-                // Uni/Daerah tab already uses for its church-point dots.
+                // Weekly growth map — solid colored dots (green = growth, red = decline, gray =
+                // no growth data yet) rather than a blurred heat layer. A real density heatmap
+                // only reads well with many overlapping points; with a few dozen scattered
+                // churches/personal/institutions, a blurred layer either washes out to near-
+                // invisible or, tuned solid enough to see, just renders as isolated blobs with no
+                // actual blending between them — confirmed looking wrong both ways. Individual
+                // dots are what this data actually is: one clear, clickable value per location —
+                // per explicit request, EVERY mapped location gets a dot here now (not just the
+                // ones with growth data), the same complete picture the old Uni/Daerah tab's own
+                // church-point dots used to give before that tab was removed.
                 //
                 // Shade (not size) carries the magnitude — a fixed-radius dot avoids a big bubble
                 // in a growing area visually swallowing its smaller neighbors, which matters here
                 // since real churches can sit close together (e.g. within the same city).
-                // An item with no growthScore yet (fewer than 2 weeks of tracking — see
-                // growthScoreRows()) is left out entirely rather than counted as flat growth.
                 var growthMapBuild = null;
                 function buildGrowthMap(items) {
                     if (growthMapBuild) return growthMapBuild;
@@ -664,27 +438,35 @@
                     // 0.5 → 0.71), so a solidly-average point still reads as clearly colored.
                     var growthShades = ['#bbf7d0', '#4ade80', '#16a34a', '#065f46'];
                     var declineShades = ['#fecaca', '#f87171', '#dc2626', '#7f1d1d'];
-                    function shadeFor(value) {
-                        var t = Math.sqrt(Math.abs(value) / maxAbsGrowth);
-                        var shades = value > 0 ? growthShades : declineShades;
+                    var NO_DATA_SHADE = '#cbd5e1'; // slate-300 — visually neutral, distinct from every growth/decline shade above.
+
+                    function shadeFor(item) {
+                        if (item.growthScore === null || item.growthScore === undefined) return NO_DATA_SHADE;
+
+                        var t = Math.sqrt(Math.abs(item.growthScore) / maxAbsGrowth);
+                        var shades = item.growthScore > 0 ? growthShades : declineShades;
                         var index = Math.min(shades.length - 1, Math.floor(t * shades.length));
                         return shades[index];
                     }
 
-                    var markers = withGrowth.map(function (item) {
+                    var markers = items.map(function (item) {
+                        var hasGrowth = item.growthScore !== null && item.growthScore !== undefined;
+
                         var popup = '<p class="font-semibold">' + item.name + '</p>' +
                             (item.city ? '<p class="text-xs text-slate-500">' + item.city + '</p>' : '') +
-                            '<p class="mt-1 text-xs">' + mapI18n.weeklyGrowthLabel + ': ' +
-                                (item.growthScore > 0 ? '+' : '') + item.growthScore.toFixed(1) + '%</p>' +
-                            '<a href="' + item.url + '" class="text-xs text-blue-600">' + mapI18n.viewDetail + '</a>';
+                            (hasGrowth
+                                ? '<p class="mt-1 text-xs">' + mapI18n.weeklyGrowthLabel + ': ' + (item.growthScore > 0 ? '+' : '') + item.growthScore.toFixed(1) + '%</p>'
+                                : '<p class="mt-1 text-xs text-slate-400">' + mapI18n.regionNoDataLabel + '</p>') +
+                            '<a href="' + item.url + '" class="text-xs text-blue-600">' + mapI18n.viewDetail + '</a>' +
+                            (item.editUrl ? ' &middot; <a href="' + item.editUrl + '" class="text-xs text-blue-600">' + mapI18n.editCoordinatesLabel + '</a>' : '');
 
                         return L.circleMarker([item.lat, item.lng], {
                             radius: 5, color: '#ffffff', weight: 1,
-                            fillColor: shadeFor(item.growthScore), fillOpacity: 0.9,
+                            fillColor: shadeFor(item), fillOpacity: 0.9,
                         }).bindPopup(popup);
                     });
 
-                    growthMapBuild = { layer: L.layerGroup(markers), points: withGrowth };
+                    growthMapBuild = { layer: L.layerGroup(markers), points: items };
                     return growthMapBuild;
                 }
 
@@ -756,7 +538,7 @@
                     return regionChoroplethPromise;
                 }
 
-                var dataByTab = { gereja: churches, personal: people, institusi: institutions, gabungan: combined, organisasi: organizationBoundsItems };
+                var dataByTab = { gereja: churches, personal: people, institusi: institutions, gabungan: combined };
                 var layersByTab = {
                     gereja: buildClusterGroup(churches, '#2563eb'),
                     personal: buildClusterGroup(people, '#7c3aed'),
@@ -771,66 +553,18 @@
                 var activeLayer = null;
                 var currentTab = null;
 
-                // The "Uni/Daerah" tab swaps between divisionLayer/unionLayer/conferenceLayer as
-                // the viewer zooms, instead of being one fixed entry in layersByTab like every
-                // other tab — guarded by currentTab so the zoomend listener is a no-op on every
-                // other tab. The legend swaps in step, since the colors actually on screen change
-                // with the tier too.
-                var organizationSubLayer = null;
-
-                function refreshOrganizationLayer() {
-                    if (currentTab !== 'organisasi') return;
-
-                    var zoom = map.getZoom();
-                    var desired = zoom >= ORGANIZATION_ZOOM_THRESHOLD
-                        ? conferenceLayer
-                        : (zoom >= DIVISION_ZOOM_THRESHOLD ? unionLayer : divisionLayer);
-
-                    if (organizationSubLayer !== desired) {
-                        if (organizationSubLayer) map.removeLayer(organizationSubLayer);
-                        organizationSubLayer = desired;
-                        map.addLayer(organizationSubLayer);
-                    }
-
-                    if (desired === divisionLayer) {
-                        renderLegend(mapDivisions, divisionColorById, 'name');
-                    } else if (desired === unionLayer) {
-                        renderLegend(mapUnions, unionColorById, 'name');
-                    }
-                    // Conference tier reuses its parent Union's colors — no separate legend swap,
-                    // the Uni legend from the tier just zoomed past stays correct.
-                }
-
-                map.on('zoomend', refreshOrganizationLayer);
-
                 function activateMapTab(tab) {
                     if (activeLayer) map.removeLayer(activeLayer);
-                    if (organizationSubLayer) { map.removeLayer(organizationSubLayer); organizationSubLayer = null; }
 
                     currentTab = tab;
 
                     var items;
-                    if (tab === 'organisasi') {
-                        activeLayer = null;
-                        items = dataByTab.organisasi;
-                    } else if (tab === 'heatmap') {
-                        if (currentBaseLayerName === mapI18n.layerStandard) {
-                            map.removeLayer(baseLayers[mapI18n.layerStandard]);
-                            map.addLayer(baseLayers[mapI18n.layerLight]);
-                            currentBaseLayerName = mapI18n.layerLight;
-                        }
-
+                    if (tab === 'heatmap') {
                         var built = buildGrowthMap(combined);
                         activeLayer = built.layer;
                         items = built.points;
                         map.addLayer(activeLayer);
                     } else if (tab === 'wilayah') {
-                        if (currentBaseLayerName === mapI18n.layerStandard) {
-                            map.removeLayer(baseLayers[mapI18n.layerStandard]);
-                            map.addLayer(baseLayers[mapI18n.layerLight]);
-                            currentBaseLayerName = mapI18n.layerLight;
-                        }
-
                         // The boundary file is fetched (once, then cached) rather than bundled —
                         // items stays empty for now, so the fallback view below shows immediately
                         // instead of blocking on the network; fitBounds() re-runs once the real
@@ -862,16 +596,9 @@
                         map.setView(fallbackCenter, fallbackZoom);
                     }
 
-                    // fitBounds()/setView() above only fire 'zoomend' if the zoom level actually
-                    // changes — this covers the case where it doesn't (e.g. switching tabs
-                    // without the view moving), so the right sub-layer still shows immediately.
-                    refreshOrganizationLayer();
-
                     document.querySelectorAll('[data-map-summary]').forEach(function (el) {
                         el.classList.toggle('hidden', el.dataset.mapSummary !== tab);
                     });
-
-                    if (legendEl) legendEl.classList.toggle('hidden', tab !== 'organisasi');
 
                     var heatmapLegendEl = document.getElementById('church-map-heatmap-legend');
                     if (heatmapLegendEl) {
@@ -899,7 +626,7 @@
                     btn.addEventListener('click', function () { activateMapTab(btn.dataset.mapTab); });
                 });
 
-                activateMapTab('organisasi');
+                activateMapTab('heatmap');
             });
         </script>
     @endif
