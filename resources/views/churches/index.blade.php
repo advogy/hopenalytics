@@ -270,6 +270,7 @@
             document.addEventListener('DOMContentLoaded', function () {
                 var mapI18n = {
                     reachLabel: @json(__('dashboard.map_reach_label')),
+                    weeklyGrowthLabel: @json(__('dashboard.stat_weekly_growth')),
                     viewDetail: @json(__('dashboard.map_view_detail')),
                     layerStandard: @json(__('dashboard.map_layer_standard')),
                     layerLight: @json(__('dashboard.map_layer_light')),
@@ -590,67 +591,56 @@
                         .map(function (c) { return { lat: c.officeLat, lng: c.officeLng }; })
                 );
 
-                // Weekly growth heat map — two separate L.heatLayer instances (green for growth,
-                // red for decline) rather than one, since a heat layer has no concept of a
-                // negative/positive split on its own: each point only ever contributes a single
-                // non-negative intensity to whichever gradient it's plotted on. An item with no
-                // growthScore yet (fewer than 2 weeks of tracking — see growthScoreRows()) is
-                // left out of both entirely rather than counted as flat/zero growth.
+                // Weekly growth map — solid colored dots (green = growth, red = decline) rather
+                // than a blurred heat layer. A real density heatmap only reads well with many
+                // overlapping points; with a few dozen scattered churches/personal/institutions,
+                // a blurred layer either washes out to near-invisible or, tuned solid enough to
+                // see, just renders as isolated blobs with no actual blending between them —
+                // confirmed looking wrong both ways. Individual dots are what this data actually
+                // is: one clear, clickable value per location, same marker language the map's own
+                // Uni/Daerah tab already uses for its church-point dots.
                 //
-                // Intensity is normalized against the LARGEST |growthScore| actually present in
-                // the data, not a fixed percentage cap — real weekly growth is usually a couple
-                // of percent, and a fixed cap sized for a rare huge outlier left every realistic
-                // value's intensity too close to 0 to ever reach the gradient's visible range
-                // (confirmed happening — nothing showed any color). This way the single
-                // fastest-moving account always renders at full intensity and everything else
-                // scales relative to it, whatever the actual numbers turn out to be.
-                //
-                // Built lazily (only the first time this tab is actually opened) rather than
-                // eagerly at page load — L.heatLayer isn't otherwise touched by this page, so a
-                // stale bundle or plugin-load hiccup can't take the other tabs down with it.
-                var heatmapBuild = null;
-                function buildHeatmapLayer(items) {
-                    if (heatmapBuild) return heatmapBuild;
+                // Shade (not size) carries the magnitude — a fixed-radius dot avoids a big bubble
+                // in a growing area visually swallowing its smaller neighbors, which matters here
+                // since real churches can sit close together (e.g. within the same city).
+                // An item with no growthScore yet (fewer than 2 weeks of tracking — see
+                // growthScoreRows()) is left out entirely rather than counted as flat growth.
+                var growthMapBuild = null;
+                function buildGrowthMap(items) {
+                    if (growthMapBuild) return growthMapBuild;
 
                     var withGrowth = items.filter(function (item) { return item.growthScore !== null && item.growthScore !== undefined; });
-
-                    if (typeof L.heatLayer !== 'function') {
-                        heatmapBuild = { layer: L.layerGroup([]), points: withGrowth };
-                        return heatmapBuild;
-                    }
-
                     var maxAbsGrowth = withGrowth.reduce(function (max, item) { return Math.max(max, Math.abs(item.growthScore)); }, 0) || 1;
 
                     // sqrt rather than a straight ratio: a plain value/max only ever puts the
-                    // single most extreme account at full saturation, leaving every other point
-                    // — the vast majority of them — bunched up pale and washed-out toward the low
-                    // end (confirmed happening). Square-rooting the ratio pulls the middle of the
-                    // range up disproportionately (0.25 → 0.5, 0.5 → 0.71), so a solidly-average
-                    // point still reads as clearly colored instead of needing to be the outlier
-                    // to show up at all.
-                    function heatIntensity(value) { return Math.sqrt(Math.abs(value) / maxAbsGrowth); }
+                    // single most extreme account in the darkest shade, leaving every other point
+                    // — the vast majority of them — bunched into the palest bucket. Square-rooting
+                    // the ratio pulls the middle of the range up disproportionately (0.25 → 0.5,
+                    // 0.5 → 0.71), so a solidly-average point still reads as clearly colored.
+                    var growthShades = ['#bbf7d0', '#4ade80', '#16a34a', '#065f46'];
+                    var declineShades = ['#fecaca', '#f87171', '#dc2626', '#7f1d1d'];
+                    function shadeFor(value) {
+                        var t = Math.sqrt(Math.abs(value) / maxAbsGrowth);
+                        var shades = value > 0 ? growthShades : declineShades;
+                        var index = Math.min(shades.length - 1, Math.floor(t * shades.length));
+                        return shades[index];
+                    }
 
-                    var growthPoints = withGrowth
-                        .filter(function (item) { return item.growthScore > 0; })
-                        .map(function (item) { return [item.lat, item.lng, heatIntensity(item.growthScore)]; });
-                    var declinePoints = withGrowth
-                        .filter(function (item) { return item.growthScore < 0; })
-                        .map(function (item) { return [item.lat, item.lng, heatIntensity(item.growthScore)]; });
+                    var markers = withGrowth.map(function (item) {
+                        var popup = '<p class="font-semibold">' + item.name + '</p>' +
+                            (item.city ? '<p class="text-xs text-slate-500">' + item.city + '</p>' : '') +
+                            '<p class="mt-1 text-xs">' + mapI18n.weeklyGrowthLabel + ': ' +
+                                (item.growthScore > 0 ? '+' : '') + item.growthScore.toFixed(1) + '%</p>' +
+                            '<a href="' + item.url + '" class="text-xs text-blue-600">' + mapI18n.viewDetail + '</a>';
 
-                    // Less blur relative to radius than a typical density heatmap — this one has
-                    // relatively few, sparse points rather than thousands, so a heavy blur just
-                    // reads as a faint haze; a smaller blur band keeps each point's core looking
-                    // like a solid patch of color instead of a soft smudge.
-                    var heatOptions = { radius: 40, blur: 15, maxZoom: 12, minOpacity: 0.55 };
-                    var growthLayer = L.heatLayer(growthPoints, Object.assign({}, heatOptions, {
-                        gradient: { 0.05: '#86efac', 0.3: '#22c55e', 0.6: '#16a34a', 1.0: '#065f46' },
-                    }));
-                    var declineLayer = L.heatLayer(declinePoints, Object.assign({}, heatOptions, {
-                        gradient: { 0.05: '#fca5a5', 0.3: '#ef4444', 0.6: '#dc2626', 1.0: '#7f1d1d' },
-                    }));
+                        return L.circleMarker([item.lat, item.lng], {
+                            radius: 8, color: '#ffffff', weight: 1.5,
+                            fillColor: shadeFor(item.growthScore), fillOpacity: 0.9,
+                        }).bindPopup(popup);
+                    });
 
-                    heatmapBuild = { layer: L.layerGroup([growthLayer, declineLayer]), points: withGrowth };
-                    return heatmapBuild;
+                    growthMapBuild = { layer: L.layerGroup(markers), points: withGrowth };
+                    return growthMapBuild;
                 }
 
                 var dataByTab = { gereja: churches, personal: people, institusi: institutions, gabungan: combined, organisasi: organizationBoundsItems };
@@ -711,7 +701,7 @@
                         activeLayer = null;
                         items = dataByTab.organisasi;
                     } else if (tab === 'heatmap') {
-                        var built = buildHeatmapLayer(combined);
+                        var built = buildGrowthMap(combined);
                         activeLayer = built.layer;
                         items = built.points;
                         map.addLayer(activeLayer);
