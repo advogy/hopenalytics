@@ -66,6 +66,7 @@ Route::post('/forgot-password', [ForgotPasswordController::class, 'send'])->name
 Route::get('/reset-password', [ForgotPasswordController::class, 'showReset'])->name('reset-password');
 Route::post('/reset-password', [ForgotPasswordController::class, 'reset'])->name('reset-password.attempt')->middleware('throttle:reset-password');
 Route::post('/reset-password/resend', [ForgotPasswordController::class, 'resend'])->name('reset-password.resend')->middleware('throttle:3,10');
+Route::post('/reset-password/cancel', [ForgotPasswordController::class, 'cancel'])->name('reset-password.cancel');
 
 // Public: meant to be shown fullscreen on a screen/projector during events, so it can't
 // require anyone to be logged in. Unauthenticated visibility falls back to "everything"

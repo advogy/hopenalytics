@@ -30,10 +30,19 @@
         </button>
     </form>
 
-    <form method="POST" action="{{ route('reset-password.resend') }}" class="mt-4 text-center">
-        @csrf
-        <button type="submit" class="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400">
-            {{ __('auth.resend_otp') }}
-        </button>
-    </form>
+    <div class="mt-4 flex flex-col items-center gap-2">
+        <form method="POST" action="{{ route('reset-password.resend') }}">
+            @csrf
+            <button type="submit" class="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400">
+                {{ __('auth.resend_otp') }}
+            </button>
+        </form>
+
+        <form method="POST" action="{{ route('reset-password.cancel') }}" data-confirm="{{ __('auth.cancel_reset_confirm') }}">
+            @csrf
+            <button type="submit" class="text-sm text-slate-400 hover:text-red-600 dark:text-slate-500 dark:hover:text-red-400">
+                {{ __('auth.cancel_reset') }}
+            </button>
+        </form>
+    </div>
 @endsection

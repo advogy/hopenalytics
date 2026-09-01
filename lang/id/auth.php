@@ -31,6 +31,8 @@ return [
     'otp_resent' => 'Jika email tersebut punya pendaftaran yang menunggu verifikasi, kode baru telah dikirim.',
     'cancel_registration' => 'Keluar',
     'cancel_registration_confirm' => 'Batalkan pendaftaran ini?',
+    'cancel_reset' => 'Keluar',
+    'cancel_reset_confirm' => 'Batalkan atur ulang kata sandi ini?',
     'otp_verified' => 'Email berhasil diverifikasi. Selamat datang!',
 
     'link_person_title' => 'Apakah Salah Satu Ini Anda?',

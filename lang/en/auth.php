@@ -31,6 +31,8 @@ return [
     'otp_resent' => 'If that email has a pending unverified registration, a new code has been sent.',
     'cancel_registration' => 'Exit',
     'cancel_registration_confirm' => 'Cancel this registration?',
+    'cancel_reset' => 'Exit',
+    'cancel_reset_confirm' => 'Cancel this password reset?',
     'otp_verified' => 'Email verified successfully. Welcome!',
 
     'link_person_title' => 'Is One of These You?',

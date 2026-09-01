@@ -99,6 +99,19 @@ class ForgotPasswordController extends Controller
         return redirect()->route('login')->with('status', __('auth.password_reset_success'));
     }
 
+    /**
+     * Lets someone abandon a pending reset and go back to plain email entry — mirrors
+     * RegisterController::cancelRegistration()'s exact shape for the same reason: without
+     * this, the only way out of reset-password once you're on it is finishing it or closing
+     * the tab, leaving the pending state (and its OTP) sitting in session either way.
+     */
+    public function cancel(Request $request): RedirectResponse
+    {
+        $request->session()->forget(['password_reset_user_id', 'password_reset_email']);
+
+        return redirect()->route('forgot-password');
+    }
+
     public function resend(Request $request): RedirectResponse
     {
         if (! $this->hasPendingReset($request)) {
