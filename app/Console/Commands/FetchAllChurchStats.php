@@ -20,6 +20,7 @@ class FetchAllChurchStats extends Command
             ->where('is_active', true)
             ->where('is_auto_fetch', true)
             ->ownerActive()
+            ->consentGranted()
             ->chunkById(50, function ($churchSocials) use (&$delaySeconds) {
                 foreach ($churchSocials as $churchSocial) {
                     FetchSingleChurchData::dispatch($churchSocial)

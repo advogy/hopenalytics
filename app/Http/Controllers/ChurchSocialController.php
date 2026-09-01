@@ -199,7 +199,7 @@ class ChurchSocialController extends Controller
             }
 
             throw ValidationException::withMessages([
-                'platform' => 'Akun dengan handle yang sama untuk platform ini sudah ada.',
+                'platform' => __('entity.social_duplicate_platform_handle'),
             ]);
         }
     }
@@ -319,10 +319,18 @@ class ChurchSocialController extends Controller
 
         if (! $personal) {
             $rules['category'] = ['required', 'string', 'in:gereja,umum'];
+        } else {
+            // Personal-only requirement, per the user's explicit call — see
+            // ChurchSocial::scopeConsentGranted(). This is the shared edit path (this method is
+            // never used for a Church's own store()/update()), so it's also how an account
+            // already in the database with consent_at still null (every one of them, the moment
+            // this shipped) gets it backfilled: re-saving requires checking this box.
+            $rules['consent'] = ['accepted'];
         }
 
         $data = $request->validate($rules, [
-            'platform.unique' => 'Akun dengan handle yang sama untuk platform ini sudah ada.',
+            'platform.unique' => __('entity.social_duplicate_platform_handle'),
+            'consent.accepted' => __('entity.social_consent_required'),
         ]);
 
         $data['handle'] = ltrim($data['handle'], '@');
@@ -330,6 +338,8 @@ class ChurchSocialController extends Controller
 
         if ($personal) {
             $data['category'] = 'personal';
+            unset($data['consent']);
+            $data['consent_at'] = now();
         }
 
         $this->assertHandleNotAlreadyTracked($data['platform'], $data['handle'], $data['profile_url'] ?? null, $ignoreId);
@@ -362,7 +372,7 @@ class ChurchSocialController extends Controller
             'profile_url' => ['nullable', 'url', 'max:2048'],
             'is_auto_fetch' => ['nullable', 'boolean'],
         ], [
-            'platform.unique' => 'Akun dengan handle yang sama untuk platform ini sudah ada.',
+            'platform.unique' => __('entity.social_duplicate_platform_handle'),
         ]);
 
         $data['handle'] = ltrim($data['handle'], '@');

@@ -18,6 +18,10 @@ return [
     'last_updated_at' => 'Data terakhir diperbarui: :time',
     'last_updated_never' => 'Data belum pernah diperbarui',
     'refresh_started' => 'Memperbarui :count akun di background — data akan muncul dalam beberapa menit.',
+    'refresh_manual_only' => 'Akun :handle ditandai manual dan tidak bisa di-refresh otomatis.',
+    'refresh_consent_missing' => 'Akun :handle belum mendapat izin pemiliknya untuk ditarik datanya.',
+    'refresh_failed_with_error' => 'Gagal memperbarui :handle: :error',
+    'refresh_single_success' => 'Akun :handle berhasil diperbarui.',
 
     // Scope label shown under the dashboard title — see ChurchDashboardController::index().
     'scope_global' => 'Ringkasan global — seluruh Uni, Konferens/Daerah, Gereja, Institusi, dan Personal.',

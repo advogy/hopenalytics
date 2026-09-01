@@ -20,5 +20,6 @@
         :back-url="$backRoute"
         hint-suffix="person"
         handle-example="johndoe"
+        :require-consent="true"
     />
 @endsection

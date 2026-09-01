@@ -11,17 +11,18 @@
     $platformLabels = ['youtube' => 'YouTube', 'instagram' => 'Instagram', 'tiktok' => 'TikTok', 'facebook' => 'Facebook', 'x' => 'X'];
     $countField = ['youtube' => 'subscribers_count', 'instagram' => 'followers_count', 'tiktok' => 'followers_count', 'facebook' => 'followers_count', 'x' => 'followers_count'];
     $secondaryFields = [
-        'youtube' => ['views_count' => 'Views', 'videos_count' => 'Videos'],
-        'instagram' => ['following_count' => 'Following', 'posts_count' => 'Posts'],
-        'tiktok' => ['following_count' => 'Following', 'likes_count' => 'Likes', 'posts_count' => 'Posts'],
-        'facebook' => ['following_count' => 'Following'],
-        'x' => ['following_count' => 'Following', 'posts_count' => 'Posts'],
+        'youtube' => ['views_count' => __('common.metric_views'), 'videos_count' => __('common.metric_videos')],
+        'instagram' => ['following_count' => __('common.metric_following'), 'posts_count' => __('common.metric_posts_count')],
+        'tiktok' => ['following_count' => __('common.metric_following'), 'likes_count' => __('common.metric_likes'), 'posts_count' => __('common.metric_posts_count')],
+        'facebook' => ['following_count' => __('common.metric_following')],
+        'x' => ['following_count' => __('common.metric_following'), 'posts_count' => __('common.metric_posts_count')],
     ];
     $statusMeta = [
         'success' => ['label' => __('entity.status_auto'), 'icon' => 'check-circle', 'classes' => 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400'],
         'failed' => ['label' => __('entity.status_failed'), 'icon' => 'x-circle', 'classes' => 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-400'],
         'pending' => ['label' => __('entity.status_pending'), 'icon' => 'clock', 'classes' => 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'],
         'manual' => ['label' => __('entity.status_manual'), 'icon' => 'pencil-square', 'classes' => 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-400'],
+        'consent_pending' => ['label' => __('entity.status_consent_pending'), 'icon' => 'eye-slash', 'classes' => 'bg-orange-50 text-orange-700 dark:bg-orange-950 dark:text-orange-400'],
     ];
 
     $rows = $historyRows ?? collect();
@@ -32,6 +33,10 @@
     $sparklineValues = $rows->reverse()->values()->pluck($field)->all();
 
     $statusKey = match (true) {
+        // Checked ahead of the plain "manual" case below — a Personal without consent can
+        // never be fetched regardless of is_auto_fetch, so this is the more accurate/actionable
+        // status to surface (see ChurchSocial::scopeConsentGranted()).
+        $social->person_id !== null && $social->consent_at === null => 'consent_pending',
         ! $social->is_auto_fetch => 'manual',
         $social->last_fetch_status === 'failed' => 'failed',
         $social->last_fetched_at !== null => 'success',
@@ -99,7 +104,10 @@
                     <x-icon name="arrow-down-tray" class="h-3.5 w-3.5" />
                 </a>
 
-                @if ($social->is_auto_fetch)
+                {{-- Person-owned + no consent on record hides this the same way is_auto_fetch=
+                     false already does — UI convenience only, ChurchRefreshController::single()
+                     is the actual authority (see its own consent check). --}}
+                @if ($social->is_auto_fetch && ($social->person_id === null || $social->consent_at !== null))
                     @can('trigger-refresh')
                         @php
                             $usesThirdPartyCredit = in_array($social->platform->value, ['instagram', 'tiktok', 'x'], true);

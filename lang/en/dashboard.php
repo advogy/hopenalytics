@@ -18,6 +18,10 @@ return [
     'last_updated_at' => 'Data last updated: :time',
     'last_updated_never' => 'Data has never been updated',
     'refresh_started' => 'Refreshing :count accounts in the background — data will appear in a few minutes.',
+    'refresh_manual_only' => 'Account :handle is marked manual and can\'t be refreshed automatically.',
+    'refresh_consent_missing' => 'Account :handle hasn\'t received its owner\'s consent to have its data pulled.',
+    'refresh_failed_with_error' => 'Failed to refresh :handle: :error',
+    'refresh_single_success' => 'Account :handle was refreshed successfully.',
 
     // Scope label shown under the dashboard title — see ChurchDashboardController::index().
     'scope_global' => 'Global overview — all Unions, Conferences/Districts, Churches, Institutions, and Personal accounts.',

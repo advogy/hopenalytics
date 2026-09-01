@@ -17,6 +17,7 @@
     'showCategory' => false,
     'hintSuffix' => 'church',
     'handleExample' => 'gmahkbekasi',
+    'requireConsent' => false,
 ])
 
 <x-entity-crud-form
@@ -71,6 +72,29 @@
             }
         );
     </script>
+
+    @if ($requireConsent)
+        {{--
+            Personal-only (see PersonSocialController/ChurchSocialController's $personal
+            validation branch, and ChurchSocial::scopeConsentGranted()) — required to submit at
+            all, both on create and on re-saving an edit, so an existing account with no consent
+            on record (e.g. every one already in the database the moment this shipped) can only
+            regain fetch eligibility by having this box checked here. Pre-checked once consent_at
+            is already set, so re-saving an already-consented account stays one click.
+        --}}
+        <div class="mb-6 flex items-center gap-2">
+            <input
+                type="checkbox" id="consent" name="consent" value="1"
+                @checked(old('consent', $social->exists && $social->consent_at !== null))
+                required
+                class="h-4 w-4 rounded border-black/20 text-blue-600 focus:ring-blue-500"
+            >
+            <label for="consent" class="text-sm">
+                {{ __('entity.social_consent_label') }}
+                <span class="block text-xs text-slate-400">{{ __('entity.social_consent_hint') }}</span>
+            </label>
+        </div>
+    @endif
 
     <div class="mb-6 flex items-center gap-2">
         <input

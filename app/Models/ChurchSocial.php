@@ -17,7 +17,7 @@ class ChurchSocial extends Model
 
     protected $fillable = [
         'church_id', 'person_id', 'union_id', 'conference_id', 'institution_id', 'division_id', 'platform', 'category', 'handle',
-        'platform_account_id', 'profile_url', 'is_active', 'is_auto_fetch', 'last_fetched_at', 'last_fetch_status', 'last_fetch_error',
+        'platform_account_id', 'profile_url', 'is_active', 'is_auto_fetch', 'consent_at', 'last_fetched_at', 'last_fetch_status', 'last_fetch_error',
     ];
 
     protected $casts = [
@@ -25,6 +25,7 @@ class ChurchSocial extends Model
         'category' => SocialCategory::class,
         'is_active' => 'boolean',
         'is_auto_fetch' => 'boolean',
+        'consent_at' => 'datetime',
         'last_fetched_at' => 'datetime',
     ];
 
@@ -122,6 +123,21 @@ class ChurchSocial extends Model
             ->orWhereHas('union', fn (Builder $q2) => $q2->where('is_active', true))
             ->orWhereHas('conference', fn (Builder $q2) => $q2->where('is_active', true))
             ->orWhereHas('division', fn (Builder $q2) => $q2->where('is_active', true)));
+    }
+
+    /**
+     * Personal-only gate, per the user's explicit call — a Church/Institution/Union/Conference/
+     * Division is an organization, not a private individual, so consent_at stays permanently
+     * null for those and is simply irrelevant here (always passes). A person-owned account only
+     * passes once its owner (or an admin managing that Personal) has explicitly consented via
+     * the social-account form's consent checkbox (see PersonSocialController::validated()/
+     * ChurchSocialController::validated()'s $personal branch) — every account already in the
+     * database when this shipped starts excluded by construction (consent_at is a brand new
+     * column, null by default), which is the entire point of this gate.
+     */
+    public function scopeConsentGranted(Builder $query): Builder
+    {
+        return $query->where(fn (Builder $q) => $q->whereNull('person_id')->orWhereNotNull('consent_at'));
     }
 
     /**

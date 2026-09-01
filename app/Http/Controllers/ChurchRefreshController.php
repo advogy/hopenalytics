@@ -24,6 +24,7 @@ class ChurchRefreshController extends Controller
             ->where('is_active', true)
             ->where('is_auto_fetch', true)
             ->ownerActive()
+            ->consentGranted()
             ->visibleTo($request->user())
             ->get();
 
@@ -97,7 +98,18 @@ class ChurchRefreshController extends Controller
         );
 
         if (! $social->is_auto_fetch) {
-            $message = "Akun {$social->display_handle} ditandai manual dan tidak bisa di-refresh otomatis.";
+            $message = __('dashboard.refresh_manual_only', ['handle' => $social->display_handle]);
+
+            return $request->wantsJson()
+                ? response()->json(['success' => false, 'message' => $message], 422)
+                : back()->with('error', $message);
+        }
+
+        // Personal-only, per the user's explicit call — distinct message from the is_auto_fetch
+        // one above, since this is a privacy gate, not a "this account is manual" setting. See
+        // ChurchSocial::scopeConsentGranted().
+        if ($social->person_id !== null && $social->consent_at === null) {
+            $message = __('dashboard.refresh_consent_missing', ['handle' => $social->display_handle]);
 
             return $request->wantsJson()
                 ? response()->json(['success' => false, 'message' => $message], 422)
@@ -107,7 +119,7 @@ class ChurchRefreshController extends Controller
         try {
             FetchSingleChurchData::dispatchSync($social);
         } catch (Throwable $e) {
-            $message = "Gagal memperbarui {$social->display_handle}: {$e->getMessage()}";
+            $message = __('dashboard.refresh_failed_with_error', ['handle' => $social->display_handle, 'error' => $e->getMessage()]);
 
             return $request->wantsJson()
                 ? response()->json(['success' => false, 'message' => $message], 500)
@@ -120,14 +132,14 @@ class ChurchRefreshController extends Controller
         $social->refresh();
 
         if ($social->last_fetch_status === 'failed') {
-            $message = "Gagal memperbarui {$social->display_handle}: {$social->last_fetch_error}";
+            $message = __('dashboard.refresh_failed_with_error', ['handle' => $social->display_handle, 'error' => $social->last_fetch_error]);
 
             return $request->wantsJson()
                 ? response()->json(['success' => false, 'message' => $message], 500)
                 : back()->with('error', $message);
         }
 
-        $message = "Akun {$social->display_handle} berhasil diperbarui.";
+        $message = __('dashboard.refresh_single_success', ['handle' => $social->display_handle]);
 
         return $request->wantsJson()
             ? response()->json(['success' => true, 'message' => $message])

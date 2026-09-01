@@ -61,6 +61,21 @@ class FetchSingleChurchData implements ShouldQueue
         XStatsFetcher $xStatsFetcher,
         HashtagCandidateExtractor $hashtagCandidateExtractor,
     ): void {
+        // Defense-in-depth, per the user's explicit call — the dispatch-selection queries
+        // (FetchAllChurchStats, ChurchRefreshController::all()) already exclude a person-owned
+        // account with no consent, and single() checks it before dispatching too, but this job
+        // itself never re-verifies anything once dispatched. A scheduled batch job can sit
+        // delayed for minutes between dispatch and execution (see FetchAllChurchStats' stagger),
+        // long enough for consent to be revoked in between — this closes that window rather than
+        // trusting the dispatcher was still right by the time this actually runs.
+        if ($this->churchSocial->person_id !== null && $this->churchSocial->consent_at === null) {
+            Log::warning('Skipped fetching a person-owned social account with no consent on record', [
+                'church_social_id' => $this->churchSocial->id,
+            ]);
+
+            return;
+        }
+
         try {
             $data = match ($this->churchSocial->platform) {
                 SocialPlatform::YouTube => $this->fetchYouTube($youTubeStatsFetcher),

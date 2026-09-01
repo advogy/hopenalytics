@@ -92,7 +92,7 @@ class PersonSocialController extends Controller
             }
 
             throw ValidationException::withMessages([
-                'platform' => 'Akun dengan handle yang sama untuk platform ini sudah ada.',
+                'platform' => __('entity.social_duplicate_platform_handle'),
             ]);
         }
     }
@@ -122,13 +122,21 @@ class PersonSocialController extends Controller
             'handle' => ['required', 'string', 'max:255'],
             'profile_url' => ['nullable', 'url', 'max:2048'],
             'is_auto_fetch' => ['nullable', 'boolean'],
+            // Personal-only requirement, per the user's explicit call — see
+            // ChurchSocial::scopeConsentGranted(). 'accepted' already implies "must be checked",
+            // no separate 'required' needed: a checkbox left unchecked is simply absent from the
+            // request, which 'accepted' rejects on its own.
+            'consent' => ['accepted'],
         ], [
-            'platform.unique' => 'Akun dengan handle yang sama untuk platform ini sudah ada.',
+            'platform.unique' => __('entity.social_duplicate_platform_handle'),
+            'consent.accepted' => __('entity.social_consent_required'),
         ]);
 
         $data['handle'] = ltrim($data['handle'], '@');
         $data['is_auto_fetch'] = $request->boolean('is_auto_fetch');
         $data['category'] = 'personal';
+        unset($data['consent']);
+        $data['consent_at'] = now();
 
         $this->assertHandleNotAlreadyTracked($data['platform'], $data['handle'], $data['profile_url'] ?? null);
 
