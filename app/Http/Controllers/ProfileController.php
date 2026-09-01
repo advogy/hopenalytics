@@ -45,13 +45,17 @@ class ProfileController extends Controller
 
         // The Wilayah section (folded into the "Info Personal" tab alongside the Person fields
         // — see profile/edit.blade.php) reuses the Lengkapi Profil fields (see
-        // CompleteProfileController) so a member who skipped it during registration can still
-        // complete it later — writing directly to $person's own union_id/conference_id/
-        // church_id (see CompleteProfileController::store()). Plain-member-only: a role-holder's
-        // own union_id/conference_id/church_id means their assigned admin scope instead (a
-        // completely different, User-level field — see UserAssignmentController::promote()),
-        // so editing that here would risk silently changing an admin assignment.
-        $canEditRegion = $user->role === null && $person !== null;
+        // CompleteProfileController) so anyone who skipped it (or never had it set — e.g.
+        // promoted before ever filling it in) can still complete it later — writing directly to
+        // $person's own union_id/conference_id/church_id (see resolveOrgScope()'s self-edit
+        // branch, PersonController.php), never to a role-holder's own users.union_id/
+        // conference_id/church_id (their separate, admin-assigned scope, untouched by this —
+        // see UserAssignmentController::promote()). Open to every role, not just plain members:
+        // an Admin/Pimpinan's own Person previously had no way at all to fix a blank/stale
+        // Wilayah once promoted, since Kelola Akun's edit form for a linked Person always defers
+        // back here regardless of role (see people/form.blade.php) — a dead end that left that
+        // admin's own name undiscoverable under their actual Konferens/Gereja.
+        $canEditRegion = $person !== null;
 
         $activeTab = in_array($request->query('tab'), ['personal', 'sosial', 'username', 'password'], true)
             ? $request->query('tab')
