@@ -44,6 +44,7 @@ class InstitutionController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'city' => ['nullable', 'string', 'max:255'],
+            'country' => ['nullable', 'string', 'max:255'],
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
         ]);
@@ -64,7 +65,10 @@ class InstitutionController extends Controller
 
         AuditLogger::log('institution.created', $institution, "Menambahkan Institusi \"{$institution->name}\".");
 
-        return redirect()->route('admin.accounts.index', ['tab' => 'institusi'])->with('status', __('accounts.entity_created', ['entity' => __('common.institution'), 'name' => $institution->name]));
+        // Straight to Kelola Akun Media Sosial rather than the accounts list — adding social
+        // accounts is always the very next thing an admin does right after creating an entity,
+        // per the user's explicit call (see ChurchController::store()).
+        return redirect()->route('admin.institutions.socials.index', $institution)->with('status', __('accounts.entity_created', ['entity' => __('common.institution'), 'name' => $institution->name]));
     }
 
     public function edit(Request $request, Institution $institution)
@@ -77,6 +81,7 @@ class InstitutionController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'city' => ['nullable', 'string', 'max:255'],
+            'country' => ['nullable', 'string', 'max:255'],
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
         ]);
@@ -88,7 +93,7 @@ class InstitutionController extends Controller
 
         if ($coordsManuallyChanged) {
             $data['geocoded_at'] = null;
-        } elseif ($data['city'] !== $institution->city) {
+        } elseif ($data['city'] !== $institution->city || $data['country'] !== $institution->country) {
             $this->applyGeocoding($data, $geocoding);
         }
 
@@ -202,6 +207,13 @@ class InstitutionController extends Controller
     private function applyGeocoding(array &$data, GeocodingService $geocoding): void
     {
         $query = $geocoding->placeQueryFor($data['city'] ?? null, $data['name']);
+
+        // A city name alone is ambiguous across countries (many towns share a name) — append
+        // country when known, same reasoning as ChurchController::applyGeocoding().
+        if (! empty($data['country'])) {
+            $query .= ", {$data['country']}";
+        }
+
         $result = $geocoding->geocode($query);
 
         if ($result) {

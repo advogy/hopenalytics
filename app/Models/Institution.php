@@ -12,7 +12,7 @@ class Institution extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['union_id', 'conference_id', 'name', 'slug', 'is_active', 'city', 'latitude', 'longitude', 'geocoded_at'];
+    protected $fillable = ['union_id', 'conference_id', 'name', 'slug', 'is_active', 'city', 'country', 'latitude', 'longitude', 'geocoded_at'];
 
     protected $casts = [
         'is_active' => 'boolean',

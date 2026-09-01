@@ -190,6 +190,7 @@ class PersonController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'city' => ['nullable', 'string', 'max:255'],
+            'country' => ['nullable', 'string', 'max:255'],
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
         ]);
@@ -209,7 +210,10 @@ class PersonController extends Controller
 
         AuditLogger::log('person.created', $person, "Menambahkan Personal \"{$person->name}\".");
 
-        return redirect()->route('people.show', $person)->with('status', __('entity.person_created', ['name' => $person->name]));
+        // Straight to Kelola Akun Media Sosial rather than the (still-empty) profile page —
+        // adding social accounts is always the very next thing an admin does right after
+        // creating an entity, per the user's explicit call (see ChurchController::store()).
+        return redirect()->route('people.socials.index', $person)->with('status', __('entity.person_created', ['name' => $person->name]));
     }
 
     public function edit(Request $request, Person $person)
@@ -233,6 +237,7 @@ class PersonController extends Controller
         $validator = Validator::make($request->all(), [
             'name' => ['required', 'string', 'max:255'],
             'city' => ['nullable', 'string', 'max:255'],
+            'country' => ['nullable', 'string', 'max:255'],
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
         ]);
@@ -250,7 +255,7 @@ class PersonController extends Controller
 
         if ($coordsManuallyChanged) {
             $data['geocoded_at'] = null;
-        } elseif ($data['city'] !== $person->city) {
+        } elseif ($data['city'] !== $person->city || $data['country'] !== $person->country) {
             $this->applyGeocoding($data, $geocoding);
         }
 
@@ -435,7 +440,11 @@ class PersonController extends Controller
             return;
         }
 
-        $result = $geocoding->geocode("{$data['city']}, Indonesia");
+        // A city name alone is ambiguous across countries (many towns share a name) — append
+        // country when known, same reasoning as ChurchController::applyGeocoding().
+        $query = empty($data['country']) ? $data['city'] : "{$data['city']}, {$data['country']}";
+
+        $result = $geocoding->geocode($query);
 
         if ($result) {
             $data['latitude'] = $result['lat'];

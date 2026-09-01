@@ -59,7 +59,10 @@ class UnionController extends Controller
 
         AuditLogger::log('union.created', $union, "Menambahkan Uni \"{$union->name}\".");
 
-        return redirect()->route('admin.accounts.index', ['tab' => 'uni'])->with('status', __('accounts.entity_created', ['entity' => __('common.union'), 'name' => $data['name']]));
+        // Straight to Kelola Akun Media Sosial rather than the accounts list — adding social
+        // accounts is always the very next thing an admin does right after creating an entity,
+        // per the user's explicit call (see ChurchController::store()).
+        return redirect()->route('admin.unions.socials.index', $union)->with('status', __('accounts.entity_created', ['entity' => __('common.union'), 'name' => $data['name']]));
     }
 
     public function edit(Request $request, Union $union)

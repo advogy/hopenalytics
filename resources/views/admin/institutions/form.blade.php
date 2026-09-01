@@ -18,6 +18,8 @@
 
         <x-form-field name="city" :label="__('entity.city')" :hint="__('entity.city_optional_map')" :value="$institution->city" :placeholder="__('entity.city_placeholder')" />
 
+        <x-form-field name="country" :label="__('entity.country')" :hint="__('entity.country_optional')" :value="$institution->country" :placeholder="__('entity.country_placeholder')" />
+
         <x-coordinate-fields :latitude="$institution->latitude" :longitude="$institution->longitude" />
 
         @php

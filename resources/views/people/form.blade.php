@@ -32,6 +32,8 @@
 
         <x-form-field name="city" :label="__('entity.city')" :hint="__('entity.city_optional_map')" :value="$person->city" :placeholder="__('entity.city_placeholder')" />
 
+        <x-form-field name="country" :label="__('entity.country')" :hint="__('entity.country_optional')" :value="$person->country" :placeholder="__('entity.country_placeholder')" />
+
         <x-coordinate-fields :latitude="$person->latitude" :longitude="$person->longitude" />
 
         @php

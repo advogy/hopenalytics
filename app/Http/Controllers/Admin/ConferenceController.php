@@ -54,7 +54,10 @@ class ConferenceController extends Controller
 
         AuditLogger::log('conference.created', $conference, "Menambahkan Daerah \"{$conference->name}\".");
 
-        return redirect()->route('admin.accounts.index', ['tab' => 'daerah'])->with('status', __('accounts.entity_created', ['entity' => __('common.conference'), 'name' => $data['name']]));
+        // Straight to Kelola Akun Media Sosial rather than the accounts list — adding social
+        // accounts is always the very next thing an admin does right after creating an entity,
+        // per the user's explicit call (see ChurchController::store()).
+        return redirect()->route('admin.conferences.socials.index', $conference)->with('status', __('accounts.entity_created', ['entity' => __('common.conference'), 'name' => $data['name']]));
     }
 
     public function edit(Request $request, Conference $conference)
