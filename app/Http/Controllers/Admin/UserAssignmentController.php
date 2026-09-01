@@ -57,6 +57,9 @@ class UserAssignmentController extends Controller
         abort_if($targetLevel === null, 403);
 
         $search = trim((string) $request->query('search'));
+        $sort = in_array($request->query('sort'), ['name_asc', 'name_desc', 'date_asc', 'date_desc'], true)
+            ? $request->query('sort')
+            : 'name_asc';
 
         // Global-level actors (superadmin/admin_global) see everyone — there's no narrower
         // "their own region" to filter by. A scoped Admin Nasional only sees unassigned members
@@ -87,7 +90,10 @@ class UserAssignmentController extends Controller
             ->when($search, fn ($q) => $q->where(
                 fn ($q2) => $q2->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%")
             ))
-            ->orderBy('name')
+            ->when($sort === 'name_asc', fn ($q) => $q->orderBy('name'))
+            ->when($sort === 'name_desc', fn ($q) => $q->orderByDesc('name'))
+            ->when($sort === 'date_asc', fn ($q) => $q->orderBy('created_at'))
+            ->when($sort === 'date_desc', fn ($q) => $q->orderByDesc('created_at'))
             ->paginate(25)
             ->withQueryString();
 
@@ -207,6 +213,7 @@ class UserAssignmentController extends Controller
             'targetLevel' => $targetLevel,
             'activeTab' => $activeTab,
             'search' => $search,
+            'sort' => $sort,
             'unassigned' => $unassigned,
             'adminUsers' => $adminUsers,
             'pimpinanUsers' => $pimpinanUsers,

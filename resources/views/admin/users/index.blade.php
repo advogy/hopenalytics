@@ -120,9 +120,9 @@
     <div data-tab-panel="unassigned">
         <x-admin-list-card :items="$unassigned" :title="__('users.unassigned_title')" :subtitle="__('users.unassigned_subtitle')" :empty-message="__('users.no_match')">
             <x-slot:beforeContent>
-                <form method="GET" class="mb-4">
+                <form method="GET" class="mb-4 flex flex-wrap gap-3">
                     <input type="hidden" name="tab" data-tab-hidden-field value="{{ $activeTab }}">
-                    <label class="relative block w-full max-w-sm">
+                    <label class="relative block w-full max-w-sm flex-1">
                         <x-icon name="magnifying-glass" class="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-slate-400" />
                         <input
                             type="search"
@@ -131,6 +131,19 @@
                             placeholder="{{ __('users.search_placeholder') }}"
                             class="w-full rounded-full border border-black/10 bg-slate-50 py-2.5 pr-4 pl-9 text-sm font-medium text-slate-700 shadow-sm transition placeholder:font-normal placeholder:text-slate-400 hover:bg-slate-100 focus:bg-white focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:text-slate-200 dark:placeholder:text-slate-500 dark:hover:bg-slate-700 dark:focus:bg-slate-800"
                         >
+                    </label>
+                    <label class="relative min-w-[200px]">
+                        <select
+                            name="sort"
+                            onchange="this.form.submit()"
+                            class="w-full appearance-none rounded-full border border-black/10 bg-slate-50 py-2.5 pr-10 pl-4 text-sm font-medium text-slate-700 shadow-sm focus:border-blue-500 focus:bg-white focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:text-slate-200"
+                        >
+                            <option value="name_asc" @selected($sort === 'name_asc')>{{ __('users.sort_name_asc') }}</option>
+                            <option value="name_desc" @selected($sort === 'name_desc')>{{ __('users.sort_name_desc') }}</option>
+                            <option value="date_desc" @selected($sort === 'date_desc')>{{ __('users.sort_date_desc') }}</option>
+                            <option value="date_asc" @selected($sort === 'date_asc')>{{ __('users.sort_date_asc') }}</option>
+                        </select>
+                        <x-icon name="chevron-down" class="pointer-events-none absolute top-1/2 right-3.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                     </label>
                 </form>
 
@@ -143,6 +156,7 @@
                 <tr class="text-slate-500 dark:text-slate-400">
                     <th class="py-2 pr-2 font-medium">#</th>
                     <th class="py-2 pr-2 font-medium">{{ __('users.col_user') }}</th>
+                    <th class="py-2 pr-2 font-medium">{{ __('users.col_registered_at') }}</th>
                     <th class="py-2 pr-2 font-medium">{{ __('common.status') }}</th>
                     <th class="py-2 pr-2 font-medium">{{ __('users.col_assign') }}</th>
                     <th class="py-2 pr-2 font-medium">{{ __('common.action') }}</th>
@@ -154,6 +168,9 @@
                         <td class="py-2 pr-2 text-slate-400 dark:text-slate-500">{{ $unassigned->firstItem() + $loop->index }}</td>
                         <td class="py-2 pr-2">
                             @include('admin.users.partials.name-email', ['user' => $user])
+                        </td>
+                        <td class="py-2 pr-2 whitespace-nowrap text-slate-500 dark:text-slate-400">
+                            {{ $user->created_at->translatedFormat('d M Y') }}
                         </td>
                         <td class="py-2 pr-2">
                             @include('admin.users.partials.status-badges', ['user' => $user])
