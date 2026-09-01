@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\ConferenceController;
 use App\Http\Controllers\Admin\DivisionController;
 use App\Http\Controllers\Admin\HashtagController;
 use App\Http\Controllers\Admin\InstitutionController;
+use App\Http\Controllers\Admin\LocationImportController;
 use App\Http\Controllers\Admin\OrganizationSocialController;
 use App\Http\Controllers\Admin\UnionController;
 use App\Http\Controllers\Admin\UserAssignmentController;
@@ -146,6 +147,12 @@ Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group
         Route::post('/', [HashtagController::class, 'store'])->name('store');
         Route::patch('/{hashtag}/toggle-active', [HashtagController::class, 'toggleActive'])->name('toggle-active');
         Route::delete('/{hashtag}', [HashtagController::class, 'destroy'])->name('destroy');
+    });
+
+    Route::middleware('can:manage-settings')->prefix('admin/location-import')->name('admin.location-import.')->group(function () {
+        Route::get('/', [LocationImportController::class, 'index'])->name('index');
+        Route::get('/{type}/template', [LocationImportController::class, 'template'])->name('template');
+        Route::post('/', [LocationImportController::class, 'import'])->name('import');
     });
 
     Route::middleware('can:manage-goals')->group(function () {
