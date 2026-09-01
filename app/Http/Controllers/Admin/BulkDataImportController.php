@@ -10,6 +10,7 @@ use App\Models\Conference;
 use App\Models\Institution;
 use App\Models\Person;
 use App\Support\AuditLogger;
+use App\Support\GeocodeDispatcher;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Response;
@@ -28,10 +29,11 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
  * ChurchSocial::scopeConsentGranted(), PersonSocialController::validated()) — an admin bulk-
  * importing them on someone else's behalf would defeat the entire point of that requirement.
  *
- * Never auto-geocodes on create/update, same reasoning as LocationImportController: geocoding
- * calls an external API at 1 request/second, which has no business running inside a web request
- * a shared-hosting PHP process could time out on. Run the matching `{type}:geocode` artisan
- * command afterward to look up coordinates for whatever city/country this filled in.
+ * Never geocodes inline on create/update — GeocodeDispatcher::dispatchFor() queues one
+ * GeocodeEntity job per row instead, at the end of import(), which the existing cron-triggered
+ * `queue:work --stop-when-empty` (routes/console.php) drains automatically within a minute or
+ * so. No SSH/artisan command needed on top of the upload — same reasoning as
+ * LocationImportController, which this mirrors.
  */
 class BulkDataImportController extends Controller
 {
@@ -154,7 +156,12 @@ class BulkDataImportController extends Controller
             $socialResult = $this->importSocialSheet($socialRows, $type, $model, $user, $result['createdByName']);
         }
 
-        AuditLogger::log('bulk-import.completed', null, "Bulk import ({$type}): {$result['created']} dibuat, {$result['updated']} diperbarui, {$result['skippedInvalid']} dilewati (data wajib kosong), {$result['skippedDaerahNotFound']} dilewati (Daerah tidak ditemukan), {$result['skippedNotFound']} dilewati (ID tidak ditemukan). Media sosial: {$socialResult['created']} dibuat, {$socialResult['updated']} diperbarui, {$socialResult['skippedOwnerNotFound']} dilewati (pemilik tidak ditemukan), {$socialResult['skippedDuplicate']} dilewati (duplikat).");
+        // Scoped by the same visibleTo() as everything else here — an admin_uni's upload only
+        // ever queues geocoding for what's actually theirs, never spends the actor's own upload
+        // triggering lookups for rows outside their wilayah that happened to also qualify.
+        $queued = GeocodeDispatcher::dispatchFor($model::query()->visibleTo($user));
+
+        AuditLogger::log('bulk-import.completed', null, "Bulk import ({$type}): {$result['created']} dibuat, {$result['updated']} diperbarui, {$result['skippedInvalid']} dilewati (data wajib kosong), {$result['skippedDaerahNotFound']} dilewati (Daerah tidak ditemukan), {$result['skippedNotFound']} dilewati (ID tidak ditemukan). {$queued} lokasi dijadwalkan untuk dicari koordinatnya. Media sosial: {$socialResult['created']} dibuat, {$socialResult['updated']} diperbarui, {$socialResult['skippedOwnerNotFound']} dilewati (pemilik tidak ditemukan), {$socialResult['skippedDuplicate']} dilewati (duplikat).");
 
         return redirect()->route('admin.bulk-import.index')->with('status', __('bulk_import.result', [
             'created' => $result['created'],
@@ -162,6 +169,7 @@ class BulkDataImportController extends Controller
             'skippedInvalid' => $result['skippedInvalid'],
             'skippedDaerahNotFound' => $result['skippedDaerahNotFound'],
             'skippedNotFound' => $result['skippedNotFound'],
+            'queued' => $queued,
             'socialCreated' => $socialResult['created'],
             'socialUpdated' => $socialResult['updated'],
             'socialSkipped' => $socialResult['skippedOwnerNotFound'] + $socialResult['skippedInvalid'] + $socialResult['skippedDuplicate'],

@@ -7,6 +7,7 @@ use App\Models\Church;
 use App\Models\Institution;
 use App\Models\Person;
 use App\Support\AuditLogger;
+use App\Support\GeocodeDispatcher;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,11 +21,12 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
  * Bulk city/country data entry via spreadsheet — built after retiring the old name-based
  * geocoding fallback (see GeocodingService::placeQueryFor()) left hundreds of churches/people/
  * institutions with no way to get a map marker back except typing city+country into each one's
- * edit form individually. This only ever touches the city/country columns — never latitude/
- * longitude/geocoded_at directly; re-running the matching `{type}:geocode` artisan command
- * afterward is what actually looks up coordinates for whatever this newly filled in (kept as a
- * separate step deliberately: geocoding calls an external API at 1 request/second, which has no
- * business running inside a web request that a shared-hosting PHP process could time out on).
+ * edit form individually. This only ever touches the city/country columns directly — never
+ * latitude/longitude/geocoded_at; GeocodeDispatcher::dispatchFor() queues one GeocodeEntity job
+ * per newly-fillable row instead (see that job's doc comment for why this can't just look up
+ * coordinates inline here), which the existing cron-triggered `queue:work --stop-when-empty`
+ * (routes/console.php) drains automatically within a minute or so — no SSH/artisan command
+ * needed on top of the upload itself.
  */
 class LocationImportController extends Controller
 {
@@ -121,16 +123,19 @@ class LocationImportController extends Controller
             }
         }
 
+        $queued = GeocodeDispatcher::dispatchFor($model::query());
+
         AuditLogger::log(
             'location.bulk-import',
             null,
-            "Import lokasi massal ({$data['type']}): {$updated} diperbarui, {$skippedBlank} dilewati (kota/negara kosong), {$skippedNotFound} dilewati (ID tidak ditemukan)."
+            "Import lokasi massal ({$data['type']}): {$updated} diperbarui, {$skippedBlank} dilewati (kota/negara kosong), {$skippedNotFound} dilewati (ID tidak ditemukan). {$queued} lokasi dijadwalkan untuk dicari koordinatnya."
         );
 
         return redirect()->route('admin.location-import.index')->with('status', __('location_import.result', [
             'updated' => $updated,
             'skippedBlank' => $skippedBlank,
             'skippedNotFound' => $skippedNotFound,
+            'queued' => $queued,
         ]));
     }
 
