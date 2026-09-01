@@ -621,21 +621,33 @@
 
                     var maxAbsGrowth = withGrowth.reduce(function (max, item) { return Math.max(max, Math.abs(item.growthScore)); }, 0) || 1;
 
+                    // sqrt rather than a straight ratio: a plain value/max only ever puts the
+                    // single most extreme account at full saturation, leaving every other point
+                    // — the vast majority of them — bunched up pale and washed-out toward the low
+                    // end (confirmed happening). Square-rooting the ratio pulls the middle of the
+                    // range up disproportionately (0.25 → 0.5, 0.5 → 0.71), so a solidly-average
+                    // point still reads as clearly colored instead of needing to be the outlier
+                    // to show up at all.
+                    function heatIntensity(value) { return Math.sqrt(Math.abs(value) / maxAbsGrowth); }
+
                     var growthPoints = withGrowth
                         .filter(function (item) { return item.growthScore > 0; })
-                        .map(function (item) { return [item.lat, item.lng, item.growthScore / maxAbsGrowth]; });
+                        .map(function (item) { return [item.lat, item.lng, heatIntensity(item.growthScore)]; });
                     var declinePoints = withGrowth
                         .filter(function (item) { return item.growthScore < 0; })
-                        .map(function (item) { return [item.lat, item.lng, Math.abs(item.growthScore) / maxAbsGrowth]; });
+                        .map(function (item) { return [item.lat, item.lng, heatIntensity(item.growthScore)]; });
 
-                    var growthLayer = L.heatLayer(growthPoints, {
-                        radius: 35, blur: 25, maxZoom: 12, minOpacity: 0.3,
-                        gradient: { 0.1: '#bbf7d0', 0.4: '#4ade80', 0.7: '#16a34a', 1.0: '#059669' },
-                    });
-                    var declineLayer = L.heatLayer(declinePoints, {
-                        radius: 35, blur: 25, maxZoom: 12, minOpacity: 0.3,
-                        gradient: { 0.1: '#fecaca', 0.4: '#f87171', 0.7: '#dc2626', 1.0: '#991b1b' },
-                    });
+                    // Less blur relative to radius than a typical density heatmap — this one has
+                    // relatively few, sparse points rather than thousands, so a heavy blur just
+                    // reads as a faint haze; a smaller blur band keeps each point's core looking
+                    // like a solid patch of color instead of a soft smudge.
+                    var heatOptions = { radius: 40, blur: 15, maxZoom: 12, minOpacity: 0.55 };
+                    var growthLayer = L.heatLayer(growthPoints, Object.assign({}, heatOptions, {
+                        gradient: { 0.05: '#86efac', 0.3: '#22c55e', 0.6: '#16a34a', 1.0: '#065f46' },
+                    }));
+                    var declineLayer = L.heatLayer(declinePoints, Object.assign({}, heatOptions, {
+                        gradient: { 0.05: '#fca5a5', 0.3: '#ef4444', 0.6: '#dc2626', 1.0: '#7f1d1d' },
+                    }));
 
                     heatmapBuild = { layer: L.layerGroup([growthLayer, declineLayer]), points: withGrowth };
                     return heatmapBuild;
