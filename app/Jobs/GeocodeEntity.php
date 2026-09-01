@@ -2,15 +2,11 @@
 
 namespace App\Jobs;
 
-use App\Models\Church;
-use App\Models\Institution;
-use App\Models\Person;
 use App\Services\GeocodingService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
 
 /**
  * Looks up one Church/Person/Institution's coordinates from its city+country, one entity at a
@@ -24,7 +20,7 @@ use Illuminate\Queue\SerializesModels;
  */
 class GeocodeEntity implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, InteractsWithQueue, Queueable;
 
     public int $tries = 3;
 
@@ -32,15 +28,24 @@ class GeocodeEntity implements ShouldQueue
 
     public int $timeout = 30;
 
+    /**
+     * Deliberately takes a class+ID pair rather than the model itself: Illuminate's
+     * SerializesModels trait re-hydrates a serialized model via firstOrFail() when a delayed
+     * job comes back off the queue, so a row deleted (or deactivated churches never get deleted,
+     * but a mistaken/duplicate row might be) in the window between dispatch and this actually
+     * running would throw ModelNotFoundException and land the whole job in failed_jobs — a
+     * needless failure notification for something this job already knows how to shrug off
+     * gracefully. Looking it up with find() (never firstOrFail()) here instead makes a
+     * since-deleted row a normal no-op, same as any other "nothing to do" case below.
+     */
     public function __construct(
-        public readonly Church|Person|Institution $entity,
+        public readonly string $entityClass,
+        public readonly int $entityId,
     ) {}
 
     public function handle(GeocodingService $geocoding): void
     {
-        // Re-fetch rather than trust the serialized snapshot — city/country (or the coordinate
-        // itself) may have changed in the time this sat queued/delayed.
-        $entity = $this->entity->fresh();
+        $entity = $this->entityClass::find($this->entityId);
 
         if (! $entity || empty($entity->city) || empty($entity->country)) {
             return;

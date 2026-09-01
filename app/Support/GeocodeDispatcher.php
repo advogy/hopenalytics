@@ -24,7 +24,7 @@ class GeocodeDispatcher
             ->whereNotNull('country')
             ->chunkById(50, function ($entities) use (&$count, &$delaySeconds) {
                 foreach ($entities as $entity) {
-                    GeocodeEntity::dispatch($entity)->delay(now()->addSeconds($delaySeconds));
+                    GeocodeEntity::dispatch($entity::class, $entity->id)->delay(now()->addSeconds($delaySeconds));
                     $delaySeconds++;
                     $count++;
                 }
