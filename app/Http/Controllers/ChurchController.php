@@ -251,18 +251,19 @@ class ChurchController extends Controller
         throw new \RuntimeException('Could not generate a unique church slug after 5 attempts.');
     }
 
+    /**
+     * No city AND country, no attempt — per the user's explicit call, a bare city name alone is
+     * still ambiguous across countries (many towns share a name), and guessing a place from the
+     * church's own name (the old "GMAHK <Place>" fallback) risked landing in the wrong country
+     * entirely with nothing to disambiguate it. Left blank until both are filled in instead.
+     */
     private function applyGeocoding(array &$data, GeocodingService $geocoding): void
     {
-        $query = $geocoding->placeQueryFor($data['city'] ?? null, $data['name']);
-
-        // A city name alone is ambiguous across countries (many towns share a name) — now that
-        // Church has its own country field, append it whenever known, since Union/Conference
-        // can't be trusted to imply one single country (a Union may itself span several).
-        if (! empty($data['country'])) {
-            $query .= ", {$data['country']}";
+        if (empty($data['city']) || empty($data['country'])) {
+            return;
         }
 
-        $result = $geocoding->geocode($query);
+        $result = $geocoding->geocode($geocoding->placeQueryFor($data['city'], $data['country']));
 
         if ($result) {
             $data['latitude'] = $result['lat'];

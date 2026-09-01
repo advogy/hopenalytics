@@ -431,20 +431,17 @@ class PersonController extends Controller
     }
 
     /**
-     * Unlike churches, a person's name isn't a geocodable place, so there's no
-     * name-based fallback — geocoding only runs when a city is actually given.
+     * No city AND country, no attempt — see ChurchController::applyGeocoding()'s doc comment
+     * (no name-based fallback exists anywhere anymore either — see
+     * GeocodingService::placeQueryFor()).
      */
     private function applyGeocoding(array &$data, GeocodingService $geocoding): void
     {
-        if (empty($data['city'])) {
+        if (empty($data['city']) || empty($data['country'])) {
             return;
         }
 
-        // A city name alone is ambiguous across countries (many towns share a name) — append
-        // country when known, same reasoning as ChurchController::applyGeocoding().
-        $query = empty($data['country']) ? $data['city'] : "{$data['city']}, {$data['country']}";
-
-        $result = $geocoding->geocode($query);
+        $result = $geocoding->geocode($geocoding->placeQueryFor($data['city'], $data['country']));
 
         if ($result) {
             $data['latitude'] = $result['lat'];

@@ -204,17 +204,16 @@ class InstitutionController extends Controller
         return ['canPickUnion' => false, 'unions' => collect(), 'conferences' => collect()];
     }
 
+    /**
+     * No city AND country, no attempt — see ChurchController::applyGeocoding()'s doc comment.
+     */
     private function applyGeocoding(array &$data, GeocodingService $geocoding): void
     {
-        $query = $geocoding->placeQueryFor($data['city'] ?? null, $data['name']);
-
-        // A city name alone is ambiguous across countries (many towns share a name) — append
-        // country when known, same reasoning as ChurchController::applyGeocoding().
-        if (! empty($data['country'])) {
-            $query .= ", {$data['country']}";
+        if (empty($data['city']) || empty($data['country'])) {
+            return;
         }
 
-        $result = $geocoding->geocode($query);
+        $result = $geocoding->geocode($geocoding->placeQueryFor($data['city'], $data['country']));
 
         if ($result) {
             $data['latitude'] = $result['lat'];

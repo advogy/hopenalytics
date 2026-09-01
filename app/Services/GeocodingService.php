@@ -20,9 +20,8 @@ class GeocodingService
         // especially), so anything hard-coded to Indonesia/Jabodetabek (a leftover from when
         // every church really was in Greater Jakarta) would silently return nothing — or worse,
         // force-match a wrong place — for anywhere outside that box. Free-text place names
-        // remain inherently ambiguous across countries with no geographic hint to disambiguate
-        // by (Church/Union has no stored "country" column) — callers should keep the query as
-        // specific as possible (city name, not just a generic district) to compensate.
+        // remain inherently ambiguous across countries — placeQueryFor() below always pairs a
+        // city with its country for that reason, never a bare city alone.
         $response = Http::withHeaders([
             'User-Agent' => 'Hopenalytics/1.0 (church social media dashboard)',
         ])->get(self::ENDPOINT, [
@@ -50,16 +49,17 @@ class GeocodingService
     }
 
     /**
-     * Build the best-effort place-name query for a church that has no explicit city.
-     * Church names commonly follow "GMAHK <Place>" — the place portion usually IS
-     * a real, geocodable neighbourhood/district name (e.g. "GMAHK Cawang" → "Cawang").
+     * Build the geocoding query for an entity's city + country — both required (not just city),
+     * per the user's explicit call: a bare city name alone is still ambiguous across countries
+     * (many towns share a name), and the old "guess a place from the name when city is blank"
+     * fallback (a church's "GMAHK <Place>" name portion used to feed this) risked landing in the
+     * wrong country entirely with nothing to disambiguate it (confirmed happening — e.g. "GMAHK
+     * Salemba" resolved to Sulawesi, "GMAHK Taman Harapan" to Malaysia). Every caller checks for
+     * both city AND country themselves and skips geocoding without either, leaving it blank
+     * until someone fills both in, rather than risk a wrong marker.
      */
-    public function placeQueryFor(?string $city, string $name): string
+    public function placeQueryFor(string $city, string $country): string
     {
-        if ($city) {
-            return $city;
-        }
-
-        return preg_replace('/^GMAHK\s+/i', '', $name);
+        return "{$city}, {$country}";
     }
 }
