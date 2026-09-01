@@ -58,7 +58,15 @@
 
     @if ($isNasionalView || $isUniView || $scope->type === 'gereja')
         <x-filter-card :clear-url="($selectedConferenceId || ($isNasionalView && $selectedUnionId) || ($selectedCategory ?? null)) ? $scope->platformComparisonUrl(array_filter(['platform' => $platformParam, 'metric' => $metric, 'sort' => $sort === 'value' ? 'value' : null])) : null">
-            <form method="GET" action="{{ $scope->platformComparisonUrl(array_filter(['platform' => $platformParam, 'metric' => $metric])) }}" id="platform-detail-filter-form" class="flex flex-wrap items-center gap-3">
+            {{--
+                GET forms only keep the *path* of their action URL — any query string baked into
+                it (metric=... here) is silently dropped by the browser and replaced by whatever
+                the form's own fields serialize to. metric has to be one of those fields itself,
+                same as sort already is, or submitting this filter loses it and this same route
+                falls back to the metric-less overview instead of staying on this detail page.
+            --}}
+            <form method="GET" action="{{ $scope->platformComparisonUrl(['platform' => $platformParam]) }}" id="platform-detail-filter-form" class="flex flex-wrap items-center gap-3">
+                <input type="hidden" name="metric" value="{{ $metric }}">
                 <input type="hidden" name="sort" value="{{ $sort }}">
 
                 @if ($isNasionalView || $isUniView)

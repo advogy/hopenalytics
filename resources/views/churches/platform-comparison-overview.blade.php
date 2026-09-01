@@ -99,7 +99,14 @@
                     default => 'Followers',
                 };
                 $top = $rows->take(5);
-                $sectionParams = array_filter(['platform' => $platformParam, 'metric' => $metric, 'sort' => $sort === 'value' ? 'value' : null]);
+                // Same region/category filters as the pills/sort-toggle/filter-card just above
+                // (see $regionParams at the top of this file) — omitting them here meant "Lihat
+                // Semua" silently dropped whatever Uni/Daerah/kategori the admin had narrowed
+                // this page down to, landing on a broader, unfiltered detail view instead.
+                $sectionParams = array_merge(
+                    array_filter(['platform' => $platformParam, 'metric' => $metric, 'sort' => $sort === 'value' ? 'value' : null, 'category' => $selectedCategory ?? null]),
+                    $regionParams
+                );
             @endphp
             <div class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
                 <div class="mb-1 flex items-start justify-between gap-2">
