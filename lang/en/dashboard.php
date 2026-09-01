@@ -63,6 +63,9 @@ return [
     'map_summary_heatmap' => ':count location(s) have weekly growth data (green = growing, red = declining); :noDataCount don\'t have data yet (needs at least 2 weeks of tracking).',
     'map_heatmap_legend_growth' => 'Growing',
     'map_heatmap_legend_decline' => 'Declining',
+    'map_tab_region_heatmap' => 'Regional Heat Map',
+    'map_summary_region_heatmap' => 'Average weekly growth per Southeast Asian province/state — :count region(s) have data (experimental, for comparison against the Growth Heat Map above).',
+    'map_region_legend_no_data' => 'No data yet',
 
     'top_growth_title' => 'Top 5 Weekly Growth Score',
     'top_growth_subtitle' => 'Composite score averaging weekly growth in reach, views, likes, and posts.',

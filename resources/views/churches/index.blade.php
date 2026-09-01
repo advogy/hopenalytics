@@ -207,6 +207,9 @@
                 <p class="hidden text-sm text-slate-500 dark:text-slate-400" data-map-summary="heatmap">
                     {{ __('dashboard.map_summary_heatmap', ['count' => $mapGrowthDataCount, 'noDataCount' => $mapNoGrowthDataCount]) }}
                 </p>
+                <p class="hidden text-sm text-slate-500 dark:text-slate-400" data-map-summary="wilayah">
+                    {{ __('dashboard.map_summary_region_heatmap', ['count' => $mapRegionGrowth->count()]) }}
+                </p>
             </div>
             @if ($unmappedCount > 0 || $unmappedPeopleCount > 0 || $unmappedInstitutionsCount > 0)
                 <div class="shrink-0 text-right text-xs text-slate-400 dark:text-slate-500">
@@ -242,6 +245,9 @@
             <button type="button" data-map-tab="heatmap" class="border-b-2 px-4 py-2 text-sm font-medium transition">
                 {{ __('dashboard.map_tab_heatmap') }}
             </button>
+            <button type="button" data-map-tab="wilayah" class="border-b-2 px-4 py-2 text-sm font-medium transition">
+                {{ __('dashboard.map_tab_region_heatmap') }}
+            </button>
         </div>
 
         <div id="church-map-heatmap-legend" class="mb-3 hidden flex-wrap gap-x-4 gap-y-1.5">
@@ -252,6 +258,35 @@
             <span class="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
                 <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-full" style="background:#dc2626"></span>
                 {{ __('dashboard.map_heatmap_legend_decline') }}
+            </span>
+        </div>
+
+        {{-- Discrete buckets (not a continuous gradient) — same idea as the reference "$/G"
+             legend this tab was modeled after: fixed, always-the-same ranges, since a
+             choropleth's whole point is comparing regions against a stable scale rather than
+             each other's relative extremes the way the dot map's tab does. --}}
+        <div id="church-map-region-legend" class="mb-3 hidden flex-wrap gap-x-4 gap-y-1.5">
+            <span class="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
+                <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-sm" style="background:#065f46"></span> &ge; 5%
+            </span>
+            <span class="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
+                <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-sm" style="background:#16a34a"></span> 1% – 5%
+            </span>
+            <span class="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
+                <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-sm" style="background:#86efac"></span> 0% – 1%
+            </span>
+            <span class="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
+                <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-sm" style="background:#fecaca"></span> -1% – 0%
+            </span>
+            <span class="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
+                <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-sm" style="background:#dc2626"></span> -5% – -1%
+            </span>
+            <span class="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
+                <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-sm" style="background:#7f1d1d"></span> &le; -5%
+            </span>
+            <span class="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
+                <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-sm border border-slate-300 dark:border-slate-600" style="background:#e2e8f0"></span>
+                {{ __('dashboard.map_region_legend_no_data') }}
             </span>
         </div>
 
@@ -283,6 +318,7 @@
                     institutionLabel: @json(__('common.institution')),
                     officeLabel: @json(__('dashboard.map_office_label')),
                     editCoordinatesLabel: @json(__('dashboard.map_edit_coordinates_label')),
+                    regionNoDataLabel: @json(__('dashboard.map_region_legend_no_data')),
                 };
 
                 {{--
@@ -652,6 +688,74 @@
                     return growthMapBuild;
                 }
 
+                // Experimental regional choropleth — colors each Southeast Asian province/state
+                // by its own average growth score (computed server-side, see
+                // ChurchDashboardController::index()'s $mapRegionGrowth) rather than plotting
+                // individual points. A separate tab from "Peta Panas Pertumbuhan" above, not a
+                // replacement — per the user's own "untuk pembanding" framing, both stay
+                // available to compare side by side.
+                //
+                // Fixed buckets (not scaled to whatever data happens to be on screen, unlike the
+                // dot map) — a choropleth's whole point is a stable scale to compare regions
+                // against, matching the legend's own always-the-same ranges.
+                var REGION_GROWTH_BUCKETS = [
+                    { min: 5, color: '#065f46' },
+                    { min: 1, color: '#16a34a' },
+                    { min: 0, color: '#86efac' },
+                    { min: -1, color: '#fecaca' },
+                    { min: -5, color: '#dc2626' },
+                    { min: -Infinity, color: '#7f1d1d' },
+                ];
+                var REGION_NO_DATA_COLOR = '#e2e8f0';
+
+                function colorForRegionScore(score) {
+                    if (score === null || score === undefined) return REGION_NO_DATA_COLOR;
+                    for (var i = 0; i < REGION_GROWTH_BUCKETS.length; i++) {
+                        if (score >= REGION_GROWTH_BUCKETS[i].min) return REGION_GROWTH_BUCKETS[i].color;
+                    }
+                    return REGION_NO_DATA_COLOR;
+                }
+
+                var regionScoreByKey = {};
+                @json($mapRegionGrowth).forEach(function (r) { regionScoreByKey[r.country + '|' + r.name] = r; });
+
+                var regionChoroplethPromise = null;
+                function loadRegionChoropleth() {
+                    if (regionChoroplethPromise) return regionChoroplethPromise;
+
+                    regionChoroplethPromise = fetch('/data/sea-admin1.geojson')
+                        .then(function (res) { return res.json(); })
+                        .then(function (geojson) {
+                            return L.geoJSON(geojson, {
+                                style: function (feature) {
+                                    var key = feature.properties.shapeGroup + '|' + feature.properties.shapeName.trim();
+                                    var entry = regionScoreByKey[key];
+                                    return {
+                                        color: '#94a3b8', weight: 1,
+                                        fillColor: colorForRegionScore(entry ? entry.score : null), fillOpacity: 0.7,
+                                    };
+                                },
+                                onEachFeature: function (feature, layer) {
+                                    var key = feature.properties.shapeGroup + '|' + feature.properties.shapeName.trim();
+                                    var entry = regionScoreByKey[key];
+                                    var popup = '<p class="font-semibold">' + feature.properties.shapeName.trim() + '</p>';
+                                    popup += entry
+                                        ? '<p class="mt-1 text-xs">' + mapI18n.weeklyGrowthLabel + ': ' + (entry.score > 0 ? '+' : '') + entry.score.toFixed(1) + '% (' + entry.count + ')</p>'
+                                        : '<p class="mt-1 text-xs text-slate-400">' + mapI18n.regionNoDataLabel + '</p>';
+                                    layer.bindPopup(popup);
+                                },
+                            });
+                        })
+                        // A failed fetch (offline, asset missing, …) degrades to an empty layer
+                        // rather than leaving this tab permanently broken/stuck loading.
+                        .catch(function (err) {
+                            console.error('Failed to load the region choropleth boundary data', err);
+                            return L.layerGroup([]);
+                        });
+
+                    return regionChoroplethPromise;
+                }
+
                 var dataByTab = { gereja: churches, personal: people, institusi: institutions, gabungan: combined, organisasi: organizationBoundsItems };
                 var layersByTab = {
                     gereja: buildClusterGroup(churches, '#2563eb'),
@@ -720,6 +824,31 @@
                         activeLayer = built.layer;
                         items = built.points;
                         map.addLayer(activeLayer);
+                    } else if (tab === 'wilayah') {
+                        if (currentBaseLayerName === mapI18n.layerStandard) {
+                            map.removeLayer(baseLayers[mapI18n.layerStandard]);
+                            map.addLayer(baseLayers[mapI18n.layerLight]);
+                            currentBaseLayerName = mapI18n.layerLight;
+                        }
+
+                        // The boundary file is fetched (once, then cached) rather than bundled —
+                        // items stays empty for now, so the fallback view below shows immediately
+                        // instead of blocking on the network; fitBounds() re-runs once the real
+                        // shapes are in, giving the full Southeast Asia extent instead.
+                        activeLayer = null;
+                        items = [];
+
+                        loadRegionChoropleth().then(function (layer) {
+                            if (currentTab !== 'wilayah') return; // switched away before this resolved
+
+                            activeLayer = layer;
+                            map.addLayer(layer);
+
+                            var layerBounds = layer.getBounds();
+                            if (layerBounds.isValid()) {
+                                map.fitBounds(layerBounds, { padding: [24, 24] });
+                            }
+                        });
                     } else {
                         activeLayer = layersByTab[tab];
                         items = dataByTab[tab];
@@ -748,6 +877,12 @@
                     if (heatmapLegendEl) {
                         heatmapLegendEl.classList.toggle('hidden', tab !== 'heatmap');
                         heatmapLegendEl.classList.toggle('flex', tab === 'heatmap');
+                    }
+
+                    var regionLegendEl = document.getElementById('church-map-region-legend');
+                    if (regionLegendEl) {
+                        regionLegendEl.classList.toggle('hidden', tab !== 'wilayah');
+                        regionLegendEl.classList.toggle('flex', tab === 'wilayah');
                     }
 
                     document.querySelectorAll('[data-map-tab]').forEach(function (btn) {

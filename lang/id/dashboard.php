@@ -63,6 +63,9 @@ return [
     'map_summary_heatmap' => ':count lokasi punya data pertumbuhan mingguan (hijau = tumbuh, merah = menurun); :noDataCount belum punya data (butuh minimal 2 minggu pencatatan).',
     'map_heatmap_legend_growth' => 'Tumbuh',
     'map_heatmap_legend_decline' => 'Menurun',
+    'map_tab_region_heatmap' => 'Peta Panas Wilayah',
+    'map_summary_region_heatmap' => 'Rata-rata pertumbuhan mingguan per provinsi/negara bagian se-Asia Tenggara — :count wilayah punya data (eksperimental, untuk pembanding dengan Peta Panas Pertumbuhan di atas).',
+    'map_region_legend_no_data' => 'Belum ada data',
 
     'top_growth_title' => 'Top 5 Skor Pertumbuhan Mingguan',
     'top_growth_subtitle' => 'Skor komposit rata-rata pertumbuhan reach, views, likes, dan post, minggu ini.',

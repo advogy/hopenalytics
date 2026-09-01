@@ -15,6 +15,7 @@ use App\Models\HashtagPost;
 use App\Models\Institution;
 use App\Models\Person;
 use App\Models\Union;
+use App\Services\GeoBoundaryMatcher;
 use App\Support\ComparisonScope;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -390,10 +391,44 @@ class ChurchDashboardController extends Controller
             'topHashtagCount' => $topHashtagPost?->total ?? 0,
         ];
 
+        $mapAllItems = $mapChurches->concat($mapPeople)->concat($mapInstitutions);
+
+        // Experimental — an alternative to the dot-based growth map above, per the user's own
+        // "untuk pembanding" framing: colors each Southeast Asian province/state (not each
+        // individual point) by the AVERAGE growth score of whatever's inside it, matched via
+        // GeoBoundaryMatcher (see that class's own doc comment for the boundary data source).
+        // Kept as a fully separate tab rather than replacing the dot map — safe to remove
+        // outright later if this turns out not to earn its keep.
+        $boundaryMatcher = new GeoBoundaryMatcher;
+        $regionScores = [];
+        foreach ($mapAllItems->whereNotNull('growthScore') as $item) {
+            $region = $boundaryMatcher->regionFor($item['lat'], $item['lng']);
+
+            if ($region === null) {
+                continue;
+            }
+
+            // trim(): geoBoundaries' own shapeName field carries a stray trailing tab on at
+            // least one entry ("Hà Nội\t") — confirmed while testing this against real
+            // coordinates — normalized here once rather than wherever this key gets read.
+            $key = $region['country'].'|'.trim($region['name']);
+            $regionScores[$key]['name'] ??= trim($region['name']);
+            $regionScores[$key]['country'] ??= $region['country'];
+            $regionScores[$key]['scores'][] = $item['growthScore'];
+        }
+
+        $mapRegionGrowth = collect($regionScores)->map(fn (array $r) => [
+            'name' => $r['name'],
+            'country' => $r['country'],
+            'score' => round(array_sum($r['scores']) / count($r['scores']), 2),
+            'count' => count($r['scores']),
+        ])->values();
+
         return view('churches.index', [
             'scopeLabel' => $scopeLabel,
-            'mapGrowthDataCount' => $mapChurches->concat($mapPeople)->concat($mapInstitutions)->whereNotNull('growthScore')->count(),
-            'mapNoGrowthDataCount' => $mapChurches->concat($mapPeople)->concat($mapInstitutions)->whereNull('growthScore')->count(),
+            'mapGrowthDataCount' => $mapAllItems->whereNotNull('growthScore')->count(),
+            'mapNoGrowthDataCount' => $mapAllItems->whereNull('growthScore')->count(),
+            'mapRegionGrowth' => $mapRegionGrowth,
             'hashtagSummary' => $hashtagSummary,
             'totalChurches' => $churches->count(),
             'totalPeople' => $people->count(),
