@@ -18,6 +18,8 @@
 
         <x-form-field name="city" :label="__('entity.city')" :hint="__('entity.city_optional')" :value="$church->city" :placeholder="__('entity.city_placeholder')" />
 
+        <x-form-field name="country" :label="__('entity.country')" :hint="__('entity.country_optional')" :value="$church->country" :placeholder="__('entity.country_placeholder')" />
+
         <x-form-field name="logo_url" :label="__('entity.logo_url')" :hint="__('entity.city_optional')" type="url" :value="$church->logo_url" placeholder="https://..." />
 
         <x-coordinate-fields :latitude="$church->latitude" :longitude="$church->longitude" />
@@ -25,7 +27,23 @@
         <div class="mb-5">
             <label class="mb-1.5 block text-sm font-medium">{{ __('entity.conference') }}</label>
             @if ($canPickConference)
-                @if ($unions->isNotEmpty())
+                @if ($ownDivision)
+                    {{-- admin_divisi: Divisi itself is fixed server-side — only Uni (picked
+                         below) and Daerah are real choices. --}}
+                    <p class="mb-2 rounded-lg border border-black/10 bg-slate-50 px-3 py-2 text-sm text-slate-500 dark:border-white/10 dark:bg-slate-800 dark:text-slate-400">
+                        {{ $ownDivision->name }}
+                    </p>
+                @endif
+
+                @if ($ownUnion)
+                    {{-- admin_uni: pinned to their own Uni server-side (resolveConferenceId()
+                         never trusts a submitted conference_id outside it) — only the Daerah
+                         beneath it is a real choice, so there's no Uni picker here at all, just
+                         this read-only label. --}}
+                    <p class="mb-2 rounded-lg border border-black/10 bg-slate-50 px-3 py-2 text-sm text-slate-500 dark:border-white/10 dark:bg-slate-800 dark:text-slate-400">
+                        {{ $ownUnion->name }}
+                    </p>
+                @elseif ($unions->isNotEmpty())
                     {{-- Nasional-level: full Uni → Daerah cascade. Only conference_id is ever
                          actually submitted (name="conference_id" below) — this hidden input's
                          value is pre-filled purely so initUnionConferenceCascade() can preselect
@@ -61,7 +79,7 @@
 
                 <script>
                     window.initUnionConferenceCascade({
-                        unionSelector: '[data-church-union]',
+                        unionSelector: @json($ownUnion ? null : '[data-church-union]'),
                         conferenceSelector: '[data-church-conference]',
                         unions: @json($unions->map(fn ($u) => ['id' => $u->id, 'label' => $u->name])),
                         conferences: @json($conferences->map(fn ($c) => ['id' => $c->id, 'union_id' => $c->union_id, 'label' => $c->name])),
@@ -71,8 +89,9 @@
                     });
                 </script>
             @else
+                @php $displayConference = $ownConference ?? $church->conference @endphp
                 <p class="rounded-lg border border-black/10 bg-slate-50 px-3 py-2 text-sm text-slate-500 dark:border-white/10 dark:bg-slate-800 dark:text-slate-400">
-                    {{ $church->conference ? "{$church->conference->name} ({$church->conference->union->name})" : __('entity.conference_unassigned') }}
+                    {{ $displayConference ? "{$displayConference->name} ({$displayConference->union->name})" : __('entity.conference_unassigned') }}
                 </p>
             @endif
         </div>

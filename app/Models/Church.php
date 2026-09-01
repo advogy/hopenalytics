@@ -12,7 +12,7 @@ class Church extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['conference_id', 'name', 'slug', 'city', 'logo_url', 'is_active', 'latitude', 'longitude', 'geocoded_at'];
+    protected $fillable = ['conference_id', 'name', 'slug', 'city', 'country', 'logo_url', 'is_active', 'latitude', 'longitude', 'geocoded_at'];
 
     protected $casts = [
         'is_active' => 'boolean',

@@ -49,6 +49,7 @@ class ChurchController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'city' => ['nullable', 'string', 'max:255'],
+            'country' => ['nullable', 'string', 'max:255'],
             'logo_url' => ['nullable', 'url', 'max:2048'],
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
@@ -69,7 +70,10 @@ class ChurchController extends Controller
 
         AuditLogger::log('church.created', $church, "Menambahkan Gereja \"{$church->name}\".");
 
-        return redirect()->route('churches.show', $church)->with('status', __('accounts.entity_created', ['entity' => __('common.church'), 'name' => $church->name]));
+        // Straight to Kelola Akun Media Sosial rather than the (still-empty) Analitik &
+        // Statistik page — adding social accounts is always the very next thing an admin does
+        // right after creating a church, per the user's explicit call.
+        return redirect()->route('churches.socials.index', $church)->with('status', __('accounts.entity_created', ['entity' => __('common.church'), 'name' => $church->name]));
     }
 
     public function edit(Request $request, Church $church)
@@ -82,6 +86,7 @@ class ChurchController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'city' => ['nullable', 'string', 'max:255'],
+            'country' => ['nullable', 'string', 'max:255'],
             'logo_url' => ['nullable', 'url', 'max:2048'],
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
@@ -94,7 +99,7 @@ class ChurchController extends Controller
 
         if ($coordsManuallyChanged) {
             $data['geocoded_at'] = null;
-        } elseif ($data['city'] !== $church->city) {
+        } elseif ($data['city'] !== $church->city || $data['country'] !== $church->country) {
             $this->applyGeocoding($data, $geocoding);
         }
 
@@ -152,6 +157,9 @@ class ChurchController extends Controller
                 'canPickConference' => true,
                 'unions' => Union::where('is_active', true)->orderBy('name')->get(),
                 'conferences' => Conference::where('is_active', true)->orderBy('name')->get(['id', 'union_id', 'name']),
+                'ownDivision' => null,
+                'ownUnion' => null,
+                'ownConference' => null,
             ];
         }
 
@@ -162,6 +170,9 @@ class ChurchController extends Controller
                 'canPickConference' => true,
                 'unions' => Union::whereIn('id', $unionIds)->orderBy('name')->get(),
                 'conferences' => Conference::whereIn('union_id', $unionIds)->where('is_active', true)->orderBy('name')->get(['id', 'union_id', 'name']),
+                'ownDivision' => null,
+                'ownUnion' => null,
+                'ownConference' => null,
             ];
         }
 
@@ -170,6 +181,11 @@ class ChurchController extends Controller
                 'canPickConference' => true,
                 'unions' => Union::where('division_id', $user->division_id)->orderBy('name')->get(),
                 'conferences' => Conference::whereHas('union', fn ($q) => $q->where('division_id', $user->division_id))->where('is_active', true)->orderBy('name')->get(['id', 'union_id', 'name']),
+                // Divisi itself is fixed — only Uni (below it) is actually a choice, per the
+                // user's explicit call, same as admin_uni is pinned to their own Uni below.
+                'ownDivision' => $user->division,
+                'ownUnion' => null,
+                'ownConference' => null,
             ];
         }
 
@@ -178,10 +194,31 @@ class ChurchController extends Controller
                 'canPickConference' => true,
                 'unions' => collect(),
                 'conferences' => Conference::where('union_id', $user->union_id)->where('is_active', true)->orderBy('name')->get(['id', 'union_id', 'name']),
+                'ownDivision' => null,
+                // Own Uni is fixed (resolveConferenceId() only ever trusts a submitted
+                // conference_id within it) — shown read-only, same pattern as
+                // InstitutionController::regionPickerData()'s 'uni' branch.
+                'ownUnion' => $user->union,
+                'ownConference' => null,
             ];
         }
 
-        return ['canPickConference' => false, 'unions' => collect(), 'conferences' => collect()];
+        // admin_daerah: their own Daerah is fixed and guaranteed (resolveConferenceId() never
+        // trusts a submitted conference_id, always $user->conference_id) — shown read-only via
+        // $ownConference rather than $church->conference below, since a brand-new (unsaved)
+        // Church on the "Tambah Gereja" form has no conference of its own yet to read from,
+        // which used to render as "Belum ditugaskan ke Daerah manapun" even though the
+        // destination is already fully determined. Anyone else falling through here
+        // (admin_gereja/institusi, every Pimpinan) has no conference_id of their own to show —
+        // the view falls back to the entity's own (existing, for an edit) conference instead.
+        return [
+            'canPickConference' => false,
+            'unions' => collect(),
+            'conferences' => collect(),
+            'ownDivision' => null,
+            'ownUnion' => null,
+            'ownConference' => $user->role?->level() === 'daerah' ? $user->conference : null,
+        ];
     }
 
     /**
@@ -217,6 +254,14 @@ class ChurchController extends Controller
     private function applyGeocoding(array &$data, GeocodingService $geocoding): void
     {
         $query = $geocoding->placeQueryFor($data['city'] ?? null, $data['name']);
+
+        // A city name alone is ambiguous across countries (many towns share a name) — now that
+        // Church has its own country field, append it whenever known, since Union/Conference
+        // can't be trusted to imply one single country (a Union may itself span several).
+        if (! empty($data['country'])) {
+            $query .= ", {$data['country']}";
+        }
+
         $result = $geocoding->geocode($query);
 
         if ($result) {
