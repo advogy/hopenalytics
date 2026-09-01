@@ -188,7 +188,7 @@
 
     <div class="mb-8 rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
         <div class="mb-4 flex flex-wrap items-start justify-between gap-2">
-            <div>
+            <div class="min-w-0 flex-1">
                 <p class="text-sm text-slate-500 dark:text-slate-400" data-map-summary="organisasi">
                     {{ __('dashboard.map_summary_organization', ['count' => $mapOrganizationCount, 'unionCount' => $mapUnions->count()]) }}
                 </p>
@@ -209,7 +209,7 @@
                 </p>
             </div>
             @if ($unmappedCount > 0 || $unmappedPeopleCount > 0 || $unmappedInstitutionsCount > 0)
-                <div class="text-right text-xs text-slate-400 dark:text-slate-500">
+                <div class="shrink-0 text-right text-xs text-slate-400 dark:text-slate-500">
                     @if ($unmappedCount > 0)
                         <p>{{ __('dashboard.map_unmapped_church', ['count' => $unmappedCount]) }}</p>
                     @endif
