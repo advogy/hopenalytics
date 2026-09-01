@@ -5,6 +5,7 @@ return [
     'login_subtitle' => 'Sign in to manage your social media accounts.',
     'email' => 'Email',
     'password' => 'Password',
+    'current_password' => 'Current Password',
     'login_button' => 'Sign In',
     'login_failed' => 'Incorrect email or password.',
     'login_unverified' => 'Your email hasn\'t been verified yet. Please check the OTP code sent to your email.',

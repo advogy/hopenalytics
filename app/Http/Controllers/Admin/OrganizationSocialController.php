@@ -173,7 +173,7 @@ class OrganizationSocialController extends Controller
             'profile_url' => ['nullable', 'url', 'max:2048'],
             'is_auto_fetch' => ['nullable', 'boolean'],
         ], [
-            'platform.unique' => 'Akun dengan handle yang sama untuk platform ini sudah ada.',
+            'platform.unique' => __('entity.social_duplicate_platform_handle'),
         ]);
 
         $data['handle'] = ltrim($data['handle'], '@');

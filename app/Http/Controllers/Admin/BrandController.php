@@ -37,7 +37,7 @@ class BrandController extends Controller
 
         AuditLogger::log('brand.created', $brand, "Menambahkan brand \"{$brand->name}\" untuk domain \"{$brand->domain}\".");
 
-        return redirect()->route('admin.brands.index')->with('status', "Brand \"{$brand->name}\" berhasil ditambahkan.");
+        return redirect()->route('admin.brands.index')->with('status', __('brands.created', ['name' => $brand->name]));
     }
 
     public function edit(Brand $brand)
@@ -58,7 +58,7 @@ class BrandController extends Controller
 
         AuditLogger::log('brand.updated', $brand, "Memperbarui brand \"{$brand->name}\" ({$brand->domain}).");
 
-        return redirect()->route('admin.brands.index')->with('status', "Brand \"{$brand->name}\" berhasil diperbarui.");
+        return redirect()->route('admin.brands.index')->with('status', __('brands.updated', ['name' => $brand->name]));
     }
 
     public function destroy(Brand $brand): RedirectResponse
@@ -69,7 +69,7 @@ class BrandController extends Controller
 
         AuditLogger::log('brand.deleted', $brand, "Menghapus brand \"{$name}\".");
 
-        return redirect()->route('admin.brands.index')->with('status', "Brand \"{$name}\" berhasil dihapus.");
+        return redirect()->route('admin.brands.index')->with('status', __('brands.deleted', ['name' => $name]));
     }
 
     /**

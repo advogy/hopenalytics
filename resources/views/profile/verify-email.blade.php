@@ -15,7 +15,7 @@
 
                 <x-form-field
                     name="code"
-                    label="Kode OTP"
+                    :label="__('auth.otp_code')"
                     required
                     autocomplete="one-time-code"
                     inputmode="numeric"
@@ -24,14 +24,14 @@
                 />
 
                 <button type="submit" class="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700">
-                    Verifikasi
+                    {{ __('auth.verify_otp_button') }}
                 </button>
             </form>
 
             <form method="POST" action="{{ route('profile.verify-email.resend') }}" class="mt-4 text-center">
                 @csrf
                 <button type="submit" class="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400">
-                    Kirim ulang kode
+                    {{ __('auth.resend_otp') }}
                 </button>
             </form>
         </div>
@@ -39,7 +39,7 @@
         <form method="POST" action="{{ route('profile.verify-email.cancel') }}" class="mt-4 text-center">
             @csrf
             <button type="submit" class="text-sm text-slate-500 hover:underline dark:text-slate-400">
-                Batalkan perubahan email
+                {{ __('entity.cancel_email_verification') }}
             </button>
         </form>
     </div>

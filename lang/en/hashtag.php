@@ -16,6 +16,12 @@ return [
     'activate' => 'Activate',
     'deactivate' => 'Deactivate',
     'delete_confirm' => 'Permanently delete hashtag ":tag"?',
+    'already_tracked' => 'This hashtag is already being tracked.',
+    'created' => 'Hashtag "#:tag" added successfully.',
+    'reactivated_message' => 'Hashtag "#:tag" has been reactivated.',
+    'deactivated_message' => 'Hashtag "#:tag" has been deactivated.',
+    'delete_blocked' => 'Hashtag "#:tag" can\'t be deleted — it still has matched post data. Deactivate it instead.',
+    'deleted' => 'Hashtag "#:tag" deleted successfully.',
 
     'tab_label' => 'Hashtag',
     'comparison_title' => 'Hashtag Comparison',

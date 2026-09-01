@@ -55,4 +55,15 @@ return [
     'failed_retried' => 'Job re-queued.',
     'completed_cleared' => ':count completed-batch record(s) cleared.',
     'completed_deleted' => 'Batch history record deleted.',
+
+    'job_failed_generic' => 'Failed to process this job.',
+    'job_failed_facebook_not_found' => 'Facebook page not found: :detail',
+    'job_failed_tiktok_not_found' => 'TikTok account not found: :detail',
+    'job_failed_youtube_not_found' => 'YouTube channel not found: :detail',
+    'job_failed_youtube_missing_id' => 'This YouTube account has no channel ID or handle set yet.',
+    'job_failed_facebook_missing_url' => 'This Facebook account has no page link set yet.',
+    'job_failed_credits_exhausted' => 'Credits ran out for this month.',
+    'job_failed_no_data' => 'No data found for this account — double-check the handle/link.',
+    'job_failed_youtube_api_error' => 'Failed to fetch data from YouTube, try again later.',
+    'job_failed_apify_error' => 'Failed to fetch data from Apify, try again later.',
 ];

@@ -56,23 +56,23 @@
 
         <x-form-field
             name="following_count"
-            label="Following"
+            :label="__('common.metric_following')"
             type="number"
             min="0"
             :value="old('following_count', $latest?->following_count)"
         />
 
         @if ($isYoutube)
-            <x-form-field name="views_count" label="Views" type="number" min="0" :value="old('views_count', $latest?->views_count)" />
-            <x-form-field name="videos_count" label="Videos" type="number" min="0" :value="old('videos_count', $latest?->videos_count)" />
+            <x-form-field name="views_count" :label="__('common.metric_views')" type="number" min="0" :value="old('views_count', $latest?->views_count)" />
+            <x-form-field name="videos_count" :label="__('common.metric_videos')" type="number" min="0" :value="old('videos_count', $latest?->videos_count)" />
         @elseif ($isFacebook)
-            <x-form-field name="recent_posts_count" label="Posts" type="number" min="0" :value="old('recent_posts_count', $latest?->recent_posts_count)" />
+            <x-form-field name="recent_posts_count" :label="__('common.metric_posts_count')" type="number" min="0" :value="old('recent_posts_count', $latest?->recent_posts_count)" />
         @else
-            <x-form-field name="posts_count" label="Posts" type="number" min="0" :value="old('posts_count', $latest?->posts_count)" />
+            <x-form-field name="posts_count" :label="__('common.metric_posts_count')" type="number" min="0" :value="old('posts_count', $latest?->posts_count)" />
         @endif
 
         @if ($social->platform->value === 'tiktok')
-            <x-form-field name="likes_count" label="Likes" type="number" min="0" :value="old('likes_count', $latest?->likes_count)" />
+            <x-form-field name="likes_count" :label="__('common.metric_likes')" type="number" min="0" :value="old('likes_count', $latest?->likes_count)" />
         @endif
 
         <div class="flex items-center gap-3">

@@ -55,4 +55,15 @@ return [
     'failed_retried' => 'Job dimasukkan kembali ke antrean.',
     'completed_cleared' => ':count riwayat batch selesai dibersihkan.',
     'completed_deleted' => 'Riwayat batch dihapus.',
+
+    'job_failed_generic' => 'Gagal memproses job ini.',
+    'job_failed_facebook_not_found' => 'Halaman Facebook tidak ditemukan: :detail',
+    'job_failed_tiktok_not_found' => 'Akun TikTok tidak ditemukan: :detail',
+    'job_failed_youtube_not_found' => 'Channel YouTube tidak ditemukan: :detail',
+    'job_failed_youtube_missing_id' => 'Akun YouTube ini belum diisi ID channel atau handle-nya.',
+    'job_failed_facebook_missing_url' => 'Akun Facebook ini belum diisi link halamannya.',
+    'job_failed_credits_exhausted' => 'Kredit habis untuk bulan ini.',
+    'job_failed_no_data' => 'Tidak ada data ditemukan untuk akun ini — cek lagi handle/link-nya.',
+    'job_failed_youtube_api_error' => 'Gagal mengambil data dari YouTube, coba lagi nanti.',
+    'job_failed_apify_error' => 'Gagal mengambil data dari Apify, coba lagi nanti.',
 ];

@@ -7,6 +7,9 @@
      once here, wired up per-page with a small inline <script> passing that page's own route/ids. --}}
 <script>
     (function () {
+        var defaultNameHeading = @json(__('entity.similar_name_heading'));
+        var defaultSocialHeading = @json(__('entity.similar_social_heading'));
+
         function escapeHtml(str) {
             var div = document.createElement('div');
             div.textContent = str == null ? '' : String(str);
@@ -52,7 +55,7 @@
                     if (opts.excludeId) params.set('exclude_id', opts.excludeId);
 
                     fetchJson(opts.url, params).then(function (matches) {
-                        renderList(resultsEl, opts.heading || 'Mungkin sudah ada yang mirip:', matches, function (m) {
+                        renderList(resultsEl, opts.heading || defaultNameHeading, matches, function (m) {
                             var context = m.context ? ' <span class="text-amber-600/70 dark:text-amber-500/70">(' + escapeHtml(m.context) + ')</span>' : '';
 
                             return '<li><a href="' + escapeHtml(m.url) + '" target="_blank" class="text-amber-700 underline hover:text-amber-900 dark:text-amber-400">' + escapeHtml(m.name) + '</a>' + context + '</li>';
@@ -86,7 +89,7 @@
                     if (opts.excludeId) params.set('exclude_id', opts.excludeId);
 
                     fetchJson(opts.url, params).then(function (matches) {
-                        renderList(resultsEl, opts.heading || 'Akun ini sepertinya sudah terdaftar:', matches, function (m) {
+                        renderList(resultsEl, opts.heading || defaultSocialHeading, matches, function (m) {
                             var owner = m.owner ? ' — <span class="text-amber-600/70 dark:text-amber-500/70">' + escapeHtml(m.owner) + '</span>' : '';
 
                             return '<li><a href="' + escapeHtml(m.url) + '" target="_blank" class="text-amber-700 underline hover:text-amber-900 dark:text-amber-400">' + escapeHtml(m.handle) + '</a>' + owner + '</li>';

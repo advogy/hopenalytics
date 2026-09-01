@@ -241,10 +241,10 @@ trait BuildsLeaderboards
     protected function leaderboardTitles(): array
     {
         return [
-            'reach' => ['title' => 'Followers / Subscribers', 'subtitle' => __('dashboard.reach_subtitle')],
-            'views' => ['title' => 'Views', 'subtitle' => __('dashboard.views_subtitle')],
-            'likes' => ['title' => 'Likes', 'subtitle' => __('dashboard.likes_subtitle')],
-            'posts' => ['title' => 'Post / Video', 'subtitle' => __('dashboard.posts_subtitle')],
+            'reach' => ['title' => __('common.metric_reach'), 'subtitle' => __('dashboard.reach_subtitle')],
+            'views' => ['title' => __('common.metric_views'), 'subtitle' => __('dashboard.views_subtitle')],
+            'likes' => ['title' => __('common.metric_likes'), 'subtitle' => __('dashboard.likes_subtitle')],
+            'posts' => ['title' => __('common.metric_posts'), 'subtitle' => __('dashboard.posts_subtitle')],
         ];
     }
 

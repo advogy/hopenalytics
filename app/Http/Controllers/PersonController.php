@@ -496,7 +496,7 @@ class PersonController extends Controller
             ->where(fn ($query) => $query->whereNull('role')->orWhere('role', '!=', UserRole::SuperAdmin))
             ->first();
 
-        abort_if(! $user, 422, 'Pengguna tidak ditemukan atau sudah tertaut ke Personal lain.');
+        abort_if(! $user, 422, __('entity.user_not_found_or_already_linked'));
 
         // Whatever region this Person already had (admin-set, or blank) stays as-is — linking
         // doesn't move any data around anymore, since Person is already the sole place a

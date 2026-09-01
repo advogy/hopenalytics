@@ -19,4 +19,7 @@ return [
     'col_name' => 'Name',
     'col_domain' => 'Domain',
     'delete_confirm' => 'Delete brand ":name"? This domain will go back to showing the built-in Hopenalytics branding.',
+    'created' => 'Brand ":name" added successfully.',
+    'updated' => 'Brand ":name" updated successfully.',
+    'deleted' => 'Brand ":name" deleted successfully.',
 ];

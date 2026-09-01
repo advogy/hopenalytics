@@ -91,30 +91,30 @@ class QueueMonitorController extends Controller
     private function humanizeFailedJobMessage(string $rawFirstLine): string
     {
         if (! preg_match('/^[\w\\\\]+: (.*) in \/.*:\d+$/s', $rawFirstLine, $m)) {
-            return 'Gagal memproses job ini.';
+            return __('queue.job_failed_generic');
         }
 
         $message = trim($m[1]);
 
         return match (true) {
             str_starts_with($message, 'Facebook page not found: ') =>
-                'Halaman Facebook tidak ditemukan: '.substr($message, strlen('Facebook page not found: ')),
+                __('queue.job_failed_facebook_not_found', ['detail' => substr($message, strlen('Facebook page not found: '))]),
             str_starts_with($message, 'TikTok profile not found: ') =>
-                'Akun TikTok tidak ditemukan: '.substr($message, strlen('TikTok profile not found: ')),
+                __('queue.job_failed_tiktok_not_found', ['detail' => substr($message, strlen('TikTok profile not found: '))]),
             str_starts_with($message, 'YouTube channel not found: ') =>
-                'Channel YouTube tidak ditemukan: '.substr($message, strlen('YouTube channel not found: ')),
+                __('queue.job_failed_youtube_not_found', ['detail' => substr($message, strlen('YouTube channel not found: '))]),
             str_contains($message, 'Missing YouTube channel ID or handle') =>
-                'Akun YouTube ini belum diisi ID channel atau handle-nya.',
+                __('queue.job_failed_youtube_missing_id'),
             str_contains($message, 'Missing Facebook page URL') =>
-                'Akun Facebook ini belum diisi link halamannya.',
+                __('queue.job_failed_facebook_missing_url'),
             str_contains(strtolower($message), 'usage hard limit') || str_contains(strtolower($message), 'insufficient-funds') =>
-                'Kredit habis untuk bulan ini.',
+                __('queue.job_failed_credits_exhausted'),
             str_contains($message, 'returned no data') =>
-                'Tidak ada data ditemukan untuk akun ini — cek lagi handle/link-nya.',
+                __('queue.job_failed_no_data'),
             str_starts_with($message, 'YouTube API error') =>
-                'Gagal mengambil data dari YouTube, coba lagi nanti.',
+                __('queue.job_failed_youtube_api_error'),
             str_starts_with($message, 'Apify actor') =>
-                'Gagal mengambil data dari Apify, coba lagi nanti.',
+                __('queue.job_failed_apify_error'),
             default => Str::limit($message, 150),
         };
     }

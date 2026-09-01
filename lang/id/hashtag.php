@@ -16,6 +16,12 @@ return [
     'activate' => 'Aktifkan',
     'deactivate' => 'Nonaktifkan',
     'delete_confirm' => 'Hapus hashtag ":tag" secara permanen?',
+    'already_tracked' => 'Hashtag ini sudah dilacak.',
+    'created' => 'Hashtag "#:tag" berhasil ditambahkan.',
+    'reactivated_message' => 'Hashtag "#:tag" telah diaktifkan kembali.',
+    'deactivated_message' => 'Hashtag "#:tag" telah dinonaktifkan.',
+    'delete_blocked' => 'Hashtag "#:tag" tidak bisa dihapus karena masih memiliki data post yang tersimpan. Nonaktifkan saja.',
+    'deleted' => 'Hashtag "#:tag" berhasil dihapus.',
 
     'tab_label' => 'Hastag',
     'comparison_title' => 'Perbandingan Hastag',

@@ -30,7 +30,7 @@ class HashtagController extends Controller
         $data = $request->validate([
             'tag' => ['required', 'string', 'max:100', Rule::unique('hashtags', 'tag')],
         ], [
-            'tag.unique' => 'Hashtag ini sudah dilacak.',
+            'tag.unique' => __('hashtag.already_tracked'),
         ]);
 
         $hashtag = Hashtag::create([
@@ -40,13 +40,12 @@ class HashtagController extends Controller
 
         AuditLogger::log('hashtag.created', $hashtag, "Menambahkan hashtag \"#{$hashtag->tag}\".");
 
-        return redirect()->route('admin.hashtags.index')->with('status', "Hashtag \"#{$hashtag->tag}\" berhasil ditambahkan.");
+        return redirect()->route('admin.hashtags.index')->with('status', __('hashtag.created', ['tag' => $hashtag->tag]));
     }
 
     public function toggleActive(Hashtag $hashtag): RedirectResponse
     {
         $hashtag->update(['is_active' => ! $hashtag->is_active]);
-        $status = $hashtag->is_active ? 'diaktifkan kembali' : 'dinonaktifkan';
 
         AuditLogger::log(
             $hashtag->is_active ? 'hashtag.activated' : 'hashtag.deactivated',
@@ -54,7 +53,11 @@ class HashtagController extends Controller
             ($hashtag->is_active ? 'Mengaktifkan kembali' : 'Menonaktifkan')." hashtag \"#{$hashtag->tag}\"."
         );
 
-        return redirect()->route('admin.hashtags.index')->with('status', "Hashtag \"#{$hashtag->tag}\" telah {$status}.");
+        $message = $hashtag->is_active
+            ? __('hashtag.reactivated_message', ['tag' => $hashtag->tag])
+            : __('hashtag.deactivated_message', ['tag' => $hashtag->tag]);
+
+        return redirect()->route('admin.hashtags.index')->with('status', $message);
     }
 
     /**
@@ -67,7 +70,7 @@ class HashtagController extends Controller
     {
         if ($hashtag->posts()->exists()) {
             return redirect()->route('admin.hashtags.index')
-                ->with('error', "Hashtag \"#{$hashtag->tag}\" tidak bisa dihapus karena masih memiliki data post yang tersimpan. Nonaktifkan saja.");
+                ->with('error', __('hashtag.delete_blocked', ['tag' => $hashtag->tag]));
         }
 
         $tag = $hashtag->tag;
@@ -75,6 +78,6 @@ class HashtagController extends Controller
 
         AuditLogger::log('hashtag.deleted', $hashtag, "Menghapus permanen hashtag \"#{$tag}\".");
 
-        return redirect()->route('admin.hashtags.index')->with('status', "Hashtag \"#{$tag}\" berhasil dihapus.");
+        return redirect()->route('admin.hashtags.index')->with('status', __('hashtag.deleted', ['tag' => $tag]));
     }
 }

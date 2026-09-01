@@ -20,6 +20,7 @@ return [
     'this_week' => 'minggu ini',
     'no_data_yet' => 'Belum ada data.',
     'church' => 'Gereja',
+    'member' => 'Anggota',
     'personal' => 'Personal',
     'institution' => 'Institusi',
     'division' => 'Divisi',
@@ -55,9 +56,16 @@ return [
     // Kept as English loanwords even in Indonesian — matches how these metric names already
     // appear everywhere else in the app (e.g. ChurchDashboardController/ExportController's own
     // $metricLabels arrays), never actually translated to Indonesian equivalents.
+    'no_results_found' => 'Tidak ditemukan.',
+    'more_results_refine_search' => '+:count lainnya — perhalus pencarian…',
+    'add_as_new' => '+ Tambah ":query" sebagai baru',
+    'metric_reach' => 'Followers / Subscribers',
     'metric_views' => 'Views',
     'metric_likes' => 'Likes',
     'metric_posts' => 'Post / Video',
+    'metric_following' => 'Following',
+    'metric_videos' => 'Videos',
+    'metric_posts_count' => 'Posts',
     'back_to_top' => 'Kembali ke atas',
     'customer_service' => 'Customer Service',
     'cs_whatsapp_link_global' => 'Hubungi Koordinator Global',

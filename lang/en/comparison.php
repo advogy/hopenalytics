@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'title_suffix_church' => ' Church',
     'title_suffix_personal' => ' Personal',
     'title_suffix_institution' => ' Institution',
     'title_suffix_organization' => ' Division/Union/Conference',

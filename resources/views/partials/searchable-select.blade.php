@@ -6,6 +6,15 @@
      setOptions() lets the page swap in a new list later (e.g. when a parent select changes),
      and opts.onChange lets cascading selects (e.g. Uni → Daerah → Gereja) react to a pick. --}}
 <script>
+    var searchableSelectI18n = {
+        noResults: @json(__('common.no_results_found')),
+        // Templates, not pre-substituted — Laravel's __() leaves an untouched placeholder alone
+        // when no replacement is given for it, since the count/query here is only known client-
+        // side once the user's actually typed something.
+        moreResults: @json(__('common.more_results_refine_search')),
+        addAsNew: @json(__('common.add_as_new')),
+    };
+
     window.initSearchableSelect = function (wrapper, opts) {
         opts = opts || {};
         var MAX_RESULTS = opts.maxResults || 50;
@@ -69,7 +78,7 @@
             if (matches.length === 0 && ! allowCreate) {
                 var empty = document.createElement('li');
                 empty.className = 'px-2 py-1.5 text-slate-400';
-                empty.textContent = 'Tidak ditemukan.';
+                empty.textContent = searchableSelectI18n.noResults;
                 list.appendChild(empty);
                 list.classList.remove('hidden');
                 return;
@@ -90,13 +99,13 @@
             if (matches.length > MAX_RESULTS) {
                 var hint = document.createElement('li');
                 hint.className = 'px-2 py-1.5 text-slate-400';
-                hint.textContent = '+' + (matches.length - MAX_RESULTS) + ' lainnya — perhalus pencarian…';
+                hint.textContent = searchableSelectI18n.moreResults.replace(':count', String(matches.length - MAX_RESULTS));
                 list.appendChild(hint);
             }
 
             if (allowCreate && query && ! matches.some(function (opt) { return opt.label.toLowerCase() === query.toLowerCase(); })) {
                 var create = document.createElement('li');
-                create.textContent = '+ Tambah "' + query + '" sebagai baru';
+                create.textContent = searchableSelectI18n.addAsNew.replace(':query', query);
                 create.tabIndex = 0;
                 create.className = 'cursor-pointer rounded-md px-2 py-1.5 font-medium text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950';
                 create.addEventListener('mousedown', function (e) {

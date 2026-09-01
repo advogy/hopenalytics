@@ -24,13 +24,13 @@
     @endif
 
     <x-tab-bar>
-        <x-tab-button tab-key="username">Username</x-tab-button>
-        <x-tab-button tab-key="password">Kata Sandi</x-tab-button>
+        <x-tab-button tab-key="username">{{ __('entity.profile_tab_username') }}</x-tab-button>
+        <x-tab-button tab-key="password">{{ __('auth.password') }}</x-tab-button>
         @if ($person)
-            <x-tab-button tab-key="personal">Info Personal</x-tab-button>
+            <x-tab-button tab-key="personal">{{ __('entity.profile_tab_personal') }}</x-tab-button>
         @endif
         @if ($person)
-            <x-tab-button tab-key="sosial">Media Sosial</x-tab-button>
+            <x-tab-button tab-key="sosial">{{ __('entity.profile_tab_sosial') }}</x-tab-button>
         @endif
     </x-tab-bar>
 
@@ -39,12 +39,12 @@
             @csrf
             @method('PUT')
 
-            <x-form-field name="name" label="Nama Lengkap" required :value="old('name', $user->name)" />
-            <x-form-field name="email" type="email" label="Email" required :value="old('email', $user->email)" hint="Mengubah email akan mengirim kode OTP ke alamat baru" />
-            <x-form-field name="current_password" type="password" label="Password Saat Ini" hint="Wajib diisi hanya jika mengubah email" />
+            <x-form-field name="name" :label="__('auth.name')" required :value="old('name', $user->name)" />
+            <x-form-field name="email" type="email" :label="__('auth.email')" required :value="old('email', $user->email)" :hint="__('entity.profile_email_change_hint')" />
+            <x-form-field name="current_password" type="password" :label="__('auth.current_password')" :hint="__('entity.current_password_conditional_hint')" />
 
             <button type="submit" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70">
-                Simpan Perubahan
+                {{ __('common.save_changes') }}
             </button>
         </form>
     </div>
@@ -54,12 +54,12 @@
             @csrf
             @method('PUT')
 
-            <x-form-field name="current_password" type="password" label="Password Saat Ini" required />
-            <x-form-field name="password" type="password" label="Kata Sandi Baru" required />
-            <x-form-field name="password_confirmation" type="password" label="Konfirmasi Kata Sandi Baru" required />
+            <x-form-field name="current_password" type="password" :label="__('auth.current_password')" required />
+            <x-form-field name="password" type="password" :label="__('auth.new_password')" required />
+            <x-form-field name="password_confirmation" type="password" :label="__('auth.new_password_confirmation')" required />
 
             <button type="submit" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700">
-                Ubah Kata Sandi
+                {{ __('entity.change_password_button') }}
             </button>
         </form>
     </div>
@@ -80,18 +80,18 @@
                          "Lokasi" under a tab already called "Info Personal" would just repeat
                          itself. --}}
                     @if ($canEditRegion)
-                        <h2 class="mb-1 text-sm font-bold text-slate-900 dark:text-white">Lokasi</h2>
+                        <h2 class="mb-1 text-sm font-bold text-slate-900 dark:text-white">{{ __('entity.location_label') }}</h2>
                     @endif
 
-                    <x-form-field id="person_city" name="city" label="Kota" hint="opsional, untuk peta" :value="old('city', $person->city)" />
+                    <x-form-field id="person_city" name="city" :label="__('entity.city')" :hint="__('entity.city_optional_map')" :value="old('city', $person->city)" />
                     <x-coordinate-fields :latitude="$person->latitude" :longitude="$person->longitude" />
                 </div>
 
                 @if ($canEditRegion)
                     <div>
-                        <h2 class="mb-1 text-sm font-bold text-slate-900 dark:text-white">Wilayah</h2>
+                        <h2 class="mb-1 text-sm font-bold text-slate-900 dark:text-white">{{ __('accounts.region') }}</h2>
                         <p class="mb-4 text-sm text-slate-500 dark:text-slate-400">
-                            Uni, Daerah, dan Gereja Anda saat ini — supaya admin di wilayah Anda bisa menemukan Anda.
+                            {{ __('entity.profile_region_hint') }}
                         </p>
 
                         @include('partials.region-fields', [
@@ -106,7 +106,7 @@
                 @endif
 
                 <button type="submit" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70">
-                    Simpan
+                    {{ __('common.save') }}
                 </button>
             </form>
         </div>

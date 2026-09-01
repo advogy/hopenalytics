@@ -19,4 +19,7 @@ return [
     'col_name' => 'Nama',
     'col_domain' => 'Domain',
     'delete_confirm' => 'Hapus brand ":name"? Domain ini akan kembali menampilkan branding Hopenalytics bawaan.',
+    'created' => 'Brand ":name" berhasil ditambahkan.',
+    'updated' => 'Brand ":name" berhasil diperbarui.',
+    'deleted' => 'Brand ":name" berhasil dihapus.',
 ];

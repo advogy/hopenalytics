@@ -128,9 +128,14 @@ class FetchSingleChurchData implements ShouldQueue
             $this->churchSocial->update([
                 'last_fetched_at' => now(),
                 'last_fetch_status' => 'failed',
+                // Note: this renders (and gets stored) in whichever locale is active for this
+                // background job — not necessarily the locale of whoever later views it — since
+                // a queued job has no per-request user session to read a locale preference from.
+                // Same limitation existed before this was wrapped in __(); tracked here rather
+                // than silently left as always-Indonesian.
                 'last_fetch_error' => $fallbackToManual
-                    ? 'Kredit habis — auto-fetch dinonaktifkan otomatis. Tambah kredit atau isi data secara manual.'
-                    : 'Kredit habis — auto-fetch tetap aktif tapi gagal. Tambah kredit, atau isi data secara manual sementara.',
+                    ? __('entity.apify_credits_exhausted_auto_disabled')
+                    : __('entity.apify_credits_exhausted_still_active'),
                 'is_auto_fetch' => $fallbackToManual ? false : $this->churchSocial->is_auto_fetch,
             ]);
 

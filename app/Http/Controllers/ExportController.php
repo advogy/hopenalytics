@@ -31,7 +31,9 @@ class ExportController extends Controller
     // in this file, same as it disappears everywhere else.
     private array $platformLabels;
 
-    private array $categoryLabels = ['gereja' => 'Akun Gereja', 'umum' => 'Akun Umum', 'personal' => 'Akun Personal'];
+    // Built in the constructor below (like $platformLabels above) since a property default
+    // can't call __().
+    private array $categoryLabels;
 
     private array $countField = ['youtube' => 'subscribers_count', 'instagram' => 'followers_count', 'tiktok' => 'followers_count', 'facebook' => 'followers_count', 'x' => 'followers_count'];
 
@@ -42,11 +44,26 @@ class ExportController extends Controller
     // a lookup miss falls through to 'views_count' (always null on those rows) via ?? below.
     private array $viewsField = ['youtube' => 'views_count', 'instagram' => 'recent_reels_views', 'tiktok' => 'recent_video_plays'];
 
-    private array $metricLabels = ['reach' => 'Followers/Subscribers', 'views' => 'Views', 'likes' => 'Likes', 'posts' => 'Post / Video'];
+    // Built in the constructor below (like $platformLabels above) since a property default
+    // can't call __().
+    private array $metricLabels;
 
     public function __construct()
     {
-        $this->platformLabels = ['semua' => 'Semua'] + AppSetting::current()->enabledPlatformLabels();
+        $this->platformLabels = ['semua' => __('comparison.sort_all')] + AppSetting::current()->enabledPlatformLabels();
+
+        $this->categoryLabels = [
+            'gereja' => __('directory.church_accounts'),
+            'umum' => __('directory.general_accounts'),
+            'personal' => __('entity.personal_account'),
+        ];
+
+        $this->metricLabels = [
+            'reach' => __('export.metric_reach'),
+            'views' => __('common.metric_views'),
+            'likes' => __('common.metric_likes'),
+            'posts' => __('common.metric_posts'),
+        ];
     }
 
     public function leaderboardPreview(string $metric)
@@ -553,6 +570,33 @@ class ExportController extends Controller
         return $this->download($this->analyticsDatasetPersonal($personId, $platform), $format, $filename);
     }
 
+    /**
+     * The handful of sentence/label shapes repeated verbatim across the ~15 dataset-building
+     * methods below — extracted once here so each shape only needs translating in one place
+     * (see ExportController's own investigation notes: every leaderboard/metric-comparison
+     * dataset method built the exact same "Pertumbuhan :title" / "Diurutkan berdasarkan..." /
+     * "Total :metric" / header-row text independently before this).
+     */
+    private function growthPrefixedTitle(string $baseTitle, string $sortBy): string
+    {
+        return $sortBy === 'value' ? $baseTitle : __('export.growth_prefix', ['title' => $baseTitle]);
+    }
+
+    private function sortedSubtitle(string $sortBy, string $growthSubtitle): string
+    {
+        return $sortBy === 'value' ? __('export.sorted_by_current_value') : $growthSubtitle;
+    }
+
+    private function totalLabel(string $metricTitle): string
+    {
+        return __('export.total_label', ['metric' => $metricTitle]);
+    }
+
+    private function leaderboardHeaders(string $entityColumn): array
+    {
+        return ['#', $entityColumn, __('common.platform'), __('common.account'), __('comparison.growth'), __('export.col_current')];
+    }
+
     private function leaderboardDataset(string $metric, string $sortBy = 'delta', ?string $category = null): array
     {
         $titles = $this->leaderboardTitles();
@@ -562,12 +606,12 @@ class ExportController extends Controller
         [$socials, $field] = $this->metricDefinition($metric, $this->activeSocials(category: $category));
         $rows = $this->buildLeaderboard($socials, $field, null, $sortBy);
 
-        $title = $sortBy === 'value' ? $titles[$metric]['title'] : 'Pertumbuhan '.$titles[$metric]['title'];
+        $title = $this->growthPrefixedTitle($titles[$metric]['title'], $sortBy);
 
         return [
-            'title' => "{$title} Gereja",
-            'subtitle' => $sortBy === 'value' ? 'Diurutkan berdasarkan nilai saat ini' : $titles[$metric]['subtitle'],
-            'headers' => ['#', 'Gereja', 'Platform', 'Akun', 'Pertumbuhan', 'Saat Ini'],
+            'title' => $title.__('comparison.title_suffix_church'),
+            'subtitle' => $this->sortedSubtitle($sortBy, $titles[$metric]['subtitle']),
+            'headers' => $this->leaderboardHeaders(__('common.church')),
             'rows' => $rows->values()->map(fn ($row, $i) => [
                 $i + 1,
                 $row['social']->church->name,
@@ -576,7 +620,7 @@ class ExportController extends Controller
                 ($row['delta'] > 0 ? '+' : '').number_format($row['delta']),
                 number_format($row['latest']),
             ])->all(),
-            'summary' => [['label' => "Total {$titles[$metric]['title']}", 'value' => number_format($rows->sum('latest'))]],
+            'summary' => [['label' => $this->totalLabel($titles[$metric]['title']), 'value' => number_format($rows->sum('latest'))]],
         ];
     }
 
@@ -589,12 +633,12 @@ class ExportController extends Controller
         [$socials, $field] = $this->metricDefinition($metric, $this->activeSocialsPersonal());
         $rows = $this->buildLeaderboard($socials, $field, null, $sortBy);
 
-        $title = $sortBy === 'value' ? $titles[$metric]['title'] : 'Pertumbuhan '.$titles[$metric]['title'];
+        $title = $this->growthPrefixedTitle($titles[$metric]['title'], $sortBy);
 
         return [
-            'title' => "{$title} Personal",
-            'subtitle' => $sortBy === 'value' ? 'Diurutkan berdasarkan nilai saat ini' : $titles[$metric]['subtitle'],
-            'headers' => ['#', 'Nama', 'Platform', 'Akun', 'Pertumbuhan', 'Saat Ini'],
+            'title' => $title.__('comparison.title_suffix_personal'),
+            'subtitle' => $this->sortedSubtitle($sortBy, $titles[$metric]['subtitle']),
+            'headers' => $this->leaderboardHeaders(__('common.name')),
             'rows' => $rows->values()->map(fn ($row, $i) => [
                 $i + 1,
                 $row['social']->person->name,
@@ -603,7 +647,7 @@ class ExportController extends Controller
                 ($row['delta'] > 0 ? '+' : '').number_format($row['delta']),
                 number_format($row['latest']),
             ])->all(),
-            'summary' => [['label' => "Total {$titles[$metric]['title']}", 'value' => number_format($rows->sum('latest'))]],
+            'summary' => [['label' => $this->totalLabel($titles[$metric]['title']), 'value' => number_format($rows->sum('latest'))]],
         ];
     }
 
@@ -634,15 +678,15 @@ class ExportController extends Controller
         }
 
         $subtitle = $sortBy === 'value'
-            ? 'Peringkat akun media sosial berdasarkan nilai saat ini — subscriber/followers, views, likes, dan post, untuk semua gereja'
-            : 'Peringkat akun media sosial berdasarkan pertumbuhan mingguan tertinggi — subscriber/followers, views, likes, dan post, untuk semua gereja';
+            ? __('comparison.metric_comparison_subtitle_value', ['scope' => __('comparison.for_all_churches')])
+            : __('comparison.metric_comparison_subtitle_delta', ['scope' => __('comparison.for_all_churches')]);
 
         return [
-            'title' => 'Perbandingan Metrik Gereja',
+            'title' => __('comparison.metric_comparison_title', ['label' => __('common.church')]),
             'subtitle' => $subtitle,
-            'headers' => ['Metrik', '#', 'Gereja', 'Platform', 'Akun', 'Pertumbuhan', 'Saat Ini'],
+            'headers' => [__('export.col_metric'), '#', __('common.church'), __('common.platform'), __('common.account'), __('comparison.growth'), __('export.col_current')],
             'rows' => $rows,
-            'summary' => collect($titles)->map(fn ($title, $metric) => ['label' => "Total {$title['title']}", 'value' => number_format($totals[$metric] ?? 0)])->values()->all(),
+            'summary' => collect($titles)->map(fn ($title, $metric) => ['label' => $this->totalLabel($title['title']), 'value' => number_format($totals[$metric] ?? 0)])->values()->all(),
         ];
     }
 
@@ -673,15 +717,15 @@ class ExportController extends Controller
         }
 
         $subtitle = $sortBy === 'value'
-            ? 'Peringkat akun media sosial berdasarkan nilai saat ini — subscriber/followers, views, likes, dan post, untuk semua akun personal'
-            : 'Peringkat akun media sosial berdasarkan pertumbuhan mingguan tertinggi — subscriber/followers, views, likes, dan post, untuk semua akun personal';
+            ? __('comparison.metric_comparison_subtitle_value', ['scope' => __('comparison.for_all_personal')])
+            : __('comparison.metric_comparison_subtitle_delta', ['scope' => __('comparison.for_all_personal')]);
 
         return [
-            'title' => 'Perbandingan Metrik Personal',
+            'title' => __('comparison.metric_comparison_title', ['label' => __('common.personal')]),
             'subtitle' => $subtitle,
-            'headers' => ['Metrik', '#', 'Nama', 'Platform', 'Akun', 'Pertumbuhan', 'Saat Ini'],
+            'headers' => [__('export.col_metric'), '#', __('common.name'), __('common.platform'), __('common.account'), __('comparison.growth'), __('export.col_current')],
             'rows' => $rows,
-            'summary' => collect($titles)->map(fn ($title, $metric) => ['label' => "Total {$title['title']}", 'value' => number_format($totals[$metric] ?? 0)])->values()->all(),
+            'summary' => collect($titles)->map(fn ($title, $metric) => ['label' => $this->totalLabel($title['title']), 'value' => number_format($totals[$metric] ?? 0)])->values()->all(),
         ];
     }
 
@@ -694,12 +738,12 @@ class ExportController extends Controller
         [$socials, $field] = $this->metricDefinition($metric, $this->activeSocialsInstitution());
         $rows = $this->buildLeaderboard($socials, $field, null, $sortBy);
 
-        $title = $sortBy === 'value' ? $titles[$metric]['title'] : 'Pertumbuhan '.$titles[$metric]['title'];
+        $title = $this->growthPrefixedTitle($titles[$metric]['title'], $sortBy);
 
         return [
-            'title' => "{$title} Institusi",
-            'subtitle' => $sortBy === 'value' ? 'Diurutkan berdasarkan nilai saat ini' : $titles[$metric]['subtitle'],
-            'headers' => ['#', 'Institusi', 'Platform', 'Akun', 'Pertumbuhan', 'Saat Ini'],
+            'title' => $title.__('comparison.title_suffix_institution'),
+            'subtitle' => $this->sortedSubtitle($sortBy, $titles[$metric]['subtitle']),
+            'headers' => $this->leaderboardHeaders(__('common.institution')),
             'rows' => $rows->values()->map(fn ($row, $i) => [
                 $i + 1,
                 $row['social']->institution->name,
@@ -708,7 +752,7 @@ class ExportController extends Controller
                 ($row['delta'] > 0 ? '+' : '').number_format($row['delta']),
                 number_format($row['latest']),
             ])->all(),
-            'summary' => [['label' => "Total {$titles[$metric]['title']}", 'value' => number_format($rows->sum('latest'))]],
+            'summary' => [['label' => $this->totalLabel($titles[$metric]['title']), 'value' => number_format($rows->sum('latest'))]],
         ];
     }
 
@@ -739,15 +783,15 @@ class ExportController extends Controller
         }
 
         $subtitle = $sortBy === 'value'
-            ? 'Peringkat akun media sosial berdasarkan nilai saat ini — subscriber/followers, views, likes, dan post, untuk semua institusi'
-            : 'Peringkat akun media sosial berdasarkan pertumbuhan mingguan tertinggi — subscriber/followers, views, likes, dan post, untuk semua institusi';
+            ? __('comparison.metric_comparison_subtitle_value', ['scope' => __('comparison.for_all_institutions')])
+            : __('comparison.metric_comparison_subtitle_delta', ['scope' => __('comparison.for_all_institutions')]);
 
         return [
-            'title' => 'Perbandingan Metrik Institusi',
+            'title' => __('comparison.metric_comparison_title', ['label' => __('common.institution')]),
             'subtitle' => $subtitle,
-            'headers' => ['Metrik', '#', 'Institusi', 'Platform', 'Akun', 'Pertumbuhan', 'Saat Ini'],
+            'headers' => [__('export.col_metric'), '#', __('common.institution'), __('common.platform'), __('common.account'), __('comparison.growth'), __('export.col_current')],
             'rows' => $rows,
-            'summary' => collect($titles)->map(fn ($title, $metric) => ['label' => "Total {$title['title']}", 'value' => number_format($totals[$metric] ?? 0)])->values()->all(),
+            'summary' => collect($titles)->map(fn ($title, $metric) => ['label' => $this->totalLabel($title['title']), 'value' => number_format($totals[$metric] ?? 0)])->values()->all(),
         ];
     }
 
@@ -765,12 +809,12 @@ class ExportController extends Controller
         [$socials, $field] = $this->metricDefinition($metric, $this->activeSocialsOrganization());
         $rows = $this->buildLeaderboard($socials, $field, null, $sortBy);
 
-        $title = $sortBy === 'value' ? $titles[$metric]['title'] : 'Pertumbuhan '.$titles[$metric]['title'];
+        $title = $this->growthPrefixedTitle($titles[$metric]['title'], $sortBy);
 
         return [
-            'title' => "{$title} Divisi/Uni/Daerah",
-            'subtitle' => $sortBy === 'value' ? 'Diurutkan berdasarkan nilai saat ini' : $titles[$metric]['subtitle'],
-            'headers' => ['#', 'Divisi/Uni/Daerah', 'Platform', 'Akun', 'Pertumbuhan', 'Saat Ini'],
+            'title' => $title.__('comparison.title_suffix_organization'),
+            'subtitle' => $this->sortedSubtitle($sortBy, $titles[$metric]['subtitle']),
+            'headers' => $this->leaderboardHeaders(__('comparison.organization_label')),
             'rows' => $rows->values()->map(fn ($row, $i) => [
                 $i + 1,
                 $row['social']->division?->name ?? $row['social']->union?->name ?? $row['social']->conference?->name,
@@ -779,7 +823,7 @@ class ExportController extends Controller
                 ($row['delta'] > 0 ? '+' : '').number_format($row['delta']),
                 number_format($row['latest']),
             ])->all(),
-            'summary' => [['label' => "Total {$titles[$metric]['title']}", 'value' => number_format($rows->sum('latest'))]],
+            'summary' => [['label' => $this->totalLabel($titles[$metric]['title']), 'value' => number_format($rows->sum('latest'))]],
         ];
     }
 
@@ -810,15 +854,15 @@ class ExportController extends Controller
         }
 
         $subtitle = $sortBy === 'value'
-            ? 'Peringkat akun media sosial berdasarkan nilai saat ini — subscriber/followers, views, likes, dan post, untuk semua Divisi/Uni/Daerah'
-            : 'Peringkat akun media sosial berdasarkan pertumbuhan mingguan tertinggi — subscriber/followers, views, likes, dan post, untuk semua Divisi/Uni/Daerah';
+            ? __('comparison.metric_comparison_subtitle_value', ['scope' => __('comparison.for_all_organizations')])
+            : __('comparison.metric_comparison_subtitle_delta', ['scope' => __('comparison.for_all_organizations')]);
 
         return [
-            'title' => 'Perbandingan Metrik Divisi/Uni/Daerah',
+            'title' => __('comparison.metric_comparison_title', ['label' => __('comparison.organization_label')]),
             'subtitle' => $subtitle,
-            'headers' => ['Metrik', '#', 'Divisi/Uni/Daerah', 'Platform', 'Akun', 'Pertumbuhan', 'Saat Ini'],
+            'headers' => [__('export.col_metric'), '#', __('comparison.organization_label'), __('common.platform'), __('common.account'), __('comparison.growth'), __('export.col_current')],
             'rows' => $rows,
-            'summary' => collect($titles)->map(fn ($title, $metric) => ['label' => "Total {$title['title']}", 'value' => number_format($totals[$metric] ?? 0)])->values()->all(),
+            'summary' => collect($titles)->map(fn ($title, $metric) => ['label' => $this->totalLabel($title['title']), 'value' => number_format($totals[$metric] ?? 0)])->values()->all(),
         ];
     }
 
@@ -834,6 +878,21 @@ class ExportController extends Controller
             $organization instanceof Division => "division-{$organization->id}",
             $organization instanceof Union => "union-{$organization->id}",
             default => "conference-{$organization->id}",
+        };
+    }
+
+    /**
+     * The "which column header applies" match repeated identically 8 times across every
+     * platform-overview/platform-comparison dataset method (church/personal/institution/
+     * organization) — extracted once here, same reasoning as the other shared helpers above.
+     */
+    private function valueHeaderLabel(string $metric, string $platform): string
+    {
+        return match (true) {
+            $metric !== 'reach' => $this->metricLabels[$metric],
+            $platform === 'youtube' => __('export.value_header_subscribers'),
+            $platform === 'semua' => __('export.value_header_reach'),
+            default => __('export.value_header_followers'),
         };
     }
 
@@ -853,18 +912,13 @@ class ExportController extends Controller
             ->sortBy('name')
             ->values();
 
-        $headers = ['Divisi/Uni/Daerah'];
+        $headers = [__('comparison.organization_label')];
         $valueHeaders = [];
         foreach ($applicableMetrics as $metric) {
-            $valueHeader = match (true) {
-                $metric !== 'reach' => $this->metricLabels[$metric],
-                $platform === 'youtube' => 'Subscribers',
-                $platform === 'semua' => 'Jangkauan',
-                default => 'Followers',
-            };
+            $valueHeader = $this->valueHeaderLabel($metric, $platform);
             $valueHeaders[$metric] = $valueHeader;
             $headers[] = $valueHeader;
-            $headers[] = "Pertumbuhan {$valueHeader}";
+            $headers[] = __('export.growth_prefix', ['title' => $valueHeader]);
         }
 
         $rows = $organizations->map(function ($organization) use ($applicableMetrics, $rowsByMetric) {
@@ -884,11 +938,11 @@ class ExportController extends Controller
         $metricNames = $applicableMetrics->map(fn ($m) => $this->metricLabels[$m])->implode(', ');
 
         return [
-            'title' => "Ringkasan Perbandingan {$platformLabel} Divisi/Uni/Daerah",
-            'subtitle' => "{$metricNames} — semua Divisi/Uni/Daerah, diurutkan berdasarkan nama.",
+            'title' => __('export.platform_overview_title', ['platform' => $platformLabel]).__('comparison.title_suffix_organization'),
+            'subtitle' => __('export.platform_overview_subtitle', ['metrics' => $metricNames, 'scope' => __('comparison.for_all_organizations')]),
             'headers' => $headers,
             'rows' => $rows,
-            'summary' => $applicableMetrics->map(fn ($metric) => ['label' => "Total {$valueHeaders[$metric]}", 'value' => number_format($rowsByMetric[$metric]->sum('value'))])->values()->all(),
+            'summary' => $applicableMetrics->map(fn ($metric) => ['label' => $this->totalLabel($valueHeaders[$metric]), 'value' => number_format($rowsByMetric[$metric]->sum('value'))])->values()->all(),
         ];
     }
 
@@ -896,28 +950,23 @@ class ExportController extends Controller
     {
         $rows = $this->metricComparisonRowsOrganization($metric, $platform, $sortBy);
         $platformLabel = $this->platformLabels[$platform];
-        $valueHeader = match (true) {
-            $metric !== 'reach' => $this->metricLabels[$metric],
-            $platform === 'youtube' => 'Subscribers',
-            $platform === 'semua' => 'Jangkauan',
-            default => 'Followers',
-        };
+        $valueHeader = $this->valueHeaderLabel($metric, $platform);
 
         $subtitle = $sortBy === 'delta'
-            ? "Peringkat Divisi/Uni/Daerah berdasarkan pertumbuhan mingguan {$valueHeader} {$platformLabel}"
-            : "Peringkat Divisi/Uni/Daerah berdasarkan {$valueHeader} {$platformLabel} saat ini";
+            ? __('export.platform_ranking_subtitle_delta', ['scope' => __('comparison.organization_label'), 'value' => $valueHeader, 'platform' => $platformLabel])
+            : __('export.platform_ranking_subtitle_value', ['scope' => __('comparison.organization_label'), 'value' => $valueHeader, 'platform' => $platformLabel]);
 
         return [
-            'title' => "Perbandingan {$valueHeader} {$platformLabel} Divisi/Uni/Daerah",
+            'title' => __('export.platform_ranking_title', ['value' => $valueHeader, 'platform' => $platformLabel]).__('comparison.title_suffix_organization'),
             'subtitle' => $subtitle,
-            'headers' => ['#', 'Divisi/Uni/Daerah', $valueHeader, 'Pertumbuhan Mingguan'],
+            'headers' => ['#', __('comparison.organization_label'), $valueHeader, __('comparison.weekly_growth')],
             'rows' => $rows->values()->map(fn ($row, $i) => [
                 $i + 1,
                 $row['label'],
                 number_format($row['value']),
                 $row['delta'] === null ? '—' : ($row['delta'] > 0 ? '+' : '').number_format($row['delta']),
             ])->all(),
-            'summary' => [['label' => "Total {$valueHeader} {$platformLabel}", 'value' => number_format($rows->sum('value'))]],
+            'summary' => [['label' => __('export.total_value_platform', ['value' => $valueHeader, 'platform' => $platformLabel]), 'value' => number_format($rows->sum('value'))]],
         ];
     }
 
@@ -972,9 +1021,9 @@ class ExportController extends Controller
             return [
                 $organization->name,
                 match (true) {
-                    $organization instanceof Division => 'Divisi',
-                    $organization instanceof Union => 'Uni',
-                    default => 'Daerah',
+                    $organization instanceof Division => __('common.division'),
+                    $organization instanceof Union => __('common.union'),
+                    default => __('common.conference'),
                 },
                 $displaySocials->count(),
                 number_format($reach),
@@ -989,12 +1038,14 @@ class ExportController extends Controller
             $platform ? ($this->platformLabels[$platform] ?? null) : null,
         ]);
 
-        $subtitle = $filterParts ? 'Filter: '.implode(', ', $filterParts) : 'Semua Divisi/Uni/Daerah, semua media sosial';
+        $subtitle = $filterParts
+            ? __('export.analytics_filter_prefix', ['filters' => implode(', ', $filterParts)])
+            : __('export.analytics_no_filter', ['scope' => __('comparison.organization_label')]);
 
         return [
-            'title' => 'Analitik & Grafik Divisi/Uni/Daerah',
+            'title' => __('export.analytics_title').__('comparison.title_suffix_organization'),
             'subtitle' => $subtitle,
-            'headers' => ['Divisi/Uni/Daerah', 'Level', 'Jumlah Akun', 'Total Jangkauan', 'Total Views', 'Total Likes', 'Total Post'],
+            'headers' => [__('comparison.organization_label'), __('export.col_level'), __('export.col_account_count'), $this->totalLabel(__('comparison.reach_label')), $this->totalLabel(__('common.metric_views')), $this->totalLabel(__('common.metric_likes')), $this->totalLabel(__('common.metric_posts_count'))],
             'rows' => $rows,
         ];
     }
@@ -1064,43 +1115,76 @@ class ExportController extends Controller
         }
 
         $scopeLabel = match ($type) {
-            'gereja' => 'semua gereja',
-            'personal' => 'semua akun personal',
-            default => 'semua gereja dan akun personal',
+            'gereja' => __('comparison.for_all_churches'),
+            'personal' => __('comparison.for_all_personal'),
+            default => __('export.directory_scope_all'),
         };
 
         $subtitle = $platform
-            ? "Daftar akun {$this->platformLabels[$platform]} {$scopeLabel}"
-            : "Daftar lengkap handle media sosial {$scopeLabel}";
+            ? __('export.directory_subtitle_with_platform', ['platform' => $this->platformLabels[$platform], 'scope' => $scopeLabel])
+            : __('export.directory_subtitle_no_platform', ['scope' => $scopeLabel]);
 
         $headers = match ($type) {
-            'personal' => ['Nama', 'Kategori', 'Platform', 'Akun'],
-            'gereja' => ['Gereja', 'Kota', 'Kategori', 'Platform', 'Akun'],
-            default => ['Nama', 'Kota', 'Kategori', 'Platform', 'Akun'],
+            'personal' => [__('common.name'), __('entity.category'), __('common.platform'), __('common.account')],
+            'gereja' => [__('common.church'), __('entity.city'), __('entity.category'), __('common.platform'), __('common.account')],
+            default => [__('common.name'), __('entity.city'), __('entity.category'), __('common.platform'), __('common.account')],
         };
 
         return [
-            'title' => 'Direktori Akun',
+            'title' => __('nav.directory'),
             'subtitle' => $subtitle,
             'headers' => $headers,
             'rows' => $rows,
         ];
     }
 
+    /**
+     * The identical is_auto_fetch/last_fetch_status → label logic repeated 3 times across
+     * churchDataset()/personDataset()/institutionDataset() — same reasoning as the other shared
+     * helpers above. 'success' has no existing UI-wide label to reuse (entity.status_auto means
+     * something different — "set to auto-fetch," not "last attempt succeeded" — see the
+     * i18n-audit note this was found under), so it gets its own export-only key.
+     */
+    private function fetchStatusLabel(ChurchSocial $social): string
+    {
+        if (! $social->is_auto_fetch) {
+            return __('entity.status_manual');
+        }
+
+        return match ($social->last_fetch_status) {
+            'failed' => __('entity.status_failed'),
+            default => $social->last_fetched_at ? __('export.status_success') : __('entity.status_pending'),
+        };
+    }
+
+    /** Same profile-table header row shared by church/person/institution single-entity exports. */
+    private function socialProfileHeaders(bool $withCategory): array
+    {
+        $headers = [__('common.platform')];
+
+        if ($withCategory) {
+            $headers[] = __('entity.category');
+        }
+
+        $headers[] = __('common.account');
+        $headers[] = __('export.col_followers_subs');
+        $headers[] = __('common.metric_following');
+        $headers[] = __('export.col_post_video');
+        $headers[] = __('common.metric_views');
+        $headers[] = __('common.metric_likes');
+        $headers[] = __('common.status');
+
+        return $headers;
+    }
+
     private function churchDataset(Church $church): array
     {
         $church->load(['socials' => fn ($q) => $q->where('is_active', true)->with('latestStat')]);
 
-        $statusLabels = ['success' => 'Berhasil', 'failed' => 'Gagal', 'pending' => 'Menunggu'];
-
-        $rows = $church->socials->map(function ($social) use ($statusLabels) {
+        $rows = $church->socials->map(function ($social) {
             $latest = $social->latestStat;
             $field = $this->countField[$social->platform->value];
             $viewsField = $this->viewsField[$social->platform->value] ?? 'views_count';
-
-            $status = ! $social->is_auto_fetch
-                ? 'Manual'
-                : ($statusLabels[$social->last_fetch_status] ?? ($social->last_fetched_at ? 'Berhasil' : 'Menunggu'));
 
             return [
                 $this->platformLabels[$social->platform->value],
@@ -1111,14 +1195,14 @@ class ExportController extends Controller
                 $latest ? number_format($latest->posts_count ?? $latest->videos_count ?? $latest->recent_posts_count ?? 0) : '—',
                 $latest && $latest->{$viewsField} ? number_format($latest->{$viewsField}) : '—',
                 $latest && $latest->likes_count ? number_format($latest->likes_count) : '—',
-                $status,
+                $this->fetchStatusLabel($social),
             ];
         })->all();
 
         return [
             'title' => $church->name,
-            'subtitle' => $church->city ? "Data akun media sosial — {$church->city}" : 'Data akun media sosial',
-            'headers' => ['Platform', 'Kategori', 'Akun', 'Followers/Subs', 'Following', 'Post/Video', 'Views', 'Likes', 'Status'],
+            'subtitle' => $church->city ? __('export.social_data_subtitle_with_city', ['city' => $church->city]) : __('export.social_data_subtitle'),
+            'headers' => $this->socialProfileHeaders(withCategory: true),
             'rows' => $rows,
         ];
     }
@@ -1127,16 +1211,10 @@ class ExportController extends Controller
     {
         $person->load(['socials' => fn ($q) => $q->where('is_active', true)->with('latestStat')]);
 
-        $statusLabels = ['success' => 'Berhasil', 'failed' => 'Gagal', 'pending' => 'Menunggu'];
-
-        $rows = $person->socials->map(function ($social) use ($statusLabels) {
+        $rows = $person->socials->map(function ($social) {
             $latest = $social->latestStat;
             $field = $this->countField[$social->platform->value];
             $viewsField = $this->viewsField[$social->platform->value] ?? 'views_count';
-
-            $status = ! $social->is_auto_fetch
-                ? 'Manual'
-                : ($statusLabels[$social->last_fetch_status] ?? ($social->last_fetched_at ? 'Berhasil' : 'Menunggu'));
 
             return [
                 $this->platformLabels[$social->platform->value],
@@ -1146,14 +1224,14 @@ class ExportController extends Controller
                 $latest ? number_format($latest->posts_count ?? $latest->videos_count ?? $latest->recent_posts_count ?? 0) : '—',
                 $latest && $latest->{$viewsField} ? number_format($latest->{$viewsField}) : '—',
                 $latest && $latest->likes_count ? number_format($latest->likes_count) : '—',
-                $status,
+                $this->fetchStatusLabel($social),
             ];
         })->all();
 
         return [
             'title' => $person->name,
-            'subtitle' => $person->city ? "Data akun media sosial — {$person->city}" : 'Data akun media sosial',
-            'headers' => ['Platform', 'Akun', 'Followers/Subs', 'Following', 'Post/Video', 'Views', 'Likes', 'Status'],
+            'subtitle' => $person->city ? __('export.social_data_subtitle_with_city', ['city' => $person->city]) : __('export.social_data_subtitle'),
+            'headers' => $this->socialProfileHeaders(withCategory: false),
             'rows' => $rows,
         ];
     }
@@ -1162,16 +1240,10 @@ class ExportController extends Controller
     {
         $institution->load(['socials' => fn ($q) => $q->where('is_active', true)->with('latestStat')]);
 
-        $statusLabels = ['success' => 'Berhasil', 'failed' => 'Gagal', 'pending' => 'Menunggu'];
-
-        $rows = $institution->socials->map(function ($social) use ($statusLabels) {
+        $rows = $institution->socials->map(function ($social) {
             $latest = $social->latestStat;
             $field = $this->countField[$social->platform->value];
             $viewsField = $this->viewsField[$social->platform->value] ?? 'views_count';
-
-            $status = ! $social->is_auto_fetch
-                ? 'Manual'
-                : ($statusLabels[$social->last_fetch_status] ?? ($social->last_fetched_at ? 'Berhasil' : 'Menunggu'));
 
             return [
                 $this->platformLabels[$social->platform->value],
@@ -1181,14 +1253,14 @@ class ExportController extends Controller
                 $latest ? number_format($latest->posts_count ?? $latest->videos_count ?? $latest->recent_posts_count ?? 0) : '—',
                 $latest && $latest->{$viewsField} ? number_format($latest->{$viewsField}) : '—',
                 $latest && $latest->likes_count ? number_format($latest->likes_count) : '—',
-                $status,
+                $this->fetchStatusLabel($social),
             ];
         })->all();
 
         return [
             'title' => $institution->name,
-            'subtitle' => 'Data akun media sosial',
-            'headers' => ['Platform', 'Akun', 'Followers/Subs', 'Following', 'Post/Video', 'Views', 'Likes', 'Status'],
+            'subtitle' => __('export.social_data_subtitle'),
+            'headers' => $this->socialProfileHeaders(withCategory: false),
             'rows' => $rows,
         ];
     }
@@ -1209,9 +1281,9 @@ class ExportController extends Controller
         ])->all();
 
         return [
-            'title' => "Histori {$social->display_handle}",
+            'title' => __('export.history_title', ['handle' => $social->display_handle]),
             'subtitle' => "{$this->platformLabels[$social->platform->value]} — {$owner->name}",
-            'headers' => ['Tanggal', 'Followers/Subs', 'Following', 'Post/Video', 'Views', 'Likes'],
+            'headers' => [__('export.col_date'), __('export.col_followers_subs'), __('common.metric_following'), __('export.col_post_video'), __('common.metric_views'), __('common.metric_likes')],
             'rows' => $rows,
         ];
     }
@@ -1232,18 +1304,13 @@ class ExportController extends Controller
             ->sortBy('name')
             ->values();
 
-        $headers = ['Gereja'];
+        $headers = [__('common.church')];
         $valueHeaders = [];
         foreach ($applicableMetrics as $metric) {
-            $valueHeader = match (true) {
-                $metric !== 'reach' => $this->metricLabels[$metric],
-                $platform === 'youtube' => 'Subscribers',
-                $platform === 'semua' => 'Jangkauan',
-                default => 'Followers',
-            };
+            $valueHeader = $this->valueHeaderLabel($metric, $platform);
             $valueHeaders[$metric] = $valueHeader;
             $headers[] = $valueHeader;
-            $headers[] = "Pertumbuhan {$valueHeader}";
+            $headers[] = __('export.growth_prefix', ['title' => $valueHeader]);
         }
 
         $rows = $churches->map(function ($church) use ($applicableMetrics, $rowsByMetric) {
@@ -1262,11 +1329,11 @@ class ExportController extends Controller
         $metricNames = $applicableMetrics->map(fn ($m) => $this->metricLabels[$m])->implode(', ');
 
         return [
-            'title' => "Ringkasan Perbandingan {$platformLabel} Gereja",
-            'subtitle' => "{$metricNames} — semua gereja, diurutkan berdasarkan nama.",
+            'title' => __('export.platform_overview_title', ['platform' => $platformLabel]).__('comparison.title_suffix_church'),
+            'subtitle' => __('export.platform_overview_subtitle', ['metrics' => $metricNames, 'scope' => __('comparison.for_all_churches')]),
             'headers' => $headers,
             'rows' => $rows,
-            'summary' => $applicableMetrics->map(fn ($metric) => ['label' => "Total {$valueHeaders[$metric]}", 'value' => number_format($rowsByMetric[$metric]->sum('value'))])->values()->all(),
+            'summary' => $applicableMetrics->map(fn ($metric) => ['label' => $this->totalLabel($valueHeaders[$metric]), 'value' => number_format($rowsByMetric[$metric]->sum('value'))])->values()->all(),
         ];
     }
 
@@ -1274,28 +1341,23 @@ class ExportController extends Controller
     {
         $rows = $this->metricComparisonRows($metric, $platform, $sortBy, $category);
         $platformLabel = $this->platformLabels[$platform];
-        $valueHeader = match (true) {
-            $metric !== 'reach' => $this->metricLabels[$metric],
-            $platform === 'youtube' => 'Subscribers',
-            $platform === 'semua' => 'Jangkauan',
-            default => 'Followers',
-        };
+        $valueHeader = $this->valueHeaderLabel($metric, $platform);
 
         $subtitle = $sortBy === 'delta'
-            ? "Peringkat gereja berdasarkan pertumbuhan mingguan {$valueHeader} {$platformLabel}"
-            : "Peringkat gereja berdasarkan {$valueHeader} {$platformLabel} saat ini";
+            ? __('export.platform_ranking_subtitle_delta', ['scope' => __('comparison.scope_church'), 'value' => $valueHeader, 'platform' => $platformLabel])
+            : __('export.platform_ranking_subtitle_value', ['scope' => __('comparison.scope_church'), 'value' => $valueHeader, 'platform' => $platformLabel]);
 
         return [
-            'title' => "Perbandingan {$valueHeader} {$platformLabel} Gereja",
+            'title' => __('export.platform_ranking_title', ['value' => $valueHeader, 'platform' => $platformLabel]).__('comparison.title_suffix_church'),
             'subtitle' => $subtitle,
-            'headers' => ['#', 'Gereja', $valueHeader, 'Pertumbuhan Mingguan'],
+            'headers' => ['#', __('common.church'), $valueHeader, __('comparison.weekly_growth')],
             'rows' => $rows->values()->map(fn ($row, $i) => [
                 $i + 1,
                 $row['label'],
                 number_format($row['value']),
                 $row['delta'] === null ? '—' : ($row['delta'] > 0 ? '+' : '').number_format($row['delta']),
             ])->all(),
-            'summary' => [['label' => "Total {$valueHeader} {$platformLabel}", 'value' => number_format($rows->sum('value'))]],
+            'summary' => [['label' => __('export.total_value_platform', ['value' => $valueHeader, 'platform' => $platformLabel]), 'value' => number_format($rows->sum('value'))]],
         ];
     }
 
@@ -1315,18 +1377,13 @@ class ExportController extends Controller
             ->sortBy('name')
             ->values();
 
-        $headers = ['Nama'];
+        $headers = [__('common.name')];
         $valueHeaders = [];
         foreach ($applicableMetrics as $metric) {
-            $valueHeader = match (true) {
-                $metric !== 'reach' => $this->metricLabels[$metric],
-                $platform === 'youtube' => 'Subscribers',
-                $platform === 'semua' => 'Jangkauan',
-                default => 'Followers',
-            };
+            $valueHeader = $this->valueHeaderLabel($metric, $platform);
             $valueHeaders[$metric] = $valueHeader;
             $headers[] = $valueHeader;
-            $headers[] = "Pertumbuhan {$valueHeader}";
+            $headers[] = __('export.growth_prefix', ['title' => $valueHeader]);
         }
 
         $rows = $people->map(function ($person) use ($applicableMetrics, $rowsByMetric) {
@@ -1345,11 +1402,11 @@ class ExportController extends Controller
         $metricNames = $applicableMetrics->map(fn ($m) => $this->metricLabels[$m])->implode(', ');
 
         return [
-            'title' => "Ringkasan Perbandingan {$platformLabel} Personal",
-            'subtitle' => "{$metricNames} — semua akun personal, diurutkan berdasarkan nama.",
+            'title' => __('export.platform_overview_title', ['platform' => $platformLabel]).__('comparison.title_suffix_personal'),
+            'subtitle' => __('export.platform_overview_subtitle', ['metrics' => $metricNames, 'scope' => __('comparison.for_all_personal')]),
             'headers' => $headers,
             'rows' => $rows,
-            'summary' => $applicableMetrics->map(fn ($metric) => ['label' => "Total {$valueHeaders[$metric]}", 'value' => number_format($rowsByMetric[$metric]->sum('value'))])->values()->all(),
+            'summary' => $applicableMetrics->map(fn ($metric) => ['label' => $this->totalLabel($valueHeaders[$metric]), 'value' => number_format($rowsByMetric[$metric]->sum('value'))])->values()->all(),
         ];
     }
 
@@ -1357,28 +1414,23 @@ class ExportController extends Controller
     {
         $rows = $this->metricComparisonRowsPersonal($metric, $platform, $sortBy);
         $platformLabel = $this->platformLabels[$platform];
-        $valueHeader = match (true) {
-            $metric !== 'reach' => $this->metricLabels[$metric],
-            $platform === 'youtube' => 'Subscribers',
-            $platform === 'semua' => 'Jangkauan',
-            default => 'Followers',
-        };
+        $valueHeader = $this->valueHeaderLabel($metric, $platform);
 
         $subtitle = $sortBy === 'delta'
-            ? "Peringkat personal berdasarkan pertumbuhan mingguan {$valueHeader} {$platformLabel}"
-            : "Peringkat personal berdasarkan {$valueHeader} {$platformLabel} saat ini";
+            ? __('export.platform_ranking_subtitle_delta', ['scope' => __('comparison.scope_personal'), 'value' => $valueHeader, 'platform' => $platformLabel])
+            : __('export.platform_ranking_subtitle_value', ['scope' => __('comparison.scope_personal'), 'value' => $valueHeader, 'platform' => $platformLabel]);
 
         return [
-            'title' => "Perbandingan {$valueHeader} {$platformLabel} Personal",
+            'title' => __('export.platform_ranking_title', ['value' => $valueHeader, 'platform' => $platformLabel]).__('comparison.title_suffix_personal'),
             'subtitle' => $subtitle,
-            'headers' => ['#', 'Nama', $valueHeader, 'Pertumbuhan Mingguan'],
+            'headers' => ['#', __('common.name'), $valueHeader, __('comparison.weekly_growth')],
             'rows' => $rows->values()->map(fn ($row, $i) => [
                 $i + 1,
                 $row['label'],
                 number_format($row['value']),
                 $row['delta'] === null ? '—' : ($row['delta'] > 0 ? '+' : '').number_format($row['delta']),
             ])->all(),
-            'summary' => [['label' => "Total {$valueHeader} {$platformLabel}", 'value' => number_format($rows->sum('value'))]],
+            'summary' => [['label' => __('export.total_value_platform', ['value' => $valueHeader, 'platform' => $platformLabel]), 'value' => number_format($rows->sum('value'))]],
         ];
     }
 
@@ -1398,18 +1450,13 @@ class ExportController extends Controller
             ->sortBy('name')
             ->values();
 
-        $headers = ['Institusi'];
+        $headers = [__('common.institution')];
         $valueHeaders = [];
         foreach ($applicableMetrics as $metric) {
-            $valueHeader = match (true) {
-                $metric !== 'reach' => $this->metricLabels[$metric],
-                $platform === 'youtube' => 'Subscribers',
-                $platform === 'semua' => 'Jangkauan',
-                default => 'Followers',
-            };
+            $valueHeader = $this->valueHeaderLabel($metric, $platform);
             $valueHeaders[$metric] = $valueHeader;
             $headers[] = $valueHeader;
-            $headers[] = "Pertumbuhan {$valueHeader}";
+            $headers[] = __('export.growth_prefix', ['title' => $valueHeader]);
         }
 
         $rows = $institutions->map(function ($institution) use ($applicableMetrics, $rowsByMetric) {
@@ -1428,11 +1475,11 @@ class ExportController extends Controller
         $metricNames = $applicableMetrics->map(fn ($m) => $this->metricLabels[$m])->implode(', ');
 
         return [
-            'title' => "Ringkasan Perbandingan {$platformLabel} Institusi",
-            'subtitle' => "{$metricNames} — semua institusi, diurutkan berdasarkan nama.",
+            'title' => __('export.platform_overview_title', ['platform' => $platformLabel]).__('comparison.title_suffix_institution'),
+            'subtitle' => __('export.platform_overview_subtitle', ['metrics' => $metricNames, 'scope' => __('comparison.for_all_institutions')]),
             'headers' => $headers,
             'rows' => $rows,
-            'summary' => $applicableMetrics->map(fn ($metric) => ['label' => "Total {$valueHeaders[$metric]}", 'value' => number_format($rowsByMetric[$metric]->sum('value'))])->values()->all(),
+            'summary' => $applicableMetrics->map(fn ($metric) => ['label' => $this->totalLabel($valueHeaders[$metric]), 'value' => number_format($rowsByMetric[$metric]->sum('value'))])->values()->all(),
         ];
     }
 
@@ -1440,28 +1487,23 @@ class ExportController extends Controller
     {
         $rows = $this->metricComparisonRowsInstitution($metric, $platform, $sortBy);
         $platformLabel = $this->platformLabels[$platform];
-        $valueHeader = match (true) {
-            $metric !== 'reach' => $this->metricLabels[$metric],
-            $platform === 'youtube' => 'Subscribers',
-            $platform === 'semua' => 'Jangkauan',
-            default => 'Followers',
-        };
+        $valueHeader = $this->valueHeaderLabel($metric, $platform);
 
         $subtitle = $sortBy === 'delta'
-            ? "Peringkat institusi berdasarkan pertumbuhan mingguan {$valueHeader} {$platformLabel}"
-            : "Peringkat institusi berdasarkan {$valueHeader} {$platformLabel} saat ini";
+            ? __('export.platform_ranking_subtitle_delta', ['scope' => __('comparison.scope_institution'), 'value' => $valueHeader, 'platform' => $platformLabel])
+            : __('export.platform_ranking_subtitle_value', ['scope' => __('comparison.scope_institution'), 'value' => $valueHeader, 'platform' => $platformLabel]);
 
         return [
-            'title' => "Perbandingan {$valueHeader} {$platformLabel} Institusi",
+            'title' => __('export.platform_ranking_title', ['value' => $valueHeader, 'platform' => $platformLabel]).__('comparison.title_suffix_institution'),
             'subtitle' => $subtitle,
-            'headers' => ['#', 'Institusi', $valueHeader, 'Pertumbuhan Mingguan'],
+            'headers' => ['#', __('common.institution'), $valueHeader, __('comparison.weekly_growth')],
             'rows' => $rows->values()->map(fn ($row, $i) => [
                 $i + 1,
                 $row['label'],
                 number_format($row['value']),
                 $row['delta'] === null ? '—' : ($row['delta'] > 0 ? '+' : '').number_format($row['delta']),
             ])->all(),
-            'summary' => [['label' => "Total {$valueHeader} {$platformLabel}", 'value' => number_format($rows->sum('value'))]],
+            'summary' => [['label' => __('export.total_value_platform', ['value' => $valueHeader, 'platform' => $platformLabel]), 'value' => number_format($rows->sum('value'))]],
         ];
     }
 
@@ -1505,12 +1547,14 @@ class ExportController extends Controller
             $platform ? ($this->platformLabels[$platform] ?? null) : null,
         ]);
 
-        $subtitle = $filterParts ? 'Filter: '.implode(', ', $filterParts) : 'Semua institusi, semua media sosial';
+        $subtitle = $filterParts
+            ? __('export.analytics_filter_prefix', ['filters' => implode(', ', $filterParts)])
+            : __('export.analytics_no_filter', ['scope' => __('comparison.scope_institution')]);
 
         return [
-            'title' => 'Analitik & Grafik Institusi',
+            'title' => __('export.analytics_title').__('comparison.title_suffix_institution'),
             'subtitle' => $subtitle,
-            'headers' => ['Institusi', 'Jumlah Akun', 'Total Jangkauan', 'Total Views', 'Total Likes', 'Total Post'],
+            'headers' => [__('common.institution'), __('export.col_account_count'), $this->totalLabel(__('comparison.reach_label')), $this->totalLabel(__('common.metric_views')), $this->totalLabel(__('common.metric_likes')), $this->totalLabel(__('common.metric_posts_count'))],
             'rows' => $rows,
         ];
     }
@@ -1563,12 +1607,14 @@ class ExportController extends Controller
             $category ? ($this->categoryLabels[$category] ?? null) : null,
         ]);
 
-        $subtitle = $filterParts ? 'Filter: '.implode(', ', $filterParts) : 'Semua gereja, semua media sosial';
+        $subtitle = $filterParts
+            ? __('export.analytics_filter_prefix', ['filters' => implode(', ', $filterParts)])
+            : __('export.analytics_no_filter', ['scope' => __('comparison.scope_church')]);
 
         return [
-            'title' => 'Analitik & Grafik',
+            'title' => __('export.analytics_title'),
             'subtitle' => $subtitle,
-            'headers' => ['Gereja', 'Kota', 'Akun Gereja', 'Akun Umum', 'Total Jangkauan', 'Total Views', 'Total Likes', 'Total Post'],
+            'headers' => [__('common.church'), __('entity.city'), __('directory.church_accounts'), __('directory.general_accounts'), $this->totalLabel(__('comparison.reach_label')), $this->totalLabel(__('common.metric_views')), $this->totalLabel(__('common.metric_likes')), $this->totalLabel(__('common.metric_posts_count'))],
             'rows' => $rows,
         ];
     }
@@ -1613,12 +1659,14 @@ class ExportController extends Controller
             $platform ? ($this->platformLabels[$platform] ?? null) : null,
         ]);
 
-        $subtitle = $filterParts ? 'Filter: '.implode(', ', $filterParts) : 'Semua akun personal, semua media sosial';
+        $subtitle = $filterParts
+            ? __('export.analytics_filter_prefix', ['filters' => implode(', ', $filterParts)])
+            : __('export.analytics_no_filter', ['scope' => __('comparison.scope_personal')]);
 
         return [
-            'title' => 'Analitik & Grafik Personal',
+            'title' => __('export.analytics_title').__('comparison.title_suffix_personal'),
             'subtitle' => $subtitle,
-            'headers' => ['Nama', 'Jumlah Akun', 'Total Jangkauan', 'Total Views', 'Total Likes', 'Total Post'],
+            'headers' => [__('common.name'), __('export.col_account_count'), $this->totalLabel(__('comparison.reach_label')), $this->totalLabel(__('common.metric_views')), $this->totalLabel(__('common.metric_likes')), $this->totalLabel(__('common.metric_posts_count'))],
             'rows' => $rows,
         ];
     }
@@ -1684,7 +1732,7 @@ class ExportController extends Controller
             $canvas->line(40, $y - 8, $canvas->get_width() - 40, $y - 8, [0.89, 0.91, 0.94], 1);
             $canvas->text(40, $y, $footer, $font, $size, $color);
 
-            $pageText = "Halaman {$pageNumber} dari {$pageCount}";
+            $pageText = __('export.pdf_page_of', ['current' => $pageNumber, 'total' => $pageCount]);
             $pageWidth = $fontMetrics->getTextWidth($pageText, $font, $size);
             $canvas->text($canvas->get_width() - 40 - $pageWidth, $y, $pageText, $font, $size, $color);
         });
@@ -1694,10 +1742,10 @@ class ExportController extends Controller
 
     private function footerText(): string
     {
-        $text = 'Diunduh dari Hopenalytics pada '.Carbon::now('Asia/Jakarta')->translatedFormat('d M Y H:i').' WIB';
+        $text = __('export.downloaded_footer', ['datetime' => Carbon::now('Asia/Jakarta')->translatedFormat('d M Y H:i')]);
 
         if (auth()->check()) {
-            $text .= ' oleh '.auth()->user()->name;
+            $text .= __('export.downloaded_footer_by', ['name' => auth()->user()->name]);
         }
 
         return $text;
@@ -1754,7 +1802,7 @@ class ExportController extends Controller
     {
         $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle('Data');
+        $sheet->setTitle(__('export.sheet_title'));
 
         $headerRow = 1;
 

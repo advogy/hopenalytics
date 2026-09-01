@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'title_suffix_church' => ' Gereja',
     'title_suffix_personal' => ' Personal',
     'title_suffix_institution' => ' Institusi',
     'title_suffix_organization' => ' Divisi/Uni/Daerah',

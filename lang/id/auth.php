@@ -5,6 +5,7 @@ return [
     'login_subtitle' => 'Masuk untuk mengelola akun media sosial Anda.',
     'email' => 'Email',
     'password' => 'Kata Sandi',
+    'current_password' => 'Password Saat Ini',
     'login_button' => 'Masuk',
     'login_failed' => 'Email atau kata sandi salah.',
     'login_unverified' => 'Email Anda belum diverifikasi. Silakan cek kode OTP yang dikirim ke email Anda.',
