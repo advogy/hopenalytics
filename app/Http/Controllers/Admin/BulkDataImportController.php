@@ -59,7 +59,7 @@ class BulkDataImportController extends Controller
         $user = $request->user();
         $model = $this->modelFor($type);
 
-        $rows = $model::query()->visibleTo($user)->where('is_active', true)->orderBy('name')->get(['id', 'name', 'city', 'country']);
+        $rows = $model::query()->visibleTo($user)->where('is_active', true)->with('conference:id,name')->orderBy('name')->get(['id', 'name', 'city', 'country', 'conference_id']);
 
         $spreadsheet = new Spreadsheet;
         $mainSheet = $spreadsheet->getActiveSheet();
@@ -68,8 +68,12 @@ class BulkDataImportController extends Controller
         $mainSheet->fromArray($headers, null, 'A1');
         $mainSheet->getStyle('A1:E1')->getFont()->setBold(true);
 
+        // Daerah is pre-filled with each row's CURRENT conference (never touched on update — see
+        // importMainSheet() — this is purely so the exact spelling/casing of a valid Daerah name
+        // is right there to copy for a new row below, rather than the admin having to guess or
+        // look it up elsewhere).
         $rows->values()->each(fn ($row, $i) => $mainSheet->fromArray(
-            [$row->id, $row->name, $row->city, $row->country, null],
+            [$row->id, $row->name, $row->city, $row->country, $row->conference?->name],
             null,
             'A'.($i + 2)
         ));
@@ -86,6 +90,8 @@ class BulkDataImportController extends Controller
             $mainSheet->getColumnDimension($column)->setAutoSize(true);
         }
 
+        $this->addDaerahReferenceSheet($spreadsheet, $user);
+
         if (in_array($type, ['gereja', 'institusi'], true)) {
             $this->addSocialTemplateSheet($spreadsheet, $type, $model, $user);
         }
@@ -94,6 +100,24 @@ class BulkDataImportController extends Controller
         (new Xlsx($spreadsheet))->save($tempPath);
 
         return Response::download($tempPath, "template-bulk-{$type}.xlsx")->deleteFileAfterSend(true);
+    }
+
+    /**
+     * A complete list of valid Daerah names in the actor's own wilayah — not just whatever
+     * happens to already show up in the Data sheet's existing rows (a Conference with zero
+     * churches in it yet would never appear there at all), so there's always an authoritative
+     * place to check the exact name a new row's Daerah column needs to match.
+     */
+    private function addDaerahReferenceSheet(Spreadsheet $spreadsheet, $user): void
+    {
+        $conferences = Conference::query()->visibleTo($user)->where('is_active', true)->orderBy('name')->pluck('name');
+
+        $sheet = $spreadsheet->createSheet();
+        $sheet->setTitle('Daftar Daerah');
+        $sheet->fromArray(['Daerah'], null, 'A1');
+        $sheet->getStyle('A1')->getFont()->setBold(true);
+        $conferences->values()->each(fn ($name, $i) => $sheet->setCellValue('A'.($i + 2), $name));
+        $sheet->getColumnDimension('A')->setAutoSize(true);
     }
 
     private function addSocialTemplateSheet(Spreadsheet $spreadsheet, string $type, string $model, $user): void
@@ -142,16 +166,20 @@ class BulkDataImportController extends Controller
         $model = $this->modelFor($type);
 
         $spreadsheet = IOFactory::load($data['file']->getRealPath());
-        $sheetNames = $spreadsheet->getSheetNames();
 
-        $mainRows = $spreadsheet->getSheet(0)->toArray(null, true, true, false);
+        // By name, not position — the workbook also carries a "Daftar Daerah" reference sheet
+        // (see addDaerahReferenceSheet()) that isn't meant to be read back on upload at all, so
+        // sheet *index* alone no longer reliably means "the main data sheet" vs "the social one".
+        $mainSheet = $spreadsheet->getSheetByName('Data') ?? $spreadsheet->getSheet(0);
+        $mainRows = $mainSheet->toArray(null, true, true, false);
         array_shift($mainRows);
 
         $result = $this->importMainSheet($mainRows, $type, $model, $user);
 
         $socialResult = ['created' => 0, 'updated' => 0, 'skippedOwnerNotFound' => 0, 'skippedInvalid' => 0, 'skippedDuplicate' => 0];
-        if (isset($sheetNames[1]) && in_array($type, ['gereja', 'institusi'], true)) {
-            $socialRows = $spreadsheet->getSheet(1)->toArray(null, true, true, false);
+        $socialSheet = $spreadsheet->getSheetByName('Media Sosial');
+        if ($socialSheet !== null && in_array($type, ['gereja', 'institusi'], true)) {
+            $socialRows = $socialSheet->toArray(null, true, true, false);
             array_shift($socialRows);
             $socialResult = $this->importSocialSheet($socialRows, $type, $model, $user, $result['createdByName']);
         }
