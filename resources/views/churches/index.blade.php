@@ -634,7 +634,7 @@
                             '<a href="' + item.url + '" class="text-xs text-blue-600">' + mapI18n.viewDetail + '</a>';
 
                         return L.circleMarker([item.lat, item.lng], {
-                            radius: 8, color: '#ffffff', weight: 1.5,
+                            radius: 5, color: '#ffffff', weight: 1,
                             fillColor: shadeFor(item.growthScore), fillOpacity: 0.9,
                         }).bindPopup(popup);
                     });
