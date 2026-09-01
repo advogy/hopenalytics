@@ -7,6 +7,12 @@
             {{ __('nav.footer_developer') }}
             <a href="{{ config('app.developer_url') }}" target="_blank" rel="noopener noreferrer" class="hover:text-blue-600 dark:hover:text-blue-400"><b>{{ config('app.developer') }}</b></a>.
         </p>
-        <p>{{ __('nav.footer_version', ['version' => config('app.version')]) }}</p>
+        <p class="flex items-center gap-2">
+            <a href="{{ route('privacy-policy') }}" class="hover:text-blue-600 dark:hover:text-blue-400">{{ __('nav.footer_privacy_policy') }}</a>
+            <span aria-hidden="true">&middot;</span>
+            <a href="{{ route('terms-of-service') }}" class="hover:text-blue-600 dark:hover:text-blue-400">{{ __('nav.footer_terms_of_service') }}</a>
+            <span aria-hidden="true">&middot;</span>
+            {{ __('nav.footer_version', ['version' => config('app.version')]) }}
+        </p>
     </div>
 </footer>

@@ -21,6 +21,8 @@ return [
     'footer_by' => 'oleh',
     'footer_and' => 'dan',
     'footer_developer' => 'Dikembangkan oleh',
+    'footer_privacy_policy' => 'Kebijakan Privasi',
+    'footer_terms_of_service' => 'Syarat Layanan',
     'footer_version' => 'v:version',
     'my_account' => 'Akun Saya',
     'manage_accounts' => 'Kelola Akun',

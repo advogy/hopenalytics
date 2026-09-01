@@ -21,6 +21,8 @@ return [
     'footer_by' => 'by',
     'footer_and' => 'and',
     'footer_developer' => 'Developed by',
+    'footer_privacy_policy' => 'Privacy Policy',
+    'footer_terms_of_service' => 'Terms of Service',
     'footer_version' => 'v:version',
     'my_account' => 'My Account',
     'manage_accounts' => 'Manage Accounts',

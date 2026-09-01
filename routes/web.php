@@ -80,6 +80,10 @@ Route::get('/personal/presentation/growth', [ChurchDashboardController::class, '
 // the login page's "Tentang" link, which by definition has to work before anyone's logged in.
 Route::view('/tentang', 'about-public')->name('about.public');
 
+// Publicly accessible (no auth) — linked from the footer, per the user's explicit call.
+Route::view('/kebijakan-privasi', 'privacy-policy')->name('privacy-policy');
+Route::view('/syarat-layanan', 'terms-of-service')->name('terms-of-service');
+
 Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
     Route::get('/dashboard', [MyAccountController::class, 'index'])->name('akun-saya');
