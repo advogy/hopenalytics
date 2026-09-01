@@ -596,37 +596,57 @@
                 // non-negative intensity to whichever gradient it's plotted on. An item with no
                 // growthScore yet (fewer than 2 weeks of tracking — see growthScoreRows()) is
                 // left out of both entirely rather than counted as flat/zero growth.
-                var GROWTH_HEAT_CAP = 50; // % weekly growth/decline beyond which intensity maxes out — most real accounts move far less than this per week, so one outlier can't wash out the rest of the map.
+                //
+                // Intensity is normalized against the LARGEST |growthScore| actually present in
+                // the data, not a fixed percentage cap — real weekly growth is usually a couple
+                // of percent, and a fixed cap sized for a rare huge outlier left every realistic
+                // value's intensity too close to 0 to ever reach the gradient's visible range
+                // (confirmed happening — nothing showed any color). This way the single
+                // fastest-moving account always renders at full intensity and everything else
+                // scales relative to it, whatever the actual numbers turn out to be.
+                //
+                // Built lazily (only the first time this tab is actually opened) rather than
+                // eagerly at page load — L.heatLayer isn't otherwise touched by this page, so a
+                // stale bundle or plugin-load hiccup can't take the other tabs down with it.
+                var heatmapBuild = null;
                 function buildHeatmapLayer(items) {
+                    if (heatmapBuild) return heatmapBuild;
+
                     var withGrowth = items.filter(function (item) { return item.growthScore !== null && item.growthScore !== undefined; });
+
+                    if (typeof L.heatLayer !== 'function') {
+                        heatmapBuild = { layer: L.layerGroup([]), points: withGrowth };
+                        return heatmapBuild;
+                    }
+
+                    var maxAbsGrowth = withGrowth.reduce(function (max, item) { return Math.max(max, Math.abs(item.growthScore)); }, 0) || 1;
+
                     var growthPoints = withGrowth
                         .filter(function (item) { return item.growthScore > 0; })
-                        .map(function (item) { return [item.lat, item.lng, Math.min(item.growthScore, GROWTH_HEAT_CAP) / GROWTH_HEAT_CAP]; });
+                        .map(function (item) { return [item.lat, item.lng, item.growthScore / maxAbsGrowth]; });
                     var declinePoints = withGrowth
                         .filter(function (item) { return item.growthScore < 0; })
-                        .map(function (item) { return [item.lat, item.lng, Math.min(Math.abs(item.growthScore), GROWTH_HEAT_CAP) / GROWTH_HEAT_CAP]; });
+                        .map(function (item) { return [item.lat, item.lng, Math.abs(item.growthScore) / maxAbsGrowth]; });
 
                     var growthLayer = L.heatLayer(growthPoints, {
-                        radius: 35, blur: 25, maxZoom: 12,
-                        gradient: { 0.2: '#bbf7d0', 0.5: '#4ade80', 0.8: '#16a34a', 1.0: '#059669' },
+                        radius: 35, blur: 25, maxZoom: 12, minOpacity: 0.3,
+                        gradient: { 0.1: '#bbf7d0', 0.4: '#4ade80', 0.7: '#16a34a', 1.0: '#059669' },
                     });
                     var declineLayer = L.heatLayer(declinePoints, {
-                        radius: 35, blur: 25, maxZoom: 12,
-                        gradient: { 0.2: '#fecaca', 0.5: '#f87171', 0.8: '#dc2626', 1.0: '#991b1b' },
+                        radius: 35, blur: 25, maxZoom: 12, minOpacity: 0.3,
+                        gradient: { 0.1: '#fecaca', 0.4: '#f87171', 0.7: '#dc2626', 1.0: '#991b1b' },
                     });
 
-                    return { layer: L.layerGroup([growthLayer, declineLayer]), points: withGrowth };
+                    heatmapBuild = { layer: L.layerGroup([growthLayer, declineLayer]), points: withGrowth };
+                    return heatmapBuild;
                 }
 
-                var heatmapBuild = buildHeatmapLayer(combined);
-
-                var dataByTab = { gereja: churches, personal: people, institusi: institutions, gabungan: combined, organisasi: organizationBoundsItems, heatmap: heatmapBuild.points };
+                var dataByTab = { gereja: churches, personal: people, institusi: institutions, gabungan: combined, organisasi: organizationBoundsItems };
                 var layersByTab = {
                     gereja: buildClusterGroup(churches, '#2563eb'),
                     personal: buildClusterGroup(people, '#7c3aed'),
                     institusi: buildClusterGroup(institutions, '#d97706'),
                     gabungan: buildClusterGroup(combined, '#0f172a'),
-                    heatmap: heatmapBuild.layer,
                 };
 
                 // Jabodetabek fallback view for a tab with no mapped items yet.
@@ -674,14 +694,21 @@
 
                     currentTab = tab;
 
+                    var items;
                     if (tab === 'organisasi') {
                         activeLayer = null;
+                        items = dataByTab.organisasi;
+                    } else if (tab === 'heatmap') {
+                        var built = buildHeatmapLayer(combined);
+                        activeLayer = built.layer;
+                        items = built.points;
+                        map.addLayer(activeLayer);
                     } else {
                         activeLayer = layersByTab[tab];
+                        items = dataByTab[tab];
                         map.addLayer(activeLayer);
                     }
 
-                    var items = dataByTab[tab];
                     if (items.length > 0) {
                         var bounds = L.latLngBounds(items.map(function (i) { return [i.lat, i.lng]; }));
                         map.fitBounds(bounds, { padding: [24, 24] });
