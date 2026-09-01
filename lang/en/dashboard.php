@@ -59,6 +59,10 @@ return [
     'map_layer_dark' => 'Dark (CartoDB Dark Matter)',
     'map_layer_topo' => 'Topographic (OpenTopoMap)',
     'map_layer_satellite' => 'Satellite (Esri)',
+    'map_tab_heatmap' => 'Growth Heat Map',
+    'map_summary_heatmap' => ':count location(s) have weekly growth data (green = growing, red = declining); :noDataCount don\'t have data yet (needs at least 2 weeks of tracking).',
+    'map_heatmap_legend_growth' => 'Growing',
+    'map_heatmap_legend_decline' => 'Declining',
 
     'top_growth_title' => 'Top 5 Weekly Growth Score',
     'top_growth_subtitle' => 'Composite score averaging weekly growth in reach, views, likes, and posts.',

@@ -59,6 +59,10 @@ return [
     'map_layer_dark' => 'Gelap (CartoDB Dark Matter)',
     'map_layer_topo' => 'Topografi (OpenTopoMap)',
     'map_layer_satellite' => 'Satelit (Esri)',
+    'map_tab_heatmap' => 'Peta Panas Pertumbuhan',
+    'map_summary_heatmap' => ':count lokasi punya data pertumbuhan mingguan (hijau = tumbuh, merah = menurun); :noDataCount belum punya data (butuh minimal 2 minggu pencatatan).',
+    'map_heatmap_legend_growth' => 'Tumbuh',
+    'map_heatmap_legend_decline' => 'Menurun',
 
     'top_growth_title' => 'Top 5 Skor Pertumbuhan Mingguan',
     'top_growth_subtitle' => 'Skor komposit rata-rata pertumbuhan reach, views, likes, dan post, minggu ini.',

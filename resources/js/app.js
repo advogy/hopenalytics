@@ -8,6 +8,7 @@ import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 import 'leaflet.markercluster';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
+import 'leaflet.heat';
 
 // Leaflet's default marker icon paths assume a non-bundled setup; point them at the
 // bundler-resolved asset URLs instead (a well-known Leaflet + Vite/webpack gotcha).

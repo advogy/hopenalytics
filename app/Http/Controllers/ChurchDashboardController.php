@@ -70,6 +70,14 @@ class ChurchDashboardController extends Controller
             ? []
             : Church::whereIn('id', $mapChurchSource->pluck('id'))->visibleTo(auth()->user())->pluck('id')->all();
 
+        // Same composite % growth score the Top 5/Bottom 5 cards above use (see
+        // growthScoreRows()'s own doc comment) — scoped the same way as $mapChurchSource itself,
+        // so a gereja-level viewer's unscoped map isn't scored against their own narrower
+        // Daerah-only figure. Missing entirely (rather than 0) for a church with under 2 weeks
+        // of tracking — the heat map layer skips those instead of treating "no data yet" as
+        // "no growth".
+        $churchGrowthScores = $this->growthScoreRows(scoped: ! $isGerejaLevel)->keyBy(fn ($row) => $row['church']->id);
+
         $mapChurches = $mapChurchSource->filter(fn ($church) => $church->latitude !== null && $church->longitude !== null)
             ->map(fn ($church) => [
                 'name' => $church->name,
@@ -82,6 +90,7 @@ class ChurchDashboardController extends Controller
                 'lat' => $church->latitude,
                 'lng' => $church->longitude,
                 'reach' => $church->socials->sum(fn ($social) => $social->latestStat?->{$reachCountField($social)} ?? 0),
+                'growthScore' => $churchGrowthScores->get($church->id)['score'] ?? null,
                 'divisionId' => $resolveDivision($church)?->id,
                 'divisionName' => $resolveDivision($church)?->name,
                 'unionId' => $resolveUnion($church)?->id,
@@ -105,6 +114,8 @@ class ChurchDashboardController extends Controller
             ? Person::query()->where('is_active', true)->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat'), 'conference.union.division', 'union.division'])->get()
             : $people;
 
+        $personGrowthScores = $this->growthScoreRowsPersonal(scoped: ! $isGerejaLevel)->keyBy(fn ($row) => $row['person']->id);
+
         $mapPeople = $mapPeopleSource->filter(fn ($person) => $person->latitude !== null && $person->longitude !== null)
             ->map(fn ($person) => [
                 'name' => $person->name,
@@ -113,6 +124,7 @@ class ChurchDashboardController extends Controller
                 'lat' => $person->latitude,
                 'lng' => $person->longitude,
                 'reach' => $person->socials->sum(fn ($social) => $social->latestStat?->{$reachCountField($social)} ?? 0),
+                'growthScore' => $personGrowthScores->get($person->id)['score'] ?? null,
                 'divisionId' => $resolveDivision($person)?->id,
                 'divisionName' => $resolveDivision($person)?->name,
                 'unionId' => $resolveUnion($person)?->id,
@@ -136,6 +148,8 @@ class ChurchDashboardController extends Controller
             ? Institution::query()->where('is_active', true)->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat'), 'conference.union.division', 'union.division'])->get()
             : $institutions;
 
+        $institutionGrowthScores = $this->growthScoreRowsInstitution(scoped: ! $isGerejaLevel)->keyBy(fn ($row) => $row['institution']->id);
+
         $mapInstitutions = $mapInstitutionSource->filter(fn ($institution) => $institution->latitude !== null && $institution->longitude !== null)
             ->map(fn ($institution) => [
                 'name' => $institution->name,
@@ -144,6 +158,7 @@ class ChurchDashboardController extends Controller
                 'lat' => $institution->latitude,
                 'lng' => $institution->longitude,
                 'reach' => $institution->socials->sum(fn ($social) => $social->latestStat?->{$reachCountField($social)} ?? 0),
+                'growthScore' => $institutionGrowthScores->get($institution->id)['score'] ?? null,
                 'divisionId' => $resolveDivision($institution)?->id,
                 'divisionName' => $resolveDivision($institution)?->name,
                 'unionId' => $resolveUnion($institution)?->id,
@@ -377,6 +392,8 @@ class ChurchDashboardController extends Controller
 
         return view('churches.index', [
             'scopeLabel' => $scopeLabel,
+            'mapGrowthDataCount' => $mapChurches->concat($mapPeople)->concat($mapInstitutions)->whereNotNull('growthScore')->count(),
+            'mapNoGrowthDataCount' => $mapChurches->concat($mapPeople)->concat($mapInstitutions)->whereNull('growthScore')->count(),
             'hashtagSummary' => $hashtagSummary,
             'totalChurches' => $churches->count(),
             'totalPeople' => $people->count(),

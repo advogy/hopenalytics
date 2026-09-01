@@ -204,6 +204,9 @@
                 <p class="hidden text-sm text-slate-500 dark:text-slate-400" data-map-summary="gabungan">
                     {{ __('dashboard.map_summary_combined', ['churchCount' => $mapChurches->count(), 'peopleCount' => $mapPeople->count(), 'institutionCount' => $mapInstitutions->count()]) }}
                 </p>
+                <p class="hidden text-sm text-slate-500 dark:text-slate-400" data-map-summary="heatmap">
+                    {{ __('dashboard.map_summary_heatmap', ['count' => $mapGrowthDataCount, 'noDataCount' => $mapNoGrowthDataCount]) }}
+                </p>
             </div>
             @if ($unmappedCount > 0 || $unmappedPeopleCount > 0 || $unmappedInstitutionsCount > 0)
                 <div class="text-right text-xs text-slate-400 dark:text-slate-500">
@@ -236,6 +239,20 @@
             <button type="button" data-map-tab="gabungan" class="border-b-2 px-4 py-2 text-sm font-medium transition">
                 {{ __('common.combined') }}
             </button>
+            <button type="button" data-map-tab="heatmap" class="border-b-2 px-4 py-2 text-sm font-medium transition">
+                {{ __('dashboard.map_tab_heatmap') }}
+            </button>
+        </div>
+
+        <div id="church-map-heatmap-legend" class="mb-3 hidden flex-wrap gap-x-4 gap-y-1.5">
+            <span class="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
+                <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-full" style="background:#059669"></span>
+                {{ __('dashboard.map_heatmap_legend_growth') }}
+            </span>
+            <span class="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
+                <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-full" style="background:#dc2626"></span>
+                {{ __('dashboard.map_heatmap_legend_decline') }}
+            </span>
         </div>
 
         @if ($mapChurches->isEmpty() && $mapPeople->isEmpty() && $mapInstitutions->isEmpty())
@@ -573,12 +590,43 @@
                         .map(function (c) { return { lat: c.officeLat, lng: c.officeLng }; })
                 );
 
-                var dataByTab = { gereja: churches, personal: people, institusi: institutions, gabungan: combined, organisasi: organizationBoundsItems };
+                // Weekly growth heat map — two separate L.heatLayer instances (green for growth,
+                // red for decline) rather than one, since a heat layer has no concept of a
+                // negative/positive split on its own: each point only ever contributes a single
+                // non-negative intensity to whichever gradient it's plotted on. An item with no
+                // growthScore yet (fewer than 2 weeks of tracking — see growthScoreRows()) is
+                // left out of both entirely rather than counted as flat/zero growth.
+                var GROWTH_HEAT_CAP = 50; // % weekly growth/decline beyond which intensity maxes out — most real accounts move far less than this per week, so one outlier can't wash out the rest of the map.
+                function buildHeatmapLayer(items) {
+                    var withGrowth = items.filter(function (item) { return item.growthScore !== null && item.growthScore !== undefined; });
+                    var growthPoints = withGrowth
+                        .filter(function (item) { return item.growthScore > 0; })
+                        .map(function (item) { return [item.lat, item.lng, Math.min(item.growthScore, GROWTH_HEAT_CAP) / GROWTH_HEAT_CAP]; });
+                    var declinePoints = withGrowth
+                        .filter(function (item) { return item.growthScore < 0; })
+                        .map(function (item) { return [item.lat, item.lng, Math.min(Math.abs(item.growthScore), GROWTH_HEAT_CAP) / GROWTH_HEAT_CAP]; });
+
+                    var growthLayer = L.heatLayer(growthPoints, {
+                        radius: 35, blur: 25, maxZoom: 12,
+                        gradient: { 0.2: '#bbf7d0', 0.5: '#4ade80', 0.8: '#16a34a', 1.0: '#059669' },
+                    });
+                    var declineLayer = L.heatLayer(declinePoints, {
+                        radius: 35, blur: 25, maxZoom: 12,
+                        gradient: { 0.2: '#fecaca', 0.5: '#f87171', 0.8: '#dc2626', 1.0: '#991b1b' },
+                    });
+
+                    return { layer: L.layerGroup([growthLayer, declineLayer]), points: withGrowth };
+                }
+
+                var heatmapBuild = buildHeatmapLayer(combined);
+
+                var dataByTab = { gereja: churches, personal: people, institusi: institutions, gabungan: combined, organisasi: organizationBoundsItems, heatmap: heatmapBuild.points };
                 var layersByTab = {
                     gereja: buildClusterGroup(churches, '#2563eb'),
                     personal: buildClusterGroup(people, '#7c3aed'),
                     institusi: buildClusterGroup(institutions, '#d97706'),
                     gabungan: buildClusterGroup(combined, '#0f172a'),
+                    heatmap: heatmapBuild.layer,
                 };
 
                 // Jabodetabek fallback view for a tab with no mapped items yet.
@@ -651,6 +699,12 @@
                     });
 
                     if (legendEl) legendEl.classList.toggle('hidden', tab !== 'organisasi');
+
+                    var heatmapLegendEl = document.getElementById('church-map-heatmap-legend');
+                    if (heatmapLegendEl) {
+                        heatmapLegendEl.classList.toggle('hidden', tab !== 'heatmap');
+                        heatmapLegendEl.classList.toggle('flex', tab === 'heatmap');
+                    }
 
                     document.querySelectorAll('[data-map-tab]').forEach(function (btn) {
                         var isActive = btn.dataset.mapTab === tab;
