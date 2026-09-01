@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\AccountController;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\BrandController;
+use App\Http\Controllers\Admin\BulkDataImportController;
 use App\Http\Controllers\Admin\ConferenceController;
 use App\Http\Controllers\Admin\DivisionController;
 use App\Http\Controllers\Admin\HashtagController;
@@ -339,6 +340,15 @@ Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group
     Route::get('/admin/organization/tanpa-akun-sosial', [AccountController::class, 'noSocials'])->name('admin.accounts.no-socials')->middleware('can:manage-people');
 
     Route::middleware('can:manage-hierarchy')->prefix('admin')->name('admin.')->group(function () {
+        // Same manage-hierarchy gate as every other org-unit route in this group — what an
+        // individual admin_uni/admin_daerah can actually reach through it is narrowed further
+        // by visibleTo() inside the controller itself, same as everywhere else here.
+        Route::prefix('bulk-import')->name('bulk-import.')->group(function () {
+            Route::get('/', [BulkDataImportController::class, 'index'])->name('index');
+            Route::get('/{type}/template', [BulkDataImportController::class, 'template'])->name('template');
+            Route::post('/', [BulkDataImportController::class, 'import'])->name('import');
+        });
+
         Route::middleware('can:create,App\Models\Division')->group(function () {
             Route::get('/divisions/create', [DivisionController::class, 'create'])->name('divisions.create');
             Route::post('/divisions', [DivisionController::class, 'store'])->name('divisions.store');

@@ -194,6 +194,12 @@
                                                     {{ __('nav.manage_accounts') }}
                                                 </a>
                                             @endcan
+                                            @can('manage-hierarchy')
+                                                <a href="{{ route('admin.bulk-import.index') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                                                    <x-icon name="arrow-up-tray" class="h-4 w-4 shrink-0 text-slate-400" />
+                                                    {{ __('bulk_import.title') }}
+                                                </a>
+                                            @endcan
                                             @can('view-audit-log')
                                                 <a href="{{ route('admin.audit-log.index') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
                                                     <x-icon name="clock" class="h-4 w-4 shrink-0 text-slate-400" />
@@ -344,6 +350,12 @@
                                         <a href="{{ route('admin.accounts.index') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
                                             <x-icon name="building-office" class="h-4 w-4 shrink-0 text-slate-400" />
                                             {{ __('nav.manage_accounts') }}
+                                        </a>
+                                    @endcan
+                                    @can('manage-hierarchy')
+                                        <a href="{{ route('admin.bulk-import.index') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                                            <x-icon name="arrow-up-tray" class="h-4 w-4 shrink-0 text-slate-400" />
+                                            {{ __('bulk_import.title') }}
                                         </a>
                                     @endcan
                                     @can('view-audit-log')
