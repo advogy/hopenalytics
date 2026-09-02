@@ -29,6 +29,7 @@
         function closeList() {
             list.classList.add('hidden');
             list.innerHTML = '';
+            window.removeEventListener('scroll', closeListOnScroll, true);
         }
 
         // Flips the list above the input instead of below when there isn't enough room
@@ -37,6 +38,14 @@
         // even see the results. 208px mirrors the list's own max-h-52 Tailwind class; the list
         // is still display:none at this point (class="hidden"), so its real scrollHeight can't
         // be measured yet — this is a fixed upper-bound estimate, not a live measurement.
+        //
+        // Positioned as position:fixed with coordinates computed here (rather than the plain
+        // CSS absolute/top-full it used to rely on) because every table on this app's admin
+        // pages wraps in an overflow-x-auto div (see x-admin-list-card) — that alone forces the
+        // *vertical* overflow-y to 'auto' too per the CSS spec, which clips an absolutely-
+        // positioned dropdown the moment it extends past that div's own box, confirmed
+        // happening. position:fixed escapes any ancestor's overflow clipping since it's placed
+        // relative to the viewport, not the nearest scroll container.
         function positionList() {
             var estimatedListHeight = 208;
             var inputRect = searchInput.getBoundingClientRect();
@@ -44,10 +53,17 @@
             var spaceAbove = inputRect.top;
             var openUpward = spaceBelow < estimatedListHeight && spaceAbove > spaceBelow;
 
-            list.classList.toggle('top-full', ! openUpward);
-            list.classList.toggle('mt-1', ! openUpward);
-            list.classList.toggle('bottom-full', openUpward);
-            list.classList.toggle('mb-1', openUpward);
+            list.style.position = 'fixed';
+            list.style.left = inputRect.left + 'px';
+            list.style.top = openUpward ? 'auto' : (inputRect.bottom + 4) + 'px';
+            list.style.bottom = openUpward ? (window.innerHeight - inputRect.top + 4) + 'px' : 'auto';
+        }
+
+        // A fixed-position dropdown doesn't move with the page the way an absolutely-positioned
+        // one naturally would — closing on any scroll (the table's own horizontal one included,
+        // since it bubbles) avoids it drifting away from the input it belongs to.
+        function closeListOnScroll() {
+            closeList();
         }
 
         function setValue(value) {
@@ -73,6 +89,11 @@
             var matches = filtered();
 
             positionList();
+            // capture:true so this fires for a scroll on ANY ancestor (the table's own
+            // overflow-x-auto div included), not just window-level scrolling. Re-registering
+            // the same function reference on every render is a harmless no-op if it's already
+            // attached — the browser dedupes identical listeners.
+            window.addEventListener('scroll', closeListOnScroll, true);
             list.innerHTML = '';
 
             if (matches.length === 0 && ! allowCreate) {

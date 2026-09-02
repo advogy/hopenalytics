@@ -315,15 +315,50 @@
                     window.initSearchableSelect(wrapper);
                 });
 
+                // position:fixed with coordinates computed here (rather than the plain CSS
+                // absolute/top-full this used to rely on) — every table on this app's admin
+                // pages wraps in an overflow-x-auto div (see x-admin-list-card), which forces
+                // overflow-y to 'auto' too per the CSS spec, clipping an absolutely-positioned
+                // dropdown the moment it extends past that div's own box (confirmed happening,
+                // same fix as partials/searchable-select.blade.php's positionList()).
+                function positionCheckboxList(btn, list) {
+                    var estimatedListHeight = 208; // mirrors the list's own max-h-52 Tailwind class
+                    var btnRect = btn.getBoundingClientRect();
+                    var spaceBelow = window.innerHeight - btnRect.bottom;
+                    var spaceAbove = btnRect.top;
+                    var openUpward = spaceBelow < estimatedListHeight && spaceAbove > spaceBelow;
+
+                    list.style.position = 'fixed';
+                    list.style.left = btnRect.left + 'px';
+                    list.style.top = openUpward ? 'auto' : (btnRect.bottom + 4) + 'px';
+                    list.style.bottom = openUpward ? (window.innerHeight - btnRect.top + 4) + 'px' : 'auto';
+                }
+
+                function closeAllCheckboxLists() {
+                    document.querySelectorAll('[data-scope-checkbox-list]').forEach(function (list) { list.classList.add('hidden'); });
+                    window.removeEventListener('scroll', closeAllCheckboxLists, true);
+                }
+
                 document.querySelectorAll('[data-scope-checkbox-toggle]').forEach(function (btn) {
                     btn.addEventListener('click', function (e) {
                         e.stopPropagation();
-                        btn.closest('[data-assign-scope-checkboxes]').querySelector('[data-scope-checkbox-list]').classList.toggle('hidden');
+                        var list = btn.closest('[data-assign-scope-checkboxes]').querySelector('[data-scope-checkbox-list]');
+                        var opening = list.classList.contains('hidden');
+
+                        closeAllCheckboxLists();
+
+                        if (opening) {
+                            positionCheckboxList(btn, list);
+                            list.classList.remove('hidden');
+                            // A fixed-position dropdown doesn't move with the page the way an
+                            // absolutely-positioned one naturally would — closing on any scroll
+                            // (the table's own horizontal one included, since it bubbles) avoids
+                            // it drifting away from the button it belongs to.
+                            window.addEventListener('scroll', closeAllCheckboxLists, true);
+                        }
                     });
                 });
-                document.addEventListener('click', function () {
-                    document.querySelectorAll('[data-scope-checkbox-list]').forEach(function (list) { list.classList.add('hidden'); });
-                });
+                document.addEventListener('click', closeAllCheckboxLists);
 
                 document.querySelectorAll('[data-assign-role]').forEach(function (select) {
                     refreshScope(select);
