@@ -23,21 +23,11 @@ return [
     'refresh_failed_with_error' => 'Gagal memperbarui :handle: :error',
     'refresh_single_success' => 'Akun :handle berhasil diperbarui.',
 
-    // Scope label shown under the dashboard title — see ChurchDashboardController::index().
-    'scope_global' => 'Ringkasan global — seluruh Uni, Konferens/Daerah, Gereja, Institusi, dan Personal.',
-    'scope_nasional_scoped' => 'Wilayah Uni :names.',
-    'scope_divisi' => 'Wilayah Divisi :name.',
-    'scope_uni' => 'Wilayah Uni :name.',
-    'scope_daerah' => 'Wilayah Daerah :name.',
-    'scope_gereja' => ':church — kartu statistik dan Top 5/Terendah untuk wilayah Daerah/Konferens Anda; Peta dan Skor Platform ditampilkan secara global untuk perbandingan.',
-    'scope_gereja_fallback_name' => 'gereja Anda',
-    // scope_institusi already exists further below, reused by both this scopeLabel and
-    // goalProgressRows()'s $regionScopeLabel — not redefined here to avoid a duplicate key.
-
     'stat_churches' => 'Gereja terdaftar',
     'stat_institutions' => 'Institusi terdaftar',
     'stat_people' => 'Personal terdaftar',
     'stat_weekly_growth' => 'Pertumbuhan minggu ini',
+    'stat_weekly_growth_hint' => 'Total penambahan followers/subscribers Gereja dan Personal (gabungan semua platform) dibanding minggu lalu.',
     'stat_needs_attention' => 'Akun perlu perhatian',
 
     'map_title' => 'Peta Persebaran',
@@ -81,7 +71,11 @@ return [
 
     'distribution_channels' => 'Distribusi Platform',
     'distribution_channels_subtitle' => 'Sebaran jangkauan (followers/subscriber) di tiap platform media sosial.',
-    'scope_institusi' => 'Institusi :name',
+    // The one dashboard.php scope_* label still actually used — reused by
+    // ChurchDashboardController::index()'s $regionScopeLabel (goals.php has no institusi-level
+    // label of its own, so this fills that one gap instead of duplicating a key into it).
+    'scope_institusi' => 'Level Institusi: :name',
+    'level_institusi' => 'Level Institusi',
     'stat_total_social_accounts' => 'Total akun media sosial',
     'owner_type_organisasi' => 'Divisi/Uni/Daerah',
     'owner_type_gereja' => 'Gereja',

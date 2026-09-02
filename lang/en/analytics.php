@@ -2,6 +2,9 @@
 
 return [
     'subtitle' => 'Weekly growth with church/personal and social media filters.',
+    'no_personal_region_title' => 'Your Wilayah data is not set yet',
+    'no_personal_region_body' => 'You can\'t see Analitik & Grafik data yet because your profile\'s Wilayah (Union/Conference) hasn\'t been set. Please complete your Wilayah data first to view analytics and charts.',
+    'no_personal_region_cta' => 'Complete Wilayah Data',
     'metric_comparison_church' => 'Church Metric Comparison',
     'platform_comparison_church' => 'Church Platform Comparison',
     'metric_comparison_personal' => 'Personal Metric Comparison',

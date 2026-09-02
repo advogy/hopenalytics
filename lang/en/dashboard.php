@@ -23,21 +23,12 @@ return [
     'refresh_failed_with_error' => 'Failed to refresh :handle: :error',
     'refresh_single_success' => 'Account :handle was refreshed successfully.',
 
-    // Scope label shown under the dashboard title — see ChurchDashboardController::index().
-    'scope_global' => 'Global overview — all Unions, Conferences/Districts, Churches, Institutions, and Personal accounts.',
-    'scope_nasional_scoped' => ':names Union region.',
-    'scope_divisi' => ':name Division region.',
-    'scope_uni' => ':name Union region.',
-    'scope_daerah' => ':name Conference region.',
-    'scope_gereja' => ':church — stat cards and Top 5/Bottom show your Conference/Union region; Map and Platform Score are shown globally for comparison.',
-    'scope_gereja_fallback_name' => 'your church',
-    // scope_institusi already exists further below, reused by both this scopeLabel and
-    // goalProgressRows()'s $regionScopeLabel — not redefined here to avoid a duplicate key.
 
     'stat_churches' => 'Registered churches',
     'stat_institutions' => 'Registered institutions',
     'stat_people' => 'Registered personal accounts',
     'stat_weekly_growth' => 'Growth this week',
+    'stat_weekly_growth_hint' => 'Total Followers/Subscribers gained by Churches and Personal accounts (combined across every platform) compared to last week.',
     'stat_needs_attention' => 'Accounts needing attention',
 
     'map_title' => 'Distribution Map',
@@ -81,7 +72,11 @@ return [
 
     'distribution_channels' => 'Distribution Channels',
     'distribution_channels_subtitle' => 'How reach (followers/subscribers) is spread across each social media platform.',
-    'scope_institusi' => ':name Institution',
+    // The one dashboard.php scope_* label still actually used — reused by
+    // ChurchDashboardController::index()'s $regionScopeLabel (goals.php has no institusi-level
+    // label of its own, so this fills that one gap instead of duplicating a key into it).
+    'scope_institusi' => 'Institution Level: :name',
+    'level_institusi' => 'Institution Level',
     'stat_total_social_accounts' => 'Total social media accounts',
     'owner_type_organisasi' => 'Division/Union/Conference',
     'owner_type_gereja' => 'Church',

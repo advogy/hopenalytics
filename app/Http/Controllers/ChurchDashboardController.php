@@ -202,34 +202,51 @@ class ChurchDashboardController extends Controller
             ['icon' => 'user', 'label' => __('dashboard.owner_type_personal'), 'count' => $personalSocials->count()],
         ];
 
-        // Short scope label ("Nasional"/"Uni :name"/etc., same style as the Goals section header)
-        // for every section on this dashboard that shares $allSocials/$institutionSocials/
-        // $personalSocials's own scoping — Ringkasan, Pertumbuhan, Total Akun, Jangkauan. A
-        // gereja-level viewer gets the Daerah label since that's the actual breadth of those
-        // collections (see analyticsChurchScope()), not their single church.
+        // Short scope label — an array of ['level' => "Level Nasional", 'value' => "Uni A, Uni
+        // B"] rather than one pre-joined string, so the view can print it as two lines (level,
+        // then the actual region names) per the user's explicit call — 'value' is null for
+        // Global, which has no particular region name of its own to show on a second line.
+        // Shown once, at the very top of the page, for every section on this dashboard that
+        // shares $allSocials/$institutionSocials/$personalSocials's own scoping — Ringkasan,
+        // Pertumbuhan, Total Akun, Jangkauan. A gereja-level viewer gets the Daerah label since
+        // that's the actual breadth of those collections (see analyticsChurchScope()), not their
+        // single church.
         $scopeUser = auth()->user();
         $scopeConference = $scopeUser->conference ?? $scopeUser->church?->conference;
         $regionScopeLabel = match (true) {
-            $scopeUser->role === null || ($scopeUser->role?->hasGlobalAccess() ?? false) || $scopeUser->role?->level() === 'global'
-                => __('goals.scope_global'),
+            // A plain member (role === null) is scoped no wider than their own Daerah/Uni here
+            // too now (see analyticsChurchScope()) — labeling it "Global" while $allSocials etc.
+            // actually only cover their own Wilayah would be misleading, so this mirrors that
+            // same personalConferenceId()/personalUnionId() fallback instead of the old
+            // unconditional Global label.
+            $scopeUser->role === null && $this->personalConferenceId()
+                => ['level' => __('goals.level_daerah'), 'value' => $scopeUser->person?->conference?->name ?? '—'],
+            $scopeUser->role === null && $this->personalUnionId()
+                => ['level' => __('goals.level_uni'), 'value' => $scopeUser->person?->union?->name ?? '—'],
+            $scopeUser->role === null
+                => ['level' => __('goals.level_daerah'), 'value' => '—'],
+            ($scopeUser->role?->hasGlobalAccess() ?? false) || $scopeUser->role?->level() === 'global'
+                => ['level' => __('goals.level_global'), 'value' => null],
             $scopeUser->role?->level() === 'nasional'
-                => __('goals.scope_nasional_scoped', ['names' => $scopeUser->assignedUnions()->pluck('name')->implode(', ') ?: '—']),
+                => ['level' => __('goals.level_nasional'), 'value' => $scopeUser->assignedUnions()->pluck('name')->implode(', ') ?: '—'],
             $scopeUser->role?->level() === 'divisi'
-                => __('goals.scope_divisi', ['name' => $scopeUser->division?->name ?? '—']),
+                => ['level' => __('goals.level_divisi'), 'value' => $scopeUser->division?->name ?? '—'],
             $scopeUser->role?->level() === 'uni'
-                => __('goals.scope_uni', ['name' => $scopeUser->union?->name ?? '—']),
+                => ['level' => __('goals.level_uni'), 'value' => $scopeUser->union?->name ?? '—'],
             $scopeUser->role?->level() === 'daerah' || $isGerejaLevel
-                => __('goals.scope_daerah', ['name' => $scopeConference?->name ?? '—']),
+                => ['level' => __('goals.level_daerah'), 'value' => $scopeConference?->name ?? '—'],
             $scopeUser->role?->level() === 'institusi'
-                => __('dashboard.scope_institusi', ['name' => $scopeUser->institution?->name ?? '—']),
-            default => __('goals.scope_global'),
+                => ['level' => __('dashboard.level_institusi'), 'value' => $scopeUser->institution?->name ?? '—'],
+            default => ['level' => __('goals.level_global'), 'value' => null],
         };
 
         // Peta (and, elsewhere in this method, Skor Performa Platform) stay fully unscoped for a
         // gereja-level viewer — see the block comment at the top of this method — so its header
         // needs "Global" instead of $regionScopeLabel's Daerah label for that one role; every
-        // other role sees the same breadth on both, so the label is identical.
-        $mapScopeLabel = $isGerejaLevel ? __('goals.scope_global') : $regionScopeLabel;
+        // other role sees the same breadth on both, so the label is identical — the view only
+        // ever prints $mapScopeLabel a second time when it actually differs from
+        // $regionScopeLabel, per the user's explicit call not to repeat the same label twice.
+        $mapScopeLabel = $isGerejaLevel ? ['level' => __('goals.level_global'), 'value' => null] : $regionScopeLabel;
 
         // Reach-by-category pie chart — replaces the three separate reach stat-cards (their raw
         // numbers now ride along as each row's "detail" line) with a single visualization of the
@@ -265,30 +282,7 @@ class ChurchDashboardController extends Controller
         [$combinedReachSocials, $combinedReachField] = $this->metricDefinition('reach', $allSocials->merge($personalSocials));
         $weeklyGrowth = $this->buildLeaderboard($combinedReachSocials, $combinedReachField, null)->sum('delta');
 
-        $user = auth()->user();
-
-        // Shown under the dashboard title so it's always clear whose data this is — especially
-        // for a gereja-level admin, whose stat cards and "big picture" widgets deliberately use
-        // two different scopes (see the block comment at the top of this method).
-        $scopeLabel = match (true) {
-            $user->role?->hasGlobalAccess() || $user->role?->level() === 'global'
-                => __('dashboard.scope_global'),
-            $user->role?->level() === 'nasional'
-                => __('dashboard.scope_nasional_scoped', ['names' => $user->assignedUnions()->pluck('name')->implode(', ') ?: '—']),
-            $user->role?->level() === 'divisi'
-                => __('dashboard.scope_divisi', ['name' => $user->division?->name ?? '—']),
-            $user->role?->level() === 'uni'
-                => __('dashboard.scope_uni', ['name' => $user->union?->name ?? '—']),
-            $user->role?->level() === 'daerah'
-                => __('dashboard.scope_daerah', ['name' => $user->conference?->name ?? '—']),
-            $isGerejaLevel
-                => __('dashboard.scope_gereja', ['church' => $user->church?->name ?? __('dashboard.scope_gereja_fallback_name')]),
-            $user->role?->level() === 'institusi'
-                => __('dashboard.scope_institusi', ['name' => $user->institution?->name ?? '—']),
-            default => __('dashboard.subtitle'),
-        };
-
-        // Global, not scoped to $user — same reasoning as hashtagComparisonData(): hashtag
+        // Global, not scoped to the viewer — same reasoning as hashtagComparisonData(): hashtag
         // posts have no owner/region in this system, so every viewer sees the same numbers.
         $topHashtagPost = HashtagPost::query()
             ->selectRaw('hashtag_id, COUNT(*) as total')
@@ -338,7 +332,6 @@ class ChurchDashboardController extends Controller
         ])->values();
 
         return view('churches.index', [
-            'scopeLabel' => $scopeLabel,
             'mapGrowthDataCount' => $mapAllItems->whereNotNull('growthScore')->count(),
             'mapNoGrowthDataCount' => $mapAllItems->whereNull('growthScore')->count(),
             'mapRegionGrowth' => $mapRegionGrowth,
@@ -1068,6 +1061,11 @@ class ChurchDashboardController extends Controller
             'hashtagData' => $hashtagData,
             'lastFetchedAt' => $lastFetchedAt,
             'totalRefreshableSocials' => $totalRefreshableSocials,
+            // A plain member (role === null) with no Daerah/Uni set at all sees zero rows on
+            // every tab of this page (see analyticsChurchScope() and friends) — without this,
+            // that just looks like "there's no data" rather than "you haven't completed
+            // Wilayah yet", per the user's explicit call for a notice pointing them to fix it.
+            'noPersonalRegion' => $user->role === null && ! $this->personalConferenceId() && ! $this->personalUnionId(),
             'churches' => $churches,
             'filteredChurches' => $filteredChurches,
             'growthOverTime' => $growthOverTimeChurch,
@@ -1105,6 +1103,20 @@ class ChurchDashboardController extends Controller
         [$year, $month, $day] = array_map('intval', explode('-', $date));
 
         return checkdate($month, $day, $year) ? $date : null;
+    }
+
+    /** Same guard as validDateOrNull(), for a <input type="datetime-local"> value ("Y-m-d\TH:i"). */
+    private function validDatetimeOrNull(?string $datetime): ?Carbon
+    {
+        if (! $datetime || ! preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/', $datetime)) {
+            return null;
+        }
+
+        try {
+            return Carbon::createFromFormat('Y-m-d\TH:i', $datetime);
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     /**
@@ -1776,14 +1788,29 @@ class ChurchDashboardController extends Controller
      * disabled platform's accounts are excluded from every ChurchSocial query app-wide (see its
      * own enabledPlatform global scope), so they stop being fetched — and therefore stop being
      * scanned for hashtag matches — too, keeping this summary table honest.
+     *
+     * union_id/conference_id read directly off the request (like the Uni/Daerah filter on every
+     * other tab of this same page — same shared query params, deliberately, so picking a Daerah
+     * once carries over whichever tab you're on) rather than taken as parameters, since none of
+     * the 5 call sites otherwise had any reason to know about them — per the user's explicit call
+     * for a Uni/Daerah filter on the Hastag tab "like the other tabs" have. This is a FILTER, not
+     * a scope: hashtag posts stay global/unowned by default (see the class-wide reasoning above)
+     * for every viewer regardless of role; picking a Uni/Daerah here just narrows the view, same
+     * as picking a platform or a specific hashtag does.
      */
     private function hashtagComparisonData(?string $selectedHashtagId, ?string $selectedPlatform): array
     {
         $platforms = AppSetting::current()->enabledPlatformValues();
 
+        $isUniView = $this->isUniView();
+        $selectedUnionId = $isUniView ? (string) auth()->user()->union_id : request()->query('union_id');
+        $selectedConferenceId = request()->query('conference_id');
+        [$unionOptions, $conferenceOptions] = $this->regionFilterOptions($selectedUnionId);
+
         $hashtags = Hashtag::where('is_active', true)->orderBy('tag')->get();
 
         $countsByHashtag = HashtagPost::query()
+            ->tap(fn ($q) => $this->applyHashtagRegionFilter($q, $selectedUnionId, $selectedConferenceId))
             ->selectRaw('hashtag_id, platform, COUNT(*) as total')
             ->groupBy('hashtag_id', 'platform')
             ->get()
@@ -1813,12 +1840,82 @@ class ChurchDashboardController extends Controller
         $lastUpdatedAtRaw = HashtagPost::max('last_seen_at');
         $lastUpdatedAt = $lastUpdatedAtRaw ? Carbon::parse($lastUpdatedAtRaw) : null;
 
+        // Monitoring window (e.g. watching a coordinated hashtag launch hour by hour) — per the
+        // user's explicit call, an optional posted_from/posted_to range that, when both are set,
+        // switches the chart below from a per-date count to a gap-filled per-hour count within
+        // exactly that window (every hour shown even if 0, not just the ones with a post — a
+        // silent gap would read as "no data yet" rather than "confirmed zero"), and narrows the
+        // post list to the same window. Absent, everything behaves exactly as before (per-date,
+        // unbounded).
+        $postedFrom = $this->validDatetimeOrNull(request()->query('posted_from'));
+        $postedTo = $this->validDatetimeOrNull(request()->query('posted_to'));
+        $isMonitoringWindow = $postedFrom && $postedTo && $postedFrom->lessThanOrEqualTo($postedTo);
+
+        if ($isMonitoringWindow) {
+            $countsByHour = HashtagPost::query()
+                ->whereBetween('posted_at', [$postedFrom, $postedTo])
+                ->when($selectedHashtagId, fn ($q) => $q->where('hashtag_id', $selectedHashtagId))
+                ->when($selectedPlatform, fn ($q) => $q->where('platform', $selectedPlatform))
+                ->tap(fn ($q) => $this->applyHashtagRegionFilter($q, $selectedUnionId, $selectedConferenceId))
+                ->selectRaw("DATE_FORMAT(posted_at, '%Y-%m-%d %H:00:00') as post_hour, COUNT(*) as total")
+                ->groupBy('post_hour')
+                ->pluck('total', 'post_hour');
+
+            // $growthLabels: the full "d M, H:00" for every point, always — used for the hover
+            // tooltip, which should never be ambiguous about which day a hovered hour belongs
+            // to. $growthShortLabels: the hour alone — what prints on the chart's x-axis for a
+            // point that isn't the first one shown for its day. $growthDateKeys: which calendar
+            // day each point falls on, compared between consecutive SHOWN points (not consecutive
+            // raw hours) by the chart component itself, once it knows which points survive its
+            // own label-thinning — deciding that here instead, against every raw hour, risked the
+            // one hour that actually starts a new day landing on a thinned-out point, silently
+            // dropping the date change the moment it mattered most.
+            $growthLabels = collect();
+            $growthShortLabels = collect();
+            $growthDateKeys = collect();
+            $growthValues = collect();
+            $cursor = $postedFrom->clone()->startOfHour();
+
+            while ($cursor->lessThanOrEqualTo($postedTo)) {
+                $growthLabels->push($cursor->translatedFormat('d M, H:00'));
+                $growthShortLabels->push($cursor->translatedFormat('H:00'));
+                $growthDateKeys->push($cursor->format('Y-m-d'));
+                $growthValues->push((int) ($countsByHour[$cursor->format('Y-m-d H:00:00')] ?? 0));
+                $cursor->addHour();
+            }
+        } else {
+            // "Jumlah Post per Tanggal" — how many matching posts were actually posted on each
+            // date (by posted_at, not last_seen_at). Deliberately a per-date count, not a
+            // running/cumulative total — per the user's explicit call, and consistent with the
+            // summary table's own "Total Sepanjang Waktu" being clearly labeled as the one
+            // cumulative figure on this page.
+            $postsByDay = HashtagPost::query()
+                ->whereNotNull('posted_at')
+                ->when($selectedHashtagId, fn ($q) => $q->where('hashtag_id', $selectedHashtagId))
+                ->when($selectedPlatform, fn ($q) => $q->where('platform', $selectedPlatform))
+                ->tap(fn ($q) => $this->applyHashtagRegionFilter($q, $selectedUnionId, $selectedConferenceId))
+                ->selectRaw('DATE(posted_at) as post_date, COUNT(*) as total')
+                ->groupBy('post_date')
+                ->orderBy('post_date')
+                ->get();
+
+            $growthLabels = $postsByDay->pluck('post_date')->map(fn ($d) => Carbon::parse($d)->translatedFormat('d M'));
+            // No date/time split to collapse for a per-date chart (each label already IS just a
+            // date) — $growthDateKeys are simply distinct per point, so the component's own
+            // consecutive-shown-point comparison never treats two different dates as "the same".
+            $growthShortLabels = $growthLabels;
+            $growthDateKeys = $postsByDay->pluck('post_date');
+            $growthValues = $postsByDay->pluck('total')->map(fn ($total) => (int) $total);
+        }
+
         $posts = HashtagPost::query()
             ->with(['hashtag', 'churchSocial'])
             ->when($selectedHashtagId, fn ($q) => $q->where('hashtag_id', $selectedHashtagId))
             ->when($selectedPlatform, fn ($q) => $q->where('platform', $selectedPlatform))
+            ->when($isMonitoringWindow, fn ($q) => $q->whereBetween('posted_at', [$postedFrom, $postedTo]))
+            ->tap(fn ($q) => $this->applyHashtagRegionFilter($q, $selectedUnionId, $selectedConferenceId))
             ->orderByDesc('posted_at')
-            ->paginate(30, ['*'], 'hashtag_page')
+            ->paginate(40, ['*'], 'hashtag_page')
             ->withQueryString();
 
         return [
@@ -1828,9 +1925,22 @@ class ChurchDashboardController extends Controller
             'rows' => $rows,
             'grandTotal' => $rows->sum('total'),
             'grandTotalByPlatform' => $grandTotalByPlatform,
+            'growthLabels' => $growthLabels,
+            'growthShortLabels' => $growthShortLabels,
+            'growthDateKeys' => $growthDateKeys,
+            'growthValues' => $growthValues,
+            'isMonitoringWindow' => $isMonitoringWindow,
+            'selectedPostedFrom' => $postedFrom?->format('Y-m-d\TH:i'),
+            'selectedPostedTo' => $postedTo?->format('Y-m-d\TH:i'),
             'posts' => $posts,
             'selectedHashtagId' => $selectedHashtagId,
             'selectedPlatform' => $selectedPlatform,
+            'isNasionalView' => $this->isNasionalView(),
+            'isUniView' => $isUniView,
+            'unionOptions' => $unionOptions,
+            'conferenceOptions' => $conferenceOptions,
+            'selectedUnionId' => $selectedUnionId,
+            'selectedConferenceId' => $selectedConferenceId,
         ];
     }
 

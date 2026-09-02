@@ -9,14 +9,17 @@
 
     $activeTab = in_array(request()->query('tab'), ['personal', 'institusi', 'gereja', 'hastag'], true) ? request()->query('tab') : 'organisasi';
 
-    // Data Per * tables: a nasional-level viewer (or a plain member, whose analytics scope is
-    // unscoped — see BuildsLeaderboards::analyticsChurchScope()) gets a 3-tier Uni > Daerah >
-    // entity breakdown; a uni-level viewer gets Daerah > entity (the Uni tier would always be
-    // their own single Uni, so it's not rendered); everyone else (daerah/gereja/institusi-level)
-    // just gets the flat list they already had, since their scope is already a single Daerah.
+    // Data Per * tables: a nasional-level viewer gets a 3-tier Uni > Daerah > entity breakdown;
+    // a uni-level viewer gets Daerah > entity (the Uni tier would always be their own single
+    // Uni, so it's not rendered); everyone else (daerah/gereja/institusi-level, and a plain
+    // member — whose analytics scope is now their own Daerah/Uni at most, same breadth, see
+    // BuildsLeaderboards::analyticsChurchScope()) just gets the flat list they already had,
+    // since their scope is already a single Daerah. Mirrors BuildsLeaderboards::
+    // isNasionalView()/isUniView() exactly — duplicated here rather than passed from the
+    // controller since this file computes it once for four tabs' worth of tables at once.
     $analyticsRole = auth()->user()->role;
-    $isNasionalView = $analyticsRole === null || ($analyticsRole->hasGlobalAccess() ?? false) || in_array($analyticsRole->level(), ['global', 'nasional', 'divisi'], true);
-    $isUniView = ! $isNasionalView && $analyticsRole->level() === 'uni';
+    $isNasionalView = $analyticsRole !== null && ($analyticsRole->hasGlobalAccess() || in_array($analyticsRole->level(), ['global', 'nasional', 'divisi'], true));
+    $isUniView = $analyticsRole !== null && ! $isNasionalView && $analyticsRole->level() === 'uni';
     // Same reasoning as isUniView() never showing its own Uni tier — a Divisi-level viewer is
     // isNasionalView() too (they can see multiple Unions), but shouldn't see a Divisi tier for
     // their own single Divisi.
@@ -266,7 +269,7 @@
         {{ __('common.back_to_dashboard') }}
     </x-back-link>
 
-    <div class="mb-6 flex items-start justify-between gap-3">
+    <div class="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
             <h1 class="mb-1 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{{ __('nav.analytics') }}</h1>
             <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('analytics.subtitle') }}</p>
@@ -296,6 +299,16 @@
             </div>
         @endcan
     </div>
+
+    @if ($noPersonalRegion)
+        <div class="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300">
+            <p class="mb-2 font-bold">{{ __('analytics.no_personal_region_title') }}</p>
+            <p class="mb-3">{{ __('analytics.no_personal_region_body') }}</p>
+            <a href="{{ route('profile.edit', ['tab' => 'personal']) }}" class="font-medium underline">
+                {{ __('analytics.no_personal_region_cta') }}
+            </a>
+        </div>
+    @endif
 
     <x-tab-bar>
         <x-tab-button tab-key="organisasi">{{ __('comparison.organization_label') }}</x-tab-button>
@@ -1170,21 +1183,54 @@
 
     {{-- ===================== TAB: HASTAG ===================== --}}
     <div data-tab-panel="hastag">
-        <div class="mb-6">
-            <h2 class="text-lg font-bold text-slate-900 dark:text-white">{{ __('hashtag.comparison_title') }}</h2>
-            <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('hashtag.comparison_subtitle') }}</p>
+        {{-- Same title-row-with-export-button shape as every other tab above (Organisasi/Gereja/
+             Institusi/Personal) — this used to be its own separate block, stacked above the
+             partial's own right-aligned button block, leaving a much taller gap here than any
+             other tab has before its Filter card. --}}
+        <div class="mb-6 flex flex-wrap items-start justify-between gap-3">
+            <div>
+                <h2 class="text-lg font-bold text-slate-900 dark:text-white">{{ __('hashtag.comparison_title') }}</h2>
+                <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('hashtag.comparison_subtitle') }}</p>
+            </div>
+            @can('browse-directory-analytics')
+                <x-export-button :url="route('export.hashtag.preview', array_filter([
+                    'hashtag' => $hashtagData['selectedHashtagId'],
+                    'platform' => $hashtagData['selectedPlatform'],
+                    'union_id' => $hashtagData['selectedUnionId'],
+                    'conference_id' => $hashtagData['selectedConferenceId'],
+                ]))" />
+            @endcan
         </div>
 
         @include('partials.hashtag-comparison-content', [
+            'hideExportButton' => true,
             'hashtags' => $hashtagData['hashtags'],
             'platforms' => $hashtagData['platforms'],
             'lastUpdatedAt' => $hashtagData['lastUpdatedAt'],
             'rows' => $hashtagData['rows'],
             'grandTotalByPlatform' => $hashtagData['grandTotalByPlatform'],
             'grandTotal' => $hashtagData['grandTotal'],
+            'growthLabels' => $hashtagData['growthLabels'],
+            'growthShortLabels' => $hashtagData['growthShortLabels'],
+            'growthDateKeys' => $hashtagData['growthDateKeys'],
+            'growthValues' => $hashtagData['growthValues'],
+            'isMonitoringWindow' => $hashtagData['isMonitoringWindow'],
+            'selectedPostedFrom' => $hashtagData['selectedPostedFrom'],
+            'selectedPostedTo' => $hashtagData['selectedPostedTo'],
             'posts' => $hashtagData['posts'],
             'selectedHashtagId' => $hashtagData['selectedHashtagId'],
             'selectedPlatform' => $hashtagData['selectedPlatform'],
+            // Explicitly $hashtagData's own copies, not this page's top-level $isNasionalView/
+            // $selectedUnionId/etc. (used by the other four tabs) — those happen to carry the
+            // same values today since both are derived from the same viewer/request, but relying
+            // on that coincidence via Blade's ambient scope-sharing would silently break the
+            // moment the two ever computed something different.
+            'isNasionalView' => $hashtagData['isNasionalView'],
+            'isUniView' => $hashtagData['isUniView'],
+            'unionOptions' => $hashtagData['unionOptions'],
+            'conferenceOptions' => $hashtagData['conferenceOptions'],
+            'selectedUnionId' => $hashtagData['selectedUnionId'],
+            'selectedConferenceId' => $hashtagData['selectedConferenceId'],
             'clearUrl' => route('churches.analytics', ['tab' => 'hastag']),
             'platformParam' => 'hashtag_platform',
             'hiddenFields' => ['tab' => 'hastag'],

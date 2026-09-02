@@ -2,6 +2,9 @@
 
 return [
     'subtitle' => 'Pertumbuhan mingguan dengan filter gereja/personal dan media sosial.',
+    'no_personal_region_title' => 'Data Wilayah Anda belum diisi',
+    'no_personal_region_body' => 'Anda belum bisa melihat data Analitik & Grafik karena data Wilayah (Uni/Daerah) pada profil Anda belum diisi. Silakan lengkapi data Wilayah Anda terlebih dahulu untuk melihat informasi analitik dan grafik.',
+    'no_personal_region_cta' => 'Lengkapi Data Wilayah',
     'metric_comparison_church' => 'Perbandingan Metrik Gereja',
     'platform_comparison_church' => 'Perbandingan Platform Gereja',
     'metric_comparison_personal' => 'Perbandingan Metrik Personal',

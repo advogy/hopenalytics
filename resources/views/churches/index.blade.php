@@ -3,15 +3,21 @@
 @section('title', config('app.name') . ' — ' . __('dashboard.title'))
 
 @section('content')
-    <div class="mb-6">
-        <h1 class="mb-1 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{{ __('dashboard.heading') }}</h1>
-        <p class="text-sm text-slate-500 dark:text-slate-400">{{ $scopeLabel }}</p>
+    {{-- The scope label (e.g. "Level Nasional" / "Uni A, Uni B") used to repeat next to every
+         section below (Ringkasan/Tujuan/Pertumbuhan/Total Akun) — same information five times
+         over on one page. Per the user's explicit call: shown once, compact, right here next to
+         the page title instead — level on its own line, the actual region name(s) under it. --}}
+    <div class="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{{ __('dashboard.heading') }}</h1>
+        <div class="text-right text-sm text-slate-500 dark:text-slate-400">
+            <p>{{ $regionScopeLabel['level'] }}</p>
+            @if ($regionScopeLabel['value'])
+                <p>{{ $regionScopeLabel['value'] }}</p>
+            @endif
+        </div>
     </div>
 
-    <div class="mb-3 flex items-center justify-between">
-        <h2 class="text-lg font-bold text-slate-900 dark:text-white">{{ __('dashboard.section_overview') }}</h2>
-        <p class="text-sm text-slate-500 dark:text-slate-400">{{ $regionScopeLabel }}</p>
-    </div>
+    <h2 class="mb-3 text-lg font-bold text-slate-900 dark:text-white">{{ __('dashboard.section_overview') }}</h2>
 
     <div class="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <x-stat-card
@@ -36,10 +42,7 @@
 
     @if ($goalRows->isNotEmpty())
         <div class="mb-8">
-            <div class="mb-3 flex items-center justify-between">
-                <h2 class="text-lg font-bold text-slate-900 dark:text-white">{{ __('goals.section_title') }}</h2>
-                <p class="text-sm text-slate-500 dark:text-slate-400">{{ $goalRows->first()['scopeLabel'] }}</p>
-            </div>
+            <h2 class="mb-3 text-lg font-bold text-slate-900 dark:text-white">{{ __('goals.section_title') }}</h2>
             <div class="grid grid-cols-1 gap-4">
                 @foreach ($goalRows as $row)
                     <x-goal-card
@@ -54,10 +57,7 @@
         </div>
     @endif
 
-    <div class="mb-3 flex items-center justify-between">
-        <h2 class="text-lg font-bold text-slate-900 dark:text-white">{{ __('dashboard.section_growth') }}</h2>
-        <p class="text-sm text-slate-500 dark:text-slate-400">{{ $regionScopeLabel }}</p>
-    </div>
+    <h2 class="mb-3 text-lg font-bold text-slate-900 dark:text-white">{{ __('dashboard.section_growth') }}</h2>
 
     <div class="mb-8 grid grid-cols-1 gap-4">
         <x-stat-card
@@ -65,6 +65,7 @@
             icon="arrow-trending-up"
             :label="__('dashboard.stat_weekly_growth')"
             :value="($weeklyGrowth > 0 ? '+' : '') . number_format($weeklyGrowth)"
+            :hint="__('dashboard.stat_weekly_growth_hint')"
         />
     </div>
 
@@ -85,10 +86,7 @@
         />
     </div>
 
-    <div class="mb-3 flex items-center justify-between">
-        <h2 class="text-lg font-bold text-slate-900 dark:text-white">{{ __('dashboard.section_total_accounts_reach') }}</h2>
-        <p class="text-sm text-slate-500 dark:text-slate-400">{{ $regionScopeLabel }}</p>
-    </div>
+    <h2 class="mb-3 text-lg font-bold text-slate-900 dark:text-white">{{ __('dashboard.section_total_accounts_reach') }}</h2>
 
     <div class="mb-8 grid gap-6 lg:grid-cols-2">
         <div class="min-w-0 rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
@@ -181,9 +179,20 @@
         </div>
     @endif
 
+    {{-- $mapScopeLabel only ever differs from the page-level $regionScopeLabel already shown up
+         top for a gereja-level viewer (Peta stays global for them while everything else is
+         Daerah-scoped — see index()'s own comment on $mapScopeLabel) — printing it again here
+         for every other role would just repeat the exact same label a second time. --}}
     <div class="mb-3 flex items-center justify-between">
         <h2 class="text-lg font-bold text-slate-900 dark:text-white">{{ __('dashboard.map_title') }}</h2>
-        <p class="text-sm text-slate-500 dark:text-slate-400">{{ $mapScopeLabel }}</p>
+        @if ($mapScopeLabel['level'] !== $regionScopeLabel['level'] || $mapScopeLabel['value'] !== $regionScopeLabel['value'])
+            <div class="text-right text-sm text-slate-500 dark:text-slate-400">
+                <p>{{ $mapScopeLabel['level'] }}</p>
+                @if ($mapScopeLabel['value'])
+                    <p>{{ $mapScopeLabel['value'] }}</p>
+                @endif
+            </div>
+        @endif
     </div>
 
     <div class="mb-8 rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
@@ -261,22 +270,22 @@
              each other's relative extremes the way the dot map's tab does. --}}
         <div id="church-map-region-legend" class="mb-3 hidden flex-wrap gap-x-4 gap-y-1.5">
             <span class="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
-                <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-sm" style="background:#065f46"></span> &ge; 5%
+                <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-sm" style="background:#065f46"></span> &ge; 10%
             </span>
             <span class="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
-                <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-sm" style="background:#16a34a"></span> 1% – 5%
+                <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-sm" style="background:#16a34a"></span> 3% – 10%
             </span>
             <span class="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
-                <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-sm" style="background:#86efac"></span> 0% – 1%
+                <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-sm" style="background:#86efac"></span> 0% – 3%
             </span>
             <span class="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
-                <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-sm" style="background:#fecaca"></span> -1% – 0%
+                <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-sm" style="background:#fecaca"></span> -3% – 0%
             </span>
             <span class="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
-                <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-sm" style="background:#dc2626"></span> -5% – -1%
+                <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-sm" style="background:#dc2626"></span> -10% – -3%
             </span>
             <span class="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
-                <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-sm" style="background:#7f1d1d"></span> &le; -5%
+                <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-sm" style="background:#7f1d1d"></span> &le; -10%
             </span>
             <span class="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
                 <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-sm border border-slate-300 dark:border-slate-600" style="background:#e2e8f0"></span>

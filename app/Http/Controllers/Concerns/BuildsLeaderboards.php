@@ -15,26 +15,33 @@ trait BuildsLeaderboards
 {
     /**
      * True for a viewer who sees data spanning MULTIPLE Unions — Admin/Pimpinan Global (every
-     * Union), a plain member (unscoped), Admin/Pimpinan Nasional (scoped to their own assigned
-     * set of Unions, but still potentially more than one — see User::assignedUnions()), AND
-     * Admin/Pimpinan Divisi (every Union under their Division, also potentially more than one).
-     * All get the same "grouped by Union > Conference, with a Union filter" UI treatment; the
-     * only thing that actually differs between them is WHICH Unions populate that filter — see
-     * regionFilterOptions() below, the one place that distinction matters. Shared by every page
-     * that offers the Uni/Daerah region filter + collapsible grouping (Analitik & Grafik,
-     * Perbandingan Metrik, and the per-metric leaderboard pages).
+     * Union), Admin/Pimpinan Nasional (scoped to their own assigned set of Unions, but still
+     * potentially more than one — see User::assignedUnions()), AND Admin/Pimpinan Divisi (every
+     * Union under their Division, also potentially more than one). All get the same "grouped by
+     * Union > Conference, with a Union filter" UI treatment; the only thing that actually differs
+     * between them is WHICH Unions populate that filter — see regionFilterOptions() below, the
+     * one place that distinction matters. Shared by every page that offers the Uni/Daerah region
+     * filter + collapsible grouping (Analitik & Grafik, Perbandingan Metrik, and the per-metric
+     * leaderboard pages).
+     *
+     * A plain member (role === null) is NOT one of these — per the user's explicit call, a
+     * Personal account is scoped no wider than its own Daerah (see analyticsChurchScope() and
+     * the other analytics*Scope() methods below), same single-region breadth as an admin_daerah,
+     * so it gets no region filter/grouping to begin with, just like one.
      */
     protected function isNasionalView(): bool
     {
         $role = auth()->user()->role;
 
-        return $role === null || ($role->hasGlobalAccess() ?? false) || in_array($role->level(), ['global', 'nasional', 'divisi'], true);
+        return $role !== null && ($role->hasGlobalAccess() || in_array($role->level(), ['global', 'nasional', 'divisi'], true));
     }
 
     /** A uni-level viewer gets Daerah > entity grouping (no Uni tier — it'd always be their own single Uni). */
     protected function isUniView(): bool
     {
-        return ! $this->isNasionalView() && auth()->user()->role->level() === 'uni';
+        $role = auth()->user()->role;
+
+        return $role !== null && ! $this->isNasionalView() && $role->level() === 'uni';
     }
 
     /**
@@ -60,7 +67,7 @@ trait BuildsLeaderboards
         $isNasionalView = $this->isNasionalView();
         $isUniView = $this->isUniView();
         $user = auth()->user();
-        $isTrulyGlobal = $user->role === null || ($user->role->hasGlobalAccess() ?? false) || $user->role->level() === 'global';
+        $isTrulyGlobal = $user->role !== null && ($user->role->hasGlobalAccess() || $user->role->level() === 'global');
         // Derived from the actual level, not from isNasionalView() (which now also returns true
         // for 'divisi') — otherwise a Divisi viewer would incorrectly run the assignedUnionIds()
         // branch below (Admin Nasional's own Union set, meaningless to a Divisi user).
@@ -125,6 +132,43 @@ trait BuildsLeaderboards
 
             return true;
         };
+    }
+
+    /**
+     * Narrows a HashtagPost query to posts whose matched account (its churchSocial — null for an
+     * unmatched author, always excluded once a region filter is active) belongs to the selected
+     * Uni/Daerah. A ChurchSocial's owner is always exactly one of church/person/institution/
+     * union/conference/division (see that model's own mutually-exclusive owner columns), so each
+     * gets its own whereHas branch here — same per-owner-type region logic as directory()'s own
+     * $applyChurchRegionFilter/$applyPersonOrInstitutionRegionFilter/$applyUnionRegionFilter/
+     * $applyConferenceRegionFilter, just reapplied one hop further out through churchSocial
+     * instead of directly on the owner's own table. A Divisi-owned account's posts are (like
+     * directory()'s own Division rows) never narrowed by this filter at all — a Division has no
+     * union_id/conference_id of its own to match against. Shared by ChurchDashboardController's
+     * hashtagComparisonData() and ExportController's hashtagDataset(), so the export always
+     * narrows exactly the same way the live page it's exporting does.
+     */
+    protected function applyHashtagRegionFilter($query, ?string $selectedUnionId, ?string $selectedConferenceId)
+    {
+        if (! $selectedUnionId && ! $selectedConferenceId) {
+            return $query;
+        }
+
+        return $query->whereHas('churchSocial', function ($social) use ($selectedUnionId, $selectedConferenceId) {
+            $social->where(function ($owner) use ($selectedUnionId, $selectedConferenceId) {
+                $owner->whereHas('church', fn ($q) => $selectedConferenceId
+                    ? $q->where('conference_id', $selectedConferenceId)
+                    : $q->whereHas('conference', fn ($q2) => $q2->where('union_id', $selectedUnionId)))
+                    ->orWhereHas('person', fn ($q) => $selectedConferenceId
+                        ? $q->where('conference_id', $selectedConferenceId)
+                        : $q->where(fn ($q2) => $q2->where('union_id', $selectedUnionId)->orWhereHas('conference', fn ($q3) => $q3->where('union_id', $selectedUnionId))))
+                    ->orWhereHas('institution', fn ($q) => $selectedConferenceId
+                        ? $q->where('conference_id', $selectedConferenceId)
+                        : $q->where(fn ($q2) => $q2->where('union_id', $selectedUnionId)->orWhereHas('conference', fn ($q3) => $q3->where('union_id', $selectedUnionId))))
+                    ->orWhereHas('union', fn ($q) => $selectedConferenceId ? $q->whereRaw('1 = 0') : $q->whereKey($selectedUnionId))
+                    ->orWhereHas('conference', fn ($q) => $selectedConferenceId ? $q->whereKey($selectedConferenceId) : $q->where('union_id', $selectedUnionId));
+            });
+        });
     }
 
     /**
@@ -438,33 +482,73 @@ trait BuildsLeaderboards
     }
 
     /**
-     * Same church-visibility rule as Church::scopeVisibleTo(), except a gereja-level viewer
-     * sees their whole Daerah/Konferens instead of just their single church (the same breadth
-     * as an admin_daerah), and a plain member (role === null) sees everything unscoped —
-     * analytics/statistics pages are meant to inform everyone, per the user's explicit call,
-     * not just people with an assigned admin region. Church::scopeVisibleTo() itself stays
-     * untouched: it also drives edit permissions via ChurchPolicy, so widening it there would
-     * accidentally grant admin_gereja edit rights over their whole conference instead of just
-     * their own church — this is a read-only, analytics-only exception.
+     * A Personal/member account's (role === null) own Daerah — the Conference their linked
+     * Person record is assigned to via Profil Saya's own Wilayah section (see PersonController::
+     * resolveSelfReportedScope()). Null if they've only picked a Union with no specific Daerah,
+     * or haven't completed Wilayah at all.
+     */
+    private function personalConferenceId(): ?int
+    {
+        return auth()->user()->person?->conference_id;
+    }
+
+    /** Same as personalConferenceId(), for the Union case — null once a specific Daerah is set (see resolveSelfReportedScope()'s "never both at once"), so this only ever fires for a Union-only or fully-independent member. */
+    private function personalUnionId(): ?int
+    {
+        return auth()->user()->person?->union_id;
+    }
+
+    /**
+     * Same church-visibility rule as Church::scopeVisibleTo(), except a gereja-level viewer sees
+     * their whole Daerah/Konferens instead of just their single church (the same breadth as an
+     * admin_daerah). A plain member (role === null) is scoped no wider than their own Daerah —
+     * or their own Union if they've only set that much — per the user's explicit call restricting
+     * Analitik & Grafik for these accounts; one who hasn't completed Wilayah at all sees nothing
+     * until they do. Church::scopeVisibleTo() itself stays untouched: it also drives edit
+     * permissions via ChurchPolicy, so widening it there would accidentally grant admin_gereja
+     * edit rights over their whole conference instead of just their own church — this is a
+     * read-only, analytics-only exception.
      */
     private function analyticsChurchScope($query)
     {
         $user = auth()->user();
 
+        if ($user->role === null) {
+            if ($conferenceId = $this->personalConferenceId()) {
+                return $query->where('conference_id', $conferenceId);
+            }
+
+            $unionId = $this->personalUnionId();
+
+            return $unionId
+                ? $query->whereHas('conference', fn ($q) => $q->where('union_id', $unionId))
+                : $query->whereRaw('1 = 0');
+        }
+
         return match (true) {
-            $user->role === null => $query,
             $user->role->level() === 'gereja' => $query->where('conference_id', $user->church?->conference_id),
             default => $query->visibleTo($user),
         };
     }
 
-    /** Same reasoning as analyticsChurchScope(), for Person instead of Church. */
+    /** Same reasoning as analyticsChurchScope(), for Person instead of Church — Person also has its own union_id column (a church has none), so the Union-only fallback matches directly on that too, not just via conference. */
     private function analyticsPersonScope($query)
     {
         $user = auth()->user();
 
+        if ($user->role === null) {
+            if ($conferenceId = $this->personalConferenceId()) {
+                return $query->where('conference_id', $conferenceId);
+            }
+
+            $unionId = $this->personalUnionId();
+
+            return $unionId
+                ? $query->where(fn ($q) => $q->where('union_id', $unionId)->orWhereHas('conference', fn ($q2) => $q2->where('union_id', $unionId)))
+                : $query->whereRaw('1 = 0');
+        }
+
         return match (true) {
-            $user->role === null => $query,
             $user->role->level() === 'gereja' => $query->where('conference_id', $user->church?->conference_id),
             default => $query->visibleTo($user),
         };
@@ -472,28 +556,25 @@ trait BuildsLeaderboards
 
     /**
      * Same reasoning as analyticsChurchScope()/analyticsPersonScope(), for Institution instead
-     * of Church/Person — except Institution::scopeVisibleTo() itself already returns everything
-     * for role === null (nasional institutions apply to every union, per the user's explicit
-     * call), so only the gereja-level branch needs overriding here: gereja-level isn't handled
-     * by scopeVisibleTo() at all (falls to its empty default), so this widens it to the same
-     * breadth as analyticsChurchScope() — nasional institutions plus their own Uni's and own
-     * Daerah's institutions, derived from their church's conference the same way
-     * Institution::scopeVisibleTo()'s daerah-level branch derives its own union.
+     * of Church/Person — nasional institutions (no union_id/conference_id at all) stay visible
+     * to a plain member regardless of their own Daerah/Uni, same as they already do for a
+     * gereja-level viewer below, since "nasional" means visible to everyone by definition.
+     * gereja-level isn't handled by Institution::scopeVisibleTo() at all (falls to its empty
+     * default), so both branches share the same nasional-plus-own-region query shape here —
+     * only where conferenceId/unionId come from differs (a member's own Wilayah selection vs.
+     * a gereja-level admin's single church).
      */
     private function analyticsInstitutionScope($query)
     {
         $user = auth()->user();
 
-        if ($user->role === null) {
-            return $query;
-        }
-
-        if ($user->role->level() !== 'gereja') {
+        if ($user->role !== null && $user->role->level() !== 'gereja') {
             return $query->visibleTo($user);
         }
 
-        $conferenceId = $user->church?->conference_id;
-        $unionId = $user->church?->conference?->union_id;
+        [$conferenceId, $unionId] = $user->role === null
+            ? [$this->personalConferenceId(), $this->personalUnionId()]
+            : [$user->church?->conference_id, $user->church?->conference?->union_id];
 
         return $query->where(function ($q) use ($conferenceId, $unionId) {
             $q->where(fn ($q2) => $q2->whereNull('union_id')->whereNull('conference_id')) // nasional
@@ -519,12 +600,28 @@ trait BuildsLeaderboards
      * own admin_uni) — daerah/gereja-level viewers don't get their parent Union's own accounts
      * folded in either, per the user's explicit call: an admin only ever counts their own level
      * and everything below it, never anything above.
+     *
+     * A plain member (role === null) gets the same "own level and below, never above" treatment
+     * as everyone else here: their own Daerah's own accounts if they've set one, or their own
+     * Union's-and-below accounts if they've only set that much, or nothing at all if neither.
      */
     private function analyticsOrganizationScope($query)
     {
         $user = auth()->user();
 
-        if ($user->role === null || ($user->role->hasGlobalAccess() ?? false) || $user->role->level() === 'global') {
+        if ($user->role === null) {
+            if ($conferenceId = $this->personalConferenceId()) {
+                return $query->where('conference_id', $conferenceId);
+            }
+
+            $unionId = $this->personalUnionId();
+
+            return $unionId
+                ? $query->where(fn ($q) => $q->where('union_id', $unionId)->orWhereHas('conference', fn ($q2) => $q2->where('union_id', $unionId)))
+                : $query->whereRaw('1 = 0');
+        }
+
+        if ($user->role->hasGlobalAccess() || $user->role->level() === 'global') {
             return $query;
         }
 
@@ -560,14 +657,16 @@ trait BuildsLeaderboards
      * always above uni/daerah level, so — per the user's explicit call: an admin only ever
      * counts/sees their own level and everything below it, never anything above — uni and
      * daerah-level viewers see none at all; only divisi level (their own Divisi) and above see
-     * any Division row.
+     * any Division row. A plain member (role === null) is at most Daerah/Uni-level breadth (see
+     * analyticsChurchScope()), so — same as uni/daerah above — never sees a Division row either.
      */
     private function analyticsDivisionScope($query)
     {
         $user = auth()->user();
 
         return match (true) {
-            $user->role === null || ($user->role->hasGlobalAccess() ?? false) || $user->role->level() === 'global' => $query,
+            $user->role === null => $query->whereRaw('1 = 0'),
+            $user->role->hasGlobalAccess() || $user->role->level() === 'global' => $query,
             $user->role->level() === 'nasional' => $query->whereHas('unions', fn ($q) => $q->whereIn('id', $user->assignedUnionIds())),
             $user->role->level() === 'divisi' => $query->where('id', $user->division_id),
             $user->role->level() === 'gereja' => $query->whereHas('unions', fn ($q) => $q->where('id', $user->church?->conference?->union_id)),
@@ -583,14 +682,23 @@ trait BuildsLeaderboards
      * not individual accounts. A uni-level viewer sees their own Union — that's their own level,
      * not an ancestor. A daerah-level viewer's own Union is one tier *above* their own level
      * though, so per the user's explicit call it's excluded entirely: daerah starts directly at
-     * their own Daerah row (see analyticsConferenceScope() below), nothing above it.
+     * their own Daerah row (see analyticsConferenceScope() below), nothing above it. A plain
+     * member (role === null) follows the same rule: their own Union row only if they've set a
+     * Union with no specific Daerah (that IS their own level then); a Daerah-scoped member's own
+     * Union is above their level, same as a daerah-level admin's, so it's excluded too.
      */
     private function analyticsUnionScope($query)
     {
         $user = auth()->user();
 
+        if ($user->role === null) {
+            $unionId = $this->personalConferenceId() ? null : $this->personalUnionId();
+
+            return $unionId ? $query->where('id', $unionId) : $query->whereRaw('1 = 0');
+        }
+
         return match (true) {
-            $user->role === null || ($user->role->hasGlobalAccess() ?? false) || $user->role->level() === 'global' => $query,
+            $user->role->hasGlobalAccess() || $user->role->level() === 'global' => $query,
             $user->role->level() === 'nasional' => $query->whereIn('id', $user->assignedUnionIds()),
             $user->role->level() === 'divisi' => $query->where('division_id', $user->division_id),
             $user->role->level() === 'uni' => $query->where('id', $user->union_id),
@@ -599,13 +707,28 @@ trait BuildsLeaderboards
         };
     }
 
-    /** Same reasoning as analyticsUnionScope(), for Conference rows instead. */
+    /**
+     * Same reasoning as analyticsUnionScope(), for Conference rows instead. A plain member
+     * (role === null) sees their own Daerah row if they've set one, or every Conference under
+     * their own Union if they've only set that much (the same breadth a uni-level admin gets),
+     * or none at all if neither is set.
+     */
     private function analyticsConferenceScope($query)
     {
         $user = auth()->user();
 
+        if ($user->role === null) {
+            if ($conferenceId = $this->personalConferenceId()) {
+                return $query->where('id', $conferenceId);
+            }
+
+            $unionId = $this->personalUnionId();
+
+            return $unionId ? $query->where('union_id', $unionId) : $query->whereRaw('1 = 0');
+        }
+
         return match (true) {
-            $user->role === null || ($user->role->hasGlobalAccess() ?? false) || $user->role->level() === 'global' => $query,
+            $user->role->hasGlobalAccess() || $user->role->level() === 'global' => $query,
             $user->role->level() === 'nasional' => $query->whereIn('union_id', $user->assignedUnionIds()),
             $user->role->level() === 'divisi' => $query->whereHas('union', fn ($q) => $q->where('division_id', $user->division_id)),
             $user->role->level() === 'uni' => $query->where('union_id', $user->union_id),
