@@ -2,9 +2,8 @@
 
 namespace App\Console\Commands;
 
-use App\Jobs\MatchAccountHashtags;
-use App\Models\ChurchSocial;
 use App\Models\Hashtag;
+use App\Support\HashtagRescanDispatcher;
 use Illuminate\Console\Command;
 
 /**
@@ -14,7 +13,8 @@ use Illuminate\Console\Command;
  * every week). Every dispatch here fetches live (no pre-fetched posts to reuse, unlike the
  * automatic path), so — unlike the weekly auto-fetch — this always spends real Apify credits/
  * YouTube quota across every account, not just Instagram/TikTok/Facebook's "free" ones. Not
- * scheduled; run manually from the CLI.
+ * scheduled by default; run manually from the CLI, or via HashtagController::rescan()'s own
+ * "Scan Ulang Sekarang" button — both share HashtagRescanDispatcher's own dispatch logic.
  */
 class FetchAllHashtagPosts extends Command
 {
@@ -30,23 +30,9 @@ class FetchAllHashtagPosts extends Command
             return self::SUCCESS;
         }
 
-        $delaySeconds = 0;
-        $total = 0;
+        $total = HashtagRescanDispatcher::dispatch();
 
-        ChurchSocial::query()
-            ->where('is_active', true)
-            ->where('is_auto_fetch', true)
-            ->ownerActive()
-            ->chunkById(50, function ($socials) use (&$delaySeconds, &$total) {
-                foreach ($socials as $social) {
-                    MatchAccountHashtags::dispatch($social)->delay(now()->addSeconds($delaySeconds));
-
-                    $delaySeconds += 5;
-                    $total++;
-                }
-            });
-
-        $this->info("Dispatched {$total} jobs, total stagger window: {$delaySeconds}s");
+        $this->info("Dispatched {$total} jobs, total stagger window: ".($total * 5).'s');
 
         return self::SUCCESS;
     }

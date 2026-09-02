@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Hashtag;
 use App\Support\AuditLogger;
+use App\Support\HashtagRescanDispatcher;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -41,6 +42,27 @@ class HashtagController extends Controller
         AuditLogger::log('hashtag.created', $hashtag, "Menambahkan hashtag \"#{$hashtag->tag}\".");
 
         return redirect()->route('admin.hashtags.index')->with('status', __('hashtag.created', ['tag' => $hashtag->tag]));
+    }
+
+    /**
+     * On-demand "scan every registered account right now" trigger — per the user's explicit
+     * call for a flexible way to get fresher hashtag data around a specific event (e.g.
+     * monitoring a coordinated hashtag launch hour by hour) without waiting for the once-a-week
+     * auto-fetch, and without needing SSH access to run `hashtags:rescan` directly. Costs real
+     * Apify credits/YouTube quota per account scanned (see HashtagRescanDispatcher's own doc
+     * comment) — the confirm dialog on the button itself says so.
+     */
+    public function rescan(): RedirectResponse
+    {
+        if (! Hashtag::where('is_active', true)->exists()) {
+            return redirect()->route('admin.hashtags.index')->with('error', __('hashtag.rescan_no_active_hashtags'));
+        }
+
+        $total = HashtagRescanDispatcher::dispatch();
+
+        AuditLogger::log('hashtag.rescan-triggered', null, "Memicu scan ulang {$total} akun untuk hashtag yang dilacak.");
+
+        return redirect()->route('admin.hashtags.index')->with('status', __('hashtag.rescan_started', ['count' => $total]));
     }
 
     public function toggleActive(Hashtag $hashtag): RedirectResponse

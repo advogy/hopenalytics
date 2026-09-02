@@ -7,17 +7,41 @@
 
     Expected: $hashtags, $platforms, $lastUpdatedAt, $rows, $grandTotalByPlatform, $grandTotal,
     $posts (paginator, each row's churchSocial relation eager-loaded), $selectedHashtagId,
-    $selectedPlatform.
+    $selectedPlatform, $isNasionalView, $isUniView, $unionOptions, $conferenceOptions,
+    $selectedUnionId, $selectedConferenceId.
     Optional: $formAction (omit for a self-submitting form on the current URL), $clearUrl (passed
     to x-filter-card), $platformParam (default 'platform' — override to avoid colliding with a
     host page's own "platform" query param, e.g. the Hastag tab on Analitik & Grafik),
     $hiddenFields (assoc array of extra <input type="hidden"> name => value, e.g. ['tab' =>
-    'hastag'] so the filter form's GET submit stays on the right tab).
+    'hastag'] so the filter form's GET submit stays on the right tab), $hideExportButton (default
+    false — the Hastag tab on Analitik & Grafik sets this true and renders its own export button
+    in the same row as its title instead, matching every other tab's title-row layout; the
+    standalone Perbandingan Hastag pages leave this off and keep getting the button from here).
 --}}
 @php
+    $hideExportButton = $hideExportButton ?? false;
     $platformParam = $platformParam ?? 'platform';
     $platformLabelsHashtag = \App\Models\AppSetting::current()->enabledPlatformLabels();
+    $hashtagFilterFormId = 'hashtag-filter-form-'.($hiddenFields['tab'] ?? 'standalone');
+    // Built from the already-resolved $selected* variables, not the raw query string — the
+    // embedded Hastag tab reads its platform from "hashtag_platform" (see $platformParam above)
+    // while the standalone Perbandingan Hastag pages read plain "platform"; the export route
+    // only ever needs to know the resolved value, not which field name it arrived under.
+    $hashtagExportParams = array_filter([
+        'hashtag' => $selectedHashtagId,
+        'platform' => $selectedPlatform,
+        'union_id' => $selectedUnionId,
+        'conference_id' => $selectedConferenceId,
+    ]);
 @endphp
+
+@if (! $hideExportButton)
+    @can('browse-directory-analytics')
+        <div class="mb-4 flex justify-end">
+            <x-export-button :url="route('export.hashtag.preview', $hashtagExportParams)" />
+        </div>
+    @endcan
+@endif
 
 @if ($hashtags->isEmpty())
     <x-empty-state>
@@ -27,9 +51,109 @@
         @endcan
     </x-empty-state>
 @else
+    {{-- Filter comes first, then the summary table it actually affects — per the user's explicit
+         call, so the filter reads as "narrow what's below" rather than an afterthought bolted
+         under a table that already rendered unfiltered. --}}
+    <x-filter-card :clear-url="($selectedHashtagId || $selectedPlatform || $selectedUnionId || $selectedConferenceId || $selectedPostedFrom || $selectedPostedTo) ? ($clearUrl ?? null) : null">
+        <form id="{{ $hashtagFilterFormId }}" method="GET" @if (! empty($formAction)) action="{{ $formAction }}" @endif class="flex flex-wrap items-center gap-3">
+            @foreach ($hiddenFields ?? [] as $hiddenName => $hiddenValue)
+                <input type="hidden" name="{{ $hiddenName }}" value="{{ $hiddenValue }}">
+            @endforeach
+
+            {{-- Same order as every other Data Per * tab's own filter card (see e.g. the
+                 Organisasi tab above): Uni/Daerah region first, then this tab's own "entity"
+                 picker (hashtag, here), then platform, then the date/time range last. --}}
+            @include('partials.analytics-region-filter', [
+                'prefix' => 'hashtag',
+                'formId' => $hashtagFilterFormId,
+                'isNasionalView' => $isNasionalView,
+                'isUniView' => $isUniView,
+                'unionOptions' => $unionOptions,
+                'conferenceOptions' => $conferenceOptions,
+                'selectedUnionId' => $selectedUnionId,
+                'selectedConferenceId' => $selectedConferenceId,
+            ])
+
+            <label class="relative">
+                <x-icon name="hashtag" class="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <select
+                    name="hashtag"
+                    onchange="this.form.submit()"
+                    class="appearance-none rounded-full border border-black/10 bg-slate-50 py-2.5 pr-10 pl-9 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-100 dark:border-white/10 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                >
+                    <option value="">{{ __('hashtag.all_hashtags') }}</option>
+                    @foreach ($hashtags as $hashtag)
+                        <option value="{{ $hashtag->id }}" @selected((string) $selectedHashtagId === (string) $hashtag->id)>{{ $hashtag->display_tag }}</option>
+                    @endforeach
+                </select>
+                <x-icon name="chevron-down" class="pointer-events-none absolute top-1/2 right-3.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+            </label>
+
+            <label class="relative">
+                <x-icon name="globe-alt" class="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <select
+                    name="{{ $platformParam }}"
+                    onchange="this.form.submit()"
+                    class="appearance-none rounded-full border border-black/10 bg-slate-50 py-2.5 pr-10 pl-9 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-100 dark:border-white/10 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                >
+                    {{-- Same shared label as every other platform filter on the app (Analitik &
+                         Grafik's other tabs, Direktori) — this one used to say "Semua Platform"
+                         on its own, the only place in the app that did. --}}
+                    <option value="">{{ __('common.all_social_media') }}</option>
+                    @foreach ($platforms as $platform)
+                        <option value="{{ $platform }}" @selected($selectedPlatform === $platform)>{{ $platformLabelsHashtag[$platform] }}</option>
+                    @endforeach
+                </select>
+                <x-icon name="chevron-down" class="pointer-events-none absolute top-1/2 right-3.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+            </label>
+
+            {{-- Optional monitoring window — e.g. watching a coordinated hashtag launch hour by
+                 hour. Both fields must be filled for it to take effect (see
+                 hashtagComparisonData()); leaving either blank falls straight back to the normal
+                 unbounded, per-date view. Same pill-with-icon shape as
+                 partials/analytics-date-range-filter.blade.php's own date range, but with time
+                 precision (that one is deliberately date-only — its own per-week data has no
+                 finer granularity to filter by) and no preset buttons, since "last 30 days"-style
+                 presets don't mean anything for an hour-precision monitoring window. --}}
+            <div class="flex items-center gap-1.5 rounded-full border border-black/10 bg-slate-50 py-2 pr-3 pl-9 shadow-sm transition hover:bg-slate-100 dark:border-white/10 dark:bg-slate-800 dark:hover:bg-slate-700 relative" title="{{ __('hashtag.posted_range_hint') }}">
+                <x-icon name="clock" class="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                    type="datetime-local"
+                    name="posted_from"
+                    value="{{ $selectedPostedFrom }}"
+                    onchange="this.form.submit()"
+                    aria-label="{{ __('hashtag.posted_from') }}"
+                    class="border-0 bg-transparent p-0 text-sm font-medium text-slate-700 focus:ring-0 dark:text-slate-200"
+                >
+                <span class="text-sm text-slate-400">–</span>
+                <input
+                    type="datetime-local"
+                    name="posted_to"
+                    value="{{ $selectedPostedTo }}"
+                    onchange="this.form.submit()"
+                    aria-label="{{ __('hashtag.posted_to') }}"
+                    class="border-0 bg-transparent p-0 text-sm font-medium text-slate-700 focus:ring-0 dark:text-slate-200"
+                >
+            </div>
+        </form>
+    </x-filter-card>
+
+    @if ($selectedPostedFrom && ! $selectedPostedTo || $selectedPostedTo && ! $selectedPostedFrom)
+        <p class="mb-6 text-sm text-amber-600 dark:text-amber-400">{{ __('hashtag.posted_range_incomplete') }}</p>
+    @endif
+
     <p class="mb-3 text-sm text-slate-500 dark:text-slate-400">
         {{ $lastUpdatedAt ? __('dashboard.last_updated_at', ['time' => $lastUpdatedAt->translatedFormat('d M Y H:i')]) : __('dashboard.last_updated_never') }}
     </p>
+
+    {{-- Per the user's explicit call — this table's own "Total Sepanjang Waktu" reads easily as
+         "how many posts right now" at a glance, when it's actually an ever-growing cumulative
+         count since tracking began (see MatchAccountHashtags — a HashtagPost row is never
+         deleted once matched, even after the real post is gone or ages out of an account's
+         recent-posts sample). Spelling that out here once, rather than everywhere the number
+         itself appears, keeps every occurrence readable on its own. --}}
+    <p class="mb-1 font-bold text-slate-900 dark:text-white">{{ __('hashtag.summary_table_title') }}</p>
+    <p class="mb-3 text-sm text-slate-500 dark:text-slate-400">{{ __('hashtag.summary_table_subtitle') }}</p>
 
     <div class="mb-8 overflow-x-auto rounded-2xl border border-black/5 dark:border-white/5">
         <table class="w-full text-left text-sm">
@@ -70,43 +194,17 @@
         </table>
     </div>
 
-    <x-filter-card :clear-url="($selectedHashtagId || $selectedPlatform) ? ($clearUrl ?? null) : null">
-        <form method="GET" @if (! empty($formAction)) action="{{ $formAction }}" @endif class="flex flex-wrap items-center gap-3">
-            @foreach ($hiddenFields ?? [] as $hiddenName => $hiddenValue)
-                <input type="hidden" name="{{ $hiddenName }}" value="{{ $hiddenValue }}">
-            @endforeach
-
-            <label class="relative">
-                <x-icon name="hashtag" class="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <select
-                    name="hashtag"
-                    onchange="this.form.submit()"
-                    class="appearance-none rounded-full border border-black/10 bg-slate-50 py-2.5 pr-10 pl-9 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-100 dark:border-white/10 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-                >
-                    <option value="">{{ __('hashtag.all_hashtags') }}</option>
-                    @foreach ($hashtags as $hashtag)
-                        <option value="{{ $hashtag->id }}" @selected((string) $selectedHashtagId === (string) $hashtag->id)>{{ $hashtag->display_tag }}</option>
-                    @endforeach
-                </select>
-                <x-icon name="chevron-down" class="pointer-events-none absolute top-1/2 right-3.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-            </label>
-
-            <label class="relative">
-                <x-icon name="globe-alt" class="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <select
-                    name="{{ $platformParam }}"
-                    onchange="this.form.submit()"
-                    class="appearance-none rounded-full border border-black/10 bg-slate-50 py-2.5 pr-10 pl-9 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-100 dark:border-white/10 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-                >
-                    <option value="">{{ __('hashtag.all_platforms') }}</option>
-                    @foreach ($platforms as $platform)
-                        <option value="{{ $platform }}" @selected($selectedPlatform === $platform)>{{ $platformLabelsHashtag[$platform] }}</option>
-                    @endforeach
-                </select>
-                <x-icon name="chevron-down" class="pointer-events-none absolute top-1/2 right-3.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-            </label>
-        </form>
-    </x-filter-card>
+    {{-- Full-width per the user's explicit call — one wide chart rather than folded into a
+         narrower grid alongside something else. --}}
+    <div class="mb-8 w-full rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
+        <p class="font-bold text-slate-900 dark:text-white">
+            {{ $isMonitoringWindow ? __('hashtag.growth_chart_title_hourly') : __('hashtag.growth_chart_title') }}
+        </p>
+        <p class="mb-4 text-sm text-slate-500 dark:text-slate-400">
+            {{ $isMonitoringWindow ? __('hashtag.growth_chart_subtitle_hourly') : __('hashtag.growth_chart_subtitle') }}
+        </p>
+        <x-growth-chart :values="$growthValues" :labels="$growthLabels" :short-labels="$growthShortLabels" :date-keys="$growthDateKeys" :width="960" :height="180" label-density="dense" />
+    </div>
 
     <div class="overflow-x-auto rounded-2xl border border-black/5 dark:border-white/5">
         <table class="w-full text-left text-sm">

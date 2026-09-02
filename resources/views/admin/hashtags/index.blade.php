@@ -3,9 +3,21 @@
 @section('title', __('hashtag.admin_title') . ' — ' . config('app.name'))
 
 @section('content')
-    <div class="mb-6">
-        <h1 class="mb-1 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{{ __('hashtag.admin_title') }}</h1>
-        <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('hashtag.admin_subtitle') }}</p>
+    <div class="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <div>
+            <h1 class="mb-1 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{{ __('hashtag.admin_title') }}</h1>
+            <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('hashtag.admin_subtitle') }}</p>
+        </div>
+        {{-- On-demand scan — e.g. checking in hour by hour during a coordinated hashtag launch —
+             separate from the once-a-week auto-fetch every other tracked hashtag rides along on.
+             Costs real Apify credits/YouTube quota per account scanned, hence the confirm. --}}
+        <form method="POST" action="{{ route('admin.hashtags.rescan') }}" data-confirm="{{ __('hashtag.rescan_confirm') }}">
+            @csrf
+            <button type="submit" class="inline-flex items-center gap-1.5 rounded-lg border border-black/10 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">
+                <x-icon name="arrow-path" class="h-4 w-4 shrink-0" />
+                {{ __('hashtag.rescan_button') }}
+            </button>
+        </form>
     </div>
 
     <div class="mb-6 rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/5 dark:bg-slate-900">
