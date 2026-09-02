@@ -1,9 +1,38 @@
-@props(['values' => [], 'labels' => []])
+{{-- $width/$height set the SVG viewBox's aspect ratio (not a pixel size — the element itself
+     still scales via class="w-full" below) — override for a usage that spans much wider than
+     the 640x240 default was drawn for (e.g. a full-page-width chart), where that ratio would
+     otherwise render disproportionately tall.
+
+     $labelDensity: 'sparse' (default — first/middle/last only, once there are more than 5
+     points; every other consumer of this component keeps this, e.g. the weekly reach/views/
+     likes/posts charts, which rarely have more than a handful of points anyway) or 'dense' (as
+     many evenly-spaced labels as the chart's own width can fit without the text overlapping,
+     always including the last point — for a usage with many more points where "first/middle/
+     last" alone reads as too sparse to be useful, e.g. the Hastag tab's per-date/per-hour chart).
+
+     $shortLabels/$dateKeys: for a chart whose full $labels sometimes repeat a shared prefix
+     (the Hastag hourly chart's own "30 Agt, 01:00" / "30 Agt, 02:00" / ...), $shortLabels is
+     that same point with the shared part dropped (e.g. "02:00") and $dateKeys says which
+     "group" (day) each point belongs to — printed on the chart's own x-axis, a shown point gets
+     its full $labels text only the first time a group appears among the points actually being
+     shown (see $labelIndexes below), $shortLabels every time after that, so a run of same-day
+     hours doesn't repeat "30 Agt" in front of every single one — while the hover tooltip always
+     uses the full, unambiguous $labels text regardless of what's on the axis right by it. This
+     decision happens AFTER $labelIndexes is chosen, not before: deciding it against every raw
+     point up front risked the one point that actually starts a new group landing on a point
+     $labelIndexes goes on to thin away, silently dropping the group change from the chart
+     entirely instead of just deferring it to the next point that does get shown. Both default to
+     $labels, which — since every point's own text is then necessarily distinct from its
+     neighbors' — means every shown point keeps its full text, same as before this pair existed. --}}
+@props(['values' => [], 'labels' => [], 'shortLabels' => null, 'dateKeys' => null, 'width' => 640, 'height' => 240, 'labelDensity' => 'sparse'])
 
 @php
     $values = collect($values)->values()->all();
     $labels = collect($labels)->values()->all();
+    $shortLabels = collect($shortLabels ?? $labels)->values()->all();
+    $dateKeys = collect($dateKeys ?? $labels)->values()->all();
     $count = count($values);
+    $chartId = 'growth-chart-'.\Illuminate\Support\Str::random(8);
 @endphp
 
 @if ($count < 2)
@@ -12,8 +41,6 @@
     </div>
 @else
     @php
-        $width = 640;
-        $height = 240;
         $padLeft = 52;
         $padRight = 16;
         $padTop = 28;
@@ -47,11 +74,40 @@
         $baseline = $padTop + $plotHeight;
         $areaPoints = $polylinePoints." {$points->last()[0]},{$baseline} {$points->first()[0]},{$baseline}";
 
-        $labelIndexes = $count <= 5 ? range(0, $count - 1) : [0, intdiv($count - 1, 2), $count - 1];
+        if ($count <= 5) {
+            $labelIndexes = range(0, $count - 1);
+        } elseif ($labelDensity === 'dense') {
+            // Budgeted off the LONGEST label that could possibly land on a shown point — the
+            // full $labels form, since which points end up "full" vs "short" (see $axisTexts
+            // below) isn't decided until after this step spacing is chosen. Using the shorter
+            // $shortLabels here instead would under-budget: whichever shown point ends up
+            // needing its full text would then have no extra room reserved for it and could
+            // still run into its neighbor. ~6px/character at this 10px font, plus a small gap.
+            $maxLabelChars = max(4, collect($labels)->map(fn ($label) => mb_strlen($label))->max());
+            $estimatedLabelWidth = $maxLabelChars * 6 + 10;
+            $maxLabels = max(2, (int) floor($plotWidth / $estimatedLabelWidth));
+            $labelStep = max(1, (int) ceil(($count - 1) / ($maxLabels - 1)));
+            $labelIndexes = range(0, $count - 1, $labelStep);
+            if (end($labelIndexes) !== $count - 1) {
+                $labelIndexes[] = $count - 1;
+            }
+        } else {
+            $labelIndexes = [0, intdiv($count - 1, 2), $count - 1];
+        }
+
+        // The text actually printed for each shown point — full $labels the first time its own
+        // $dateKeys group appears among the SHOWN points (not among every raw point — see this
+        // component's own doc comment above), $shortLabels every time after that.
+        $axisTexts = [];
+        $lastShownDateKey = null;
+        foreach ($labelIndexes as $i) {
+            $axisTexts[$i] = ($lastShownDateKey === null || $dateKeys[$i] !== $lastShownDateKey) ? $labels[$i] : $shortLabels[$i];
+            $lastShownDateKey = $dateKeys[$i];
+        }
     @endphp
 
-    <div class="overflow-x-auto">
-        <svg viewBox="0 0 {{ $width }} {{ $height }}" class="w-full" style="min-width: 320px" role="img" aria-label="{{ __('common.growth_chart_aria_label') }}">
+    <div class="relative overflow-x-auto">
+        <svg id="{{ $chartId }}" viewBox="0 0 {{ $width }} {{ $height }}" class="w-full" style="min-width: 320px" role="img" aria-label="{{ __('common.growth_chart_aria_label') }}">
             @foreach ($ticks as $tick)
                 @php $y = $padTop + $plotHeight - ($niceMax > 0 ? ($tick / $niceMax) * $plotHeight : 0); @endphp
                 <line x1="{{ $padLeft }}" y1="{{ $y }}" x2="{{ $width - $padRight }}" y2="{{ $y }}" stroke-width="1" class="stroke-slate-100 dark:stroke-slate-800" />
@@ -69,6 +125,10 @@
                 class="stroke-blue-500 dark:stroke-blue-400"
             />
 
+            {{-- A vertical guide line, shown/moved by the hover script below, between the axis
+                 and whichever point is currently hovered — hidden (x off-canvas) until then. --}}
+            <line data-chart-crosshair x1="-100" x2="-100" y1="{{ $padTop }}" y2="{{ $baseline }}" stroke-width="1" stroke-dasharray="3 3" class="stroke-slate-300 dark:stroke-slate-600" />
+
             @foreach ($points as $i => $point)
                 <circle
                     cx="{{ $point[0] }}"
@@ -78,12 +138,32 @@
                     stroke="var(--sparkline-ring, white)"
                     stroke-width="2"
                 />
-                <text
-                    x="{{ $point[0] }}"
-                    y="{{ $point[1] - 10 }}"
-                    text-anchor="{{ $i === 0 ? 'start' : ($i === $count - 1 ? 'end' : 'middle') }}"
-                    class="{{ $i === $count - 1 ? 'fill-slate-700 text-xs font-semibold dark:fill-slate-200' : 'fill-slate-500 text-[10px] font-medium dark:fill-slate-400' }}"
-                >{{ number_format($values[$i]) }}</text>
+                {{-- In dense mode, a value label on every point would overlap just as badly as
+                     an x-axis label on every point would — only label the same reduced set of
+                     points as $labelIndexes below (still always including the last point). --}}
+                @if ($labelDensity !== 'dense' || in_array($i, $labelIndexes, true))
+                    <text
+                        x="{{ $point[0] }}"
+                        y="{{ $point[1] - 10 }}"
+                        text-anchor="{{ $i === 0 ? 'start' : ($i === $count - 1 ? 'end' : 'middle') }}"
+                        class="{{ $i === $count - 1 ? 'fill-slate-700 text-xs font-semibold dark:fill-slate-200' : 'fill-slate-500 text-[10px] font-medium dark:fill-slate-400' }}"
+                    >{{ number_format($values[$i]) }}</text>
+                @endif
+
+                {{-- Invisible, oversized hit target — the visible dot above is only 3-4px, far
+                     too small to reliably hover on its own — carrying the FULL label (never the
+                     shortened axis text) so the tooltip is always unambiguous about exactly
+                     which point it's describing. --}}
+                <circle
+                    cx="{{ $point[0] }}"
+                    cy="{{ $point[1] }}"
+                    r="12"
+                    fill="transparent"
+                    class="growth-chart-hit"
+                    style="cursor: pointer;"
+                    data-label="{{ $labels[$i] }}"
+                    data-value="{{ number_format($values[$i]) }}"
+                />
             @endforeach
 
             @foreach ($labelIndexes as $i)
@@ -92,8 +172,83 @@
                     y="{{ $height - 8 }}"
                     text-anchor="{{ $i === 0 ? 'start' : ($i === $count - 1 ? 'end' : 'middle') }}"
                     class="fill-slate-400 text-[10px] dark:fill-slate-500"
-                >{{ $labels[$i] }}</text>
+                >{{ $axisTexts[$i] }}</text>
             @endforeach
         </svg>
+
+        {{-- Positioned in JS (see below) relative to whichever point is hovered, converting the
+             SVG's own viewBox coordinates to actual on-screen pixels so this lines up correctly
+             regardless of how much class="w-full" has scaled the chart up or down. --}}
+        <div data-chart-tooltip class="pointer-events-none absolute z-10 hidden -translate-x-1/2 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-white shadow-lg dark:bg-slate-700">
+            <span data-chart-tooltip-label></span>: <span data-chart-tooltip-value class="font-semibold"></span>
+        </div>
     </div>
+
+    <script>
+        (function () {
+            var svg = document.getElementById(@json($chartId));
+            if (! svg) return;
+
+            var container = svg.parentElement;
+            var tooltip = container.querySelector('[data-chart-tooltip]');
+            var labelEl = tooltip.querySelector('[data-chart-tooltip-label]');
+            var valueEl = tooltip.querySelector('[data-chart-tooltip-value]');
+            var crosshair = svg.querySelector('[data-chart-crosshair]');
+            var viewBoxWidth = {{ $width }};
+            var viewBoxHeight = {{ $height }};
+
+            function showFor(hit) {
+                var svgRect = svg.getBoundingClientRect();
+                var scaleX = svgRect.width / viewBoxWidth;
+                var scaleY = svgRect.height / viewBoxHeight;
+                var cx = parseFloat(hit.getAttribute('cx'));
+                var cy = parseFloat(hit.getAttribute('cy'));
+                var pixelX = cx * scaleX;
+                var pixelY = cy * scaleY;
+
+                labelEl.textContent = hit.dataset.label;
+                valueEl.textContent = hit.dataset.value;
+
+                // Above the point by default, matching where its own always-visible value label
+                // already sits — but that's exactly the problem for a point near the TOP of the
+                // chart (a high value, or this whole chart's range being narrow so every point
+                // clusters up there): the tooltip would land right on top of that label, or a
+                // neighboring point's. ~36px is a rough tooltip-height-plus-gap guess, since it's
+                // still `hidden` here and hasn't actually been measured yet.
+                var flip = pixelY < 36;
+                tooltip.classList.toggle('-translate-y-full', ! flip);
+                tooltip.classList.toggle('translate-y-2', flip);
+
+                // Must remove `hidden` (display:none) BEFORE reading offsetWidth below, or the
+                // tooltip measures as 0 and every point looks like it needs no clamping at all.
+                tooltip.classList.remove('hidden');
+
+                // Centered on the point by default (see the -translate-x-1/2 class below) — which
+                // is exactly what runs the tooltip past the chart's own left/right edge for the
+                // first or last point on a chart that already spans its container's full width.
+                // Clamped against the chart's own rendered width, not the point's raw position.
+                var halfTooltipWidth = tooltip.offsetWidth / 2;
+                var clampedX = Math.min(Math.max(pixelX, halfTooltipWidth), svgRect.width - halfTooltipWidth);
+
+                tooltip.style.left = clampedX + 'px';
+                tooltip.style.top = (flip ? pixelY + 8 : pixelY - 8) + 'px';
+
+                crosshair.setAttribute('x1', cx);
+                crosshair.setAttribute('x2', cx);
+            }
+
+            function hide() {
+                tooltip.classList.add('hidden');
+                crosshair.setAttribute('x1', -100);
+                crosshair.setAttribute('x2', -100);
+            }
+
+            svg.querySelectorAll('.growth-chart-hit').forEach(function (hit) {
+                hit.addEventListener('mouseenter', function () { showFor(hit); });
+                hit.addEventListener('mousemove', function () { showFor(hit); });
+                hit.addEventListener('touchstart', function () { showFor(hit); }, { passive: true });
+            });
+            svg.addEventListener('mouseleave', hide);
+        })();
+    </script>
 @endif
