@@ -220,10 +220,6 @@
                                                     <x-icon name="hashtag" class="h-4 w-4 shrink-0 text-slate-400" />
                                                     {{ __('nav.hashtags') }}
                                                 </a>
-                                                <a href="{{ route('admin.location-import.index') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
-                                                    <x-icon name="arrow-up-tray" class="h-4 w-4 shrink-0 text-slate-400" />
-                                                    {{ __('location_import.title') }}
-                                                </a>
                                             @endcan
                                         @endcanany
 
@@ -373,10 +369,6 @@
                                         <a href="{{ route('admin.brands.index') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
                                             <x-icon name="globe-alt" class="h-4 w-4 shrink-0 text-slate-400" />
                                             {{ __('brands.title') }}
-                                        </a>
-                                        <a href="{{ route('admin.location-import.index') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
-                                            <x-icon name="arrow-up-tray" class="h-4 w-4 shrink-0 text-slate-400" />
-                                            {{ __('location_import.title') }}
                                         </a>
                                     @endcan
                                 @endcanany

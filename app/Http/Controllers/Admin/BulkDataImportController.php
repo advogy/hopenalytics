@@ -32,8 +32,14 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
  * Never geocodes inline on create/update — GeocodeDispatcher::dispatchFor() queues one
  * GeocodeEntity job per row instead, at the end of import(), which the existing cron-triggered
  * `queue:work --stop-when-empty` (routes/console.php) drains automatically within a minute or
- * so. No SSH/artisan command needed on top of the upload — same reasoning as
- * LocationImportController, which this mirrors.
+ * so. No SSH/artisan command needed on top of the upload itself.
+ *
+ * This "Data" sheet's own Kota/Negara columns (see template()/importMainSheet() below) are the
+ * one and only place city/country gets bulk-filled in now — the separate, SuperAdmin-only
+ * LocationImportController this used to duplicate (same city/country columns, just pre-filtered
+ * to rows missing one and unscoped by visibleTo()) was retired per the user's explicit call,
+ * once it became clear this controller already covered exactly the same ground for every role
+ * that can reach it, not just SuperAdmin.
  */
 class BulkDataImportController extends Controller
 {
