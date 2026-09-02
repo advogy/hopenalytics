@@ -9,6 +9,7 @@ return [
     'name' => 'Brand Name',
     'domain' => 'Domain',
     'domain_hint' => 'Just the domain name, no "https://" or "www.". Example: example.com',
+    'domain_placeholder' => 'example.com',
     'logo' => 'Logo',
     'logo_hint_create' => 'PNG, JPG, SVG, or WebP, max 2MB. Leave blank to use the built-in Hopenalytics logo.',
     'logo_hint_edit' => 'PNG, JPG, SVG, or WebP, max 2MB. Leave blank to keep the current logo.',

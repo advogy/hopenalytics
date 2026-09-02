@@ -97,26 +97,12 @@ enum UserRole: string
 
     /**
      * Human-readable label for display (e.g. in the account menu), since the raw
-     * backing value ("admin_uni") is meant for storage/matching, not the UI.
+     * backing value ("admin_uni") is meant for storage/matching, not the UI. Keyed by
+     * $this->value in lang/{id,en}/roles.php, one file per locale — this was hardcoded to
+     * Indonesian only until it was found unlocalized on every authenticated page's account menu.
      */
     public function label(): string
     {
-        return match ($this) {
-            self::SuperAdmin => 'Superadmin',
-            self::AdminGlobal => 'Admin Global',
-            self::AdminNasional => 'Admin Nasional',
-            self::AdminDivisi => 'Admin Divisi',
-            self::AdminUni => 'Admin Uni',
-            self::AdminDaerah => 'Admin Daerah',
-            self::AdminGereja => 'Admin Gereja',
-            self::AdminInstitusi => 'Admin Institusi',
-            self::PimpinanGlobal => 'Pimpinan Global',
-            self::PimpinanNasional => 'Pimpinan Nasional',
-            self::PimpinanDivisi => 'Pimpinan Divisi',
-            self::PimpinanUni => 'Pimpinan Uni',
-            self::PimpinanDaerah => 'Pimpinan Daerah',
-            self::PimpinanGereja => 'Pimpinan Gereja',
-            self::PimpinanInstitusi => 'Pimpinan Institusi',
-        };
+        return __('roles.'.$this->value);
     }
 }

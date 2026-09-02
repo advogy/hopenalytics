@@ -5,7 +5,7 @@
         {{ __('common.coordinates') }}
     </label>
     <p class="mb-1.5 text-xs text-slate-400">{{ __('common.coordinates_hint') }}</p>
-    <div class="grid grid-cols-2 gap-3">
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
             <input
                 type="number" step="any" id="latitude" name="latitude"

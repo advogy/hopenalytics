@@ -28,7 +28,7 @@
             :hint="__('brands.domain_hint')"
             required
             :value="$brand->domain"
-            placeholder="contoh.com"
+            placeholder="{{ __('brands.domain_placeholder') }}"
         />
 
         <div class="mb-5">

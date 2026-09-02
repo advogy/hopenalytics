@@ -5,6 +5,12 @@ return [
     'download_pdf' => 'Download PDF',
     'download_word' => 'Download Word',
     'download_excel' => 'Download Excel',
+    // Format names alone, for the button's own visible text (download_* above is the fuller
+    // accessibility/title text) — identical in every locale (a format name isn't really a word
+    // to translate), kept as real keys anyway rather than hardcoded literals in the blade file.
+    'format_pdf' => 'PDF',
+    'format_word' => 'Word',
+    'format_excel' => 'Excel',
     'no_data' => 'Tidak ada data untuk diekspor.',
     'metric_reach' => 'Followers/Subscribers',
     'growth_prefix' => 'Pertumbuhan :title',

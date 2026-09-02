@@ -21,15 +21,15 @@
     <div class="flex shrink-0 items-center gap-2">
         <a href="{{ $pdfDownloadUrl }}" title="{{ __('export.download_pdf') }}" class="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-red-700">
             <x-icon name="arrow-down-tray" class="h-3.5 w-3.5" />
-            PDF
+            {{ __('export.format_pdf') }}
         </a>
         <a href="{{ $wordDownloadUrl }}" title="{{ __('export.download_word') }}" class="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-blue-700">
             <x-icon name="arrow-down-tray" class="h-3.5 w-3.5" />
-            Word
+            {{ __('export.format_word') }}
         </a>
         <a href="{{ $excelDownloadUrl }}" title="{{ __('export.download_excel') }}" class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-emerald-700">
             <x-icon name="arrow-down-tray" class="h-3.5 w-3.5" />
-            Excel
+            {{ __('export.format_excel') }}
         </a>
     </div>
 </div>

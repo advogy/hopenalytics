@@ -195,6 +195,31 @@ return [
     |
     */
 
-    'attributes' => [],
+    'attributes' => [
+        'name' => 'name',
+        'email' => 'email',
+        'password' => 'password',
+        'password_confirmation' => 'password confirmation',
+        'current_password' => 'current password',
+        'code' => 'code',
+        'city' => 'city',
+        'latitude' => 'latitude',
+        'longitude' => 'longitude',
+        'logo_url' => 'logo URL',
+        'profile_url' => 'profile URL',
+        'handle' => 'handle/username',
+        'platform' => 'platform',
+        'category' => 'category',
+        'recorded_at' => 'recorded date',
+        'church_id' => 'church',
+        'conference_id' => 'conference',
+        'union_id' => 'union',
+        'institution_id' => 'institution',
+        'church_name' => 'church name',
+        'role' => 'role',
+        'scope_id' => 'scope',
+        'user_id' => 'user',
+        'person_id' => 'personal',
+    ],
 
 ];
