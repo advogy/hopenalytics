@@ -8,7 +8,6 @@ use App\Http\Controllers\Admin\ConferenceController;
 use App\Http\Controllers\Admin\DivisionController;
 use App\Http\Controllers\Admin\HashtagController;
 use App\Http\Controllers\Admin\InstitutionController;
-use App\Http\Controllers\Admin\LocationImportController;
 use App\Http\Controllers\Admin\OrganizationSocialController;
 use App\Http\Controllers\Admin\UnionController;
 use App\Http\Controllers\Admin\UserAssignmentController;
@@ -146,14 +145,9 @@ Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group
     Route::middleware('can:manage-settings')->prefix('admin/hashtags')->name('admin.hashtags.')->group(function () {
         Route::get('/', [HashtagController::class, 'index'])->name('index');
         Route::post('/', [HashtagController::class, 'store'])->name('store');
+        Route::post('/rescan', [HashtagController::class, 'rescan'])->name('rescan');
         Route::patch('/{hashtag}/toggle-active', [HashtagController::class, 'toggleActive'])->name('toggle-active');
         Route::delete('/{hashtag}', [HashtagController::class, 'destroy'])->name('destroy');
-    });
-
-    Route::middleware('can:manage-settings')->prefix('admin/location-import')->name('admin.location-import.')->group(function () {
-        Route::get('/', [LocationImportController::class, 'index'])->name('index');
-        Route::get('/{type}/template', [LocationImportController::class, 'template'])->name('template');
-        Route::post('/', [LocationImportController::class, 'import'])->name('import');
     });
 
     Route::middleware('can:manage-goals')->group(function () {
@@ -257,6 +251,9 @@ Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group
 
         Route::get('/export/directory/preview', [ExportController::class, 'directoryPreview'])->name('export.directory.preview');
         Route::get('/export/directory/{format}', [ExportController::class, 'directoryDownload'])->name('export.directory.download');
+
+        Route::get('/export/hashtag/preview', [ExportController::class, 'hashtagPreview'])->name('export.hashtag.preview');
+        Route::get('/export/hashtag/{format}', [ExportController::class, 'hashtagDownload'])->name('export.hashtag.download');
 
         Route::get('/export/gereja/platform/{platform}/overview/preview', [ExportController::class, 'platformOverviewPreview'])->name('export.platform-overview.preview');
         Route::get('/export/gereja/platform/{platform}/overview/{format}', [ExportController::class, 'platformOverviewDownload'])->name('export.platform-overview.download');

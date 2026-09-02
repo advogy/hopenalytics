@@ -8,6 +8,8 @@ use App\Models\Church;
 use App\Models\ChurchSocial;
 use App\Models\Conference;
 use App\Models\Division;
+use App\Models\Hashtag;
+use App\Models\HashtagPost;
 use App\Models\Institution;
 use App\Models\Person;
 use App\Models\Union;
@@ -15,6 +17,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Response;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -365,22 +368,80 @@ class ExportController extends Controller
 
     public function directoryPreview()
     {
-        $platform = request()->query('platform');
-        $type = request()->query('type');
-        $dataset = $this->directoryDataset($platform, $type);
+        $params = $this->directoryRequestParams();
+        $dataset = $this->directoryDataset($params['platform'] ?? null, $params['type'] ?? null);
 
-        $downloadUrl = route('export.directory.download', array_filter(['format' => 'pdf', 'platform' => $platform, 'type' => $type]));
+        $downloadUrl = route('export.directory.download', array_merge(['format' => 'pdf'], $params));
 
         return $this->preview($dataset, $downloadUrl);
     }
 
     public function directoryDownload(string $format): BinaryFileResponse|Response
     {
-        $platform = request()->query('platform');
-        $type = request()->query('type');
-        $filename = 'direktori-akun'.($type ? "-{$type}" : '').($platform ? "-{$platform}" : '');
+        $params = $this->directoryRequestParams();
+        $filename = 'direktori-akun'.(isset($params['type']) ? "-{$params['type']}" : '').(isset($params['platform']) ? "-{$params['platform']}" : '');
 
-        return $this->download($this->directoryDataset($platform, $type), $format, $filename);
+        return $this->download($this->directoryDataset($params['platform'] ?? null, $params['type'] ?? null), $format, $filename);
+    }
+
+    /**
+     * Every filter directoryDataset() reads off the request, collected once — directoryPreview()'s
+     * "Download PDF/Word/Excel" links are plain hrefs to directoryDownload(), not a resubmission
+     * of the filter form, so anything left out here would silently revert to the unfiltered/
+     * default view the moment the download button is clicked, no matter what the preview itself
+     * was actually showing.
+     */
+    private function directoryRequestParams(): array
+    {
+        return array_filter([
+            'platform' => request()->query('platform'),
+            'type' => request()->query('type'),
+            'search' => request()->query('search'),
+            'auto_fetch' => request()->query('auto_fetch'),
+            'hide_empty_churches' => request()->boolean('hide_empty_churches') ? 1 : null,
+            'hide_empty_people' => request()->boolean('hide_empty_people') ? 1 : null,
+            'hide_empty_institutions' => request()->boolean('hide_empty_institutions') ? 1 : null,
+            'hide_empty_organizations' => request()->boolean('hide_empty_organizations') ? 1 : null,
+            'sort_gereja' => request()->query('sort_gereja'),
+            'sort_institusi' => request()->query('sort_institusi'),
+            'sort_personal' => request()->query('sort_personal'),
+            'sort_organisasi' => request()->query('sort_organisasi'),
+            'union_id' => request()->query('union_id'),
+            'conference_id' => request()->query('conference_id'),
+        ]);
+    }
+
+    public function hashtagPreview()
+    {
+        $params = $this->hashtagRequestParams();
+        $dataset = $this->hashtagDataset($params['hashtag'] ?? null, $params['platform'] ?? null);
+
+        $downloadUrl = route('export.hashtag.download', array_merge(['format' => 'pdf'], $params));
+
+        return $this->preview($dataset, $downloadUrl);
+    }
+
+    public function hashtagDownload(string $format): BinaryFileResponse|Response
+    {
+        $params = $this->hashtagRequestParams();
+
+        return $this->download($this->hashtagDataset($params['hashtag'] ?? null, $params['platform'] ?? null), $format, 'perbandingan-hastag');
+    }
+
+    /**
+     * Every filter Perbandingan Hastag's own filter card offers — hashtag, platform, and the
+     * Uni/Daerah region filter (see BuildsLeaderboards::applyHashtagRegionFilter()) — collected
+     * once so hashtagPreview()'s "Download PDF/Word/Excel" links carry all of them forward into
+     * hashtagDownload()'s own separate request, same reasoning as directoryRequestParams() above.
+     */
+    private function hashtagRequestParams(): array
+    {
+        return array_filter([
+            'hashtag' => request()->query('hashtag'),
+            'platform' => request()->query('platform'),
+            'union_id' => request()->query('union_id'),
+            'conference_id' => request()->query('conference_id'),
+        ]);
     }
 
     public function churchPreview(Church $church)
@@ -1100,94 +1161,280 @@ class ExportController extends Controller
     }
 
     /**
-     * $type narrows the export to one tab of the directory page — 'gereja' or 'personal' —
-     * or includes both when null.
+     * $type selects one tab of the Direktori Akun page — 'organisasi' (the live page's own
+     * default when no tab is chosen), 'gereja', 'institusi', or 'personal'. Mirrors
+     * ChurchDashboardController::directory() filter-for-filter: search, platform, auto_fetch,
+     * hide_empty_*, sort_*, and the union_id/conference_id region filter — the latter applied
+     * the same way every other export in this audit applies it, via applyRegionFilterToEntities()
+     * (matchesRegionFilter() already handles Church/Person/Institution/Union/Conference/Division
+     * identically to directory()'s own 4 query-level closures), except for Division rows, which
+     * — same as the live page — are never affected by that filter at all (a Division has no
+     * union_id/conference_id column of its own to narrow by).
+     *
+     * Previously this only recognised 'gereja'/'personal'/null via a broken two-branch
+     * "if ($type !== 'personal') … if ($type !== 'gereja') …" structure: for 'institusi' and
+     * 'organisasi' BOTH conditions were true, so it silently exported the combined Church+Person
+     * list instead of institutions or Divisi/Uni/Daerah rows — and had none of directory()'s
+     * other filters at all.
      */
     private function directoryDataset(?string $platform = null, ?string $type = null): array
     {
-        $rows = [];
+        $type = in_array($type, ['gereja', 'personal', 'institusi', 'organisasi'], true) ? $type : 'organisasi';
 
-        // No visibleTo() here — the Direktori page itself is deliberately public/unscoped (see
-        // ChurchDashboardController::directory()'s own doc comment: "every account visible to
-        // anyone browsing it, not scoped to the viewer's own admin region"). A visibleTo() call
-        // here was a confirmed bug: it made this export return nothing at all for a plain member
-        // (role === null, which visibleTo() treats as "sees nothing") and only the exporting
-        // admin's own narrow region for everyone else, when the page it's exporting shows
-        // everyone the same full, unscoped list.
-        if ($type !== 'personal') {
-            $churches = Church::query()
-                ->where('is_active', true)
-                ->with(['socials' => fn ($q) => $q
-                    ->where('is_active', true)
-                    ->when($platform, fn ($query) => $query->where('platform', $platform)),
-                ])
-                ->orderBy('name')
-                ->get();
+        $search = trim((string) request()->query('search'));
+        $autoFetchQuery = request()->query('auto_fetch');
+        $autoFetch = in_array($autoFetchQuery, ['auto', 'manual'], true) ? $autoFetchQuery : null;
 
-            foreach ($churches as $church) {
-                foreach ($church->socials as $social) {
-                    $row = [$church->name];
+        // Shared with whereHas() below so "no data" means the same thing as what the account
+        // columns actually show — not just "no accounts at all" while ignoring the platform/
+        // auto_fetch filters currently applied. Same closure shape as directory()'s own.
+        $socialsFilter = fn ($query) => $query->where('is_active', true)
+            ->when($platform, fn ($q) => $q->where('platform', $platform))
+            ->when($autoFetch, fn ($q) => $q->where('is_auto_fetch', $autoFetch === 'auto'));
 
-                    if ($type === null) {
-                        $row[] = $church->city ?? '—';
-                    }
-
-                    $row[] = $this->categoryLabels[$social->category->value];
-                    $row[] = $this->platformLabels[$social->platform->value];
-                    $row[] = $social->display_handle;
-
-                    $rows[] = $row;
-                }
-            }
-        }
-
-        if ($type !== 'gereja') {
-            $people = Person::query()
-                ->where('is_active', true)
-                ->with(['socials' => fn ($q) => $q
-                    ->where('is_active', true)
-                    ->when($platform, fn ($query) => $query->where('platform', $platform)),
-                ])
-                ->orderBy('name')
-                ->get();
-
-            foreach ($people as $person) {
-                foreach ($person->socials as $social) {
-                    $row = [$person->name];
-
-                    if ($type === null) {
-                        $row[] = '—';
-                    }
-
-                    $row[] = $this->categoryLabels[$social->category->value];
-                    $row[] = $this->platformLabels[$social->platform->value];
-                    $row[] = $social->display_handle;
-
-                    $rows[] = $row;
-                }
-            }
-        }
+        [$rows, $headers] = match ($type) {
+            'gereja' => $this->directoryChurchRows($search, $socialsFilter),
+            'personal' => $this->directoryPersonRows($search, $socialsFilter),
+            'institusi' => $this->directoryInstitutionRows($search, $socialsFilter),
+            'organisasi' => $this->directoryOrganizationRows($search, $socialsFilter),
+        };
 
         $scopeLabel = match ($type) {
             'gereja' => __('comparison.for_all_churches'),
             'personal' => __('comparison.for_all_personal'),
-            default => __('export.directory_scope_all'),
+            'institusi' => __('comparison.for_all_institutions'),
+            'organisasi' => __('comparison.for_all_organizations'),
         };
 
         $subtitle = $platform
             ? __('export.directory_subtitle_with_platform', ['platform' => $this->platformLabels[$platform], 'scope' => $scopeLabel])
             : __('export.directory_subtitle_no_platform', ['scope' => $scopeLabel]);
 
-        $headers = match ($type) {
-            'personal' => [__('common.name'), __('entity.category'), __('common.platform'), __('common.account')],
-            'gereja' => [__('common.church'), __('entity.city'), __('entity.category'), __('common.platform'), __('common.account')],
-            default => [__('common.name'), __('entity.city'), __('entity.category'), __('common.platform'), __('common.account')],
-        };
-
         return [
             'title' => __('nav.directory'),
             'subtitle' => $subtitle,
             'headers' => $headers,
+            'rows' => $rows,
+        ];
+    }
+
+    /**
+     * The Conference-else-Union-else-null name for a region-groupable entity, as a single
+     * orderable SQL expression — same shape as ChurchDashboardController's own
+     * directoryScopeOrderExpression()/institutionRegionOrderExpression()/
+     * personScopeOrderExpression(), just re-declared here since those are private to their own
+     * controllers (this file has no shared trait with them for it).
+     */
+    private function directoryScopeOrderExpression(string $table)
+    {
+        return DB::raw("COALESCE(
+            (SELECT name FROM conferences WHERE conferences.id = {$table}.conference_id),
+            (SELECT name FROM unions WHERE unions.id = {$table}.union_id)
+        )");
+    }
+
+    /** One export row per (church, social account) pair — matches the Gereja tab. */
+    private function directoryChurchRows(string $search, \Closure $socialsFilter): array
+    {
+        $churches = Church::query()
+            ->where('is_active', true)
+            ->when($search, fn ($q) => $q->where(fn ($q2) => $q2
+                ->where('name', 'like', "%{$search}%")
+                ->orWhere('city', 'like', "%{$search}%"),
+            ))
+            ->when(request()->boolean('hide_empty_churches'), fn ($q) => $q->whereHas('socials', $socialsFilter))
+            ->with(['socials' => $socialsFilter, 'conference.union.division'])
+            ->tap(fn ($q) => match (request()->query('sort_gereja', 'name_asc')) {
+                'name_desc' => $q->orderByDesc('name'),
+                'city_asc' => $q->orderBy('city')->orderBy('name'),
+                'city_desc' => $q->orderByDesc('city')->orderBy('name'),
+                'daerah_asc' => $q->orderBy(Conference::select('name')->whereColumn('conferences.id', 'churches.conference_id'))->orderBy('name'),
+                'daerah_desc' => $q->orderByDesc(Conference::select('name')->whereColumn('conferences.id', 'churches.conference_id'))->orderBy('name'),
+                default => $q->orderBy('name'),
+            })
+            ->get();
+
+        $rows = [];
+        foreach ($this->applyRegionFilterToEntities($churches, 'gereja') as $church) {
+            foreach ($church->socials as $social) {
+                $rows[] = [
+                    $church->name,
+                    $church->city ?? '—',
+                    $this->categoryLabels[$social->category->value],
+                    $this->platformLabels[$social->platform->value],
+                    $social->display_handle,
+                ];
+            }
+        }
+
+        return [$rows, [__('common.church'), __('entity.city'), __('entity.category'), __('common.platform'), __('common.account')]];
+    }
+
+    /** One export row per (person, social account) pair — matches the Personal tab. */
+    private function directoryPersonRows(string $search, \Closure $socialsFilter): array
+    {
+        $people = Person::query()
+            ->where('is_active', true)
+            ->when($search, fn ($q) => $q->where(fn ($q2) => $q2
+                ->where('name', 'like', "%{$search}%")
+                ->orWhere('city', 'like', "%{$search}%"),
+            ))
+            ->when(request()->boolean('hide_empty_people'), fn ($q) => $q->whereHas('socials', $socialsFilter))
+            ->with(['socials' => $socialsFilter, 'conference.union.division', 'union.division'])
+            ->tap(fn ($q) => match (request()->query('sort_personal', 'name_asc')) {
+                'name_desc' => $q->orderByDesc('name'),
+                'city_asc' => $q->orderBy('city')->orderBy('name'),
+                'city_desc' => $q->orderByDesc('city')->orderBy('name'),
+                'scope_asc' => $q->orderBy($this->directoryScopeOrderExpression('people'))->orderBy('name'),
+                'scope_desc' => $q->orderByDesc($this->directoryScopeOrderExpression('people'))->orderBy('name'),
+                default => $q->orderBy('name'),
+            })
+            ->get();
+
+        // No category column — unlike a church, a person-owned social account has no gereja/umum
+        // choice at all (PersonSocialController::store() always hardcodes category to 'personal'),
+        // and the live Personal tab table shows no such column either.
+        $rows = [];
+        foreach ($this->applyRegionFilterToEntities($people, 'personal') as $person) {
+            foreach ($person->socials as $social) {
+                $rows[] = [$person->name, $this->platformLabels[$social->platform->value], $social->display_handle];
+            }
+        }
+
+        return [$rows, [__('common.name'), __('common.platform'), __('common.account')]];
+    }
+
+    /** One export row per (institution, social account) pair — matches the Institusi tab. */
+    private function directoryInstitutionRows(string $search, \Closure $socialsFilter): array
+    {
+        $institutions = Institution::query()
+            ->where('is_active', true)
+            ->when($search, fn ($q) => $q->where('name', 'like', "%{$search}%"))
+            ->when(request()->boolean('hide_empty_institutions'), fn ($q) => $q->whereHas('socials', $socialsFilter))
+            ->with(['socials' => $socialsFilter, 'conference.union.division', 'union.division'])
+            ->tap(fn ($q) => match (request()->query('sort_institusi', 'name_asc')) {
+                'name_desc' => $q->orderByDesc('name'),
+                'region_asc' => $q->orderBy($this->directoryScopeOrderExpression('institutions'))->orderBy('name'),
+                'region_desc' => $q->orderByDesc($this->directoryScopeOrderExpression('institutions'))->orderBy('name'),
+                default => $q->orderBy('name'),
+            })
+            ->get();
+
+        // No category column — an institution-owned social account is always fixed to the
+        // 'organisasi' category (no gereja/umum/personal picker), and the live Institusi tab
+        // table shows no such column either. No city column either — the live table doesn't show
+        // one for institutions (only name + accounts), even though Institution does have a city.
+        $rows = [];
+        foreach ($this->applyRegionFilterToEntities($institutions, 'institusi') as $institution) {
+            foreach ($institution->socials as $social) {
+                $rows[] = [$institution->name, $this->platformLabels[$social->platform->value], $social->display_handle];
+            }
+        }
+
+        return [$rows, [__('common.institution'), __('common.platform'), __('common.account')]];
+    }
+
+    /**
+     * One export row per (Divisi/Uni/Daerah, social account) pair — matches the Organisasi tab.
+     * Divisions, Unions, and Conferences are queried (and region-filtered) separately, same as
+     * directory() does, then concatenated in that same Divisi-then-Uni-then-Daerah order — a
+     * Division has no union_id/conference_id column of its own, so (unlike Union/Conference) it
+     * is never narrowed by the union_id/conference_id filter at all, exactly as the live page's
+     * own comment on this explains.
+     */
+    private function directoryOrganizationRows(string $search, \Closure $socialsFilter): array
+    {
+        $sortOrganisasi = request()->query('sort_organisasi', 'name_asc');
+        $hideEmpty = request()->boolean('hide_empty_organizations');
+        $sortDirection = $sortOrganisasi === 'name_desc' ? 'desc' : 'asc';
+
+        $divisions = Division::query()
+            ->where('is_active', true)
+            ->when($search, fn ($q) => $q->where('name', 'like', "%{$search}%"))
+            ->when($hideEmpty, fn ($q) => $q->whereHas('socials', $socialsFilter))
+            ->with(['socials' => $socialsFilter])
+            ->orderBy('name', $sortDirection)
+            ->get();
+
+        $unions = Union::query()
+            ->where('is_active', true)
+            ->when($search, fn ($q) => $q->where('name', 'like', "%{$search}%"))
+            ->when($hideEmpty, fn ($q) => $q->whereHas('socials', $socialsFilter))
+            ->with(['socials' => $socialsFilter, 'division'])
+            ->orderBy('name', $sortDirection)
+            ->get();
+        $unions = $this->applyRegionFilterToEntities($unions, 'organisasi');
+
+        $conferences = Conference::query()
+            ->where('is_active', true)
+            ->when($search, fn ($q) => $q->where('name', 'like', "%{$search}%"))
+            ->when($hideEmpty, fn ($q) => $q->whereHas('socials', $socialsFilter))
+            ->with(['socials' => $socialsFilter, 'union.division'])
+            ->orderBy('name', $sortDirection)
+            ->get();
+        $conferences = $this->applyRegionFilterToEntities($conferences, 'organisasi');
+
+        $organizations = $divisions->concat($unions)->concat($conferences);
+
+        $rows = [];
+        foreach ($organizations as $organization) {
+            $level = match (true) {
+                $organization instanceof Division => __('analytics.organization_level_division'),
+                $organization instanceof Union => __('analytics.organization_level_union'),
+                default => __('analytics.organization_level_conference'),
+            };
+
+            foreach ($organization->socials as $social) {
+                $rows[] = [$organization->name, $level, $this->platformLabels[$social->platform->value], $social->display_handle];
+            }
+        }
+
+        return [$rows, [__('comparison.organization_name_label'), __('export.col_level'), __('common.platform'), __('common.account')]];
+    }
+
+    /**
+     * Matches Perbandingan Hastag's own posts list — one row per post, same hashtag/platform/
+     * Uni-Daerah filters as the live page (see BuildsLeaderboards::applyHashtagRegionFilter()),
+     * ordered the same way (most recent first). The live page also shows a grand-total summary
+     * table above the post list, but that's an aggregate of THIS SAME data — exporting the
+     * underlying rows lets whoever downloads it re-aggregate however they need, rather than
+     * flattening two very differently-shaped tables into one export.
+     */
+    private function hashtagDataset(?string $selectedHashtagId, ?string $selectedPlatform): array
+    {
+        $isUniView = $this->isUniView();
+        $selectedUnionId = $isUniView ? (string) auth()->user()->union_id : request()->query('union_id');
+        $selectedConferenceId = request()->query('conference_id');
+
+        $posts = HashtagPost::query()
+            ->with(['hashtag', 'churchSocial'])
+            ->when($selectedHashtagId, fn ($q) => $q->where('hashtag_id', $selectedHashtagId))
+            ->when($selectedPlatform, fn ($q) => $q->where('platform', $selectedPlatform))
+            ->tap(fn ($q) => $this->applyHashtagRegionFilter($q, $selectedUnionId, $selectedConferenceId))
+            ->orderByDesc('posted_at')
+            ->get();
+
+        $rows = $posts->map(fn ($post) => [
+            $this->platformLabels[$post->platform->value],
+            $post->hashtag->display_tag,
+            $post->churchSocial?->display_name ?? ($post->author_handle ?? '—'),
+            $post->caption ?? '—',
+            $post->likes_count !== null ? number_format($post->likes_count) : '—',
+            $post->views_count !== null ? number_format($post->views_count) : '—',
+            $post->posted_at?->translatedFormat('d M Y') ?? '—',
+        ])->all();
+
+        $selectedHashtag = $selectedHashtagId ? Hashtag::find($selectedHashtagId) : null;
+        $scopeLabel = $selectedHashtag ? $selectedHashtag->display_tag : __('hashtag.all_hashtags');
+
+        $subtitle = $selectedPlatform
+            ? __('export.directory_subtitle_with_platform', ['platform' => $this->platformLabels[$selectedPlatform], 'scope' => $scopeLabel])
+            : __('export.directory_subtitle_no_platform', ['scope' => $scopeLabel]);
+
+        return [
+            'title' => __('hashtag.comparison_title'),
+            'subtitle' => $subtitle,
+            'headers' => [__('common.platform'), __('hashtag.col_tag'), __('hashtag.col_author'), __('hashtag.col_caption'), __('hashtag.col_likes'), __('common.metric_views'), __('hashtag.col_posted_at')],
             'rows' => $rows,
         ];
     }

@@ -3,6 +3,26 @@
     $hasDirectoryFilters = $selectedPlatform || $search || $autoFetch || $hideEmptyChurches || $hideEmptyPeople || $hideEmptyInstitutions || $hideEmptyOrganizations || $selectedUnionId || $selectedConferenceId || $sortGereja !== 'name_asc' || $sortInstitusi !== 'name_asc' || $sortPersonal !== 'name_asc' || $sortOrganisasi !== 'name_asc';
     $filterActiveClass = 'border-blue-600 bg-blue-50 text-blue-900 dark:border-blue-500 dark:bg-blue-950/40 dark:text-blue-200';
     $filterInactiveClass = 'border-black/10 bg-slate-50 text-slate-700 hover:bg-slate-100 dark:border-white/10 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700';
+    // Every filter currently active on whichever tab is open — ExportController::directoryDataset()
+    // reads these straight off the export request itself (see that method's doc comment), so the
+    // export button has to carry all of them forward, not just 'type', for the download to match
+    // what this tab is actually showing right now.
+    $exportParams = array_filter([
+        'type' => $activeTab,
+        'platform' => $selectedPlatform,
+        'search' => $search,
+        'auto_fetch' => $autoFetch,
+        'hide_empty_churches' => $hideEmptyChurches ? 1 : null,
+        'hide_empty_people' => $hideEmptyPeople ? 1 : null,
+        'hide_empty_institutions' => $hideEmptyInstitutions ? 1 : null,
+        'hide_empty_organizations' => $hideEmptyOrganizations ? 1 : null,
+        'sort_gereja' => $sortGereja !== 'name_asc' ? $sortGereja : null,
+        'sort_institusi' => $sortInstitusi !== 'name_asc' ? $sortInstitusi : null,
+        'sort_personal' => $sortPersonal !== 'name_asc' ? $sortPersonal : null,
+        'sort_organisasi' => $sortOrganisasi !== 'name_asc' ? $sortOrganisasi : null,
+        'union_id' => $selectedUnionId,
+        'conference_id' => $selectedConferenceId,
+    ]);
 @endphp
 
 @extends('layouts.app')
@@ -12,9 +32,14 @@
 @section('content')
     <x-back-link :href="route('churches.index')">{{ __('common.back_to_dashboard') }}</x-back-link>
 
-    <div class="mb-6">
-        <h1 class="mb-1 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{{ __('nav.directory') }}</h1>
-        <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('directory.subtitle') }}</p>
+    <div class="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <div>
+            <h1 class="mb-1 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{{ __('nav.directory') }}</h1>
+            <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('directory.subtitle') }}</p>
+        </div>
+        @can('browse-directory-analytics')
+            <x-export-button :url="route('export.directory.preview', $exportParams)" />
+        @endcan
     </div>
 
     <x-tab-bar>
