@@ -1058,10 +1058,16 @@ class ExportController extends Controller
     {
         $rows = [];
 
+        // No visibleTo() here — the Direktori page itself is deliberately public/unscoped (see
+        // ChurchDashboardController::directory()'s own doc comment: "every account visible to
+        // anyone browsing it, not scoped to the viewer's own admin region"). A visibleTo() call
+        // here was a confirmed bug: it made this export return nothing at all for a plain member
+        // (role === null, which visibleTo() treats as "sees nothing") and only the exporting
+        // admin's own narrow region for everyone else, when the page it's exporting shows
+        // everyone the same full, unscoped list.
         if ($type !== 'personal') {
             $churches = Church::query()
                 ->where('is_active', true)
-                ->visibleTo(auth()->user())
                 ->with(['socials' => fn ($q) => $q
                     ->where('is_active', true)
                     ->when($platform, fn ($query) => $query->where('platform', $platform)),
@@ -1089,7 +1095,6 @@ class ExportController extends Controller
         if ($type !== 'gereja') {
             $people = Person::query()
                 ->where('is_active', true)
-                ->visibleTo(auth()->user())
                 ->with(['socials' => fn ($q) => $q
                     ->where('is_active', true)
                     ->when($platform, fn ($query) => $query->where('platform', $platform)),
@@ -1509,9 +1514,9 @@ class ExportController extends Controller
 
     private function analyticsDatasetInstitution(?string $institutionId, ?string $platform): array
     {
-        $institutions = Institution::query()
-            ->where('is_active', true)
-            ->visibleTo(auth()->user())
+        // analyticsInstitutionScope() (BuildsLeaderboards), not a plain visibleTo() — same
+        // bug/fix as analyticsDataset() above.
+        $institutions = $this->analyticsInstitutionScope(Institution::query()->where('is_active', true))
             ->with(['socials' => fn ($q) => $q->where('is_active', true)->with('latestStat')])
             ->when($institutionId, fn ($q) => $q->where('id', $institutionId))
             ->orderBy('name')
@@ -1561,9 +1566,13 @@ class ExportController extends Controller
 
     private function analyticsDataset(?string $churchId, ?string $platform, ?string $category = null): array
     {
-        $churches = Church::query()
-            ->where('is_active', true)
-            ->visibleTo(auth()->user())
+        // analyticsChurchScope() (BuildsLeaderboards), not a plain visibleTo() — that plain call
+        // was a confirmed bug: it returned an empty result for a plain member (role === null,
+        // which visibleTo() treats as "sees nothing") and only the viewer's own single church
+        // for admin_gereja, when the live Analitik & Grafik page this mirrors deliberately widens
+        // both cases (a plain member sees everything unscoped, admin_gereja sees their whole
+        // Daerah/Konferens) — see analyticsChurchScope()'s own doc comment for why.
+        $churches = $this->analyticsChurchScope(Church::query()->where('is_active', true))
             ->with(['socials' => fn ($q) => $q->where('is_active', true)->with('latestStat')])
             ->when($churchId, fn ($q) => $q->where('id', $churchId))
             ->orderBy('name')
@@ -1621,9 +1630,9 @@ class ExportController extends Controller
 
     private function analyticsDatasetPersonal(?string $personId, ?string $platform): array
     {
-        $people = Person::query()
-            ->where('is_active', true)
-            ->visibleTo(auth()->user())
+        // analyticsPersonScope() (BuildsLeaderboards), not a plain visibleTo() — same bug/fix as
+        // analyticsDataset() above.
+        $people = $this->analyticsPersonScope(Person::query()->where('is_active', true))
             ->with(['socials' => fn ($q) => $q->where('is_active', true)->with('latestStat')])
             ->when($personId, fn ($q) => $q->where('id', $personId))
             ->orderBy('name')
