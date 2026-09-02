@@ -55,6 +55,11 @@
 
             list.style.position = 'fixed';
             list.style.left = inputRect.left + 'px';
+            // The list's own `w-full` Tailwind class resolves against the viewport once
+            // position:fixed takes it out of its relative-positioned wrapper's flow (that's
+            // what w-full's 100% used to be relative to) — width has to be set here explicitly,
+            // to match the search input, or the list balloons to (almost) the full page width.
+            list.style.width = inputRect.width + 'px';
             list.style.top = openUpward ? 'auto' : (inputRect.bottom + 4) + 'px';
             list.style.bottom = openUpward ? (window.innerHeight - inputRect.top + 4) + 'px' : 'auto';
         }
@@ -220,9 +225,20 @@
         var currentUnionId = unionWrapper.querySelector('[data-searchable-select-value]').getAttribute('value');
 
         var unionCtl = window.initSearchableSelect(unionWrapper, {
+            // Picking a Daerah BEFORE a Uni, then picking the Uni afterward, used to silently
+            // wipe that already-chosen Daerah back to blank — setOptions() below always resets
+            // the conference field's own value, regardless of whether the Daerah picked earlier
+            // is still perfectly valid under the newly-picked Uni. Carrying it forward when it
+            // is (re-presetting it right after) makes filling the two fields in either order
+            // behave the same, instead of punishing whoever fills Daerah first.
             onChange: function (unionId) {
+                var previousConferenceId = conferenceCtl.getValue();
                 var filtered = unionId ? opts.conferences.filter(function (c) { return String(c.union_id) === String(unionId); }) : [];
                 conferenceCtl.setOptions(filtered, unionId ? opts.conferencePlaceholder : opts.conferenceWaitingPlaceholder);
+                if (previousConferenceId) {
+                    var stillValid = filtered.find(function (c) { return String(c.id) === String(previousConferenceId); });
+                    if (stillValid) conferenceCtl.preset(stillValid.id, stillValid.label);
+                }
                 externalOnChange(unionId);
             },
         });

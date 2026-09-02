@@ -84,6 +84,7 @@
                     @endif
 
                     <x-form-field id="person_city" name="city" :label="__('entity.city')" :hint="__('entity.city_optional_map')" :value="old('city', $person->city)" />
+                    <x-form-field id="person_country" name="country" :label="__('entity.country')" :hint="__('entity.country_optional')" :value="old('country', $person->country)" :placeholder="__('entity.country_placeholder')" />
                     <x-coordinate-fields :latitude="$person->latitude" :longitude="$person->longitude" />
                 </div>
 
@@ -98,7 +99,14 @@
                             'unions' => $unions,
                             'conferences' => $conferences,
                             'churches' => $churches,
-                            'selectedUnionId' => $person->union_id,
+                            // A Daerah-scoped Person always stores union_id as null (see
+                            // PersonController::resolveSelfReportedScope()'s "never both at
+                            // once" comment) — union_id alone would leave the Uni field blank
+                            // every time this page reloads after such a save, even though a
+                            // Daerah (and its Uni) is very much still selected. Falling back to
+                            // the chosen conference's own union_id (already eager-loaded into
+                            // $conferences above) re-derives it instead of storing it twice.
+                            'selectedUnionId' => $person->union_id ?? $conferences->firstWhere('id', $person->conference_id)?->union_id,
                             'selectedConferenceId' => $person->conference_id,
                             'selectedChurchName' => $person->church?->name,
                         ])
