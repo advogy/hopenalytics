@@ -26,6 +26,7 @@ return [
     'analytics_title' => 'Analytics & Charts',
     'col_level' => 'Level',
     'col_account_count' => 'Account Count',
+    'col_score' => 'Score',
     'directory_scope_all' => 'all churches and personal accounts',
     'directory_subtitle_with_platform' => ':platform — :scope',
     'directory_subtitle_no_platform' => ':scope',

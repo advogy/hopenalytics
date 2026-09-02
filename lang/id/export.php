@@ -26,6 +26,7 @@ return [
     'analytics_title' => 'Analitik & Grafik',
     'col_level' => 'Level',
     'col_account_count' => 'Jumlah Akun',
+    'col_score' => 'Skor',
     'directory_scope_all' => 'semua gereja dan personal',
     'directory_subtitle_with_platform' => ':platform — :scope',
     'directory_subtitle_no_platform' => ':scope',

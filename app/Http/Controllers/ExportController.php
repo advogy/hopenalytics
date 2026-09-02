@@ -664,6 +664,19 @@ class ExportController extends Controller
         return __('export.total_label', ['metric' => $metricTitle]);
     }
 
+    /**
+     * Same "+X.X%" / "X.X%" / "—" formatting as partials/growth-score-row.blade.php's own
+     * `{{ $value > 0 ? '+' : '' }}{{ number_format($value, 1) }}%` — used by
+     * metricComparisonDataset() and its Personal/Institution/Organization counterparts, which
+     * now mirror that same growth-score-card content instead of a leaderboard table (see this
+     * commit's own message for why: the export used to build a completely different report —
+     * a per-metric leaderboard — than what the live "Perbandingan Metrik" page actually shows).
+     */
+    private function formatPercent(?float $value): string
+    {
+        return $value === null ? '—' : ($value > 0 ? '+' : '').number_format($value, 1).'%';
+    }
+
     private function leaderboardHeaders(string $entityColumn): array
     {
         return ['#', $entityColumn, __('common.platform'), __('common.account'), __('comparison.growth'), __('export.col_current')];
@@ -723,81 +736,62 @@ class ExportController extends Controller
         ];
     }
 
+    /**
+     * Matches churches/metric-comparison.blade.php's actual content — the composite weekly
+     * growth SCORE per church (growthScoreRows()), not a per-metric leaderboard. $sortBy is
+     * unused: unlike the leaderboard/platform-comparison pages, "Perbandingan Metrik" has no
+     * value/delta sort toggle at all — it's always ranked by score, same as the live page.
+     */
     private function metricComparisonDataset(string $sortBy = 'delta', ?string $category = null): array
     {
-        $titles = $this->leaderboardTitles();
-        $activeSocials = $this->applyRegionFilter($this->activeSocials(category: $category), 'gereja');
-
-        $rows = [];
-        $totals = [];
-
-        foreach ($titles as $metric => $title) {
-            [$socials, $field] = $this->metricDefinition($metric, $activeSocials);
-            $metricRows = $this->buildLeaderboard($socials, $field, null, $sortBy);
-            $totals[$metric] = $metricRows->sum('latest');
-
-            foreach ($metricRows->values() as $i => $row) {
-                $rows[] = [
-                    $title['title'],
-                    $i + 1,
-                    $row['social']->church->name,
-                    $this->platformLabels[$row['social']->platform->value],
-                    $row['social']->display_handle,
-                    ($row['delta'] > 0 ? '+' : '').number_format($row['delta']),
-                    number_format($row['latest']),
-                ];
-            }
-        }
-
-        $subtitle = $sortBy === 'value'
-            ? __('comparison.metric_comparison_subtitle_value', ['scope' => __('comparison.for_all_churches')])
-            : __('comparison.metric_comparison_subtitle_delta', ['scope' => __('comparison.for_all_churches')]);
+        $scoreRows = $this->applyRegionFilterToRows($this->growthScoreRows(category: $category), 'gereja');
 
         return [
             'title' => __('comparison.metric_comparison_title', ['label' => __('common.church')]),
-            'subtitle' => $subtitle,
-            'headers' => [__('export.col_metric'), '#', __('common.church'), __('common.platform'), __('common.account'), __('comparison.growth'), __('export.col_current')],
-            'rows' => $rows,
-            'summary' => collect($titles)->map(fn ($title, $metric) => ['label' => $this->totalLabel($title['title']), 'value' => number_format($totals[$metric] ?? 0)])->values()->all(),
+            'subtitle' => __('comparison.metric_comparison_subtitle_score', ['scope' => __('comparison.for_all_churches')]),
+            'headers' => [
+                '#', __('common.church'), __('entity.city'), __('export.col_account_count'),
+                __('common.metric_reach'), __('common.metric_views'), __('common.metric_likes'), __('common.metric_posts'),
+                __('export.col_score'),
+            ],
+            'rows' => $scoreRows->values()->map(fn ($row, $i) => [
+                $i + 1,
+                $row['church']->name,
+                $row['church']->city ?? '—',
+                $row['accountCount'],
+                $this->formatPercent($row['metrics']['reach'] ?? null),
+                $this->formatPercent($row['metrics']['views'] ?? null),
+                $this->formatPercent($row['metrics']['likes'] ?? null),
+                $this->formatPercent($row['metrics']['posts'] ?? null),
+                $this->formatPercent($row['score']),
+            ])->all(),
         ];
     }
 
+    /** Same "match the live page's actual content" fix as metricComparisonDataset() — see its own doc comment. */
     private function metricComparisonDatasetPersonal(string $sortBy = 'delta'): array
     {
-        $titles = $this->leaderboardTitles();
-        $activeSocials = $this->applyRegionFilter($this->activeSocialsPersonal(), 'personal');
-
-        $rows = [];
-        $totals = [];
-
-        foreach ($titles as $metric => $title) {
-            [$socials, $field] = $this->metricDefinition($metric, $activeSocials);
-            $metricRows = $this->buildLeaderboard($socials, $field, null, $sortBy);
-            $totals[$metric] = $metricRows->sum('latest');
-
-            foreach ($metricRows->values() as $i => $row) {
-                $rows[] = [
-                    $title['title'],
-                    $i + 1,
-                    $row['social']->person->name,
-                    $this->platformLabels[$row['social']->platform->value],
-                    $row['social']->display_handle,
-                    ($row['delta'] > 0 ? '+' : '').number_format($row['delta']),
-                    number_format($row['latest']),
-                ];
-            }
-        }
-
-        $subtitle = $sortBy === 'value'
-            ? __('comparison.metric_comparison_subtitle_value', ['scope' => __('comparison.for_all_personal')])
-            : __('comparison.metric_comparison_subtitle_delta', ['scope' => __('comparison.for_all_personal')]);
+        $scoreRows = $this->applyRegionFilterToRows($this->growthScoreRowsPersonal(), 'personal');
 
         return [
             'title' => __('comparison.metric_comparison_title', ['label' => __('common.personal')]),
-            'subtitle' => $subtitle,
-            'headers' => [__('export.col_metric'), '#', __('common.name'), __('common.platform'), __('common.account'), __('comparison.growth'), __('export.col_current')],
-            'rows' => $rows,
-            'summary' => collect($titles)->map(fn ($title, $metric) => ['label' => $this->totalLabel($title['title']), 'value' => number_format($totals[$metric] ?? 0)])->values()->all(),
+            'subtitle' => __('comparison.metric_comparison_subtitle_score', ['scope' => __('comparison.for_all_personal')]),
+            'headers' => [
+                '#', __('common.name'), __('entity.city'), __('export.col_account_count'),
+                __('common.metric_reach'), __('common.metric_views'), __('common.metric_likes'), __('common.metric_posts'),
+                __('export.col_score'),
+            ],
+            'rows' => $scoreRows->values()->map(fn ($row, $i) => [
+                $i + 1,
+                $row['person']->name,
+                $row['person']->city ?? '—',
+                $row['accountCount'],
+                $this->formatPercent($row['metrics']['reach'] ?? null),
+                $this->formatPercent($row['metrics']['views'] ?? null),
+                $this->formatPercent($row['metrics']['likes'] ?? null),
+                $this->formatPercent($row['metrics']['posts'] ?? null),
+                $this->formatPercent($row['score']),
+            ])->all(),
         ];
     }
 
@@ -828,42 +822,30 @@ class ExportController extends Controller
         ];
     }
 
+    /** Same "match the live page's actual content" fix as metricComparisonDataset() — see its own doc comment. */
     private function metricComparisonDatasetInstitution(string $sortBy = 'delta'): array
     {
-        $titles = $this->leaderboardTitles();
-        $activeSocials = $this->applyRegionFilter($this->activeSocialsInstitution(), 'institusi');
-
-        $rows = [];
-        $totals = [];
-
-        foreach ($titles as $metric => $title) {
-            [$socials, $field] = $this->metricDefinition($metric, $activeSocials);
-            $metricRows = $this->buildLeaderboard($socials, $field, null, $sortBy);
-            $totals[$metric] = $metricRows->sum('latest');
-
-            foreach ($metricRows->values() as $i => $row) {
-                $rows[] = [
-                    $title['title'],
-                    $i + 1,
-                    $row['social']->institution->name,
-                    $this->platformLabels[$row['social']->platform->value],
-                    $row['social']->display_handle,
-                    ($row['delta'] > 0 ? '+' : '').number_format($row['delta']),
-                    number_format($row['latest']),
-                ];
-            }
-        }
-
-        $subtitle = $sortBy === 'value'
-            ? __('comparison.metric_comparison_subtitle_value', ['scope' => __('comparison.for_all_institutions')])
-            : __('comparison.metric_comparison_subtitle_delta', ['scope' => __('comparison.for_all_institutions')]);
+        $scoreRows = $this->applyRegionFilterToRows($this->growthScoreRowsInstitution(), 'institusi');
 
         return [
             'title' => __('comparison.metric_comparison_title', ['label' => __('common.institution')]),
-            'subtitle' => $subtitle,
-            'headers' => [__('export.col_metric'), '#', __('common.institution'), __('common.platform'), __('common.account'), __('comparison.growth'), __('export.col_current')],
-            'rows' => $rows,
-            'summary' => collect($titles)->map(fn ($title, $metric) => ['label' => $this->totalLabel($title['title']), 'value' => number_format($totals[$metric] ?? 0)])->values()->all(),
+            'subtitle' => __('comparison.metric_comparison_subtitle_score', ['scope' => __('comparison.for_all_institutions')]),
+            'headers' => [
+                '#', __('common.institution'), __('entity.city'), __('export.col_account_count'),
+                __('common.metric_reach'), __('common.metric_views'), __('common.metric_likes'), __('common.metric_posts'),
+                __('export.col_score'),
+            ],
+            'rows' => $scoreRows->values()->map(fn ($row, $i) => [
+                $i + 1,
+                $row['institution']->name,
+                $row['institution']->city ?? '—',
+                $row['accountCount'],
+                $this->formatPercent($row['metrics']['reach'] ?? null),
+                $this->formatPercent($row['metrics']['views'] ?? null),
+                $this->formatPercent($row['metrics']['likes'] ?? null),
+                $this->formatPercent($row['metrics']['posts'] ?? null),
+                $this->formatPercent($row['score']),
+            ])->all(),
         ];
     }
 
@@ -899,42 +881,33 @@ class ExportController extends Controller
         ];
     }
 
+    /**
+     * Same "match the live page's actual content" fix as metricComparisonDataset() — see its
+     * own doc comment. No City column here (unlike the other three scopes) — Division/Union/
+     * Conference have no city of their own.
+     */
     private function metricComparisonDatasetOrganization(string $sortBy = 'delta'): array
     {
-        $titles = $this->leaderboardTitles();
-        $activeSocials = $this->applyRegionFilter($this->activeSocialsOrganization(), 'organisasi');
-
-        $rows = [];
-        $totals = [];
-
-        foreach ($titles as $metric => $title) {
-            [$socials, $field] = $this->metricDefinition($metric, $activeSocials);
-            $metricRows = $this->buildLeaderboard($socials, $field, null, $sortBy);
-            $totals[$metric] = $metricRows->sum('latest');
-
-            foreach ($metricRows->values() as $i => $row) {
-                $rows[] = [
-                    $title['title'],
-                    $i + 1,
-                    $row['social']->division?->name ?? $row['social']->union?->name ?? $row['social']->conference?->name,
-                    $this->platformLabels[$row['social']->platform->value],
-                    $row['social']->display_handle,
-                    ($row['delta'] > 0 ? '+' : '').number_format($row['delta']),
-                    number_format($row['latest']),
-                ];
-            }
-        }
-
-        $subtitle = $sortBy === 'value'
-            ? __('comparison.metric_comparison_subtitle_value', ['scope' => __('comparison.for_all_organizations')])
-            : __('comparison.metric_comparison_subtitle_delta', ['scope' => __('comparison.for_all_organizations')]);
+        $scoreRows = $this->applyRegionFilterToRows($this->growthScoreRowsOrganization(), 'organisasi');
 
         return [
             'title' => __('comparison.metric_comparison_title', ['label' => __('comparison.organization_label')]),
-            'subtitle' => $subtitle,
-            'headers' => [__('export.col_metric'), '#', __('comparison.organization_label'), __('common.platform'), __('common.account'), __('comparison.growth'), __('export.col_current')],
-            'rows' => $rows,
-            'summary' => collect($titles)->map(fn ($title, $metric) => ['label' => $this->totalLabel($title['title']), 'value' => number_format($totals[$metric] ?? 0)])->values()->all(),
+            'subtitle' => __('comparison.metric_comparison_subtitle_score', ['scope' => __('comparison.for_all_organizations')]),
+            'headers' => [
+                '#', __('comparison.organization_label'), __('export.col_account_count'),
+                __('common.metric_reach'), __('common.metric_views'), __('common.metric_likes'), __('common.metric_posts'),
+                __('export.col_score'),
+            ],
+            'rows' => $scoreRows->values()->map(fn ($row, $i) => [
+                $i + 1,
+                $row['organization']->name,
+                $row['accountCount'],
+                $this->formatPercent($row['metrics']['reach'] ?? null),
+                $this->formatPercent($row['metrics']['views'] ?? null),
+                $this->formatPercent($row['metrics']['likes'] ?? null),
+                $this->formatPercent($row['metrics']['posts'] ?? null),
+                $this->formatPercent($row['score']),
+            ])->all(),
         ];
     }
 
