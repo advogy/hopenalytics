@@ -161,16 +161,23 @@ class AppServiceProvider extends ServiceProvider
             && in_array($user->role->level(), [null, 'global', 'nasional', 'divisi', 'uni', 'daerah'], true));
 
         // Viewing Analytics & Statistik (as opposed to exporting it — browse-directory-
-        // analytics above) is open to a plain member, admin_gereja, admin_daerah, and
-        // admin_uni too, per the user's explicit call — "so information still gets through,
-        // people can see progress, within their own limits". Only Pimpinan (read-only) roles
-        // stay excluded; they weren't named. What each of these newly-included viewers
-        // actually sees is scoped separately by BuildsLeaderboards::analyticsChurchScope()/
-        // analyticsPersonScope() — a plain member sees everything unscoped (they have no
-        // region), admin_gereja sees their whole Daerah/Konferens (same breadth as
-        // admin_daerah, not just their one church), everyone else keeps their normal
-        // visibleTo() scope.
-        Gate::define('view-analytics', fn (User $user) => $user->role === null || ! $user->role->isReadOnly());
+        // analytics above) is open to literally every authenticated user — a plain member,
+        // admin_gereja, admin_daerah, admin_uni, and so on, per the user's explicit call — "so
+        // information still gets through, people can see progress, within their own limits".
+        // Every Pimpinan (read-only) role belongs here too — confirmed as a bug: they'd been
+        // left out of the original allow-list (simply never named, not deliberately excluded),
+        // which meant a Pimpinan Nasional/Uni/etc. — a role that exists specifically to VIEW
+        // leadership-level data — had less access to Analytics than a plain unassigned member.
+        // Being read-only never mattered here in the first place: this gate is about viewing,
+        // not editing, and every write action elsewhere already has its own non-read-only check
+        // (manage-people, manage-hierarchy, ...). What each viewer actually sees is scoped
+        // separately by BuildsLeaderboards::analyticsChurchScope()/analyticsPersonScope() (and
+        // Church/Person/Institution::scopeVisibleTo(), which a Pimpinan role scopes through
+        // identically to its Admin counterpart at the same level — level() doesn't distinguish
+        // them) — a plain member sees everything unscoped (they have no region), admin_gereja
+        // sees their whole Daerah/Konferens (same breadth as admin_daerah, not just their one
+        // church), everyone else keeps their normal visibleTo() scope.
+        Gate::define('view-analytics', fn (User $user) => true);
 
         // Just *viewing* the directory (as opposed to exporting it, or the fuller Analytics
         // page) is open to literally any logged-in member — including plain, unassigned ones
