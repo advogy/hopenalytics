@@ -325,7 +325,7 @@
                 </a>
             </div>
             @can('browse-directory-analytics')
-                <x-export-button :url="route('export.organization-analytics.preview', array_filter(['organization_id' => $selectedOrganizationKey, 'platform' => $selectedPlatform]))" />
+                <x-export-button :url="route('export.organization-analytics.preview', array_filter(['organization_id' => $selectedOrganizationKey, 'platform' => $selectedPlatform, 'union_id' => $selectedUnionId, 'conference_id' => $selectedConferenceId]))" />
             @endcan
         </div>
 
@@ -543,7 +543,7 @@
                 </a>
             </div>
             @can('browse-directory-analytics')
-                <x-export-button :url="route('export.analytics.preview', array_filter(['church_id' => $selectedChurchId, 'platform' => $selectedPlatform, 'category' => $selectedCategory]))" />
+                <x-export-button :url="route('export.analytics.preview', array_filter(['church_id' => $selectedChurchId, 'platform' => $selectedPlatform, 'category' => $selectedCategory, 'union_id' => $selectedUnionId, 'conference_id' => $selectedConferenceId]))" />
             @endcan
         </div>
 
@@ -766,7 +766,7 @@
                 </a>
             </div>
             @can('browse-directory-analytics')
-                <x-export-button :url="route('export.institution-analytics.preview', array_filter(['institution_id' => $selectedInstitutionId, 'platform' => $selectedPlatform]))" />
+                <x-export-button :url="route('export.institution-analytics.preview', array_filter(['institution_id' => $selectedInstitutionId, 'platform' => $selectedPlatform, 'union_id' => $selectedUnionId, 'conference_id' => $selectedConferenceId]))" />
             @endcan
         </div>
 
@@ -977,7 +977,7 @@
                 </a>
             </div>
             @can('browse-directory-analytics')
-                <x-export-button :url="route('export.personal-analytics.preview', array_filter(['person_id' => $selectedPersonId, 'platform' => $selectedPlatform]))" />
+                <x-export-button :url="route('export.personal-analytics.preview', array_filter(['person_id' => $selectedPersonId, 'platform' => $selectedPlatform, 'union_id' => $selectedUnionId, 'conference_id' => $selectedConferenceId]))" />
             @endcan
         </div>
 

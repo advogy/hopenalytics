@@ -3,6 +3,8 @@
 @section('title', $title . $scope->titleSuffix() . ' — ' . config('app.name'))
 
 @section('content')
+    @php $regionParams = array_filter(['union_id' => $selectedUnionId, 'conference_id' => $selectedConferenceId]); @endphp
+
     <x-back-link :href="$scope->leaderboardBackUrl()">{{ $scope->leaderboardBackLabel() }}</x-back-link>
 
     <div class="mb-6 flex flex-wrap items-start justify-between gap-3">
@@ -18,11 +20,9 @@
             </p>
         </div>
         @can('browse-directory-analytics')
-            <x-export-button :url="$scope->exportLeaderboardUrl(array_filter(['metric' => $metric, 'sort' => $sort === 'value' ? 'value' : null, 'category' => $selectedCategory ?? null]))" />
+            <x-export-button :url="$scope->exportLeaderboardUrl(array_merge($regionParams, array_filter(['metric' => $metric, 'sort' => $sort === 'value' ? 'value' : null, 'category' => $selectedCategory ?? null])))" />
         @endcan
     </div>
-
-    @php $regionParams = array_filter(['union_id' => $selectedUnionId, 'conference_id' => $selectedConferenceId]); @endphp
 
     <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div class="flex flex-wrap gap-2">

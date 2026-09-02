@@ -14,6 +14,7 @@ use App\Models\Union;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Response;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -571,6 +572,77 @@ class ExportController extends Controller
     }
 
     /**
+     * Narrows an activeSocials()-shaped collection (raw ChurchSocial rows) to the same Uni/
+     * Daerah the equivalent live page's own region filter would — confirmed missing here
+     * entirely (a dedicated audit found every leaderboard/metric-comparison/platform-comparison/
+     * platform-overview export ignoring union_id/conference_id across all four scopes, so an
+     * export triggered from a filtered page silently reverted to the exporter's FULL region
+     * instead of the narrower one they were actually looking at). Reads the filter straight off
+     * the request rather than threading it through every dataset method's signature — every
+     * caller already runs inside the same preview/download request these query params arrived
+     * on. Reuses BuildsLeaderboards::matchesRegionFilter() — the exact same closure the live
+     * pages already filter their own rows with — rather than reimplementing the Church/Person/
+     * Institution/Union/Conference/Division entity-resolution chain a second time.
+     */
+    private function applyRegionFilter(Collection $socials, string $scope): Collection
+    {
+        return $this->regionFilterFor($scope)($socials, fn ($social) => match ($scope) {
+            'gereja' => $social->church,
+            'personal' => $social->person,
+            'institusi' => $social->institution,
+            'organisasi' => $social->division ?? $social->union ?? $social->conference,
+        });
+    }
+
+    /**
+     * Same idea as applyRegionFilter() above, but for a Collection of the trait's own
+     * ['church'|'person'|'institution'|'organization' => entity, ...] comparison rows (see
+     * BuildsLeaderboards::metricComparisonRows()/metricComparisonRowsPersonal()/
+     * metricComparisonRowsInstitution()/metricComparisonRowsOrganization()) instead of raw
+     * ChurchSocial models — used by the platform-overview/platform-comparison datasets, which
+     * build off those row shapes rather than activeSocials() directly.
+     */
+    private function applyRegionFilterToRows(Collection $rows, string $scope): Collection
+    {
+        $rowKey = match ($scope) {
+            'gereja' => 'church',
+            'personal' => 'person',
+            'institusi' => 'institution',
+            'organisasi' => 'organization',
+        };
+
+        return $this->regionFilterFor($scope)($rows, fn ($row) => $row[$rowKey]);
+    }
+
+    /**
+     * Same idea again, but for a Collection of Church/Person/Institution models directly (the
+     * item itself IS the entity to match) — used by analyticsDataset()/analyticsDatasetPersonal()/
+     * analyticsDatasetInstitution(), which mirror ChurchDashboardController::analytics()'s own
+     * ->filter($matchesRegionFilter) call on its $churches/$people/$institutions collections.
+     */
+    private function applyRegionFilterToEntities(Collection $entities, string $scope): Collection
+    {
+        return $this->regionFilterFor($scope)($entities, fn ($entity) => $entity);
+    }
+
+    /** @return \Closure(Collection, \Closure): Collection */
+    private function regionFilterFor(string $scope): \Closure
+    {
+        $unionId = request()->query('union_id');
+        $conferenceId = request()->query('conference_id');
+
+        if (! $unionId && ! $conferenceId) {
+            return fn (Collection $items) => $items;
+        }
+
+        $matches = $this->matchesRegionFilter($unionId, $conferenceId);
+
+        return fn (Collection $items, \Closure $entityOf) => $items
+            ->filter(fn ($item) => ($entity = $entityOf($item)) !== null && $matches($entity))
+            ->values();
+    }
+
+    /**
      * The handful of sentence/label shapes repeated verbatim across the ~15 dataset-building
      * methods below — extracted once here so each shape only needs translating in one place
      * (see ExportController's own investigation notes: every leaderboard/metric-comparison
@@ -603,7 +675,7 @@ class ExportController extends Controller
 
         abort_unless(isset($titles[$metric]), 404);
 
-        [$socials, $field] = $this->metricDefinition($metric, $this->activeSocials(category: $category));
+        [$socials, $field] = $this->metricDefinition($metric, $this->applyRegionFilter($this->activeSocials(category: $category), 'gereja'));
         $rows = $this->buildLeaderboard($socials, $field, null, $sortBy);
 
         $title = $this->growthPrefixedTitle($titles[$metric]['title'], $sortBy);
@@ -630,7 +702,7 @@ class ExportController extends Controller
 
         abort_unless(isset($titles[$metric]), 404);
 
-        [$socials, $field] = $this->metricDefinition($metric, $this->activeSocialsPersonal());
+        [$socials, $field] = $this->metricDefinition($metric, $this->applyRegionFilter($this->activeSocialsPersonal(), 'personal'));
         $rows = $this->buildLeaderboard($socials, $field, null, $sortBy);
 
         $title = $this->growthPrefixedTitle($titles[$metric]['title'], $sortBy);
@@ -654,7 +726,7 @@ class ExportController extends Controller
     private function metricComparisonDataset(string $sortBy = 'delta', ?string $category = null): array
     {
         $titles = $this->leaderboardTitles();
-        $activeSocials = $this->activeSocials(category: $category);
+        $activeSocials = $this->applyRegionFilter($this->activeSocials(category: $category), 'gereja');
 
         $rows = [];
         $totals = [];
@@ -693,7 +765,7 @@ class ExportController extends Controller
     private function metricComparisonDatasetPersonal(string $sortBy = 'delta'): array
     {
         $titles = $this->leaderboardTitles();
-        $activeSocials = $this->activeSocialsPersonal();
+        $activeSocials = $this->applyRegionFilter($this->activeSocialsPersonal(), 'personal');
 
         $rows = [];
         $totals = [];
@@ -735,7 +807,7 @@ class ExportController extends Controller
 
         abort_unless(isset($titles[$metric]), 404);
 
-        [$socials, $field] = $this->metricDefinition($metric, $this->activeSocialsInstitution());
+        [$socials, $field] = $this->metricDefinition($metric, $this->applyRegionFilter($this->activeSocialsInstitution(), 'institusi'));
         $rows = $this->buildLeaderboard($socials, $field, null, $sortBy);
 
         $title = $this->growthPrefixedTitle($titles[$metric]['title'], $sortBy);
@@ -759,7 +831,7 @@ class ExportController extends Controller
     private function metricComparisonDatasetInstitution(string $sortBy = 'delta'): array
     {
         $titles = $this->leaderboardTitles();
-        $activeSocials = $this->activeSocialsInstitution();
+        $activeSocials = $this->applyRegionFilter($this->activeSocialsInstitution(), 'institusi');
 
         $rows = [];
         $totals = [];
@@ -806,7 +878,7 @@ class ExportController extends Controller
 
         abort_unless(isset($titles[$metric]), 404);
 
-        [$socials, $field] = $this->metricDefinition($metric, $this->activeSocialsOrganization());
+        [$socials, $field] = $this->metricDefinition($metric, $this->applyRegionFilter($this->activeSocialsOrganization(), 'organisasi'));
         $rows = $this->buildLeaderboard($socials, $field, null, $sortBy);
 
         $title = $this->growthPrefixedTitle($titles[$metric]['title'], $sortBy);
@@ -830,7 +902,7 @@ class ExportController extends Controller
     private function metricComparisonDatasetOrganization(string $sortBy = 'delta'): array
     {
         $titles = $this->leaderboardTitles();
-        $activeSocials = $this->activeSocialsOrganization();
+        $activeSocials = $this->applyRegionFilter($this->activeSocialsOrganization(), 'organisasi');
 
         $rows = [];
         $totals = [];
@@ -903,7 +975,7 @@ class ExportController extends Controller
             ->keys();
 
         $rowsByMetric = $applicableMetrics->mapWithKeys(fn ($metric) => [
-            $metric => $this->metricComparisonRowsOrganization($metric, $platform)->keyBy(fn ($row) => $this->organizationKey($row['organization'])),
+            $metric => $this->applyRegionFilterToRows($this->metricComparisonRowsOrganization($metric, $platform), 'organisasi')->keyBy(fn ($row) => $this->organizationKey($row['organization'])),
         ]);
 
         $organizations = $rowsByMetric
@@ -948,7 +1020,7 @@ class ExportController extends Controller
 
     private function platformComparisonDatasetOrganization(string $platform, string $metric, string $sortBy = 'delta'): array
     {
-        $rows = $this->metricComparisonRowsOrganization($metric, $platform, $sortBy);
+        $rows = $this->applyRegionFilterToRows($this->metricComparisonRowsOrganization($metric, $platform, $sortBy), 'organisasi');
         $platformLabel = $this->platformLabels[$platform];
         $valueHeader = $this->valueHeaderLabel($metric, $platform);
 
@@ -993,7 +1065,11 @@ class ExportController extends Controller
             ->with(['socials' => fn ($q) => $q->where('is_active', true)->with('latestStat')])
             ->get();
 
-        $organizations = $divisions->concat($unions)->concat($conferences)
+        // applyRegionFilterToEntities() mirrors analytics()'s own organisasi-tab
+        // ->filter($matchesRegionFilter) on top of the specific organizationKey selection below
+        // — missing here too before this fix (a gap the audit didn't call out explicitly, but
+        // confirmed the same way as the other three tabs once checked against the live method).
+        $organizations = $this->applyRegionFilterToEntities($divisions->concat($unions)->concat($conferences), 'organisasi')
             ->sortBy('name')
             ->values()
             ->when($organizationKey, fn ($collection) => $collection->filter(fn ($org) => match ($selectedType) {
@@ -1300,7 +1376,7 @@ class ExportController extends Controller
             ->keys();
 
         $rowsByMetric = $applicableMetrics->mapWithKeys(fn ($metric) => [
-            $metric => $this->metricComparisonRows($metric, $platform, category: $category)->keyBy(fn ($row) => $row['church']->id),
+            $metric => $this->applyRegionFilterToRows($this->metricComparisonRows($metric, $platform, category: $category), 'gereja')->keyBy(fn ($row) => $row['church']->id),
         ]);
 
         $churches = $rowsByMetric
@@ -1344,7 +1420,7 @@ class ExportController extends Controller
 
     private function platformComparisonDataset(string $platform, string $metric, string $sortBy = 'delta', ?string $category = null): array
     {
-        $rows = $this->metricComparisonRows($metric, $platform, $sortBy, $category);
+        $rows = $this->applyRegionFilterToRows($this->metricComparisonRows($metric, $platform, $sortBy, $category), 'gereja');
         $platformLabel = $this->platformLabels[$platform];
         $valueHeader = $this->valueHeaderLabel($metric, $platform);
 
@@ -1373,7 +1449,7 @@ class ExportController extends Controller
             ->keys();
 
         $rowsByMetric = $applicableMetrics->mapWithKeys(fn ($metric) => [
-            $metric => $this->metricComparisonRowsPersonal($metric, $platform)->keyBy(fn ($row) => $row['person']->id),
+            $metric => $this->applyRegionFilterToRows($this->metricComparisonRowsPersonal($metric, $platform), 'personal')->keyBy(fn ($row) => $row['person']->id),
         ]);
 
         $people = $rowsByMetric
@@ -1417,7 +1493,7 @@ class ExportController extends Controller
 
     private function platformComparisonDatasetPersonal(string $platform, string $metric, string $sortBy = 'delta'): array
     {
-        $rows = $this->metricComparisonRowsPersonal($metric, $platform, $sortBy);
+        $rows = $this->applyRegionFilterToRows($this->metricComparisonRowsPersonal($metric, $platform, $sortBy), 'personal');
         $platformLabel = $this->platformLabels[$platform];
         $valueHeader = $this->valueHeaderLabel($metric, $platform);
 
@@ -1446,7 +1522,7 @@ class ExportController extends Controller
             ->keys();
 
         $rowsByMetric = $applicableMetrics->mapWithKeys(fn ($metric) => [
-            $metric => $this->metricComparisonRowsInstitution($metric, $platform)->keyBy(fn ($row) => $row['institution']->id),
+            $metric => $this->applyRegionFilterToRows($this->metricComparisonRowsInstitution($metric, $platform), 'institusi')->keyBy(fn ($row) => $row['institution']->id),
         ]);
 
         $institutions = $rowsByMetric
@@ -1490,7 +1566,7 @@ class ExportController extends Controller
 
     private function platformComparisonDatasetInstitution(string $platform, string $metric, string $sortBy = 'delta'): array
     {
-        $rows = $this->metricComparisonRowsInstitution($metric, $platform, $sortBy);
+        $rows = $this->applyRegionFilterToRows($this->metricComparisonRowsInstitution($metric, $platform, $sortBy), 'institusi');
         $platformLabel = $this->platformLabels[$platform];
         $valueHeader = $this->valueHeaderLabel($metric, $platform);
 
@@ -1515,12 +1591,17 @@ class ExportController extends Controller
     private function analyticsDatasetInstitution(?string $institutionId, ?string $platform): array
     {
         // analyticsInstitutionScope() (BuildsLeaderboards), not a plain visibleTo() — same
-        // bug/fix as analyticsDataset() above.
-        $institutions = $this->analyticsInstitutionScope(Institution::query()->where('is_active', true))
-            ->with(['socials' => fn ($q) => $q->where('is_active', true)->with('latestStat')])
-            ->when($institutionId, fn ($q) => $q->where('id', $institutionId))
-            ->orderBy('name')
-            ->get()
+        // bug/fix as analyticsDataset() above. applyRegionFilterToEntities() mirrors
+        // analytics()'s own ->filter($matchesRegionFilter) on $institutions, missing here too
+        // before this fix.
+        $institutions = $this->applyRegionFilterToEntities(
+            $this->analyticsInstitutionScope(Institution::query()->where('is_active', true))
+                ->with(['socials' => fn ($q) => $q->where('is_active', true)->with('latestStat')])
+                ->when($institutionId, fn ($q) => $q->where('id', $institutionId))
+                ->orderBy('name')
+                ->get(),
+            'institusi'
+        )
             ->when($platform, fn ($collection) => $collection->filter(
                 fn ($institution) => $institution->socials->contains(fn ($social) => $social->platform->value === $platform)
             ));
@@ -1572,11 +1653,17 @@ class ExportController extends Controller
         // for admin_gereja, when the live Analitik & Grafik page this mirrors deliberately widens
         // both cases (a plain member sees everything unscoped, admin_gereja sees their whole
         // Daerah/Konferens) — see analyticsChurchScope()'s own doc comment for why.
-        $churches = $this->analyticsChurchScope(Church::query()->where('is_active', true))
-            ->with(['socials' => fn ($q) => $q->where('is_active', true)->with('latestStat')])
-            ->when($churchId, fn ($q) => $q->where('id', $churchId))
-            ->orderBy('name')
-            ->get()
+        // ->filter($matchesRegionFilter) applied right after get(), same as
+        // ChurchDashboardController::analytics()'s own $churches — a confirmed gap the audit
+        // found: union_id/conference_id was never read here at all.
+        $churches = $this->applyRegionFilterToEntities(
+            $this->analyticsChurchScope(Church::query()->where('is_active', true))
+                ->with(['socials' => fn ($q) => $q->where('is_active', true)->with('latestStat')])
+                ->when($churchId, fn ($q) => $q->where('id', $churchId))
+                ->orderBy('name')
+                ->get(),
+            'gereja'
+        )
             ->when($platform, fn ($collection) => $collection->filter(
                 fn ($church) => $church->socials->contains(fn ($social) => $social->platform->value === $platform)
             ))
@@ -1631,12 +1718,16 @@ class ExportController extends Controller
     private function analyticsDatasetPersonal(?string $personId, ?string $platform): array
     {
         // analyticsPersonScope() (BuildsLeaderboards), not a plain visibleTo() — same bug/fix as
-        // analyticsDataset() above.
-        $people = $this->analyticsPersonScope(Person::query()->where('is_active', true))
-            ->with(['socials' => fn ($q) => $q->where('is_active', true)->with('latestStat')])
-            ->when($personId, fn ($q) => $q->where('id', $personId))
-            ->orderBy('name')
-            ->get()
+        // analyticsDataset() above. applyRegionFilterToEntities() mirrors analytics()'s own
+        // ->filter($matchesRegionFilter) on $people, missing here too before this fix.
+        $people = $this->applyRegionFilterToEntities(
+            $this->analyticsPersonScope(Person::query()->where('is_active', true))
+                ->with(['socials' => fn ($q) => $q->where('is_active', true)->with('latestStat')])
+                ->when($personId, fn ($q) => $q->where('id', $personId))
+                ->orderBy('name')
+                ->get(),
+            'personal'
+        )
             ->when($platform, fn ($collection) => $collection->filter(
                 fn ($person) => $person->socials->contains(fn ($social) => $social->platform->value === $platform)
             ));

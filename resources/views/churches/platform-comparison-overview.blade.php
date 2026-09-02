@@ -5,6 +5,7 @@
 @php
     // "semua" is the default — route it without the segment so /gereja/platform means "all platforms".
     $platformParam = $platform === 'semua' ? null : $platform;
+    $regionParams = array_filter(['union_id' => $selectedUnionId, 'conference_id' => $selectedConferenceId]);
 @endphp
 
 @section('content')
@@ -18,11 +19,9 @@
             </p>
         </div>
         @can('browse-directory-analytics')
-            <x-export-button :url="$scope->exportPlatformOverviewUrl(array_filter(['platform' => $platform, 'category' => $selectedCategory ?? null]))" />
+            <x-export-button :url="$scope->exportPlatformOverviewUrl(array_merge($regionParams, array_filter(['platform' => $platform, 'category' => $selectedCategory ?? null])))" />
         @endcan
     </div>
-
-    @php $regionParams = array_filter(['union_id' => $selectedUnionId, 'conference_id' => $selectedConferenceId]); @endphp
 
     <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div class="flex flex-wrap gap-2">

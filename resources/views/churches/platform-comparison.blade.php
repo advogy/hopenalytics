@@ -13,6 +13,7 @@
 
 @php
     $platformParam = $platform === 'semua' ? null : $platform;
+    $regionParams = array_filter(['union_id' => $selectedUnionId, 'conference_id' => $selectedConferenceId]);
 @endphp
 
 @section('content')
@@ -30,7 +31,7 @@
             </p>
         </div>
         @can('browse-directory-analytics')
-            <x-export-button :url="$scope->exportPlatformComparisonUrl(array_filter(['platform' => $platform, 'metric' => $metric, 'sort' => $sort === 'value' ? 'value' : null, 'category' => $selectedCategory ?? null]))" />
+            <x-export-button :url="$scope->exportPlatformComparisonUrl(array_merge($regionParams, array_filter(['platform' => $platform, 'metric' => $metric, 'sort' => $sort === 'value' ? 'value' : null, 'category' => $selectedCategory ?? null])))" />
         @endcan
     </div>
 

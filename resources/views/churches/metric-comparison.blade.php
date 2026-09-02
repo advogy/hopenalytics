@@ -3,6 +3,8 @@
 @section('title', __('comparison.metric_comparison_title', ['label' => $scope->labelCap()]) . ' — ' . config('app.name'))
 
 @section('content')
+    @php $regionParams = array_filter(['union_id' => $selectedUnionId, 'conference_id' => $selectedConferenceId]); @endphp
+
     <x-back-link :href="$scope->analyticsUrl()">{{ __('comparison.leaderboard_back_analytics') }}</x-back-link>
 
     <div class="mb-6 flex flex-wrap items-start justify-between gap-3">
@@ -13,11 +15,9 @@
             </p>
         </div>
         @can('browse-directory-analytics')
-            <x-export-button :url="$scope->exportMetricComparisonUrl(array_filter(['category' => $selectedCategory ?? null]))" />
+            <x-export-button :url="$scope->exportMetricComparisonUrl(array_merge($regionParams, array_filter(['category' => $selectedCategory ?? null])))" />
         @endcan
     </div>
-
-    @php $regionParams = array_filter(['union_id' => $selectedUnionId, 'conference_id' => $selectedConferenceId]); @endphp
 
     <div class="mb-6 flex flex-wrap gap-2">
         <x-pill-link :href="$scope->metricComparisonUrl($regionParams)" active>
