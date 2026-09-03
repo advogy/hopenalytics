@@ -203,9 +203,15 @@
                         }
                     }
                 @endphp
+                {{-- In dense mode, EVERY point's first line sits at the same y — height-20 —
+                     whether or not that particular point ends up with a second line below it
+                     (e.g. an hour-only "12:00" next to a two-line "31 Agt / 00:00"); otherwise
+                     an unsplit label kept sitting at the old, lower height-8 position while a
+                     split one's first line moved up to make room for its second, so times ended
+                     up on two different rows instead of lining up across the whole axis. --}}
                 <text
                     x="{{ $points[$i][0] }}"
-                    y="{{ $height - ($lines ? 20 : 8) }}"
+                    y="{{ $labelDensity === 'dense' ? $height - 20 : $height - 8 }}"
                     text-anchor="{{ $i === 0 ? 'start' : ($i === $count - 1 ? 'end' : 'middle') }}"
                     class="fill-slate-400 text-[10px] dark:fill-slate-500"
                 >
