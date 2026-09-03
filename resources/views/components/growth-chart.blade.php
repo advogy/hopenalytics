@@ -44,7 +44,10 @@
         $padLeft = 52;
         $padRight = 16;
         $padTop = 28;
-        $padBottom = 28;
+        // 'dense' mode's axis labels can be two lines tall (see $dayMonth below) — the default
+        // 28px left them sitting right at the very bottom edge of the chart, cramped against the
+        // card's own border underneath with no breathing room.
+        $padBottom = $labelDensity === 'dense' ? 40 : 28;
         $plotWidth = $width - $padLeft - $padRight;
         $plotHeight = $height - $padTop - $padBottom;
 
