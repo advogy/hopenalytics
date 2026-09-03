@@ -13,6 +13,11 @@ return [
     'growth_prefix' => 'Growth :title',
     'sorted_by_current_value' => 'Sorted by current value',
     'total_label' => 'Total :metric',
+    // The bottom "Total" row auto-appended to any export table that has at least one
+    // summable numeric column — see ExportController::buildTotalsRow(). Deliberately generic
+    // (not per-dataset) since it applies uniformly across every export, unlike total_label
+    // above (a per-column header for a single already-known metric).
+    'total_row_label' => 'Total',
     'col_current' => 'Current',
     'col_metric' => 'Metric',
     'value_header_subscribers' => 'Subscribers',

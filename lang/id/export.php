@@ -16,6 +16,11 @@ return [
     'growth_prefix' => 'Pertumbuhan :title',
     'sorted_by_current_value' => 'Diurutkan berdasarkan nilai saat ini',
     'total_label' => 'Total :metric',
+    // The bottom "Total" row auto-appended to any export table that has at least one
+    // summable numeric column — see ExportController::buildTotalsRow(). Deliberately generic
+    // (not per-dataset) since it applies uniformly across every export, unlike total_label
+    // above (a per-column header for a single already-known metric).
+    'total_row_label' => 'Total',
     'col_current' => 'Saat Ini',
     'col_metric' => 'Metrik',
     'value_header_subscribers' => 'Subscribers',

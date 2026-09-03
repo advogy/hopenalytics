@@ -1596,6 +1596,10 @@ class ExportController extends Controller
             'subtitle' => "{$this->platformLabels[$social->platform->value]} — {$owner->name}",
             'headers' => [__('export.col_date'), __('export.col_followers_subs'), __('common.metric_following'), __('export.col_post_video'), __('common.metric_views'), __('common.metric_likes')],
             'rows' => $rows,
+            // One row per date for this SAME account — see addTotalsRow()'s own doc comment for
+            // why a bottom Total row would be actively misleading here (repeated snapshots of a
+            // running total, not distinct entities to sum together).
+            'suppressTotals' => true,
         ];
     }
 
@@ -2001,8 +2005,125 @@ class ExportController extends Controller
         ];
     }
 
+    /**
+     * A "Total" row auto-appended to the bottom of any export table that has at least one
+     * summable numeric column — per the user's explicit call, for every export with a list
+     * and categorized numeric data (e.g. Analitik & Grafik's Reach/Views/Likes/Posts columns
+     * per church, or Direktori's per-entity account counts), not just the handful of
+     * datasets that already carry a single-metric 'summary' line above the table (that one
+     * answers a different question — "what's the total for the one metric already selected"
+     * — and both can coexist without conflict). Centralized here rather than in each of the
+     * ~25 *Dataset() builders, since every one of them already funnels through preview()/
+     * download() with the same ['headers' => ..., 'rows' => ...] shape.
+     */
+    private function addTotalsRow(array $dataset): array
+    {
+        // socialHistoryDataset() is the one dataset shape this auto-detection would get wrong:
+        // each row is the SAME account sampled at a different date, not a different entity —
+        // summing "Followers" down that column would add up repeated snapshots of one running
+        // total into a meaningless number, not an actual total of anything. Every other
+        // dataset in this file is one row per distinct entity (church/person/post/etc.), where
+        // summing down a numeric column is a real grand total.
+        $dataset['totals'] = ($dataset['suppressTotals'] ?? false)
+            ? null
+            : $this->buildTotalsRow($dataset['headers'], $dataset['rows']);
+
+        return $dataset;
+    }
+
+    /**
+     * Null when no column in $rows is safely summable — e.g. a pure-text listing (Direktori's
+     * name/handle/city columns) or a table with only percentage/growth columns (those are
+     * deliberately excluded, see summableColumnIndexes()) gets no Total row at all, rather
+     * than a row of meaningless blanks.
+     */
+    private function buildTotalsRow(array $headers, array $rows): ?array
+    {
+        $summableColumns = $this->summableColumnIndexes($headers, $rows);
+
+        if ($summableColumns === []) {
+            return null;
+        }
+
+        $totals = array_fill(0, count($headers), '');
+        $labelPlaced = false;
+
+        foreach ($totals as $column => $ignored) {
+            if (in_array($column, $summableColumns, true)) {
+                $sum = collect($rows)->sum(fn ($row) => $this->parseExportNumber($row[$column] ?? null));
+                $totals[$column] = number_format($sum);
+            } elseif (! $labelPlaced) {
+                // The first non-summable column reads "Total" (usually the entity name/label
+                // column) — every other non-summable column between it and the next summable
+                // one stays blank, same as a normal table footer.
+                $totals[$column] = __('export.total_row_label');
+                $labelPlaced = true;
+            }
+        }
+
+        return $totals;
+    }
+
+    /**
+     * A column counts as summable when every one of its cells is either a blank/dash
+     * placeholder or a plain formatted integer (what every count/reach/views/likes/posts/
+     * growth-delta column in this file's *Dataset() builders actually renders via
+     * number_format()) — deliberately excludes a "#" rank column by header text, and
+     * excludes percentage columns (formatPercent()'s "+12.3%"/"—") and decimal values
+     * automatically, since neither matches the plain-integer pattern below and summing
+     * either would be meaningless.
+     */
+    private function summableColumnIndexes(array $headers, array $rows): array
+    {
+        if ($rows === []) {
+            return [];
+        }
+
+        $summable = [];
+
+        foreach (array_keys($headers) as $column) {
+            if (trim((string) $headers[$column]) === '#') {
+                continue;
+            }
+
+            $sawNumber = false;
+            $allNumericOrBlank = true;
+
+            foreach ($rows as $row) {
+                $cell = trim((string) ($row[$column] ?? ''));
+
+                if ($cell === '' || $cell === '—' || $cell === '-') {
+                    continue;
+                }
+
+                if (! preg_match('/^[+-]?\d{1,3}(,\d{3})*$/', $cell)) {
+                    $allNumericOrBlank = false;
+
+                    break;
+                }
+
+                $sawNumber = true;
+            }
+
+            if ($allNumericOrBlank && $sawNumber) {
+                $summable[] = $column;
+            }
+        }
+
+        return $summable;
+    }
+
+    private function parseExportNumber(mixed $cell): int
+    {
+        $cell = trim((string) $cell);
+
+        return ($cell === '' || $cell === '—' || $cell === '-') ? 0 : (int) str_replace(',', '', $cell);
+    }
+
     private function preview(array $dataset, string $pdfDownloadUrl)
     {
+        $dataset = $this->addTotalsRow($dataset);
+
         $data = [
             'dataset' => $dataset,
             'footer' => $this->footerText(),
@@ -2019,6 +2140,7 @@ class ExportController extends Controller
 
     private function download(array $dataset, string $format, string $filenameBase): BinaryFileResponse|Response
     {
+        $dataset = $this->addTotalsRow($dataset);
         $footer = $this->footerText();
         $filenameBase = Str::slug(config('app.name')).'_'.$filenameBase.'_'.Carbon::now('Asia/Jakarta')->format('Y-m-d');
 
@@ -2119,6 +2241,13 @@ class ExportController extends Controller
             }
         }
 
+        if (! empty($dataset['totals'])) {
+            $table->addRow();
+            foreach ($dataset['totals'] as $cell) {
+                $table->addCell($columnWidth, ['bgColor' => 'f1f5f9'])->addText((string) $cell, ['bold' => true, 'size' => 9]);
+            }
+        }
+
         $footerSection = $section->addFooter();
         $footerSection->addText($footer, ['size' => 8, 'color' => '999999']);
 
@@ -2150,11 +2279,22 @@ class ExportController extends Controller
         $lastColumn = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(count($dataset['headers']));
         $sheet->getStyle("A{$headerRow}:{$lastColumn}{$headerRow}")->getFont()->setBold(true);
 
+        $lastDataRow = $headerRow + count($dataset['rows']);
+
+        if (! empty($dataset['totals'])) {
+            $totalsRow = $lastDataRow + 1;
+            $sheet->fromArray($dataset['totals'], null, "A{$totalsRow}");
+            $sheet->getStyle("A{$totalsRow}:{$lastColumn}{$totalsRow}")->getFont()->setBold(true);
+            $sheet->getStyle("A{$totalsRow}:{$lastColumn}{$totalsRow}")->getFill()
+                ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('F1F5F9');
+            $lastDataRow = $totalsRow;
+        }
+
         foreach (range('A', $lastColumn) as $column) {
             $sheet->getColumnDimension($column)->setAutoSize(true);
         }
 
-        $footerRow = $headerRow + count($dataset['rows']) + 2;
+        $footerRow = $lastDataRow + 2;
         $sheet->setCellValue("A{$footerRow}", $footer);
         $sheet->getStyle("A{$footerRow}")->getFont()->setItalic(true)->setSize(9);
 

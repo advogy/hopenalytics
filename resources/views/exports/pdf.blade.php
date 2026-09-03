@@ -11,6 +11,7 @@
         th, td { border: 1px solid #e2e8f0; padding: 6px 8px; text-align: left; }
         th { background: #f1f5f9; font-weight: bold; }
         tr:nth-child(even) td { background: #f8fafc; }
+        tfoot td { background: #f1f5f9; font-weight: bold; border-top: 2px solid #cbd5e1; }
         .summary { margin: 4px 0 0 0; padding: 0; list-style: none; }
         .summary li { display: inline-block; margin: 0 12px 0 0; padding: 4px 10px; border: 1px solid #e2e8f0; border-radius: 6px; }
         .summary .label { color: #64748b; }
@@ -51,6 +52,15 @@
                     </tr>
                 @endforeach
             </tbody>
+            @if (! empty($dataset['totals']))
+                <tfoot>
+                    <tr>
+                        @foreach ($dataset['totals'] as $cell)
+                            <td>{{ $cell }}</td>
+                        @endforeach
+                    </tr>
+                </tfoot>
+            @endif
         </table>
     @endif
 </body>

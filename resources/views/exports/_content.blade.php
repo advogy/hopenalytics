@@ -55,6 +55,15 @@
                     </tr>
                 @endforeach
             </tbody>
+            @if (! empty($dataset['totals']))
+                <tfoot class="border-t-2 border-black/5 bg-slate-50 dark:border-white/5 dark:bg-slate-800/60">
+                    <tr>
+                        @foreach ($dataset['totals'] as $cell)
+                            <td class="whitespace-nowrap px-4 py-2.5 font-bold tabular-nums">{{ $cell }}</td>
+                        @endforeach
+                    </tr>
+                </tfoot>
+            @endif
         </table>
     </div>
 @endif
