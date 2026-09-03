@@ -10,7 +10,7 @@ class AppSetting extends Model
         'auto_fetch_enabled', 'auto_fetch_day', 'auto_fetch_time',
         'cs_whatsapp_number',
         'apify_fallback_to_manual', 'apify_token', 'youtube_api_key',
-        'youtube_enabled', 'instagram_enabled', 'tiktok_enabled', 'facebook_enabled', 'x_enabled',
+        'youtube_enabled', 'instagram_enabled', 'tiktok_enabled', 'facebook_enabled', 'x_enabled', 'threads_enabled',
     ];
 
     protected $casts = [
@@ -22,6 +22,7 @@ class AppSetting extends Model
         'tiktok_enabled' => 'boolean',
         'facebook_enabled' => 'boolean',
         'x_enabled' => 'boolean',
+        'threads_enabled' => 'boolean',
     ];
 
     // Single source of truth for "which platforms this app tracks and their display
@@ -29,12 +30,12 @@ class AppSetting extends Model
     // Blade views; now also doubles as the platform-visibility toggle's backing data
     // (see ChurchSocial's global scope, which reads enabledPlatformValues()).
     private const PLATFORM_LABELS = [
-        'youtube' => 'YouTube', 'instagram' => 'Instagram', 'tiktok' => 'TikTok', 'facebook' => 'Facebook', 'x' => 'X',
+        'youtube' => 'YouTube', 'instagram' => 'Instagram', 'tiktok' => 'TikTok', 'facebook' => 'Facebook', 'x' => 'X', 'threads' => 'Threads',
     ];
 
     private const PLATFORM_COLUMNS = [
         'youtube' => 'youtube_enabled', 'instagram' => 'instagram_enabled', 'tiktok' => 'tiktok_enabled',
-        'facebook' => 'facebook_enabled', 'x' => 'x_enabled',
+        'facebook' => 'facebook_enabled', 'x' => 'x_enabled', 'threads' => 'threads_enabled',
     ];
 
     /**

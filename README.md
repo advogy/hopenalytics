@@ -1,13 +1,13 @@
 # Hopenalytics
 
-A dashboard for monitoring and analyzing church social media growth — subscriber, follower, view, like, and post growth on YouTube, Instagram, TikTok, Facebook, and X, for church accounts, personal ministry accounts, standalone institution accounts (schools, publishing houses, etc.), and the Union/Conference organizational levels themselves, all in one place. Access is scoped by organizational level (Union → Conference → Church, plus standalone Institutions), so each admin only sees and manages their own region.
+A dashboard for monitoring and analyzing church social media growth — subscriber, follower, view, like, and post growth on YouTube, Instagram, TikTok, Facebook, X, and Threads, for church accounts, personal ministry accounts, standalone institution accounts (schools, publishing houses, etc.), and the Union/Conference organizational levels themselves, all in one place. Access is scoped by organizational level (Union → Conference → Church, plus standalone Institutions), so each admin only sees and manages their own region.
 
 Built with Laravel 12, Vite, and Tailwind CSS 4.
 
 ## Features
 
 - **Automated monitoring** — data is fetched automatically every week on a configurable schedule (via Apify scrapers, or YouTube's official API), or manually at any time (single account or a bulk "Refresh All" batch), with a live progress bar and the ability to cancel an in-progress refresh. A newly-added account doesn't fetch immediately — it waits for the next scheduled run or a manual refresh, so typos get caught before they burn an API call. Facebook accounts also sample their 10 most recent posts (count/likes/shares) alongside the follower count.
-- **Hashtag tracking** — admins define any number of hashtags to watch across Instagram, TikTok, and YouTube; matched posts are fetched on the same weekly schedule, or on demand via a manual "Scan Ulang Sekarang" rescan (e.g. to monitor a live hashtag launch), and summarized on the dashboard, with a "Perbandingan Hastag" comparison tab (its own Uni/Daerah region filter, export, and a growth chart that switches from per-date to a gap-filled per-hour view for a chosen monitoring window) alongside the platform/metric comparisons on every Analitik & Grafik scope.
+- **Hashtag tracking** — admins define any number of hashtags to watch across every enabled platform (Instagram, TikTok, YouTube, Facebook, X, Threads); matched posts are fetched on the same weekly schedule, or on demand via a manual "Scan Ulang Sekarang" rescan (e.g. to monitor a live hashtag launch), and summarized on the dashboard, with a "Perbandingan Hastag" comparison tab (its own Uni/Daerah region filter, export, and a growth chart that switches from per-date to a gap-filled per-hour view for a chosen monitoring window) alongside the platform/metric comparisons on every Analitik & Grafik scope.
 - **Platform visibility toggle** — a superadmin-only Settings card to turn any platform on/off app-wide. A disabled platform disappears from every chart, list, form, and export, and its weekly fetch pauses — no data is deleted, so re-enabling it restores everything instantly.
 - **Analytics & charts** — weekly growth charts (with per-point value labels), filters per church/platform/category, total reach summaries, and a week-over-week growth score trend per account, across separate Gereja / Institusi / Personal / Organisasi (Uni/Daerah) tabs. Each social account's card also shows a red/amber/green performance border based on recent posting activity.
 - **Growth score** — a composite, percentage-based score (not raw follower counts) so small and large accounts are compared fairly. See the [/about](resources/views/about.blade.php) page in-app for the full formula.
@@ -38,7 +38,7 @@ Built with Laravel 12, Vite, and Tailwind CSS 4.
 - Vite + Tailwind CSS 4
 - Laravel queues (`database` driver) for background data-refresh jobs
 - [barryvdh/laravel-dompdf](https://github.com/barryvdh/laravel-dompdf), [phpoffice/phpword](https://github.com/PHPOffice/PHPWord), [phpoffice/phpspreadsheet](https://github.com/PHPOffice/PhpSpreadsheet) for PDF/Word/Excel export
-- [Apify](https://apify.com) actors for scraping Instagram/TikTok/Facebook/X public stats; YouTube uses its own official Data API v3 instead (free, but needs its own API key)
+- [Apify](https://apify.com) actors for scraping Instagram/TikTok/Facebook/X/Threads public stats; YouTube uses its own official Data API v3 instead (free, but needs its own API key). Threads ships disabled by default in Settings — its actor's field names were taken from documentation, not a live-tested response, so confirm a real fetch works before enabling it.
 
 ## Requirements
 

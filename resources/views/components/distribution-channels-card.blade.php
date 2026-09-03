@@ -32,6 +32,14 @@
         // to TikTok's dark-mode override below (a legend dot has no shape to fall back on, the
         // way the platform-icon badge does) — using X's muted secondary brand gray instead.
         'x' => '#536471',
+        // Same problem as X — Threads' own brand is black too, and has no documented secondary
+        // color to fall back on the way X does. Validated against all 5 other dots here via the
+        // dataviz skill's validate_palette.js (light + dark): passes CVD separation and the
+        // normal-vision floor everywhere except the pre-existing X↔TikTok-dark pair below (an
+        // already-shipped condition, not introduced by this color) and X's own already-accepted
+        // chroma-floor flag — both pre-existing, tolerated exceptions since every dot here is
+        // always paired with a direct label, satisfying the "legal with secondary encoding" case.
+        'threads' => '#4D7C0F',
     ];
     $colorsDark = $colors;
     $colorsDark['tiktok'] = '#00897B';

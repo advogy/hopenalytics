@@ -99,7 +99,7 @@ class SettingsController extends Controller
         // more broadly) can't have platform toggles they never saw silently reset to
         // false by their own request's absent checkboxes.
         if ($request->user()->can('manage-platform-visibility')) {
-            foreach (['youtube', 'instagram', 'tiktok', 'facebook', 'x'] as $platform) {
+            foreach (['youtube', 'instagram', 'tiktok', 'facebook', 'x', 'threads'] as $platform) {
                 $data["{$platform}_enabled"] = $request->boolean("{$platform}_enabled");
             }
         }

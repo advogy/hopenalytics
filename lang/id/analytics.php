@@ -28,7 +28,7 @@ return [
 
     'reach_subtitle_youtube' => 'Subscriber YouTube',
     'reach_subtitle_platform' => 'Followers :platform',
-    'reach_subtitle_combined' => 'Gabungan subscriber YouTube + followers Instagram/TikTok/Facebook',
+    'reach_subtitle_combined' => 'Gabungan subscriber YouTube + followers Instagram/TikTok/Facebook/X/Threads',
     'suffix_all_churches' => ', semua gereja',
     'suffix_all_personal' => ', semua personal',
     'suffix_all_institutions' => ', semua institusi',

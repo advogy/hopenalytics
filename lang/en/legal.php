@@ -28,7 +28,7 @@ return [
 
     'privacy_s5_title' => '5. Third Parties Involved',
     'privacy_s5_items' => [
-        '<strong>Apify</strong> — fetching public data from Instagram, TikTok, Facebook, and X.',
+        '<strong>Apify</strong> — fetching public data from Instagram, TikTok, Facebook, X, and Threads.',
         '<strong>YouTube Data API v3</strong> (official, owned by Google) — fetching YouTube channel data.',
         '<strong>OpenStreetMap Nominatim</strong> — geocoding city names into map coordinates.',
         'An email service provider — sending verification (OTP) codes to your email.',
@@ -64,7 +64,7 @@ return [
     'terms_s3_p1' => "This service is purely for monitoring and comparing social media account growth — not for publishing/scheduling content to social media, not for accessing anyone's social media account without authorization, and not for any purpose that violates applicable law.",
 
     'terms_s4_title' => '4. Data & Third Parties',
-    'terms_s4_p1' => 'Social media account statistics are drawn from public data provided by the relevant platforms (Instagram, TikTok, Facebook, X, YouTube) through third-party services (see the Privacy Policy). We are not responsible for the accuracy, availability, or policy changes of those platforms.',
+    'terms_s4_p1' => 'Social media account statistics are drawn from public data provided by the relevant platforms (Instagram, TikTok, Facebook, X, Threads, YouTube) through third-party services (see the Privacy Policy). We are not responsible for the accuracy, availability, or policy changes of those platforms.',
 
     'terms_s5_title' => '5. Changes & Discontinuation of Service',
     'terms_s5_p1' => "We may change, suspend, or discontinue some or all of this service's features at any time, including disabling monitoring for a particular platform, with or without prior notice.",

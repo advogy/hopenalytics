@@ -233,6 +233,7 @@ class ChurchSocial extends Model
             SocialPlatform::YouTube => "https://www.youtube.com/@{$handle}",
             SocialPlatform::Facebook => null,
             SocialPlatform::X => "https://x.com/{$handle}",
+            SocialPlatform::Threads => "https://www.threads.com/@{$handle}",
         };
     }
 }

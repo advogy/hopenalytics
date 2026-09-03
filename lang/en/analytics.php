@@ -28,7 +28,7 @@ return [
 
     'reach_subtitle_youtube' => 'YouTube Subscribers',
     'reach_subtitle_platform' => ':platform Followers',
-    'reach_subtitle_combined' => 'Combined YouTube subscribers + Instagram/TikTok/Facebook followers',
+    'reach_subtitle_combined' => 'Combined YouTube subscribers + Instagram/TikTok/Facebook/X/Threads followers',
     'suffix_all_churches' => ', all churches',
     'suffix_all_personal' => ', all personal accounts',
     'suffix_all_institutions' => ', all institutions',

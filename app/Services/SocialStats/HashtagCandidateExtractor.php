@@ -8,10 +8,11 @@ use Illuminate\Support\Collection;
 /**
  * Normalizes each platform's regular weekly stats-fetch response into the common "candidate
  * post" shape MatchAccountHashtags checks against tracked hashtags — Instagram's and TikTok's
- * profile-scrape actors, and Facebook's recent-posts actor, already return a sample of an
- * account's own recent content as part of the SAME call FetchSingleChurchData makes for its
- * follower-count numbers, so hashtag matching for these three platforms costs no extra API call
- * at all; this class only picks that content back out instead of letting it go to waste.
+ * profile-scrape actors, Facebook's recent-posts actor, and Threads' own recent-posts actor call
+ * (see ThreadsStatsFetcher), already return a sample of an account's own recent content as part
+ * of the SAME call FetchSingleChurchData makes for its follower-count numbers, so hashtag
+ * matching for these four platforms costs no extra API call at all; this class only picks that
+ * content back out instead of letting it go to waste.
  *
  * YouTube and X have no such free ride — their regular stats call is channel/profile-level only,
  * with no post list — so their own fetchers (YouTubeStatsFetcher::fetchRecentVideos(),
@@ -29,6 +30,7 @@ class HashtagCandidateExtractor
             SocialPlatform::Instagram => $this->fromInstagram($data, $fallbackHandle),
             SocialPlatform::TikTok => $this->fromTikTok($data, $fallbackHandle),
             SocialPlatform::Facebook => $this->fromFacebook($data, $fallbackHandle),
+            SocialPlatform::Threads => $this->fromThreads($data, $fallbackHandle),
             default => [],
         };
     }
@@ -77,6 +79,25 @@ class HashtagCandidateExtractor
                 'comments_count' => (int) ($item['comments'] ?? 0),
                 'views_count' => null,
                 'posted_at' => $item['time'] ?? null,
+            ])
+            ->pipe(fn (Collection $posts) => $this->rejectMissingId($posts));
+    }
+
+    // Field names match automation-lab/threads-scraper's "posts" mode output per its own docs
+    // — see ThreadsStatsFetcher's own doc comment for why this is unverified against a live
+    // response.
+    private function fromThreads(array $data, string $fallbackHandle): array
+    {
+        return collect($data['_recent_posts_raw'] ?? [])
+            ->map(fn ($item) => [
+                'external_post_id' => (string) ($item['postId'] ?? ''),
+                'post_url' => (string) ($item['url'] ?? ''),
+                'author_handle' => $item['username'] ?? $fallbackHandle,
+                'caption' => $item['text'] ?? null,
+                'likes_count' => (int) ($item['likeCount'] ?? 0),
+                'comments_count' => (int) ($item['replyCount'] ?? 0),
+                'views_count' => null,
+                'posted_at' => $item['date'] ?? null,
             ])
             ->pipe(fn (Collection $posts) => $this->rejectMissingId($posts));
     }

@@ -39,13 +39,14 @@ class ExportController extends Controller
     // can't call __().
     private array $categoryLabels;
 
-    private array $countField = ['youtube' => 'subscribers_count', 'instagram' => 'followers_count', 'tiktok' => 'followers_count', 'facebook' => 'followers_count', 'x' => 'followers_count'];
+    private array $countField = ['youtube' => 'subscribers_count', 'instagram' => 'followers_count', 'tiktok' => 'followers_count', 'facebook' => 'followers_count', 'x' => 'followers_count', 'threads' => 'followers_count'];
 
-    private array $postField = ['youtube' => 'videos_count', 'instagram' => 'posts_count', 'tiktok' => 'posts_count', 'facebook' => 'recent_posts_count', 'x' => 'posts_count'];
+    private array $postField = ['youtube' => 'videos_count', 'instagram' => 'posts_count', 'tiktok' => 'posts_count', 'facebook' => 'recent_posts_count', 'x' => 'posts_count', 'threads' => 'recent_posts_count'];
 
     // Instagram/TikTok are recent-sample view counts (last ~10-12 posts/videos), not a lifetime
-    // total like YouTube's views_count. Facebook and X have no view-count field scraped at all —
-    // a lookup miss falls through to 'views_count' (always null on those rows) via ?? below.
+    // total like YouTube's views_count. Facebook, X, and Threads have no view-count field
+    // scraped at all — a lookup miss falls through to 'views_count' (always null on those rows)
+    // via ?? below.
     private array $viewsField = ['youtube' => 'views_count', 'instagram' => 'recent_reels_views', 'tiktok' => 'recent_video_plays'];
 
     // Built in the constructor below (like $platformLabels above) since a property default

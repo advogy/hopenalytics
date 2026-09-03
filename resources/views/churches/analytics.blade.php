@@ -1,9 +1,10 @@
 @php
-    $countField = ['youtube' => 'subscribers_count', 'instagram' => 'followers_count', 'tiktok' => 'followers_count', 'facebook' => 'followers_count', 'x' => 'followers_count'];
-    $postField = ['youtube' => 'videos_count', 'instagram' => 'posts_count', 'tiktok' => 'posts_count', 'facebook' => 'recent_posts_count', 'x' => 'posts_count'];
+    $countField = ['youtube' => 'subscribers_count', 'instagram' => 'followers_count', 'tiktok' => 'followers_count', 'facebook' => 'followers_count', 'x' => 'followers_count', 'threads' => 'followers_count'];
+    $postField = ['youtube' => 'videos_count', 'instagram' => 'posts_count', 'tiktok' => 'posts_count', 'facebook' => 'recent_posts_count', 'x' => 'posts_count', 'threads' => 'recent_posts_count'];
     // Instagram/TikTok are recent-sample view counts (last ~10-12 posts/videos), not a lifetime
-    // total like YouTube's views_count — Facebook and X have no view-count field at all, so they
-    // fall through to 'views_count' via the ?? below, which is always null on those rows (0).
+    // total like YouTube's views_count — Facebook, X, and Threads have no view-count field at
+    // all, so they fall through to 'views_count' via the ?? below, which is always null on
+    // those rows (0).
     $viewsField = ['youtube' => 'views_count', 'instagram' => 'recent_reels_views', 'tiktok' => 'recent_video_plays'];
     $platformLabels = \App\Models\AppSetting::current()->enabledPlatformLabels();
 

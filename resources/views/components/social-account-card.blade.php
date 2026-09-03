@@ -8,14 +8,18 @@
 @props(['social', 'historyRows' => null, 'showRecentContent' => true])
 
 @php
-    $platformLabels = ['youtube' => 'YouTube', 'instagram' => 'Instagram', 'tiktok' => 'TikTok', 'facebook' => 'Facebook', 'x' => 'X'];
-    $countField = ['youtube' => 'subscribers_count', 'instagram' => 'followers_count', 'tiktok' => 'followers_count', 'facebook' => 'followers_count', 'x' => 'followers_count'];
+    $platformLabels = ['youtube' => 'YouTube', 'instagram' => 'Instagram', 'tiktok' => 'TikTok', 'facebook' => 'Facebook', 'x' => 'X', 'threads' => 'Threads'];
+    $countField = ['youtube' => 'subscribers_count', 'instagram' => 'followers_count', 'tiktok' => 'followers_count', 'facebook' => 'followers_count', 'x' => 'followers_count', 'threads' => 'followers_count'];
     $secondaryFields = [
         'youtube' => ['views_count' => __('common.metric_views'), 'videos_count' => __('common.metric_videos')],
         'instagram' => ['following_count' => __('common.metric_following'), 'posts_count' => __('common.metric_posts_count')],
         'tiktok' => ['following_count' => __('common.metric_following'), 'likes_count' => __('common.metric_likes'), 'posts_count' => __('common.metric_posts_count')],
         'facebook' => ['following_count' => __('common.metric_following')],
         'x' => ['following_count' => __('common.metric_following'), 'posts_count' => __('common.metric_posts_count')],
+        // No following-count or lifetime post-count field at all — Threads' own public profile
+        // exposes neither (see ThreadsStatsFetcher's own doc comment), unlike Facebook which at
+        // least has following_count.
+        'threads' => [],
     ];
     $statusMeta = [
         'success' => ['label' => __('entity.status_auto'), 'icon' => 'check-circle', 'classes' => 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400'],
@@ -47,8 +51,8 @@
     $externalUrl = $social->externalUrl();
 
     // Performance border — how many posts this account has put out lately, at a glance.
-    // Instagram/TikTok/Facebook use their "recent" field (reels/videos/posts found in the
-    // latest fetch — a freshness signal, not a lifetime total). YouTube and X have no such
+    // Instagram/TikTok/Facebook/Threads use their "recent" field (reels/videos/posts found in
+    // the latest fetch — a freshness signal, not a lifetime total). YouTube and X have no such
     // "recent" count tracked (their API/actor call only ever returns a lifetime cumulative
     // total — videoCount / statusesCount), so both instead compare that total against the
     // PREVIOUS recorded point — the growth since last time IS their "recent posts" signal.
@@ -62,6 +66,7 @@
         'tiktok' => $latest?->recent_video_count ?? 0,
         'facebook' => $latest?->recent_posts_count ?? 0,
         'x' => ($latest && $previous) ? max(0, $latest->posts_count - $previous->posts_count) : 0,
+        'threads' => $latest?->recent_posts_count ?? 0,
     };
     $performanceBorderClass = match (true) {
         $postCount === 0 => 'border-red-400 dark:border-red-600',
@@ -110,7 +115,7 @@
                 @if ($social->is_auto_fetch && ($social->person_id === null || $social->consent_at !== null))
                     @can('trigger-refresh')
                         @php
-                            $usesThirdPartyCredit = in_array($social->platform->value, ['instagram', 'tiktok', 'x'], true);
+                            $usesThirdPartyCredit = in_array($social->platform->value, ['instagram', 'tiktok', 'x', 'threads'], true);
                             $refreshConfirm = $usesThirdPartyCredit
                                 ? __('entity.refresh_confirm_credit')
                                 : __('entity.refresh_confirm_youtube');

@@ -10,6 +10,7 @@ use App\Services\SocialStats\ApifyCreditsExhaustedException;
 use App\Services\SocialStats\FacebookStatsFetcher;
 use App\Services\SocialStats\HashtagCandidateExtractor;
 use App\Services\SocialStats\InstagramStatsFetcher;
+use App\Services\SocialStats\ThreadsStatsFetcher;
 use App\Services\SocialStats\TikTokStatsFetcher;
 use App\Services\SocialStats\XPostsFetcher;
 use App\Services\SocialStats\YouTubeStatsFetcher;
@@ -30,9 +31,9 @@ use Throwable;
  * account elsewhere on the platform).
  *
  * Dispatched automatically after every successful FetchSingleChurchData (see its handle()),
- * passing $preFetchedPosts already extracted from that same fetch for Instagram/TikTok/Facebook
- * — those three platforms' regular stats-fetch actors already return a sample of the account's
- * own recent content, so matching them costs no extra API call at all (see
+ * passing $preFetchedPosts already extracted from that same fetch for Instagram/TikTok/Facebook/
+ * Threads — those four platforms' regular stats-fetch actors already return a sample of the
+ * account's own recent content, so matching them costs no extra API call at all (see
  * HashtagCandidateExtractor). YouTube and X have no such free ride, so $preFetchedPosts is null
  * for those and this job fetches their recent content itself, but ONLY once it's confirmed below
  * that at least one hashtag is actually being tracked — no point spending YouTube quota or Apify
@@ -62,6 +63,7 @@ class MatchAccountHashtags implements ShouldQueue
         FacebookStatsFetcher $facebookStatsFetcher,
         YouTubeStatsFetcher $youTubeStatsFetcher,
         XPostsFetcher $xPostsFetcher,
+        ThreadsStatsFetcher $threadsStatsFetcher,
         HashtagCandidateExtractor $extractor,
     ): void {
         $activeHashtags = Hashtag::where('is_active', true)->get()->keyBy(fn ($h) => mb_strtolower($h->tag));
@@ -72,7 +74,7 @@ class MatchAccountHashtags implements ShouldQueue
 
         try {
             $posts = $this->preFetchedPosts ?? $this->fetchLive(
-                $instagramStatsFetcher, $tikTokStatsFetcher, $facebookStatsFetcher, $youTubeStatsFetcher, $xPostsFetcher, $extractor,
+                $instagramStatsFetcher, $tikTokStatsFetcher, $facebookStatsFetcher, $youTubeStatsFetcher, $xPostsFetcher, $threadsStatsFetcher, $extractor,
             );
         } catch (ApifyCreditsExhaustedException $e) {
             Log::warning('Apify credits exhausted while matching account hashtags', [
@@ -128,6 +130,7 @@ class MatchAccountHashtags implements ShouldQueue
         FacebookStatsFetcher $facebookStatsFetcher,
         YouTubeStatsFetcher $youTubeStatsFetcher,
         XPostsFetcher $xPostsFetcher,
+        ThreadsStatsFetcher $threadsStatsFetcher,
         HashtagCandidateExtractor $extractor,
     ): array {
         $handle = $this->churchSocial->handle;
@@ -138,6 +141,7 @@ class MatchAccountHashtags implements ShouldQueue
             SocialPlatform::Facebook => $this->churchSocial->profile_url
                 ? $extractor->extract(SocialPlatform::Facebook, $facebookStatsFetcher->fetch($this->churchSocial->profile_url), $handle)
                 : [],
+            SocialPlatform::Threads => $handle ? $extractor->extract(SocialPlatform::Threads, $threadsStatsFetcher->fetch($handle), $handle) : [],
             SocialPlatform::YouTube => $this->fetchYouTubeLive($youTubeStatsFetcher),
             SocialPlatform::X => $handle ? $xPostsFetcher->fetch($handle) : [],
         };

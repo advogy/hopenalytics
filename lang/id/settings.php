@@ -34,7 +34,7 @@ return [
     'union_coordinator_none' => 'Belum ada Uni aktif.',
 
     'apify_title' => 'Kredensial API & Auto-Fetch Mingguan',
-    'apify_subtitle' => 'Instagram, TikTok, dan Facebook diambil lewat layanan pihak ketiga (Apify) yang memakai kredit berbayar. YouTube memakai API resminya sendiri yang gratis, tapi tetap butuh kunci API sendiri.',
+    'apify_subtitle' => 'Instagram, TikTok, Facebook, X, dan Threads diambil lewat layanan pihak ketiga (Apify) yang memakai kredit berbayar. YouTube memakai API resminya sendiri yang gratis, tapi tetap butuh kunci API sendiri.',
     'apify_token' => 'Token API Apify',
     'apify_token_hint_set' => 'Token sudah diatur. Kosongkan kolom ini untuk mempertahankan token yang berlaku sekarang.',
     'apify_token_hint_unset' => 'Belum diatur — saat ini memakai APIFY_TOKEN dari .env server (jika ada). Isi untuk mengaturnya lewat halaman ini, tanpa perlu ubah .env.',

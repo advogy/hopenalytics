@@ -9,4 +9,5 @@ enum SocialPlatform: string
     case TikTok = 'tiktok';
     case Facebook = 'facebook';
     case X = 'x';
+    case Threads = 'threads';
 }

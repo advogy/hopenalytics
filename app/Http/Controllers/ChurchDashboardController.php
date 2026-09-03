@@ -1522,7 +1522,7 @@ class ChurchDashboardController extends Controller
 
     public function presentation()
     {
-        $countField = ['youtube' => 'subscribers_count', 'instagram' => 'followers_count', 'tiktok' => 'followers_count', 'facebook' => 'followers_count', 'x' => 'followers_count'];
+        $countField = ['youtube' => 'subscribers_count', 'instagram' => 'followers_count', 'tiktok' => 'followers_count', 'facebook' => 'followers_count', 'x' => 'followers_count', 'threads' => 'followers_count'];
         $enabledPlatforms = AppSetting::current()->enabledPlatformValues();
 
         // Public presentation page — always shows general data, never scoped to whoever
@@ -1589,7 +1589,7 @@ class ChurchDashboardController extends Controller
 
     public function personalPresentation()
     {
-        $countField = ['youtube' => 'subscribers_count', 'instagram' => 'followers_count', 'tiktok' => 'followers_count', 'facebook' => 'followers_count', 'x' => 'followers_count'];
+        $countField = ['youtube' => 'subscribers_count', 'instagram' => 'followers_count', 'tiktok' => 'followers_count', 'facebook' => 'followers_count', 'x' => 'followers_count', 'threads' => 'followers_count'];
         $enabledPlatforms = AppSetting::current()->enabledPlatformValues();
 
         // Public presentation page — always unscoped, see presentation() above.

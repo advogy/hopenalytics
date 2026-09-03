@@ -34,7 +34,7 @@ return [
     'union_coordinator_none' => 'No active Unions yet.',
 
     'apify_title' => 'API Credentials & Weekly Auto-Fetch',
-    'apify_subtitle' => 'Instagram, TikTok, and Facebook are fetched through a paid third-party service (Apify). YouTube uses its own free official API, but still needs its own API key.',
+    'apify_subtitle' => 'Instagram, TikTok, Facebook, X, and Threads are fetched through a paid third-party service (Apify). YouTube uses its own free official API, but still needs its own API key.',
     'apify_token' => 'Apify API Token',
     'apify_token_hint_set' => 'A token is already set. Leave this field blank to keep the current token.',
     'apify_token_hint_unset' => "Not set yet — currently using the server's .env APIFY_TOKEN (if any). Fill this in to manage it from this page instead, no .env changes needed.",

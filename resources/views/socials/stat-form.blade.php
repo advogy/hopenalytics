@@ -1,7 +1,8 @@
 @php
-    $platformLabels = ['youtube' => 'YouTube', 'instagram' => 'Instagram', 'tiktok' => 'TikTok', 'facebook' => 'Facebook', 'x' => 'X'];
+    $platformLabels = ['youtube' => 'YouTube', 'instagram' => 'Instagram', 'tiktok' => 'TikTok', 'facebook' => 'Facebook', 'x' => 'X', 'threads' => 'Threads'];
     $isYoutube = $social->platform->value === 'youtube';
     $isFacebook = $social->platform->value === 'facebook';
+    $isThreads = $social->platform->value === 'threads';
     $editing ??= null;
 
     if ($editing) {
@@ -65,7 +66,7 @@
         @if ($isYoutube)
             <x-form-field name="views_count" :label="__('common.metric_views')" type="number" min="0" :value="old('views_count', $latest?->views_count)" />
             <x-form-field name="videos_count" :label="__('common.metric_videos')" type="number" min="0" :value="old('videos_count', $latest?->videos_count)" />
-        @elseif ($isFacebook)
+        @elseif ($isFacebook || $isThreads)
             <x-form-field name="recent_posts_count" :label="__('common.metric_posts_count')" type="number" min="0" :value="old('recent_posts_count', $latest?->recent_posts_count)" />
         @else
             <x-form-field name="posts_count" :label="__('common.metric_posts_count')" type="number" min="0" :value="old('posts_count', $latest?->posts_count)" />

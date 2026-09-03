@@ -353,19 +353,19 @@ trait BuildsLeaderboards
      */
     protected function metricPlatforms(): array
     {
-        // X has no views or likes metric tracked (only followers/following/posts_count —
-        // see XStatsFetcher), so it's left out of those two, same as Facebook is left out
-        // of 'likes'. Each list is further intersected with whichever platforms are
-        // currently enabled (see AppSetting::enabledPlatformValues(), Settings' platform
-        // toggle card) — a disabled platform must not show as an empty comparison tab.
+        // X and Threads have no views or likes metric tracked (only followers/posts_count —
+        // see XStatsFetcher/ThreadsStatsFetcher), so both are left out of those two, same as
+        // Facebook is left out of 'likes'. Each list is further intersected with whichever
+        // platforms are currently enabled (see AppSetting::enabledPlatformValues(), Settings'
+        // platform toggle card) — a disabled platform must not show as an empty comparison tab.
         $enabled = AppSetting::current()->enabledPlatformValues();
         $onlyEnabled = fn (array $platforms) => array_values(array_intersect($platforms, ['semua', ...$enabled]));
 
         return [
-            'reach' => $onlyEnabled(['semua', 'youtube', 'instagram', 'tiktok', 'facebook', 'x']),
+            'reach' => $onlyEnabled(['semua', 'youtube', 'instagram', 'tiktok', 'facebook', 'x', 'threads']),
             'views' => $onlyEnabled(['semua', 'youtube', 'instagram', 'tiktok']),
             'likes' => $onlyEnabled(['semua', 'tiktok']),
-            'posts' => $onlyEnabled(['semua', 'youtube', 'instagram', 'tiktok', 'facebook', 'x']),
+            'posts' => $onlyEnabled(['semua', 'youtube', 'instagram', 'tiktok', 'facebook', 'x', 'threads']),
         ];
     }
 
@@ -861,7 +861,7 @@ trait BuildsLeaderboards
                 $activeSocials,
                 fn ($social) => match ($social->platform) {
                     SocialPlatform::YouTube => 'videos_count',
-                    SocialPlatform::Facebook => 'recent_posts_count',
+                    SocialPlatform::Facebook, SocialPlatform::Threads => 'recent_posts_count',
                     default => 'posts_count',
                 },
             ],
@@ -1529,7 +1529,7 @@ trait BuildsLeaderboards
         }
 
         $metricNames = ['reach', 'views', 'likes', 'posts'];
-        $platformLabels = ['youtube' => 'YouTube', 'instagram' => 'Instagram', 'tiktok' => 'TikTok', 'facebook' => 'Facebook', 'x' => 'X'];
+        $platformLabels = ['youtube' => 'YouTube', 'instagram' => 'Instagram', 'tiktok' => 'TikTok', 'facebook' => 'Facebook', 'x' => 'X', 'threads' => 'Threads'];
 
         $statsBySocial = $socials->mapWithKeys(fn ($social) => [
             $social->id => $social->stats()->limit($limit + 1)->get(),

@@ -28,7 +28,7 @@ return [
 
     'privacy_s5_title' => '5. Pihak Ketiga yang Terlibat',
     'privacy_s5_items' => [
-        '<strong>Apify</strong> — pengambilan data publik Instagram, TikTok, Facebook, dan X.',
+        '<strong>Apify</strong> — pengambilan data publik Instagram, TikTok, Facebook, X, dan Threads.',
         '<strong>YouTube Data API v3</strong> (resmi, milik Google) — pengambilan data channel YouTube.',
         '<strong>OpenStreetMap Nominatim</strong> — geocoding nama kota menjadi koordinat peta.',
         'Penyedia layanan email — pengiriman kode verifikasi (OTP) ke email Anda.',
@@ -64,7 +64,7 @@ return [
     'terms_s3_p1' => 'Layanan ini murni untuk memantau dan membandingkan pertumbuhan akun media sosial — bukan untuk menerbitkan/menjadwalkan konten ke media sosial, bukan untuk mengakses akun media sosial siapa pun secara tidak sah, dan bukan untuk tujuan yang melanggar hukum yang berlaku.',
 
     'terms_s4_title' => '4. Data & Pihak Ketiga',
-    'terms_s4_p1' => 'Statistik akun media sosial diambil dari data publik yang disediakan oleh platform terkait (Instagram, TikTok, Facebook, X, YouTube) melalui layanan pihak ketiga (lihat Kebijakan Privasi). Kami tidak bertanggung jawab atas keakuratan, ketersediaan, atau perubahan kebijakan dari platform-platform tersebut.',
+    'terms_s4_p1' => 'Statistik akun media sosial diambil dari data publik yang disediakan oleh platform terkait (Instagram, TikTok, Facebook, X, Threads, YouTube) melalui layanan pihak ketiga (lihat Kebijakan Privasi). Kami tidak bertanggung jawab atas keakuratan, ketersediaan, atau perubahan kebijakan dari platform-platform tersebut.',
 
     'terms_s5_title' => '5. Perubahan & Penghentian Layanan',
     'terms_s5_p1' => 'Kami dapat mengubah, menangguhkan, atau menghentikan sebagian maupun seluruh fitur layanan ini sewaktu-waktu, termasuk menonaktifkan pemantauan platform tertentu, dengan atau tanpa pemberitahuan sebelumnya.',
