@@ -178,12 +178,32 @@
             @endforeach
 
             @foreach ($labelIndexes as $i)
+                @php
+                    // Split a plain "04 Agt"-style day+month label onto two lines (day on top,
+                    // month below) — per the user's explicit call, and only in 'dense' mode,
+                    // where this also buys back some of the horizontal room dense packing costs
+                    // (a two-line label is roughly half as wide as the same text on one line).
+                    // Left alone for an hour-only label ("16:00", no space) or the full
+                    // "04 Agt, 16:00" form shown once per day-change (a comma — splitting that
+                    // into just two lines would leave its second line just as long as before).
+                    $axisText = $axisTexts[$i];
+                    $dayMonth = $labelDensity === 'dense' && ! str_contains($axisText, ',') && substr_count($axisText, ' ') === 1
+                        ? explode(' ', $axisText, 2)
+                        : null;
+                @endphp
                 <text
                     x="{{ $points[$i][0] }}"
-                    y="{{ $height - 8 }}"
+                    y="{{ $height - ($dayMonth ? 20 : 8) }}"
                     text-anchor="{{ $i === 0 ? 'start' : ($i === $count - 1 ? 'end' : 'middle') }}"
                     class="fill-slate-400 text-[10px] dark:fill-slate-500"
-                >{{ $axisTexts[$i] }}</text>
+                >
+                    @if ($dayMonth)
+                        <tspan x="{{ $points[$i][0] }}">{{ $dayMonth[0] }}</tspan>
+                        <tspan x="{{ $points[$i][0] }}" dy="12">{{ $dayMonth[1] }}</tspan>
+                    @else
+                        {{ $axisText }}
+                    @endif
+                </text>
             @endforeach
         </svg>
 
