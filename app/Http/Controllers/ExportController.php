@@ -1402,19 +1402,18 @@ class ExportController extends Controller
      */
     private function hashtagDataset(?string $selectedHashtagId, ?string $selectedPlatform): array
     {
+        $user = auth()->user();
         $isUniView = $this->isUniView();
-        $selectedUnionId = $isUniView ? (string) auth()->user()->union_id : request()->query('union_id');
+        $selectedUnionId = $isUniView ? (string) $user->union_id : request()->query('union_id');
         $selectedConferenceId = request()->query('conference_id');
 
-        // Same Daerah/Gereja/personal fallback as ChurchDashboardController::hashtagComparisonData()
-        // — an export must always narrow exactly the same way the live page it's exporting does.
+        // An export must always narrow exactly the same way the live page it's exporting does
+        // — see the matching comment in ChurchDashboardController::hashtagComparisonData().
         if (! $selectedUnionId && ! $selectedConferenceId) {
             [$selectedUnionId, $selectedConferenceId] = $this->defaultHashtagRegionScope();
         }
 
-        // A plain member with no Daerah/Uni set at all — see the matching comment in
-        // ChurchDashboardController::hashtagComparisonData().
-        $noPersonalRegion = auth()->user()->role === null && ! $selectedUnionId && ! $selectedConferenceId;
+        $noPersonalRegion = $user->role === null && ! $selectedUnionId && ! $selectedConferenceId;
 
         $posts = HashtagPost::query()
             ->with(['hashtag', 'churchSocial'])

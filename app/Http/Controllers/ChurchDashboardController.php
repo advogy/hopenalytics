@@ -37,7 +37,14 @@ class ChurchDashboardController extends Controller
         // national picture than one Daerah's worth of accounts.
         $isGerejaLevel = auth()->user()->role?->level() === 'gereja';
 
-        $churches = $this->analyticsChurchScope(Church::query()->where('is_active', true))
+        // applyCeiling: true throughout this method — the Ringkasan dashboard has no region
+        // filter of its own to leave blank for "Global" the way every Analitik & Grafik
+        // comparison tab now does (see BuildsLeaderboards::isNasionalView()'s own doc comment),
+        // so a Daerah/Uni admin's own dashboard numbers (and the Goal-progress widget's
+        // fair-share-vs-actual comparison further down, which divides the national target down
+        // to exactly this same ceiling) stay their own region's, not nationwide with no way to
+        // narrow back.
+        $churches = $this->analyticsChurchScope(Church::query()->where('is_active', true), applyCeiling: true)
             ->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat'), 'conference.union.division'])
             ->orderBy('name')
             ->get();
@@ -65,7 +72,7 @@ class ChurchDashboardController extends Controller
         // Daerah-only figure. Missing entirely (rather than 0) for a church with under 2 weeks
         // of tracking — the heat map layer skips those instead of treating "no data yet" as
         // "no growth".
-        $churchGrowthScores = $this->growthScoreRows(scoped: ! $isGerejaLevel)->keyBy(fn ($row) => $row['church']->id);
+        $churchGrowthScores = $this->growthScoreRows(scoped: ! $isGerejaLevel, applyCeiling: true)->keyBy(fn ($row) => $row['church']->id);
 
         $mapChurches = $mapChurchSource->filter(fn ($church) => $church->latitude !== null && $church->longitude !== null)
             ->map(fn ($church) => [
@@ -85,7 +92,7 @@ class ChurchDashboardController extends Controller
 
         $unmappedCount = $mapChurchSource->count() - $mapChurches->count();
 
-        $people = $this->analyticsPersonScope(Person::query()->where('is_active', true))
+        $people = $this->analyticsPersonScope(Person::query()->where('is_active', true), applyCeiling: true)
             ->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat'), 'conference.union.division', 'union.division'])
             ->get();
 
@@ -97,7 +104,7 @@ class ChurchDashboardController extends Controller
             ? Person::query()->where('is_active', true)->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat'), 'conference.union.division', 'union.division'])->get()
             : $people;
 
-        $personGrowthScores = $this->growthScoreRowsPersonal(scoped: ! $isGerejaLevel)->keyBy(fn ($row) => $row['person']->id);
+        $personGrowthScores = $this->growthScoreRowsPersonal(scoped: ! $isGerejaLevel, applyCeiling: true)->keyBy(fn ($row) => $row['person']->id);
 
         $mapPeople = $mapPeopleSource->filter(fn ($person) => $person->latitude !== null && $person->longitude !== null)
             ->map(fn ($person) => [
@@ -113,7 +120,7 @@ class ChurchDashboardController extends Controller
 
         $unmappedPeopleCount = $mapPeopleSource->count() - $mapPeople->count();
 
-        $institutions = $this->analyticsInstitutionScope(Institution::query()->where('is_active', true))
+        $institutions = $this->analyticsInstitutionScope(Institution::query()->where('is_active', true), applyCeiling: true)
             ->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat'), 'conference.union.division', 'union.division'])
             ->get();
 
@@ -125,7 +132,7 @@ class ChurchDashboardController extends Controller
             ? Institution::query()->where('is_active', true)->with(['socials' => fn ($query) => $query->where('is_active', true)->with('latestStat'), 'conference.union.division', 'union.division'])->get()
             : $institutions;
 
-        $institutionGrowthScores = $this->growthScoreRowsInstitution(scoped: ! $isGerejaLevel)->keyBy(fn ($row) => $row['institution']->id);
+        $institutionGrowthScores = $this->growthScoreRowsInstitution(scoped: ! $isGerejaLevel, applyCeiling: true)->keyBy(fn ($row) => $row['institution']->id);
 
         $mapInstitutions = $mapInstitutionSource->filter(fn ($institution) => $institution->latitude !== null && $institution->longitude !== null)
             ->map(fn ($institution) => [
@@ -146,7 +153,7 @@ class ChurchDashboardController extends Controller
         // Daerah/Konferens (same as admin_daerah), not their single church, so this ranks them
         // against real peers instead of either "1 of 1" or the full nasional field, per the
         // user's explicit call.
-        $allGrowthScores = $this->growthScoreRows();
+        $allGrowthScores = $this->growthScoreRows(applyCeiling: true);
 
         $mapScoreRow = fn ($row) => [
             'entity' => $row['church'],
@@ -166,7 +173,7 @@ class ChurchDashboardController extends Controller
         $enabledPlatformValues = AppSetting::current()->enabledPlatformValues();
         $enabledPlatformCases = collect(SocialPlatform::cases())->filter(fn ($p) => in_array($p->value, $enabledPlatformValues, true));
 
-        $platformScoreSocials = $this->activeSocials(scoped: ! $isGerejaLevel);
+        $platformScoreSocials = $this->activeSocials(scoped: ! $isGerejaLevel, applyCeiling: true);
         $platformScoreRows = $this->growthScoreRowsByPlatform($platformScoreSocials);
         $missingPlatformScoreRows = $enabledPlatformCases
             ->reject(fn ($platform) => $platformScoreRows->contains('platform', $platform->value))
@@ -181,7 +188,7 @@ class ChurchDashboardController extends Controller
         // Union/Conference-owned ("Organisasi") accounts, scoped to the viewer's own region —
         // shared by the Goal card and Distribution Channels below so their totals stay in sync
         // with each other, per the user's explicit call.
-        $organizationSocials = $this->activeSocialsOrganization();
+        $organizationSocials = $this->activeSocialsOrganization(applyCeiling: true);
 
         $goalRows = $this->goalProgressRows($allSocials, $institutionSocials, $personalSocials, $organizationSocials);
 
@@ -1802,26 +1809,24 @@ class ChurchDashboardController extends Controller
     {
         $platforms = AppSetting::current()->enabledPlatformValues();
 
+        $user = auth()->user();
         $isUniView = $this->isUniView();
-        $selectedUnionId = $isUniView ? (string) auth()->user()->union_id : request()->query('union_id');
+        $selectedUnionId = $isUniView ? (string) $user->union_id : request()->query('union_id');
         $selectedConferenceId = request()->query('conference_id');
 
-        // Daerah/Gereja-level viewers (and a plain member) never get a region dropdown to pick
-        // from at all (see analytics-region-filter.blade.php) — fall back to their own reach so
-        // they're not left seeing every region's posts by default. See
-        // defaultHashtagRegionScope()'s own doc comment for why this can't just reuse
-        // analyticsChurchScope() directly.
+        // Nothing picked defaults to fully unfiltered/global for every real admin/pimpinan role
+        // now (see isNasionalView()'s own doc comment) — this only ever actually does something
+        // for a plain member (role === null), scoped no wider than their own reported Daerah/Uni.
         if (! $selectedUnionId && ! $selectedConferenceId) {
             [$selectedUnionId, $selectedConferenceId] = $this->defaultHashtagRegionScope();
         }
 
         // A plain member with no Daerah/Uni set at all has nowhere for defaultHashtagRegionScope()
-        // to fall back to either (its own [null, null] there means the same "nothing selected" as
-        // Global/Nasional/Divisi's deliberate unfiltered default) — without this, such a member
-        // would see every region's hashtag posts instead of the zero rows analyticsChurchScope()
-        // and friends already give them on every other Analitik & Grafik tab (see noPersonalRegion
-        // on analytics() for the notice pointing them at Profil Saya to fix it).
-        $noPersonalRegion = auth()->user()->role === null && ! $selectedUnionId && ! $selectedConferenceId;
+        // to fall back to either — without this, such a member would see every region's hashtag
+        // posts instead of the zero rows analyticsChurchScope() and friends already give them on
+        // every other Analitik & Grafik tab (see noPersonalRegion on analytics() for the notice
+        // pointing them at Profil Saya to fix it).
+        $noPersonalRegion = $user->role === null && ! $selectedUnionId && ! $selectedConferenceId;
 
         [$unionOptions, $conferenceOptions] = $this->regionFilterOptions($selectedUnionId);
 

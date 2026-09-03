@@ -63,11 +63,16 @@ class PersonController extends Controller
             // dashboard uses (BuildsLeaderboards::goalProgressRows()), scoped by the CURRENT
             // VIEWER's own role — for a role === null member that's already the isGlobal branch
             // (the one shared national goal), no extra logic needed here.
+            // applyCeiling: true — same reasoning as ChurchDashboardController::index()'s own
+            // calls: this widget has no region filter of its own to leave blank for "Global",
+            // and the fair-share target above is deliberately divided down to exactly the
+            // viewer's own ceiling, so widening "current" here without it would break that
+            // comparison's math.
             $goalRows = $this->goalProgressRows(
-                $this->activeSocials(),
-                $this->activeSocialsInstitution(),
-                $this->activeSocialsPersonal(),
-                $this->activeSocialsOrganization(),
+                $this->activeSocials(applyCeiling: true),
+                $this->activeSocialsInstitution(applyCeiling: true),
+                $this->activeSocialsPersonal(applyCeiling: true),
+                $this->activeSocialsOrganization(applyCeiling: true),
             );
 
             // "Pertumbuhan Wilayah Anda" — a different concept from the goal rows above: this is
