@@ -1805,12 +1805,30 @@ class ChurchDashboardController extends Controller
         $isUniView = $this->isUniView();
         $selectedUnionId = $isUniView ? (string) auth()->user()->union_id : request()->query('union_id');
         $selectedConferenceId = request()->query('conference_id');
+
+        // Daerah/Gereja-level viewers (and a plain member) never get a region dropdown to pick
+        // from at all (see analytics-region-filter.blade.php) — fall back to their own reach so
+        // they're not left seeing every region's posts by default. See
+        // defaultHashtagRegionScope()'s own doc comment for why this can't just reuse
+        // analyticsChurchScope() directly.
+        if (! $selectedUnionId && ! $selectedConferenceId) {
+            [$selectedUnionId, $selectedConferenceId] = $this->defaultHashtagRegionScope();
+        }
+
+        // A plain member with no Daerah/Uni set at all has nowhere for defaultHashtagRegionScope()
+        // to fall back to either (its own [null, null] there means the same "nothing selected" as
+        // Global/Nasional/Divisi's deliberate unfiltered default) — without this, such a member
+        // would see every region's hashtag posts instead of the zero rows analyticsChurchScope()
+        // and friends already give them on every other Analitik & Grafik tab (see noPersonalRegion
+        // on analytics() for the notice pointing them at Profil Saya to fix it).
+        $noPersonalRegion = auth()->user()->role === null && ! $selectedUnionId && ! $selectedConferenceId;
+
         [$unionOptions, $conferenceOptions] = $this->regionFilterOptions($selectedUnionId);
 
         $hashtags = Hashtag::where('is_active', true)->orderBy('tag')->get();
 
         $countsByHashtag = HashtagPost::query()
-            ->tap(fn ($q) => $this->applyHashtagRegionFilter($q, $selectedUnionId, $selectedConferenceId))
+            ->tap(fn ($q) => $noPersonalRegion ? $q->whereRaw('1 = 0') : $this->applyHashtagRegionFilter($q, $selectedUnionId, $selectedConferenceId))
             ->selectRaw('hashtag_id, platform, COUNT(*) as total')
             ->groupBy('hashtag_id', 'platform')
             ->get()
@@ -1856,7 +1874,7 @@ class ChurchDashboardController extends Controller
                 ->whereBetween('posted_at', [$postedFrom, $postedTo])
                 ->when($selectedHashtagId, fn ($q) => $q->where('hashtag_id', $selectedHashtagId))
                 ->when($selectedPlatform, fn ($q) => $q->where('platform', $selectedPlatform))
-                ->tap(fn ($q) => $this->applyHashtagRegionFilter($q, $selectedUnionId, $selectedConferenceId))
+                ->tap(fn ($q) => $noPersonalRegion ? $q->whereRaw('1 = 0') : $this->applyHashtagRegionFilter($q, $selectedUnionId, $selectedConferenceId))
                 ->selectRaw("DATE_FORMAT(posted_at, '%Y-%m-%d %H:00:00') as post_hour, COUNT(*) as total")
                 ->groupBy('post_hour')
                 ->pluck('total', 'post_hour');
@@ -1893,7 +1911,7 @@ class ChurchDashboardController extends Controller
                 ->whereNotNull('posted_at')
                 ->when($selectedHashtagId, fn ($q) => $q->where('hashtag_id', $selectedHashtagId))
                 ->when($selectedPlatform, fn ($q) => $q->where('platform', $selectedPlatform))
-                ->tap(fn ($q) => $this->applyHashtagRegionFilter($q, $selectedUnionId, $selectedConferenceId))
+                ->tap(fn ($q) => $noPersonalRegion ? $q->whereRaw('1 = 0') : $this->applyHashtagRegionFilter($q, $selectedUnionId, $selectedConferenceId))
                 ->selectRaw('DATE(posted_at) as post_date, COUNT(*) as total')
                 ->groupBy('post_date')
                 ->orderBy('post_date')
@@ -1913,7 +1931,7 @@ class ChurchDashboardController extends Controller
             ->when($selectedHashtagId, fn ($q) => $q->where('hashtag_id', $selectedHashtagId))
             ->when($selectedPlatform, fn ($q) => $q->where('platform', $selectedPlatform))
             ->when($isMonitoringWindow, fn ($q) => $q->whereBetween('posted_at', [$postedFrom, $postedTo]))
-            ->tap(fn ($q) => $this->applyHashtagRegionFilter($q, $selectedUnionId, $selectedConferenceId))
+            ->tap(fn ($q) => $noPersonalRegion ? $q->whereRaw('1 = 0') : $this->applyHashtagRegionFilter($q, $selectedUnionId, $selectedConferenceId))
             ->orderByDesc('posted_at')
             ->paginate(40, ['*'], 'hashtag_page')
             ->withQueryString();

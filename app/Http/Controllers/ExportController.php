@@ -1406,11 +1406,21 @@ class ExportController extends Controller
         $selectedUnionId = $isUniView ? (string) auth()->user()->union_id : request()->query('union_id');
         $selectedConferenceId = request()->query('conference_id');
 
+        // Same Daerah/Gereja/personal fallback as ChurchDashboardController::hashtagComparisonData()
+        // — an export must always narrow exactly the same way the live page it's exporting does.
+        if (! $selectedUnionId && ! $selectedConferenceId) {
+            [$selectedUnionId, $selectedConferenceId] = $this->defaultHashtagRegionScope();
+        }
+
+        // A plain member with no Daerah/Uni set at all — see the matching comment in
+        // ChurchDashboardController::hashtagComparisonData().
+        $noPersonalRegion = auth()->user()->role === null && ! $selectedUnionId && ! $selectedConferenceId;
+
         $posts = HashtagPost::query()
             ->with(['hashtag', 'churchSocial'])
             ->when($selectedHashtagId, fn ($q) => $q->where('hashtag_id', $selectedHashtagId))
             ->when($selectedPlatform, fn ($q) => $q->where('platform', $selectedPlatform))
-            ->tap(fn ($q) => $this->applyHashtagRegionFilter($q, $selectedUnionId, $selectedConferenceId))
+            ->tap(fn ($q) => $noPersonalRegion ? $q->whereRaw('1 = 0') : $this->applyHashtagRegionFilter($q, $selectedUnionId, $selectedConferenceId))
             ->orderByDesc('posted_at')
             ->get();
 

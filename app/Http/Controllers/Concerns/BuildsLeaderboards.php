@@ -172,6 +172,43 @@ trait BuildsLeaderboards
     }
 
     /**
+     * The Uni/Daerah applyHashtagRegionFilter() should fall back to when the viewer picked
+     * nothing themselves — which, for a Daerah- or Gereja-level admin/pimpinan and a plain
+     * member (role === null), is every request, since analytics-region-filter.blade.php never
+     * even renders a dropdown for them (isNasionalView()/isUniView() are both false — there's
+     * only ever one region they could pick anyway). Without this, hashtagComparisonData() fell
+     * straight through applyHashtagRegionFilter()'s own "nothing selected → unfiltered" branch,
+     * silently showing a Daerah/Gereja admin (or a member) every region's hashtag posts instead
+     * of just their own — the one tab on Analitik & Grafik that this session's earlier
+     * region-scoping policy change ([[personal-analytics-scope]]) never actually reached, since
+     * it was built afterward and reused isUniView()/isNasionalView() (uni-and-up) without also
+     * reusing analyticsChurchScope()'s own daerah/gereja/personal defaulting. Same breadth as
+     * that method gives these exact same viewers elsewhere: a gereja-level viewer gets their
+     * whole Daerah/Konferens, not just their single church — a hashtag post has no per-church
+     * scope to narrow to any further anyway. Global/Nasional/Divisi viewers get [null, null]
+     * (unfiltered by default) unchanged — they choose a region explicitly via the dropdown, and
+     * uni-level is handled separately by hashtagComparisonData() forcing $selectedUnionId to
+     * the viewer's own union_id up front, so it never reaches this fallback at all.
+     */
+    protected function defaultHashtagRegionScope(): array
+    {
+        $user = auth()->user();
+
+        if ($user->role === null) {
+            return [
+                $this->personalUnionId() ? (string) $this->personalUnionId() : null,
+                $this->personalConferenceId() ? (string) $this->personalConferenceId() : null,
+            ];
+        }
+
+        return match ($user->role->level()) {
+            'daerah' => [null, (string) $user->conference_id],
+            'gereja' => [null, (string) $user->church?->conference_id],
+            default => [null, null],
+        };
+    }
+
+    /**
      * The Union a region-groupable entity belongs under — itself, if the entity IS a Union
      * (the organisasi scope's Uni-level rows); its own union relation, if it's a Conference
      * (organisasi's Daerah-level rows); null for a Division (it sits ABOVE Uni — see
