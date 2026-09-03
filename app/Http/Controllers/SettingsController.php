@@ -40,7 +40,17 @@ class SettingsController extends Controller
         // platform's current toggle state, so disabling one doesn't also hide how many
         // accounts it would affect. ->value explicitly, since `platform` is enum-cast —
         // plucking it directly would key the array by enum instances, not plain strings.
+        //
+        // is_active = true is NOT optional the way the scope bypass above is — "delete" on a
+        // social account (see ChurchSocialController::destroy()) never actually removes the
+        // row, only sets is_active = false, same soft-hide convention as every other entity in
+        // this app. Every dashboard total (Total Akun Media Sosial, Jangkauan, Distribution
+        // Channels) already filters to is_active accounts only via activeSocials() and friends
+        // — omitting this filter here (a real, confirmed bug, not a deliberate design choice
+        // like the scope bypass) silently counted every account ever "removed" too, inflating
+        // this number past what the dashboard's own totals ever show for the exact same data.
         $platformAccountCounts = ChurchSocial::withoutGlobalScope('enabledPlatform')
+            ->where('is_active', true)
             ->selectRaw('platform, count(*) as total')
             ->groupBy('platform')
             ->get()
