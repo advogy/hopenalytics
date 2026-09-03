@@ -43,11 +43,27 @@ class SettingsController extends Controller
         // so a currently-disabled platform reads 0 here too (via the ?? 0 fallback below),
         // same as it already reads everywhere else in the app. This used to intentionally
         // bypass that scope, to show how many accounts a disabled platform still had on record
-        // — dropped in favor of the two numbers always agreeing. ->value explicitly, since
+        // — dropped in favor of the two numbers always agreeing.
+        //
+        // is_active on the ChurchSocial row alone still isn't the whole story — every
+        // activeSocials*() method also requires the OWNER (church/person/institution/union/
+        // conference/division — a row's owner is always exactly one of these, per that
+        // model's own mutually-exclusive columns) to itself be active, e.g. a church that got
+        // deactivated but still has an active-looking social row attached. Confirmed on real
+        // production data: a single deactivated owner with a YouTube + Instagram + Facebook
+        // account (no TikTok) was exactly why those three platforms each read one higher here
+        // than the dashboard while TikTok already matched. ->value explicitly, since
         // `platform` is enum-cast — plucking it directly would key the array by enum instances,
         // not plain strings.
         $platformAccountCounts = ChurchSocial::query()
             ->where('is_active', true)
+            ->where(fn ($query) => $query
+                ->whereHas('church', fn ($q) => $q->where('is_active', true))
+                ->orWhereHas('person', fn ($q) => $q->where('is_active', true))
+                ->orWhereHas('institution', fn ($q) => $q->where('is_active', true))
+                ->orWhereHas('union', fn ($q) => $q->where('is_active', true))
+                ->orWhereHas('conference', fn ($q) => $q->where('is_active', true))
+                ->orWhereHas('division', fn ($q) => $q->where('is_active', true)))
             ->selectRaw('platform, count(*) as total')
             ->groupBy('platform')
             ->get()
