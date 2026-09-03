@@ -89,6 +89,15 @@
             $labelStep = max(1, (int) ceil(($count - 1) / ($maxLabels - 1)));
             $labelIndexes = range(0, $count - 1, $labelStep);
             if (end($labelIndexes) !== $count - 1) {
+                // The evenly-spaced steps above don't necessarily land exactly on the final
+                // point, so it gets appended on top — but when that leaves it cramped right next
+                // to whichever step-based point came before it (closer than half a normal step
+                // apart), that pair's own two labels collide instead of just this whole label
+                // ending up crowded at the right edge (see the "31 Agt"/"01 Sep" bug report).
+                // Swap the too-close neighbor out for the final point instead of keeping both.
+                if (($count - 1 - end($labelIndexes)) < $labelStep / 2) {
+                    array_pop($labelIndexes);
+                }
                 $labelIndexes[] = $count - 1;
             }
         } else {
