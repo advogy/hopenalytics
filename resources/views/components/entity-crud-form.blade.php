@@ -34,9 +34,15 @@
     {{ $title }}
 </h1>
 
+{{-- data-disable-on-submit (see partials/disable-on-submit.blade.php, wired globally in
+     layouts/app.blade.php): blocks a second identical Gereja/Institusi/Daerah/Personal/Uni/
+     Divisi record from a double-click on Submit while the first request is still in flight —
+     the Back-button half of preventing duplicate data is the NoCacheFormPage middleware on
+     this page's own create/edit route instead (see that class's own doc comment). --}}
 <form
     method="POST"
     action="{{ $action }}"
+    data-disable-on-submit
     class="max-w-lg rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/5 dark:bg-slate-900"
 >
     @csrf

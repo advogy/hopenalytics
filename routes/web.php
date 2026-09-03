@@ -31,6 +31,7 @@ use App\Http\Controllers\QueueMonitorController;
 use App\Http\Controllers\RegisterController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SocialStatController;
+use App\Http\Middleware\NoCacheFormPage;
 use App\Http\Middleware\RedirectUnassignedMembers;
 use Illuminate\Support\Facades\Route;
 
@@ -155,12 +156,12 @@ Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group
         Route::put('/tujuan', [GoalController::class, 'update'])->name('goals.update');
     });
 
-    Route::middleware('can:create,App\Models\Church')->group(function () {
+    Route::middleware(['can:create,App\Models\Church', NoCacheFormPage::class])->group(function () {
         Route::get('/churches/create', [ChurchController::class, 'create'])->name('churches.create');
         Route::post('/churches', [ChurchController::class, 'store'])->name('churches.store');
     });
     Route::get('/churches/similar', [ChurchController::class, 'similar'])->name('churches.similar');
-    Route::get('/churches/{church:slug}/edit', [ChurchController::class, 'edit'])->name('churches.edit')->middleware('can:update,church');
+    Route::get('/churches/{church:slug}/edit', [ChurchController::class, 'edit'])->name('churches.edit')->middleware(['can:update,church', NoCacheFormPage::class]);
     Route::put('/churches/{church:slug}', [ChurchController::class, 'update'])->name('churches.update')->middleware('can:update,church');
     Route::patch('/churches/{church:slug}/toggle-active', [ChurchController::class, 'toggleActive'])->name('churches.toggle-active')->middleware('can:delete,church');
     Route::delete('/churches/{church:slug}', [ChurchController::class, 'destroy'])->name('churches.destroy')->middleware('can:delete,church');
@@ -199,12 +200,12 @@ Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group
     Route::get('/organisasi/uni/{union:slug}', [ChurchDashboardController::class, 'showUnion'])->name('unions.show')->middleware('can:view,union');
     Route::get('/organisasi/daerah/{conference:slug}', [ChurchDashboardController::class, 'showConference'])->name('conferences.show')->middleware('can:view,conference');
     Route::get('/institusi/{institution:slug}', [ChurchDashboardController::class, 'showInstitution'])->name('institutions.show')->middleware('can:view,institution');
-    Route::middleware('can:create,App\Models\Person')->group(function () {
+    Route::middleware(['can:create,App\Models\Person', NoCacheFormPage::class])->group(function () {
         Route::get('/personal/create', [PersonController::class, 'create'])->name('people.create');
         Route::post('/personal', [PersonController::class, 'store'])->name('people.store');
     });
     Route::get('/personal/similar', [PersonController::class, 'similar'])->name('people.similar');
-    Route::get('/personal/{person}/edit', [PersonController::class, 'edit'])->name('people.edit')->middleware('can:update,person');
+    Route::get('/personal/{person}/edit', [PersonController::class, 'edit'])->name('people.edit')->middleware(['can:update,person', NoCacheFormPage::class]);
     Route::put('/personal/{person}', [PersonController::class, 'update'])->name('people.update')->middleware('can:update,person');
     Route::patch('/personal/{person}/toggle-active', [PersonController::class, 'toggleActive'])->name('people.toggle-active')->middleware('can:delete,person');
     Route::post('/personal/{person}/link-user', [PersonController::class, 'linkUser'])->name('people.link-user')->middleware('can:delete,person');
@@ -346,12 +347,12 @@ Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group
             Route::post('/', [BulkDataImportController::class, 'import'])->name('import');
         });
 
-        Route::middleware('can:create,App\Models\Division')->group(function () {
+        Route::middleware(['can:create,App\Models\Division', NoCacheFormPage::class])->group(function () {
             Route::get('/divisions/create', [DivisionController::class, 'create'])->name('divisions.create');
             Route::post('/divisions', [DivisionController::class, 'store'])->name('divisions.store');
         });
         Route::get('/divisions/similar', [DivisionController::class, 'similar'])->name('divisions.similar');
-        Route::get('/divisions/{division:slug}/edit', [DivisionController::class, 'edit'])->name('divisions.edit')->middleware('can:update,division');
+        Route::get('/divisions/{division:slug}/edit', [DivisionController::class, 'edit'])->name('divisions.edit')->middleware(['can:update,division', NoCacheFormPage::class]);
         Route::put('/divisions/{division:slug}', [DivisionController::class, 'update'])->name('divisions.update')->middleware('can:update,division');
         Route::patch('/divisions/{division:slug}/toggle-active', [DivisionController::class, 'toggleActive'])->name('divisions.toggle-active')->middleware('can:update,division');
         Route::delete('/divisions/{division:slug}', [DivisionController::class, 'destroy'])->name('divisions.destroy')->middleware('can:delete,division');
@@ -362,12 +363,12 @@ Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group
             Route::post('/divisions/{division:slug}/socials', [OrganizationSocialController::class, 'divisionStore'])->name('divisions.socials.store');
         });
 
-        Route::middleware('can:create,App\Models\Union')->group(function () {
+        Route::middleware(['can:create,App\Models\Union', NoCacheFormPage::class])->group(function () {
             Route::get('/unions/create', [UnionController::class, 'create'])->name('unions.create');
             Route::post('/unions', [UnionController::class, 'store'])->name('unions.store');
         });
         Route::get('/unions/similar', [UnionController::class, 'similar'])->name('unions.similar');
-        Route::get('/unions/{union:slug}/edit', [UnionController::class, 'edit'])->name('unions.edit')->middleware('can:update,union');
+        Route::get('/unions/{union:slug}/edit', [UnionController::class, 'edit'])->name('unions.edit')->middleware(['can:update,union', NoCacheFormPage::class]);
         Route::put('/unions/{union:slug}', [UnionController::class, 'update'])->name('unions.update')->middleware('can:update,union');
         // Narrower than the above (manage-settings, not update,union) — see
         // UnionController::updateCoordinator()'s own docblock for why this needs its own gate.
@@ -381,12 +382,12 @@ Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group
             Route::post('/unions/{union:slug}/socials', [OrganizationSocialController::class, 'unionStore'])->name('unions.socials.store');
         });
 
-        Route::middleware('can:create,App\Models\Conference')->group(function () {
+        Route::middleware(['can:create,App\Models\Conference', NoCacheFormPage::class])->group(function () {
             Route::get('/conferences/create', [ConferenceController::class, 'create'])->name('conferences.create');
             Route::post('/conferences', [ConferenceController::class, 'store'])->name('conferences.store');
         });
         Route::get('/conferences/similar', [ConferenceController::class, 'similar'])->name('conferences.similar');
-        Route::get('/conferences/{conference:slug}/edit', [ConferenceController::class, 'edit'])->name('conferences.edit')->middleware('can:update,conference');
+        Route::get('/conferences/{conference:slug}/edit', [ConferenceController::class, 'edit'])->name('conferences.edit')->middleware(['can:update,conference', NoCacheFormPage::class]);
         Route::put('/conferences/{conference:slug}', [ConferenceController::class, 'update'])->name('conferences.update')->middleware('can:update,conference');
         Route::patch('/conferences/{conference:slug}/toggle-active', [ConferenceController::class, 'toggleActive'])->name('conferences.toggle-active')->middleware('can:update,conference');
         Route::delete('/conferences/{conference:slug}', [ConferenceController::class, 'destroy'])->name('conferences.destroy')->middleware('can:delete,conference');
@@ -397,12 +398,12 @@ Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group
             Route::post('/conferences/{conference:slug}/socials', [OrganizationSocialController::class, 'conferenceStore'])->name('conferences.socials.store');
         });
 
-        Route::middleware('can:create,App\Models\Institution')->group(function () {
+        Route::middleware(['can:create,App\Models\Institution', NoCacheFormPage::class])->group(function () {
             Route::get('/institutions/create', [InstitutionController::class, 'create'])->name('institutions.create');
             Route::post('/institutions', [InstitutionController::class, 'store'])->name('institutions.store');
         });
         Route::get('/institutions/similar', [InstitutionController::class, 'similar'])->name('institutions.similar');
-        Route::get('/institutions/{institution:slug}/edit', [InstitutionController::class, 'edit'])->name('institutions.edit')->middleware('can:update,institution');
+        Route::get('/institutions/{institution:slug}/edit', [InstitutionController::class, 'edit'])->name('institutions.edit')->middleware(['can:update,institution', NoCacheFormPage::class]);
         Route::put('/institutions/{institution:slug}', [InstitutionController::class, 'update'])->name('institutions.update')->middleware('can:update,institution');
         Route::patch('/institutions/{institution:slug}/toggle-active', [InstitutionController::class, 'toggleActive'])->name('institutions.toggle-active')->middleware('can:update,institution');
         Route::delete('/institutions/{institution:slug}', [InstitutionController::class, 'destroy'])->name('institutions.destroy')->middleware('can:delete,institution');
