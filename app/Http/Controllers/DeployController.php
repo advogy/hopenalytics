@@ -33,6 +33,19 @@ class DeployController extends Controller
         unlink($zipPath);
 
         Artisan::call('optimize:clear');
+
+        // optimize:clear above only clears Laravel's OWN caches (config/route/view/event) — it
+        // never touches PHP's own OPcache (compiled bytecode), a completely separate, lower-
+        // level cache. On shared hosting like Hostinger, a PHP-FPM worker can keep executing a
+        // file's PRE-deploy compiled bytecode for a long time after the file itself has already
+        // been overwritten on disk (confirmed live: a controller fix that changed nothing but
+        // its own query logic kept returning its old, pre-fix numbers well after a "successful"
+        // deploy). function_exists() guard since opcache isn't guaranteed to be loaded/enabled
+        // in every environment (e.g. `php artisan serve` locally).
+        if (function_exists('opcache_reset')) {
+            opcache_reset();
+        }
+
         Artisan::call('migrate', ['--force' => true]);
         $migrateOutput = Artisan::output();
 
