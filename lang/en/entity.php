@@ -14,6 +14,7 @@ return [
     'dashboard_add_social_nudge' => 'You haven\'t added a social media account yet. Add one from My Profile → Social Media.',
     'dashboard_region_growth_title' => 'Your Region\'s Growth',
     'dashboard_goal_title' => 'Our Shared Goal',
+    'dashboard_personal_account_reminder' => 'Your account is a personal account, so you can add your own personal social media accounts. To add a church\'s social media accounts, please contact your Conference/Mission admin so you can be made that church\'s admin.',
 
     'status_auto' => 'Automatic',
     'status_failed' => 'Failed',

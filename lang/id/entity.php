@@ -14,6 +14,7 @@ return [
     'dashboard_add_social_nudge' => 'Anda belum menambahkan akun media sosial. Tambahkan dari Profil Saya → Media Sosial.',
     'dashboard_region_growth_title' => 'Pertumbuhan Wilayah Anda',
     'dashboard_goal_title' => 'Tujuan Bersama',
+    'dashboard_personal_account_reminder' => 'Akun Anda adalah akun personal, jadi Anda bisa menginput akun media sosial pribadi Anda sendiri. Untuk dapat menginput akun media sosial gereja, silakan hubungi admin Konferens/Misi Anda agar dijadikan admin gereja.',
 
     'status_auto' => 'Otomatis',
     'status_failed' => 'Gagal',

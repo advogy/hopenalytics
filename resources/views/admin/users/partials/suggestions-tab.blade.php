@@ -24,7 +24,7 @@
     <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
         @foreach ($pendingSuggestions as $suggestion)
             <tr class="align-top">
-                <td class="py-2 pr-2 text-slate-400 dark:text-slate-500">{{ $loop->iteration }}</td>
+                <td class="py-2 pr-2 text-slate-400 dark:text-slate-500">{{ $pendingSuggestions->firstItem() + $loop->index }}</td>
                 <td class="py-2 pr-2">
                     @include('admin.users.partials.name-email', ['user' => $suggestion->user])
                 </td>

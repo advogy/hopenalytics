@@ -47,6 +47,16 @@
         </div>
     </div>
 
+    {{-- Standing reminder of what a plain personal account can/can't do — always shown (not
+         just during onboarding, per the user's explicit "untuk mengingatkan" framing), since a
+         member could easily go weeks without ever revisiting Lengkapi Profil/Profil Saya and
+         forget why their church's own accounts don't show up here. --}}
+    @if ($isOwnPerson)
+        <p class="mb-6 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+            {{ __('entity.dashboard_personal_account_reminder') }}
+        </p>
+    @endif
+
     {{-- Onboarding: a full welcome card only for a brand-new member with no region reported yet
          (the most "day one" state); once a region is set, a missing social account gets a much
          lighter single-line nudge instead — nothing shown here at all once both are done. --}}

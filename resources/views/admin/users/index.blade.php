@@ -127,7 +127,7 @@
         @endif
     </x-tab-bar>
 
-    <div data-tab-panel="unassigned">
+    <div data-tab-panel="unassigned" @class(['hidden' => $activeTab !== 'unassigned'])>
         <x-admin-list-card :items="$unassigned" :title="__('users.unassigned_title')" :subtitle="__('users.unassigned_subtitle')" :empty-message="__('users.no_match')">
             <x-slot:beforeContent>
                 <form method="GET" class="mb-4 flex flex-wrap gap-3">
@@ -401,12 +401,12 @@
     </div>
 
     @if ($canReviewSuggestions)
-        <div data-tab-panel="saran">
+        <div data-tab-panel="saran" @class(['hidden' => $activeTab !== 'saran'])>
             @include('admin.users.partials.suggestions-tab')
         </div>
     @endif
 
-    <div data-tab-panel="admin">
+    <div data-tab-panel="admin" @class(['hidden' => $activeTab !== 'admin'])>
         <x-admin-list-card
             :items="$adminUsers"
             :title="$canBootstrapAnyLevel ? __('users.admin_all_title') : __('users.admin_level_title', ['level' => $levelLabels[$targetLevel]])"
@@ -441,7 +441,7 @@
         </x-admin-list-card>
     </div>
 
-    <div data-tab-panel="pemimpin">
+    <div data-tab-panel="pemimpin" @class(['hidden' => $activeTab !== 'pemimpin'])>
         <x-admin-list-card
             :items="$pimpinanUsers"
             :title="$canBootstrapAnyLevel ? __('users.pemimpin_all_title') : __('users.pemimpin_level_title', ['level' => $levelLabels[$targetLevel]])"
@@ -477,7 +477,7 @@
     </div>
 
     @if ($canManageInstitutions)
-        <div data-tab-panel="institusi">
+        <div data-tab-panel="institusi" @class(['hidden' => $activeTab !== 'institusi'])>
             <x-admin-list-card
                 :items="$institutionAdmins->concat($institutionPimpinan)"
                 :title="__('users.institusi_admin_title')"
@@ -533,7 +533,7 @@
     @endif
 
     @if ($isSuperAdmin)
-        <div data-tab-panel="terhapus">
+        <div data-tab-panel="terhapus" @class(['hidden' => $activeTab !== 'terhapus'])>
             <x-admin-list-card :items="$trashedUsers" :title="__('users.trashed_title')" :subtitle="__('users.trashed_subtitle')" :empty-message="__('users.no_trashed')" :paginated="false">
                 <thead>
                     <tr class="text-slate-500 dark:text-slate-400">
