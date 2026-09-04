@@ -233,7 +233,14 @@ class UserAssignmentController extends Controller
             // app's own create-a-church forms already show) rather than re-querying per row —
             // per the user's explicit call, so the reviewer can catch "this is probably the same
             // church as X, already registered under a different name/spelling" before approving.
-            $activeChurches = Church::where('is_active', true)->with('conference')->get(['id', 'name', 'conference_id']);
+            // 'slug' included even though nothing here reads it directly — route('churches.edit', ...)
+            // in suggestions-tab.blade.php needs it for Church's own {church:slug} route-key
+            // binding (see routes/web.php); omitting it left that column null on every loaded
+            // model, and route() throwing "Missing required parameter" the moment any suggestion
+            // actually had a similar-name match — confirmed live, this crashed the whole Kelola
+            // Pengguna page (regardless of which tab was open) for the very first pending
+            // suggestion that ever triggered the hint.
+            $activeChurches = Church::where('is_active', true)->with('conference')->get(['id', 'name', 'slug', 'conference_id']);
 
             $pendingSuggestions->getCollection()->transform(function ($suggestion) use ($activeChurches) {
                 $suggestion->similarChurches = NameSimilarity::findSimilar($suggestion->church_name, $activeChurches);
