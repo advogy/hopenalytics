@@ -17,8 +17,6 @@ return [
     'no_admin_group_church' => 'Church',
     'no_admin_group_institution' => 'Institution',
     'no_admin_group_empty' => 'Everything already has an admin.',
-    'no_admin_filter_label' => 'Filter by Union:',
-    'no_admin_filter_all' => 'All Unions',
     'no_admin_hint' => 'To assign an admin, use the "Add Admin" form on the Admin tab and search for the church/institution/conference/union you want.',
 
     'unassigned_title' => 'Unassigned Members',

@@ -17,8 +17,6 @@ return [
     'no_admin_group_church' => 'Gereja',
     'no_admin_group_institution' => 'Institusi',
     'no_admin_group_empty' => 'Semua sudah punya admin.',
-    'no_admin_filter_label' => 'Filter Uni:',
-    'no_admin_filter_all' => 'Semua Uni',
     'no_admin_hint' => 'Untuk menugaskan admin, gunakan form tambah admin di tab "Admin" dan cari nama gereja/institusi/daerah/uni yang dituju.',
 
     'unassigned_title' => 'Anggota Belum Ditugaskan',

@@ -88,7 +88,15 @@ trait BuildsLeaderboards
         $isDaerahOrGereja = in_array($level, ['daerah', 'gereja'], true);
 
         $ownUnionId = match (true) {
-            $isUniLevel, $level === 'daerah' => $user->union_id,
+            $isUniLevel => $user->union_id,
+            // A daerah-level User's own union isn't stored on their own row (that column stays
+            // null for this level — their real scope is conference_id) — has to be derived via
+            // their Conference, same as gereja level right below derives it via their Church.
+            // Confirmed live: this used to read $user->union_id here too, which is always null
+            // for admin_daerah, so the Union searchable-select silently offered ZERO options for
+            // every Daerah-level admin, on both Analitik & Grafik and (once reused there too)
+            // Kelola Pengguna's own "Belum Ada Admin" filter.
+            $level === 'daerah' => $user->conference?->union_id,
             $level === 'gereja' => $user->church?->conference?->union_id,
             default => null,
         };

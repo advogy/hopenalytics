@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Enums\AdminSuggestionStatus;
 use App\Enums\UserRole;
+use App\Http\Controllers\Concerns\BuildsLeaderboards;
 use App\Http\Controllers\Controller;
 use App\Models\AdminSuggestion;
 use App\Models\Church;
@@ -21,6 +22,13 @@ use Illuminate\Support\Facades\Gate;
 
 class UserAssignmentController extends Controller
 {
+    // Reused only for its Uni/Daerah cascading searchable-select filter (regionFilterOptions())
+    // on the "Belum Ada Admin" tab, per the user's explicit call to match Analitik & Grafik's own
+    // filter UI exactly rather than a plain <select> — isNasionalView()/isUniView() decide which
+    // of the two boxes render, regionFilterOptions() itself still narrows the actual options to
+    // whatever this actor's own role can see, same as everywhere else that trait is used.
+    use BuildsLeaderboards;
+
     /**
      * A scoped "manage people under me" page — the level an actor may promote into is
      * always exactly one below their own (decision #5), so the whole page is built around
@@ -278,36 +286,39 @@ class UserAssignmentController extends Controller
         // region filter, so an actor sees exactly the same orgs here they'd see anywhere else in
         // Kelola Akun/Analitik — Institusi is included only when $canManageInstitutions, matching
         // every other institution-related gate in this method.
-        // Optional "which Union" narrowing, per the user's explicit follow-up call for a filter
-        // once they saw how long the nationwide Gereja list gets — applied on top of
-        // scopeVisibleTo() (so it can only ever narrow, never widen, an actor's own reach) rather
-        // than replacing it.
-        $noAdminUnionFilter = $request->integer('no_admin_union') ?: null;
+        // Uni → Daerah cascading filter, matching Analitik & Grafik's own searchable-select UI
+        // exactly (same partial, same regionFilterOptions() the user asked for) rather than a
+        // plain <select> — applied on top of scopeVisibleTo() so it can only ever narrow, never
+        // widen, an actor's own reach.
+        $noAdminSelectedUnionId = $request->query('union_id');
+        $noAdminSelectedConferenceId = $request->query('conference_id');
 
-        $noAdminUnionOptions = Union::query()->where('is_active', true)->visibleTo($actor)
-            ->orderBy('name')->get(['id', 'name']);
+        [$noAdminUnionOptions, $noAdminConferenceOptions] = $this->regionFilterOptions($noAdminSelectedUnionId);
 
         $noAdminUnions = Union::query()->where('is_active', true)->visibleTo($actor)
-            ->when($noAdminUnionFilter, fn ($q) => $q->where('id', $noAdminUnionFilter))
+            ->when($noAdminSelectedUnionId, fn ($q) => $q->where('id', $noAdminSelectedUnionId))
             ->whereDoesntHave('users', fn ($q) => $q->where('role', UserRole::AdminUni->value))
             ->orderBy('name')->get(['id', 'name', 'slug', 'division_id']);
 
         $noAdminConferences = Conference::query()->where('is_active', true)->visibleTo($actor)
-            ->when($noAdminUnionFilter, fn ($q) => $q->where('union_id', $noAdminUnionFilter))
+            ->when($noAdminSelectedUnionId, fn ($q) => $q->where('union_id', $noAdminSelectedUnionId))
+            ->when($noAdminSelectedConferenceId, fn ($q) => $q->where('id', $noAdminSelectedConferenceId))
             ->whereDoesntHave('users', fn ($q) => $q->where('role', UserRole::AdminDaerah->value))
             ->with('union')->orderBy('name')->get(['id', 'name', 'slug', 'union_id']);
 
         $noAdminChurches = Church::query()->where('is_active', true)->visibleTo($actor)
-            ->when($noAdminUnionFilter, fn ($q) => $q->whereHas('conference', fn ($q2) => $q2->where('union_id', $noAdminUnionFilter)))
+            ->when($noAdminSelectedUnionId, fn ($q) => $q->whereHas('conference', fn ($q2) => $q2->where('union_id', $noAdminSelectedUnionId)))
+            ->when($noAdminSelectedConferenceId, fn ($q) => $q->where('conference_id', $noAdminSelectedConferenceId))
             ->whereDoesntHave('users', fn ($q) => $q->where('role', UserRole::AdminGereja->value))
             ->with('conference.union')->orderBy('name')->get(['id', 'name', 'slug', 'conference_id']);
 
         $noAdminInstitutions = $canManageInstitutions
             ? Institution::query()->where('is_active', true)->visibleTo($actor)
-                ->when($noAdminUnionFilter, fn ($q) => $q->where(
-                    fn ($q2) => $q2->where('union_id', $noAdminUnionFilter)
-                        ->orWhereHas('conference', fn ($q3) => $q3->where('union_id', $noAdminUnionFilter))
+                ->when($noAdminSelectedUnionId, fn ($q) => $q->where(
+                    fn ($q2) => $q2->where('union_id', $noAdminSelectedUnionId)
+                        ->orWhereHas('conference', fn ($q3) => $q3->where('union_id', $noAdminSelectedUnionId))
                 ))
+                ->when($noAdminSelectedConferenceId, fn ($q) => $q->where('conference_id', $noAdminSelectedConferenceId))
                 ->whereDoesntHave('users', fn ($q) => $q->where('role', UserRole::AdminInstitusi->value))
                 ->orderBy('name')->get(['id', 'name', 'slug'])
             : collect();
@@ -346,7 +357,11 @@ class UserAssignmentController extends Controller
             'noAdminChurches' => $noAdminChurches,
             'noAdminInstitutions' => $noAdminInstitutions,
             'noAdminUnionOptions' => $noAdminUnionOptions,
-            'noAdminUnionFilter' => $noAdminUnionFilter,
+            'noAdminConferenceOptions' => $noAdminConferenceOptions,
+            'noAdminSelectedUnionId' => $noAdminSelectedUnionId,
+            'noAdminSelectedConferenceId' => $noAdminSelectedConferenceId,
+            'isNasionalView' => $this->isNasionalView(),
+            'isUniView' => $this->isUniView(),
         ]);
     }
 

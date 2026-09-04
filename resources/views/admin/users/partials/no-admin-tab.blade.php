@@ -11,31 +11,31 @@
     get long, narrowing to one Uni first is the natural way to actually work through them.
 
     Expects: $noAdminUnions, $noAdminConferences, $noAdminChurches, $noAdminInstitutions,
-    $noAdminUnionOptions, $noAdminUnionFilter, $canManageInstitutions, $activeTab.
+    $noAdminUnionOptions, $noAdminConferenceOptions, $noAdminSelectedUnionId,
+    $noAdminSelectedConferenceId, $isNasionalView, $isUniView, $canManageInstitutions, $activeTab.
 --}}
+{{-- Same Uni → Daerah cascading searchable-select used on Analitik & Grafik (see
+     partials.analytics-region-filter), inside the identical <x-filter-card> wrapper — reused
+     verbatim rather than a plain <select>, per the user's explicit call. --}}
+<x-filter-card :clear-url="($noAdminSelectedUnionId || $noAdminSelectedConferenceId) ? route('admin.users.index', ['tab' => 'belum-admin']) : null">
+    <form method="GET" id="belum-admin-filter-form" class="flex flex-wrap items-center gap-3">
+        <input type="hidden" name="tab" data-tab-hidden-field value="{{ $activeTab }}">
+        @include('partials.analytics-region-filter', [
+            'prefix' => 'belum-admin',
+            'formId' => 'belum-admin-filter-form',
+            'isNasionalView' => $isNasionalView,
+            'isUniView' => $isUniView,
+            'unionOptions' => $noAdminUnionOptions,
+            'conferenceOptions' => $noAdminConferenceOptions,
+            'selectedUnionId' => $noAdminSelectedUnionId,
+            'selectedConferenceId' => $noAdminSelectedConferenceId,
+        ])
+    </form>
+</x-filter-card>
+
 <div class="rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/5 dark:bg-slate-900">
     <p class="mb-1 font-bold text-slate-900 dark:text-white">{{ __('users.no_admin_title') }}</p>
     <p class="mb-4 text-sm text-slate-500 dark:text-slate-400">{{ __('users.no_admin_subtitle') }}</p>
-
-    @if ($noAdminUnionOptions->count() > 1)
-        <form method="GET" class="mb-6 flex flex-wrap items-center gap-2 border-b border-black/5 pb-4 dark:border-white/5">
-            <input type="hidden" name="tab" data-tab-hidden-field value="{{ $activeTab }}">
-            <label class="text-sm font-medium text-slate-600 dark:text-slate-300" for="no_admin_union">
-                {{ __('users.no_admin_filter_label') }}
-            </label>
-            <select
-                id="no_admin_union"
-                name="no_admin_union"
-                onchange="this.form.submit()"
-                class="rounded-lg border border-black/10 bg-white px-3 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none dark:border-white/10 dark:bg-slate-800"
-            >
-                <option value="">{{ __('users.no_admin_filter_all') }}</option>
-                @foreach ($noAdminUnionOptions as $option)
-                    <option value="{{ $option->id }}" @selected($noAdminUnionFilter === $option->id)>{{ $option->name }}</option>
-                @endforeach
-            </select>
-        </form>
-    @endif
 
     {{-- $noAdminTotal itself is already computed once by index.blade.php (it needs the number
          for the tab button's own badge, rendered before this partial is even included) — shared
