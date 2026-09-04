@@ -242,8 +242,14 @@ class UserAssignmentController extends Controller
             // suggestion that ever triggered the hint.
             $activeChurches = Church::where('is_active', true)->with('conference')->get(['id', 'name', 'slug', 'conference_id']);
 
+            // Stricter than the live "as you type" form hint's default 40% (see NameSimilarity's
+            // own THRESHOLD) — a reviewer is about to act on this, not just get a passing typing
+            // nudge, so a coincidental low-percent match (e.g. two unrelated churches that only
+            // share a generic suffix) does more harm than good here. See also suggestions-tab
+            // .blade.php's disclaimer text: even at this tighter cut, it's still only a system
+            // hint, never a certainty the reviewer can skip judging for themself.
             $pendingSuggestions->getCollection()->transform(function ($suggestion) use ($activeChurches) {
-                $suggestion->similarChurches = NameSimilarity::findSimilar($suggestion->church_name, $activeChurches);
+                $suggestion->similarChurches = NameSimilarity::findSimilar($suggestion->church_name, $activeChurches, minPercent: 55);
 
                 return $suggestion;
             });

@@ -107,11 +107,6 @@
 
     <x-tab-bar>
         <x-tab-button tab-key="unassigned">{{ __('users.tab_unassigned') }}</x-tab-button>
-        <x-tab-button tab-key="admin">{{ __('users.tab_admin') }}</x-tab-button>
-        <x-tab-button tab-key="pemimpin">{{ __('users.tab_pemimpin') }}</x-tab-button>
-        @if ($canManageInstitutions)
-            <x-tab-button tab-key="institusi">{{ __('common.institution') }}</x-tab-button>
-        @endif
         @if ($canReviewSuggestions)
             <x-tab-button tab-key="saran">
                 {{ __('admin_suggestions.tab_label') }}
@@ -121,6 +116,11 @@
                     </span>
                 @endif
             </x-tab-button>
+        @endif
+        <x-tab-button tab-key="admin">{{ __('users.tab_admin') }}</x-tab-button>
+        <x-tab-button tab-key="pemimpin">{{ __('users.tab_pemimpin') }}</x-tab-button>
+        @if ($canManageInstitutions)
+            <x-tab-button tab-key="institusi">{{ __('common.institution') }}</x-tab-button>
         @endif
         @if ($isSuperAdmin)
             <x-tab-button tab-key="terhapus">{{ __('users.tab_terhapus') }}</x-tab-button>
@@ -400,6 +400,12 @@
         </script>
     </div>
 
+    @if ($canReviewSuggestions)
+        <div data-tab-panel="saran">
+            @include('admin.users.partials.suggestions-tab')
+        </div>
+    @endif
+
     <div data-tab-panel="admin">
         <x-admin-list-card
             :items="$adminUsers"
@@ -523,12 +529,6 @@
                     @endforeach
                 </tbody>
             </x-admin-list-card>
-        </div>
-    @endif
-
-    @if ($canReviewSuggestions)
-        <div data-tab-panel="saran">
-            @include('admin.users.partials.suggestions-tab')
         </div>
     @endif
 

@@ -30,24 +30,6 @@
                 </td>
                 <td class="py-2 pr-2">
                     <div class="font-medium text-slate-900 dark:text-white">{{ $suggestion->church_name }}</div>
-                    @if ($suggestion->similarChurches->isNotEmpty())
-                        {{-- Same advisory shape as x-similar-name-check's own results box (see
-                             initSimilarNameCheck), just rendered server-side here since this is a
-                             read-only review list, not a live "as you type" form field. --}}
-                        <div class="mt-1.5 max-w-xs rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-300">
-                            <p class="mb-1 font-medium">{{ __('admin_suggestions.similar_warning') }}</p>
-                            <ul class="space-y-0.5">
-                                @foreach ($suggestion->similarChurches as $match)
-                                    <li>
-                                        <a href="{{ route('churches.edit', $match['model']) }}" class="underline hover:no-underline" target="_blank" rel="noopener">
-                                            {{ $match['model']->name }}
-                                        </a>
-                                        <span class="text-amber-600 dark:text-amber-400">({{ $match['model']->conference?->name ?? '—' }})</span>
-                                    </li>
-                                @endforeach
-                            </ul>
-                        </div>
-                    @endif
                 </td>
                 <td class="py-2 pr-2 text-slate-500 dark:text-slate-400">
                     {{ $suggestion->conference->name }} ({{ $suggestion->conference->union->name }})
@@ -90,6 +72,35 @@
                     </div>
                 </td>
             </tr>
+            @if ($suggestion->similarChurches->isNotEmpty())
+                {{-- A second, full-width row rather than squeezing this into the narrow "Nama
+                     Gereja" column (it used to be a max-w-xs box there, forcing every match onto
+                     its own line and pushing the row tall) — collapsed by default via <details>
+                     (no JS needed) so a long match list costs one line until the reviewer
+                     actually wants to see it, and when open it can wrap across the row's full
+                     width instead of stacking narrow-and-tall. --}}
+                <tr>
+                    <td></td>
+                    <td colspan="4" class="pb-2 pr-2">
+                        <details class="rounded-lg border border-amber-200 bg-amber-50 open:pb-2 dark:border-amber-900 dark:bg-amber-950">
+                            <summary class="cursor-pointer select-none px-2 py-1.5 text-xs font-medium text-amber-800 dark:text-amber-300">
+                                {{ __('admin_suggestions.similar_warning', ['count' => $suggestion->similarChurches->count()]) }}
+                            </summary>
+                            <div class="flex flex-wrap gap-x-3 gap-y-1 px-2 text-xs text-amber-800 dark:text-amber-300">
+                                @foreach ($suggestion->similarChurches as $match)
+                                    <a href="{{ route('churches.edit', $match['model']) }}" class="underline hover:no-underline" target="_blank" rel="noopener">
+                                        {{ $match['model']->name }}
+                                        <span class="text-amber-600 dark:text-amber-400">({{ $match['model']->conference?->name ?? '—' }})</span>
+                                    </a>
+                                @endforeach
+                            </div>
+                            <p class="mt-1.5 px-2 text-[11px] italic text-amber-600 dark:text-amber-400">
+                                {{ __('admin_suggestions.similar_disclaimer') }}
+                            </p>
+                        </details>
+                    </td>
+                </tr>
+            @endif
         @endforeach
     </tbody>
 </x-admin-list-card>

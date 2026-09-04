@@ -8,7 +8,8 @@ return [
     'col_requester' => 'Diajukan Oleh',
     'col_church_name' => 'Nama Gereja yang Diajukan',
     'col_submitted_at' => 'Diajukan Pada',
-    'similar_warning' => 'Mungkin sudah terdaftar dengan nama lain:',
+    'similar_warning' => 'Mungkin sudah terdaftar dengan nama lain (:count) — klik untuk lihat',
+    'similar_disclaimer' => 'Ini hanya saran otomatis dari sistem berdasarkan kemiripan nama, bukan kepastian bahwa gereja ini benar-benar sudah terdaftar. Periksa sendiri sebelum memutuskan.',
     'approve' => 'Setujui',
     'reject' => 'Tolak',
     'approve_confirm' => 'Setujui ":name" sebagai admin Gereja ":church"? Gereja baru akan dibuat dan dia akan langsung bisa menambahkan akun media sosial untuk gereja tersebut.',
@@ -18,4 +19,11 @@ return [
     'status_pending' => 'Menunggu',
     'status_approved' => 'Disetujui',
     'status_rejected' => 'Ditolak',
+
+    // Email — dikirim hanya saat disetujui, tidak pernah saat ditolak.
+    'mail_subject' => 'Anda kini admin Gereja ":church" di :app',
+    'mail_greeting' => 'Halo :name,',
+    'mail_body' => 'Kabar baik! Saran Anda untuk menjadi admin gereja berikut telah disetujui dan gerejanya baru saja dibuat di sistem:',
+    'mail_next_steps' => 'Anda sekarang bisa masuk dan mulai menambahkan akun media sosial untuk gereja ini dari halaman gereja Anda.',
+    'mail_cta' => 'Masuk ke Akun',
 ];

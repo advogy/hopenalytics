@@ -20,7 +20,7 @@ class NameSimilarity
      * unrelated churches both starting "GMAHK Jemaat ..." would look artificially close without
      * this stripped first).
      */
-    private const STOP_WORDS = ['gmahk', 'gereja', 'jemaat', 'advent', 'masehi', 'hari', 'ketujuh', 'sda'];
+    private const STOP_WORDS = ['gmahk', 'gereja', 'jemaat', 'advent', 'masehi', 'hari', 'ketujuh', 'sda', 'church', 'adventist'];
 
     /** Loose threshold (percent, via similar_text()) — more suggestions, admin filters by eye. */
     private const THRESHOLD = 40;
@@ -38,15 +38,22 @@ class NameSimilarity
 
     /**
      * @param  Collection<int, object>  $candidates  each must expose $nameKey as a string property
+     * @param  float|null  $minPercent  overrides the default loose THRESHOLD — pass a higher
+     *                                  value for a review surface where a human is about to act
+     *                                  on the result (e.g. Saran Admin's duplicate check), vs the
+     *                                  default used by the live "as you type" form hint, which
+     *                                  stays deliberately loose since the admin filters by eye.
      * @return Collection<int, array{model: object, percent: float}> sorted highest-first, capped at MAX_RESULTS
      */
-    public static function findSimilar(string $needle, Collection $candidates, string $nameKey = 'name'): Collection
+    public static function findSimilar(string $needle, Collection $candidates, string $nameKey = 'name', ?float $minPercent = null): Collection
     {
         $normalizedNeedle = self::normalize($needle);
 
         if ($normalizedNeedle === '') {
             return collect();
         }
+
+        $minPercent ??= self::THRESHOLD;
 
         return $candidates
             ->map(function ($candidate) use ($normalizedNeedle, $nameKey) {
@@ -62,7 +69,7 @@ class NameSimilarity
 
                 return ['model' => $candidate, 'percent' => $percent];
             })
-            ->filter(fn ($row) => $row['percent'] >= self::THRESHOLD)
+            ->filter(fn ($row) => $row['percent'] >= $minPercent)
             ->sortByDesc('percent')
             ->take(self::MAX_RESULTS)
             ->values();

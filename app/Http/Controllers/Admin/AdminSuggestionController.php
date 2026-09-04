@@ -6,12 +6,14 @@ use App\Enums\AdminSuggestionStatus;
 use App\Enums\UserRole;
 use App\Http\Controllers\Concerns\FindsOrCreatesChurch;
 use App\Http\Controllers\Controller;
+use App\Mail\AdminSuggestionApprovedMail;
 use App\Models\AdminSuggestion;
 use App\Support\AuditLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Mail;
 
 /**
  * Approve/reject one member's claim (made by typing a not-yet-existing Gereja name during
@@ -72,6 +74,11 @@ class AdminSuggestionController extends Controller
 
             return $church;
         });
+
+        // Sent only here, after the transaction has actually committed — never on reject (see
+        // that method) and never if the transaction above rolled back, so the requester is only
+        // ever told "you're now admin" once it's actually true.
+        Mail::to($suggestion->user->email)->send(new AdminSuggestionApprovedMail($suggestion->user, $church));
 
         AuditLogger::log(
             'admin_suggestion.approved',
