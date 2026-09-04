@@ -16,6 +16,19 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Without this, two pushes close together in time each get their own independent runner with no
+# ordering guarantee between them — whichever run's final "Trigger extract + migrate" HTTP call
+# happens to land on the server LAST wins, regardless of which commit was actually pushed later.
+# Confirmed live: a commit's own fix to a file was visibly missing from production immediately
+# after its deploy reported success, because an EARLIER commit's slightly-slower run's extract
+# executed after it and silently overwrote it back — DeployController::run() never checks
+# ZipArchive::extractTo()'s return value either, so this kind of clobber reports as a clean
+# success both times. cancel-in-progress: false queues a second push behind the first rather than
+# cancelling it mid-extract, which could leave the server in a genuinely half-updated state.
+concurrency:
+  group: deploy-hostinger
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest

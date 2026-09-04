@@ -28,7 +28,16 @@ class DeployController extends Controller
             return response()->json(['status' => 'error', 'message' => 'Failed to open deploy-payload.zip'], 500);
         }
 
-        $zip->extractTo(base_path());
+        // Previously unchecked — extractTo() returning false (e.g. one locked/permission-denied
+        // file inside the archive) used to fall straight through to "status: ok" regardless,
+        // silently leaving whichever files it couldn't write at their PRE-deploy content. CI's
+        // own curl -f (see deploy.yml) turns this 500 into a visibly failed Action run instead.
+        if (! $zip->extractTo(base_path())) {
+            $zip->close();
+
+            return response()->json(['status' => 'error', 'message' => 'ZipArchive::extractTo() failed — deploy payload was only partially extracted.'], 500);
+        }
+
         $zip->close();
         unlink($zipPath);
 
