@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Concerns\RedirectsToAccountsTab;
 use App\Http\Controllers\Controller;
 use App\Models\Conference;
 use App\Models\Institution;
@@ -16,6 +17,8 @@ use Illuminate\Support\Str;
 
 class InstitutionController extends Controller
 {
+    use RedirectsToAccountsTab;
+
     public function create(Request $request)
     {
         return view('admin.institutions.form', ['institution' => new Institution] + $this->regionPickerData($request));
@@ -236,7 +239,7 @@ class InstitutionController extends Controller
         return $slug;
     }
 
-    public function toggleActive(Institution $institution): RedirectResponse
+    public function toggleActive(Request $request, Institution $institution): RedirectResponse
     {
         $institution->update(['is_active' => ! $institution->is_active]);
         $status = $institution->is_active ? __('accounts.status_reactivated') : __('accounts.status_deactivated');
@@ -247,7 +250,7 @@ class InstitutionController extends Controller
             ($institution->is_active ? 'Mengaktifkan kembali' : 'Menonaktifkan')." Institusi \"{$institution->name}\"."
         );
 
-        return redirect()->route('admin.accounts.index', ['tab' => 'institusi'])->with('status', __('accounts.entity_status_changed', ['entity' => __('common.institution'), 'name' => $institution->name, 'status' => $status]));
+        return $this->redirectToAccountsTab($request, 'institusi')->with('status', __('accounts.entity_status_changed', ['entity' => __('common.institution'), 'name' => $institution->name, 'status' => $status]));
     }
 
     /**
@@ -260,10 +263,10 @@ class InstitutionController extends Controller
      * physically present and still trips the DB-level FK constraint even though Eloquent's
      * default query hides it.
      */
-    public function destroy(Institution $institution): RedirectResponse
+    public function destroy(Request $request, Institution $institution): RedirectResponse
     {
         if ($institution->users()->withTrashed()->exists()) {
-            return redirect()->route('admin.accounts.index', ['tab' => 'institusi'])
+            return $this->redirectToAccountsTab($request, 'institusi')
                 ->with('error', __('accounts.delete_blocked_institusi', ['name' => $institution->name]));
         }
 
@@ -272,6 +275,6 @@ class InstitutionController extends Controller
 
         AuditLogger::log('institution.deleted', $institution, "Menghapus permanen Institusi \"{$name}\".");
 
-        return redirect()->route('admin.accounts.index', ['tab' => 'institusi'])->with('status', __('accounts.entity_deleted', ['entity' => __('common.institution'), 'name' => $name]));
+        return $this->redirectToAccountsTab($request, 'institusi')->with('status', __('accounts.entity_deleted', ['entity' => __('common.institution'), 'name' => $name]));
     }
 }

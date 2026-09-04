@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Concerns\RedirectsToAccountsTab;
 use App\Http\Controllers\Controller;
 use App\Models\Division;
 use App\Support\AuditLogger;
@@ -13,6 +14,8 @@ use Illuminate\Support\Str;
 
 class DivisionController extends Controller
 {
+    use RedirectsToAccountsTab;
+
     public function create()
     {
         return view('admin.divisions.form', ['division' => new Division]);
@@ -64,7 +67,7 @@ class DivisionController extends Controller
         return redirect()->route('admin.accounts.index', ['tab' => 'divisi'])->with('status', __('accounts.entity_updated', ['entity' => __('common.division'), 'name' => $division->name]));
     }
 
-    public function toggleActive(Division $division): RedirectResponse
+    public function toggleActive(Request $request, Division $division): RedirectResponse
     {
         $division->update(['is_active' => ! $division->is_active]);
         $status = $division->is_active ? __('accounts.status_reactivated') : __('accounts.status_deactivated');
@@ -75,7 +78,7 @@ class DivisionController extends Controller
             ($division->is_active ? 'Mengaktifkan kembali' : 'Menonaktifkan')." Divisi \"{$division->name}\"."
         );
 
-        return redirect()->route('admin.accounts.index', ['tab' => 'divisi'])->with('status', __('accounts.entity_status_changed', ['entity' => __('common.division'), 'name' => $division->name, 'status' => $status]));
+        return $this->redirectToAccountsTab($request, 'divisi')->with('status', __('accounts.entity_status_changed', ['entity' => __('common.division'), 'name' => $division->name, 'status' => $status]));
     }
 
     /**
@@ -89,10 +92,10 @@ class DivisionController extends Controller
      * physically present and still trips the DB-level FK constraint even though Eloquent's
      * default query hides it.
      */
-    public function destroy(Division $division): RedirectResponse
+    public function destroy(Request $request, Division $division): RedirectResponse
     {
         if ($division->unions()->exists() || $division->users()->withTrashed()->exists()) {
-            return redirect()->route('admin.accounts.index', ['tab' => 'divisi'])
+            return $this->redirectToAccountsTab($request, 'divisi')
                 ->with('error', __('accounts.delete_blocked_divisi', ['name' => $division->name]));
         }
 
@@ -101,7 +104,7 @@ class DivisionController extends Controller
 
         AuditLogger::log('division.deleted', $division, "Menghapus permanen Divisi \"{$name}\".");
 
-        return redirect()->route('admin.accounts.index', ['tab' => 'divisi'])->with('status', __('accounts.entity_deleted', ['entity' => __('common.division'), 'name' => $name]));
+        return $this->redirectToAccountsTab($request, 'divisi')->with('status', __('accounts.entity_deleted', ['entity' => __('common.division'), 'name' => $name]));
     }
 
     private function uniqueSlug(string $name): string

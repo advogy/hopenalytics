@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\RedirectsToAccountsTab;
 use App\Models\Church;
 use App\Models\Conference;
 use App\Models\Union;
@@ -15,6 +16,8 @@ use Illuminate\Support\Str;
 
 class ChurchController extends Controller
 {
+    use RedirectsToAccountsTab;
+
     public function create(Request $request)
     {
         return view('churches.form', ['church' => new Church] + $this->conferencePickerData($request));
@@ -272,7 +275,7 @@ class ChurchController extends Controller
         }
     }
 
-    public function toggleActive(Church $church): RedirectResponse
+    public function toggleActive(Request $request, Church $church): RedirectResponse
     {
         $church->update(['is_active' => ! $church->is_active]);
         $status = $church->is_active ? __('accounts.status_reactivated') : __('accounts.status_deactivated');
@@ -283,7 +286,7 @@ class ChurchController extends Controller
             ($church->is_active ? 'Mengaktifkan kembali' : 'Menonaktifkan')." Gereja \"{$church->name}\"."
         );
 
-        return redirect()->route('admin.accounts.index', ['tab' => 'gereja'])->with('status', __('accounts.entity_status_changed', ['entity' => __('common.church'), 'name' => $church->name, 'status' => $status]));
+        return $this->redirectToAccountsTab($request, 'gereja')->with('status', __('accounts.entity_status_changed', ['entity' => __('common.church'), 'name' => $church->name, 'status' => $status]));
     }
 
     /**
@@ -298,10 +301,10 @@ class ChurchController extends Controller
      * Eloquent's default query hides it — without withTrashed() this check would say "no users"
      * and then fail with a raw QueryException on the delete() below anyway.
      */
-    public function destroy(Church $church): RedirectResponse
+    public function destroy(Request $request, Church $church): RedirectResponse
     {
         if ($church->users()->withTrashed()->exists()) {
-            return redirect()->route('admin.accounts.index', ['tab' => 'gereja'])
+            return $this->redirectToAccountsTab($request, 'gereja')
                 ->with('error', __('accounts.delete_blocked_gereja', ['name' => $church->name]));
         }
 
@@ -310,6 +313,6 @@ class ChurchController extends Controller
 
         AuditLogger::log('church.deleted', $church, "Menghapus permanen Gereja \"{$name}\".");
 
-        return redirect()->route('admin.accounts.index', ['tab' => 'gereja'])->with('status', __('accounts.entity_deleted', ['entity' => __('common.church'), 'name' => $name]));
+        return $this->redirectToAccountsTab($request, 'gereja')->with('status', __('accounts.entity_deleted', ['entity' => __('common.church'), 'name' => $name]));
     }
 }

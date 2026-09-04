@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Concerns\RedirectsToAccountsTab;
 use App\Http\Controllers\Controller;
 use App\Models\Conference;
 use App\Models\Union;
@@ -14,6 +15,8 @@ use Illuminate\Support\Str;
 
 class ConferenceController extends Controller
 {
+    use RedirectsToAccountsTab;
+
     public function create(Request $request)
     {
         return view('admin.conferences.form', ['conference' => new Conference] + $this->unionPickerData($request));
@@ -139,7 +142,7 @@ class ConferenceController extends Controller
         return ['canPickUnion' => false, 'unions' => collect(), 'ownUnion' => Union::find($user->union_id)];
     }
 
-    public function toggleActive(Conference $conference): RedirectResponse
+    public function toggleActive(Request $request, Conference $conference): RedirectResponse
     {
         $conference->update(['is_active' => ! $conference->is_active]);
         $status = $conference->is_active ? __('accounts.status_reactivated') : __('accounts.status_deactivated');
@@ -150,7 +153,7 @@ class ConferenceController extends Controller
             ($conference->is_active ? 'Mengaktifkan kembali' : 'Menonaktifkan')." Daerah \"{$conference->name}\"."
         );
 
-        return redirect()->route('admin.accounts.index', ['tab' => 'daerah'])->with('status', __('accounts.entity_status_changed', ['entity' => __('common.conference'), 'name' => $conference->name, 'status' => $status]));
+        return $this->redirectToAccountsTab($request, 'daerah')->with('status', __('accounts.entity_status_changed', ['entity' => __('common.conference'), 'name' => $conference->name, 'status' => $status]));
     }
 
     /**
@@ -164,10 +167,10 @@ class ConferenceController extends Controller
      * physically present and still trips the DB-level FK constraint even though Eloquent's
      * default query hides it.
      */
-    public function destroy(Conference $conference): RedirectResponse
+    public function destroy(Request $request, Conference $conference): RedirectResponse
     {
         if ($conference->churches()->exists() || $conference->users()->withTrashed()->exists()) {
-            return redirect()->route('admin.accounts.index', ['tab' => 'daerah'])
+            return $this->redirectToAccountsTab($request, 'daerah')
                 ->with('error', __('accounts.delete_blocked_daerah', ['name' => $conference->name]));
         }
 
@@ -176,7 +179,7 @@ class ConferenceController extends Controller
 
         AuditLogger::log('conference.deleted', $conference, "Menghapus permanen Daerah \"{$name}\".");
 
-        return redirect()->route('admin.accounts.index', ['tab' => 'daerah'])->with('status', __('accounts.entity_deleted', ['entity' => __('common.conference'), 'name' => $name]));
+        return $this->redirectToAccountsTab($request, 'daerah')->with('status', __('accounts.entity_deleted', ['entity' => __('common.conference'), 'name' => $name]));
     }
 
     private function uniqueSlug(string $name): string

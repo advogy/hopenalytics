@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\UserRole;
 use App\Http\Controllers\Concerns\BuildsLeaderboards;
 use App\Http\Controllers\Concerns\FindsOrCreatesChurch;
+use App\Http\Controllers\Concerns\RedirectsToAccountsTab;
 use App\Models\Church;
 use App\Models\ChurchSocial;
 use App\Models\Conference;
@@ -22,7 +23,7 @@ use Illuminate\Support\Facades\Validator;
 
 class PersonController extends Controller
 {
-    use BuildsLeaderboards, FindsOrCreatesChurch;
+    use BuildsLeaderboards, FindsOrCreatesChurch, RedirectsToAccountsTab;
 
     /**
      * The list-with-search-and-pagination view ("Kelola Akun"'s Personal tab) lives in
@@ -462,7 +463,7 @@ class PersonController extends Controller
         }
     }
 
-    public function toggleActive(Person $person): RedirectResponse
+    public function toggleActive(Request $request, Person $person): RedirectResponse
     {
         $person->update(['is_active' => ! $person->is_active]);
         $status = $person->is_active ? __('accounts.status_reactivated') : __('accounts.status_deactivated');
@@ -473,7 +474,7 @@ class PersonController extends Controller
             ($person->is_active ? 'Mengaktifkan kembali' : 'Menonaktifkan')." Personal \"{$person->name}\"."
         );
 
-        return redirect()->route('admin.accounts.index', ['tab' => 'personal'])->with('status', __('entity.person_status_changed', ['name' => $person->name, 'status' => $status]));
+        return $this->redirectToAccountsTab($request, 'personal')->with('status', __('entity.person_status_changed', ['name' => $person->name, 'status' => $status]));
     }
 
     /**
@@ -483,14 +484,14 @@ class PersonController extends Controller
      * dependents guard needed — the confirm prompt just needs to be honest that this also
      * wipes their tracked social accounts and history, which toggleActive() never touches.
      */
-    public function destroy(Person $person): RedirectResponse
+    public function destroy(Request $request, Person $person): RedirectResponse
     {
         $name = $person->name;
         $person->delete();
 
         AuditLogger::log('person.deleted', $person, "Menghapus permanen Personal \"{$name}\".");
 
-        return redirect()->route('admin.accounts.index', ['tab' => 'personal'])->with('status', __('entity.person_deleted', ['name' => $name]));
+        return $this->redirectToAccountsTab($request, 'personal')->with('status', __('entity.person_deleted', ['name' => $name]));
     }
 
     /**

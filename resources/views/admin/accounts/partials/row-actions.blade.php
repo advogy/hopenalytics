@@ -4,6 +4,12 @@
     under admin.*, Church and Person don't), so they're passed in rather than hardcoded.
 
     Expected props: $item, $editRoute, $toggleRoute, $deleteRoute, $name, $canDelete, $blockedReason
+    Optional prop: $filterFields — [fieldName => value] for whichever tab this row lives in (its
+    hidden tab_* search/sort/region-filter query params — see AccountController::index()'s own
+    per-tab field names), so toggle-active/delete redirect back to the SAME tab with the SAME
+    filters instead of resetting to the default tab with everything cleared (see
+    RedirectsToAccountsTab, which each of the 6 entity controllers now use to rebuild these on
+    the way back). Empty/absent for a tab with no filter values currently set.
     Optional prop: $deleteWarning — appended to the delete confirm text for entities whose
     delete cascades away more than just the row itself (e.g. Person's social accounts).
     Optional prop: $viewRoute — an entity's own social-account management list (add/edit); only
@@ -27,6 +33,7 @@
 @php
     $deleteWarning = $deleteWarning ?? '';
     $releasableUsers = isset($blockingUsers) ? $blockingUsers->where('role', null) : collect();
+    $filterFields = $filterFields ?? [];
 @endphp
 <div class="flex flex-nowrap items-center justify-end gap-3">
     @can('update', $item)
@@ -57,6 +64,11 @@
         >
             @csrf
             @method('PATCH')
+            @foreach ($filterFields as $fieldName => $fieldValue)
+                @if ($fieldValue !== null && $fieldValue !== '')
+                    <input type="hidden" name="{{ $fieldName }}" value="{{ $fieldValue }}">
+                @endif
+            @endforeach
             <button
                 type="submit"
                 title="{{ $item->is_active ? __('accounts.deactivate') : __('accounts.activate') }}"
@@ -77,6 +89,11 @@
             >
                 @csrf
                 @method('DELETE')
+                @foreach ($filterFields as $fieldName => $fieldValue)
+                    @if ($fieldValue !== null && $fieldValue !== '')
+                        <input type="hidden" name="{{ $fieldName }}" value="{{ $fieldValue }}">
+                    @endif
+                @endforeach
                 <button
                     type="submit"
                     title="{{ __('common.delete') }}"

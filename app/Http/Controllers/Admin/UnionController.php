@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\GroupPlatform;
+use App\Http\Controllers\Concerns\RedirectsToAccountsTab;
 use App\Http\Controllers\Controller;
 use App\Models\Division;
 use App\Models\Union;
@@ -16,6 +17,8 @@ use Illuminate\Validation\Rule;
 
 class UnionController extends Controller
 {
+    use RedirectsToAccountsTab;
+
     public function create(Request $request)
     {
         return view('admin.unions.form', ['union' => new Union] + $this->divisionPickerData($request));
@@ -124,7 +127,7 @@ class UnionController extends Controller
             ->with('status', __('accounts.entity_updated', ['entity' => __('common.union'), 'name' => $union->name]));
     }
 
-    public function toggleActive(Union $union): RedirectResponse
+    public function toggleActive(Request $request, Union $union): RedirectResponse
     {
         $union->update(['is_active' => ! $union->is_active]);
         $status = $union->is_active ? __('accounts.status_reactivated') : __('accounts.status_deactivated');
@@ -135,7 +138,7 @@ class UnionController extends Controller
             ($union->is_active ? 'Mengaktifkan kembali' : 'Menonaktifkan')." Uni \"{$union->name}\"."
         );
 
-        return redirect()->route('admin.accounts.index', ['tab' => 'uni'])->with('status', __('accounts.entity_status_changed', ['entity' => __('common.union'), 'name' => $union->name, 'status' => $status]));
+        return $this->redirectToAccountsTab($request, 'uni')->with('status', __('accounts.entity_status_changed', ['entity' => __('common.union'), 'name' => $union->name, 'status' => $status]));
     }
 
     /**
@@ -149,10 +152,10 @@ class UnionController extends Controller
      * physically present and still trips the DB-level FK constraint even though Eloquent's
      * default query hides it.
      */
-    public function destroy(Union $union): RedirectResponse
+    public function destroy(Request $request, Union $union): RedirectResponse
     {
         if ($union->conferences()->exists() || $union->users()->withTrashed()->exists()) {
-            return redirect()->route('admin.accounts.index', ['tab' => 'uni'])
+            return $this->redirectToAccountsTab($request, 'uni')
                 ->with('error', __('accounts.delete_blocked_uni', ['name' => $union->name]));
         }
 
@@ -161,7 +164,7 @@ class UnionController extends Controller
 
         AuditLogger::log('union.deleted', $union, "Menghapus permanen Uni \"{$name}\".");
 
-        return redirect()->route('admin.accounts.index', ['tab' => 'uni'])->with('status', __('accounts.entity_deleted', ['entity' => __('common.union'), 'name' => $name]));
+        return $this->redirectToAccountsTab($request, 'uni')->with('status', __('accounts.entity_deleted', ['entity' => __('common.union'), 'name' => $name]));
     }
 
     /**

@@ -188,6 +188,7 @@
                         <td class="py-2">
                             @include('admin.accounts.partials.row-actions', [
                                 'item' => $division,
+                                'filterFields' => ['search_divisi' => $searchDivisi, 'sort_divisi' => $sortDivisi],
                                 'editRoute' => 'admin.divisions.edit',
                                 'toggleRoute' => 'admin.divisions.toggle-active',
                                 'deleteRoute' => 'admin.divisions.destroy',
@@ -273,6 +274,7 @@
                         <td class="py-2">
                             @include('admin.accounts.partials.row-actions', [
                                 'item' => $union,
+                                'filterFields' => ['search_uni' => $searchUni, 'sort_uni' => $sortUni, 'division_id_uni' => $selectedDivisionIdUni],
                                 'viewRoute' => 'admin.unions.socials.index',
                                 'editRoute' => 'admin.unions.edit',
                                 'toggleRoute' => 'admin.unions.toggle-active',
@@ -356,6 +358,7 @@
                         <td class="py-2">
                             @include('admin.accounts.partials.row-actions', [
                                 'item' => $conference,
+                                'filterFields' => ['search_daerah' => $searchDaerah, 'sort_daerah' => $sortDaerah, 'union_id_daerah' => $selectedUnionIdDaerah],
                                 'viewRoute' => 'admin.conferences.socials.index',
                                 'editRoute' => 'admin.conferences.edit',
                                 'toggleRoute' => 'admin.conferences.toggle-active',
@@ -449,6 +452,7 @@
                         <td class="py-2">
                             @include('admin.accounts.partials.row-actions', [
                                 'item' => $church,
+                                'filterFields' => ['search_gereja' => $searchGereja, 'sort_gereja' => $sortGereja, 'union_id_gereja' => $selectedUnionIdGereja, 'conference_id_gereja' => $selectedConferenceIdGereja],
                                 'viewRoute' => 'churches.socials.index',
                                 'editRoute' => 'churches.edit',
                                 'toggleRoute' => 'churches.toggle-active',
@@ -542,6 +546,7 @@
                         <td class="py-2">
                             @include('admin.accounts.partials.row-actions', [
                                 'item' => $institution,
+                                'filterFields' => ['search_institusi' => $searchInstitusi, 'sort_institusi' => $sortInstitusi, 'union_id_institusi' => $selectedUnionIdInstitusi, 'conference_id_institusi' => $selectedConferenceIdInstitusi],
                                 'viewRoute' => 'admin.institutions.socials.index',
                                 'editRoute' => 'admin.institutions.edit',
                                 'toggleRoute' => 'admin.institutions.toggle-active',
@@ -647,6 +652,7 @@
                         <td class="py-2">
                             @include('admin.accounts.partials.row-actions', [
                                 'item' => $person,
+                                'filterFields' => ['search_personal' => $searchPersonal, 'sort_personal' => $sortPersonal, 'union_id_personal' => $selectedUnionIdPersonal, 'conference_id_personal' => $selectedConferenceIdPersonal],
                                 'viewRoute' => 'people.socials.index',
                                 'editRoute' => 'people.edit',
                                 'toggleRoute' => 'people.toggle-active',
