@@ -229,7 +229,7 @@
                             </form>
                         </td>
                         <td class="py-2 pr-2">
-                            @include('admin.users.partials.row-actions', ['user' => $user, 'tab' => 'unassigned'])
+                            @include('admin.users.partials.row-actions', ['user' => $user, 'tab' => 'unassigned', 'search' => $search, 'sort' => $sort])
                         </td>
                     </tr>
                 @endforeach

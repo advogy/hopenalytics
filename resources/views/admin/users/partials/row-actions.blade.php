@@ -33,6 +33,17 @@
                 <form method="POST" action="{{ route('admin.users.release-region', $user) }}" data-confirm="{{ $releaseRegionConfirm }}">
                     @csrf
                     <input type="hidden" name="tab" value="{{ $tab }}">
+                    {{-- $search/$sort: only ever passed for the 'unassigned' tab (its own filter
+                         state — see index.blade.php's own include call). Without these, every
+                         action below used to bounce back to a blank, unfiltered/unsorted
+                         unassigned list regardless of what was actually showing, since
+                         redirectToTab() only ever preserved $tab. --}}
+                    @isset($search)
+                        <input type="hidden" name="search" value="{{ $search }}">
+                    @endisset
+                    @isset($sort)
+                        <input type="hidden" name="sort" value="{{ $sort }}">
+                    @endisset
                     <button
                         type="submit"
                         title="{{ __('users.release_region') }}"
@@ -49,6 +60,13 @@
             <form method="POST" action="{{ route('admin.users.resend-otp', $user) }}" data-disable-on-submit>
                 @csrf
                 <input type="hidden" name="tab" value="{{ $tab }}">
+            {{-- $search/$sort — see the release-region form above for why these are here. --}}
+            @isset($search)
+                <input type="hidden" name="search" value="{{ $search }}">
+            @endisset
+            @isset($sort)
+                <input type="hidden" name="sort" value="{{ $sort }}">
+            @endisset
                 <button
                     type="submit"
                     title="{{ __('users.resend_otp') }}"
@@ -67,6 +85,13 @@
         >
             @csrf
             <input type="hidden" name="tab" value="{{ $tab }}">
+            {{-- $search/$sort — see the release-region form above for why these are here. --}}
+            @isset($search)
+                <input type="hidden" name="search" value="{{ $search }}">
+            @endisset
+            @isset($sort)
+                <input type="hidden" name="sort" value="{{ $sort }}">
+            @endisset
             <button
                 type="submit"
                 title="{{ $user->is_active ? __('accounts.deactivate') : __('accounts.activate') }}"
@@ -85,6 +110,13 @@
             @csrf
             @method('DELETE')
             <input type="hidden" name="tab" value="{{ $tab }}">
+            {{-- $search/$sort — see the release-region form above for why these are here. --}}
+            @isset($search)
+                <input type="hidden" name="search" value="{{ $search }}">
+            @endisset
+            @isset($sort)
+                <input type="hidden" name="sort" value="{{ $sort }}">
+            @endisset
             <button
                 type="submit"
                 title="{{ __('common.delete') }}"

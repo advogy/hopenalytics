@@ -598,7 +598,17 @@ class UserAssignmentController extends Controller
             ? $request->input('tab')
             : 'unassigned';
 
-        return redirect()->route('admin.users.index', ['tab' => $tab]);
+        // search/sort only ever arrive here from the 'unassigned' tab's own row-actions (see
+        // that partial's own doc comment) — array_filter() drops them entirely for every other
+        // tab's action instead of appending empty query params. Without this, an action taken
+        // while the unassigned list had a search term and/or a non-default sort applied used to
+        // reset BOTH back to defaults on redirect, even though $tab itself was already correctly
+        // preserved — confirmed live via the "Kirim OTP" button losing the active sort.
+        return redirect()->route('admin.users.index', array_filter([
+            'tab' => $tab,
+            'search' => $request->input('search'),
+            'sort' => $request->input('sort'),
+        ]));
     }
 
     private function assignedUsersQuery(User $actor, string $targetLevel, array $roleValues)
