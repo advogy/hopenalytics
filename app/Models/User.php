@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class User extends Authenticatable implements MustVerifyEmail
@@ -89,14 +90,30 @@ class User extends Authenticatable implements MustVerifyEmail
      * Generates a fresh 6-digit code and emails it — shared by registration verification
      * and admin-triggered resends, since both need identical code/expiry/mail behavior.
      */
-    public function sendVerificationOtp(): void
+    /**
+     * @return bool whether the email actually went out. The code/expiry are saved either way —
+     *              a transient send failure (confirmed live: Hostinger's own outbound rate limit
+     *              briefly rejecting sends during a registration burst) must never surface as an
+     *              uncaught 500 straight through register()/resendOtp(); callers instead check
+     *              this and tell the visitor to try "resend" again shortly, since the row is
+     *              already there waiting regardless of whether this particular send got through.
+     */
+    public function sendVerificationOtp(): bool
     {
         $this->forceFill([
             'otp_code' => str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT),
             'otp_expires_at' => now()->addMinutes(10),
         ])->save();
 
-        Mail::to($this->email)->send(new OtpVerificationMail($this));
+        try {
+            Mail::to($this->email)->send(new OtpVerificationMail($this));
+
+            return true;
+        } catch (\Throwable $e) {
+            Log::error('Failed to send verification OTP email.', ['user_id' => $this->id, 'email' => $this->email, 'exception' => $e]);
+
+            return false;
+        }
     }
 
     /**

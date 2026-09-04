@@ -83,4 +83,5 @@ return [
     'user_updated' => '":name" was updated successfully.',
     'user_status_changed' => '":name" has been :status.',
     'otp_resent_to' => 'A new OTP code has been sent to :email.',
+    'otp_resend_failed' => 'The OTP code was generated, but the email to :email failed to send right now. Please try again in a moment.',
 ];

@@ -52,11 +52,17 @@ class RegisterController extends Controller
             ]);
         }
 
-        $this->generateAndSendOtp($user);
+        $sent = $this->generateAndSendOtp($user);
 
         $request->session()->put('otp_user_id', $user->id);
 
-        return redirect()->route('verify-otp');
+        $redirect = redirect()->route('verify-otp');
+
+        // The account (and its OTP code) exist either way — a transient send failure (confirmed
+        // live: the mail provider's own outbound rate limit briefly rejecting sends) shouldn't
+        // 500 the whole registration, just tell them to use "Resend code" once it clears rather
+        // than silently leaving them waiting on an email that never left.
+        return $sent ? $redirect : $redirect->with('error', __('auth.otp_send_failed'));
     }
 
     /**
@@ -168,8 +174,8 @@ class RegisterController extends Controller
         return User::find($userId);
     }
 
-    private function generateAndSendOtp(User $user): void
+    private function generateAndSendOtp(User $user): bool
     {
-        $user->sendVerificationOtp();
+        return $user->sendVerificationOtp();
     }
 }

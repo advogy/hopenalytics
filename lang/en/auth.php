@@ -30,6 +30,7 @@ return [
     'otp_expired' => 'The OTP code has expired. Please resend it.',
     'resend_otp' => 'Resend code',
     'otp_resent' => 'If that email has a pending unverified registration, a new code has been sent.',
+    'otp_send_failed' => 'Your account was created, but the verification code email failed to send right now. Please try the "Resend code" button in a moment.',
     'cancel_registration' => 'Exit',
     'cancel_registration_confirm' => 'Cancel this registration?',
     'cancel_reset' => 'Exit',

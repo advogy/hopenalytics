@@ -83,4 +83,5 @@ return [
     'user_updated' => '":name" berhasil diperbarui.',
     'user_status_changed' => '":name" telah :status.',
     'otp_resent_to' => 'Kode OTP baru telah dikirim ke :email.',
+    'otp_resend_failed' => 'Kode OTP dibuat, tapi email ke :email gagal terkirim saat ini. Coba lagi dalam beberapa saat.',
 ];

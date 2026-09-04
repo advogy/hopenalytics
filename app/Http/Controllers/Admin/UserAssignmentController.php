@@ -577,9 +577,11 @@ class UserAssignmentController extends Controller
 
         abort_if($target->hasVerifiedEmail(), 422);
 
-        $target->sendVerificationOtp();
+        $sent = $target->sendVerificationOtp();
 
-        return $this->redirectToTab($request)->with('status', __('users.otp_resent_to', ['email' => $target->email]));
+        return $sent
+            ? $this->redirectToTab($request)->with('status', __('users.otp_resent_to', ['email' => $target->email]))
+            : $this->redirectToTab($request)->with('error', __('users.otp_resend_failed', ['email' => $target->email]));
     }
 
     /**
