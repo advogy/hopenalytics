@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AccountController;
 use App\Http\Controllers\Admin\AdminSuggestionController;
+use App\Http\Controllers\Admin\EmailBroadcastController;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\BrandController;
 use App\Http\Controllers\Admin\BulkDataImportController;
@@ -155,6 +156,16 @@ Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group
     Route::middleware('can:manage-goals')->group(function () {
         Route::get('/tujuan', [GoalController::class, 'edit'])->name('goals.edit');
         Route::put('/tujuan', [GoalController::class, 'update'])->name('goals.update');
+    });
+
+    // throttle:3,60 on store() specifically — a nationwide/division-wide send is heavy enough
+    // that accidentally (or repeatedly) triggering it deserves its own cap, same reasoning as
+    // socials.refresh-all's own throttle right above manage-goals in this file.
+    Route::middleware('can:send-bulk-email')->prefix('admin/email-broadcasts')->name('admin.email-broadcasts.')->group(function () {
+        Route::get('/', [EmailBroadcastController::class, 'index'])->name('index');
+        Route::get('/create', [EmailBroadcastController::class, 'create'])->name('create');
+        Route::post('/', [EmailBroadcastController::class, 'store'])->name('store')->middleware('throttle:3,60');
+        Route::get('/{broadcast}/status', [EmailBroadcastController::class, 'status'])->name('status');
     });
 
     Route::middleware(['can:create,App\Models\Church', NoCacheFormPage::class])->group(function () {

@@ -95,6 +95,7 @@ class SettingsController extends Controller
             'auto_fetch_day' => ['required', 'integer', 'min:0', 'max:6'],
             'auto_fetch_time' => ['required', 'date_format:H:i'],
             'cs_whatsapp_number' => ['nullable', 'string', 'max:32'],
+            'bulk_email_delay_seconds' => ['required', 'integer', 'min:1', 'max:120'],
             'groups' => ['nullable', 'array'],
             'groups.*.platform' => ['nullable', Rule::enum(GroupPlatform::class)],
             'groups.*.url' => ['nullable', 'url', 'max:2048'],

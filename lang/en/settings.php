@@ -20,6 +20,8 @@ return [
     'cs_subtitle' => 'This number and link are the default used by the Customer Service button in the bottom-right corner of every page — used for anyone whose Union hasn\'t set its own Union Coordinator (configured via Manage Accounts → Union).',
     'cs_whatsapp_number' => 'Global Coordinator WhatsApp Number',
     'cs_whatsapp_number_hint' => 'International format, no "+" or leading 0, e.g. 628123456789. Leave blank to hide this link.',
+    'bulk_email_delay_seconds' => 'Delay Between Bulk Emails (seconds)',
+    'bulk_email_delay_seconds_hint' => 'Spacing between each individual send when "Send Email to All Accounts" is used, so it doesn\'t exceed your hosting/SMTP provider\'s own sending limit. A larger number means slower but safer delivery. Check your Hostinger sending limit before changing this value.',
     'cs_groups' => 'Global Chat Groups',
     'cs_groups_hint' => 'WhatsApp/Messenger group(s) used as the default — more than one is fine. Leave empty to not show a group link at all.',
     'group_link_placeholder' => 'https://chat.whatsapp.com/… or https://m.me/…',

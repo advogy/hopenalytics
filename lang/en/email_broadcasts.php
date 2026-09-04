@@ -1,0 +1,51 @@
+<?php
+
+return [
+    'nav_label' => 'Send Email',
+
+    'create_title' => 'Send Email to Registered Accounts',
+    'create_subtitle' => 'Send a reminder to accounts that manage a social media account, asking them to update their data.',
+    'recipient_group_title' => 'Send To',
+    'recipient_group_subtitle' => 'Choose which account groups receive this email. You can pick one, several, or all of them.',
+    'group_admin_gereja' => 'Admin Gereja',
+    'group_admin_institusi' => 'Admin Institusi',
+    'group_admin_uni' => 'Admin Uni',
+    'group_admin_daerah' => 'Admin Daerah',
+    'group_personal' => 'Personal',
+    'recipient_count' => 'A total of :count accounts will receive this email.',
+    'recipient_count_zero' => 'Choose at least one recipient group.',
+    'field_subject' => 'Subject',
+    'field_body' => 'Message Body',
+    'field_body_hint' => 'Line breaks are preserved as-is in the email.',
+    'send_button' => 'Send Email',
+    'send_confirm' => 'Send this email to :count accounts? Sending is processed gradually in the background (not all at once) to keep delivery safe.',
+    'sent' => 'Sending started — :count emails will go out gradually in the background.',
+    'no_recipients' => 'No accounts match your selection — no email was sent.',
+
+    'limitations_title' => 'Sending Limitations',
+    'limitations_body' => 'To keep sending safe (avoiding your hosting provider\'s own email sending limit), emails are NOT sent all at once — the system sends them one by one, gradually, in the background, with a :delay-second gap between each (adjustable in Settings). You can also only start a new send up to 3 times per hour.',
+    'estimated_time' => 'Estimated sending time for :count accounts: ~:duration.',
+    'duration_seconds' => ':count seconds',
+    'duration_minutes' => ':count minutes',
+    'duration_hours' => ':count hours',
+
+    'index_title' => 'Send Email History',
+    'index_subtitle' => 'Past bulk emails and their sending status.',
+    'new_button' => '+ Send New Email',
+    'none_yet' => 'No emails have been sent yet.',
+    'col_subject' => 'Subject',
+    'col_sender' => 'Sent By',
+    'col_scope' => 'Scope',
+    'col_groups' => 'Groups',
+    'col_sent_at' => 'Sent On',
+    'col_progress' => 'Progress',
+    'scope_nationwide' => 'Nationwide',
+    'progress_label' => ':processed / :total sent',
+    'progress_failed' => ':count failed',
+    'progress_done' => 'Done',
+    'progress_in_progress' => 'In progress…',
+
+    // The email itself — see emails/bulk-announcement.blade.php.
+    'mail_greeting' => 'Hi :name,',
+    'mail_footer' => 'This email was sent by an :app admin to every account that manages a social media account.',
+];

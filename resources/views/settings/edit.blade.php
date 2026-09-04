@@ -146,6 +146,17 @@
             <div class="mb-1.5 block text-sm font-medium">{{ __('settings.cs_groups') }}</div>
             <p class="mb-2 text-xs text-slate-500 dark:text-slate-400">{{ __('settings.cs_groups_hint') }}</p>
             <x-group-links-fields name="groups" :groups="$globalGroups" />
+
+            <hr class="my-6 border-black/5 dark:border-white/5">
+
+            <x-form-field
+                name="bulk_email_delay_seconds"
+                type="number"
+                :label="__('settings.bulk_email_delay_seconds')"
+                :hint="__('settings.bulk_email_delay_seconds_hint')"
+                :value="$settings->bulk_email_delay_seconds"
+                wrapper-class="mb-0"
+            />
         </div>
 
         <button type="submit" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700">

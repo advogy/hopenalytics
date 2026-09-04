@@ -9,6 +9,7 @@ class AppSetting extends Model
     protected $fillable = [
         'auto_fetch_enabled', 'auto_fetch_day', 'auto_fetch_time',
         'cs_whatsapp_number',
+        'bulk_email_delay_seconds',
         'apify_fallback_to_manual', 'apify_token', 'youtube_api_key',
         'youtube_enabled', 'instagram_enabled', 'tiktok_enabled', 'facebook_enabled', 'x_enabled', 'threads_enabled',
     ];
@@ -16,6 +17,7 @@ class AppSetting extends Model
     protected $casts = [
         'auto_fetch_enabled' => 'boolean',
         'auto_fetch_day' => 'integer',
+        'bulk_email_delay_seconds' => 'integer',
         'apify_fallback_to_manual' => 'boolean',
         'youtube_enabled' => 'boolean',
         'instagram_enabled' => 'boolean',

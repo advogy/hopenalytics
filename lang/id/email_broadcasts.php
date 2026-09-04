@@ -1,0 +1,51 @@
+<?php
+
+return [
+    'nav_label' => 'Kirim Email',
+
+    'create_title' => 'Kirim Email ke Akun Terdaftar',
+    'create_subtitle' => 'Kirim pengingat ke akun yang mengelola media sosial agar memperbarui data media sosial mereka.',
+    'recipient_group_title' => 'Kirim Kepada',
+    'recipient_group_subtitle' => 'Pilih kelompok akun yang akan menerima email ini. Anda bisa memilih satu, beberapa, atau semuanya.',
+    'group_admin_gereja' => 'Admin Gereja',
+    'group_admin_institusi' => 'Admin Institusi',
+    'group_admin_uni' => 'Admin Uni',
+    'group_admin_daerah' => 'Admin Daerah',
+    'group_personal' => 'Personal',
+    'recipient_count' => 'Total :count akun akan menerima email ini.',
+    'recipient_count_zero' => 'Pilih minimal satu kelompok penerima.',
+    'field_subject' => 'Subjek',
+    'field_body' => 'Isi Pesan',
+    'field_body_hint' => 'Baris baru akan tetap tampil apa adanya di email.',
+    'send_button' => 'Kirim Email',
+    'send_confirm' => 'Kirim email ini ke :count akun? Pengiriman akan diproses bertahap di latar belakang (tidak langsung sekaligus) untuk menjaga keamanan pengiriman.',
+    'sent' => 'Pengiriman dimulai — :count email akan dikirim secara bertahap di latar belakang.',
+    'no_recipients' => 'Tidak ada akun yang cocok dengan pilihan Anda — tidak ada email yang dikirim.',
+
+    'limitations_title' => 'Batasan Pengiriman',
+    'limitations_body' => "Untuk menjaga keamanan pengiriman (menghindari batas kirim email dari penyedia hosting), email TIDAK dikirim sekaligus — sistem mengirim satu per satu secara bertahap di latar belakang dengan jeda :delay detik antar email (dapat diubah di Pengaturan). Anda juga hanya bisa memulai pengiriman baru maksimal 3 kali per jam.",
+    'estimated_time' => 'Perkiraan waktu pengiriman untuk :count akun: ~:duration.',
+    'duration_seconds' => ':count detik',
+    'duration_minutes' => ':count menit',
+    'duration_hours' => ':count jam',
+
+    'index_title' => 'Riwayat Kirim Email',
+    'index_subtitle' => 'Email massal yang pernah dikirim, beserta status pengirimannya.',
+    'new_button' => '+ Kirim Email Baru',
+    'none_yet' => 'Belum ada email yang pernah dikirim.',
+    'col_subject' => 'Subjek',
+    'col_sender' => 'Dikirim Oleh',
+    'col_scope' => 'Cakupan',
+    'col_groups' => 'Kelompok',
+    'col_sent_at' => 'Dikirim Pada',
+    'col_progress' => 'Progres',
+    'scope_nationwide' => 'Seluruh Indonesia',
+    'progress_label' => ':processed / :total terkirim',
+    'progress_failed' => ':count gagal',
+    'progress_done' => 'Selesai',
+    'progress_in_progress' => 'Sedang berjalan…',
+
+    // Email itself — see emails/bulk-announcement.blade.php.
+    'mail_greeting' => 'Halo :name,',
+    'mail_footer' => 'Email ini dikirim oleh admin :app kepada seluruh akun yang mengelola media sosial.',
+];

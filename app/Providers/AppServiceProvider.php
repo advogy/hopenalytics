@@ -149,6 +149,16 @@ class AppServiceProvider extends ServiceProvider
         // plain member) may reach the delegated user-assignment page.
         Gate::define('delegate-users', fn (User $user) => $user->role?->promotesToLevel() !== null);
 
+        // Broadcasting a "please update your social media" email to every social-media-owning
+        // account — global reaches nationwide, divisi is scoped to their own Division (see
+        // Admin\EmailBroadcastController::recipientsQuery()), per the user's explicit call.
+        // Nasional/Uni/Daerah/Gereja/Institusi and every Pimpinan role never get this ability —
+        // a mass-email tool one tier narrower than "manage-hierarchy" itself, since even an
+        // otherwise-privileged role shouldn't be able to email accounts outside a single
+        // Division's worth of people without it being a deliberate, higher-level decision.
+        Gate::define('send-bulk-email', fn (User $user) => $user->role !== null
+            && ($user->role->hasGlobalAccess() || $user->role === UserRole::AdminDivisi));
+
         // Exporting (directory, analytics, leaderboards, comparisons) — global/nasional/divisi/
         // uni/daerah level only (Admin AND Pimpinan alike, per the user's explicit call: a
         // Pimpinan should be able to export their own wilayah's reports same as the Admin at

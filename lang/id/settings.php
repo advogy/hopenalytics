@@ -20,6 +20,8 @@ return [
     'cs_subtitle' => 'Nomor dan tautan ini dipakai sebagai default oleh tombol Customer Service di kanan bawah setiap halaman — dipakai untuk siapapun yang wilayah Uni-nya belum mengisi Koordinator Uni sendiri (diatur lewat Kelola Akun → Uni).',
     'cs_whatsapp_number' => 'Nomor WhatsApp Koordinator Global',
     'cs_whatsapp_number_hint' => 'Format internasional tanpa "+" atau angka 0 di depan, contoh: 628123456789. Kosongkan untuk menyembunyikan tautan ini.',
+    'bulk_email_delay_seconds' => 'Jeda Antar Email Massal (detik)',
+    'bulk_email_delay_seconds_hint' => 'Jarak waktu antar pengiriman satu-per-satu saat fitur "Kirim Email ke Semua Akun" digunakan, supaya tidak melebihi batas kirim email dari penyedia hosting/SMTP Anda. Semakin besar angkanya, semakin lambat (tapi semakin aman) pengiriman selesai. Cek dulu batas kirim email Hostinger Anda sebelum mengubah nilai ini.',
     'cs_groups' => 'Grup Chat Global',
     'cs_groups_hint' => 'Grup WhatsApp/Messenger yang dipakai sebagai default — bisa lebih dari satu. Kosongkan untuk tidak menampilkan tautan grup sama sekali.',
     'group_link_placeholder' => 'https://chat.whatsapp.com/… atau https://m.me/…',
