@@ -207,8 +207,15 @@ class UserAssignmentController extends Controller
         // read-only Pimpinan, matching UserPolicy::promote()'s own first check — approving one
         // of these IS a promotion). Gereja/Institusi-level admins never see this tab: a new
         // church is by definition outside their own single-church/institution remit.
+        //
+        // hasGlobalAccess() checked separately from level() — SuperAdmin's own level() is null
+        // (see UserRole::level()'s own match), so the level()-list check alone would have
+        // silently hidden this tab from SuperAdmin specifically, even though
+        // AdminSuggestionPolicy::review() already authorized them to act on any row (confirmed
+        // missing here, not just theoretical — SuperAdmin could approve/reject by hitting the
+        // route directly, but the tab itself never showed up to find it from).
         $canReviewSuggestions = $actor->role !== null && ! $actor->role->isReadOnly()
-            && in_array($actor->role->level(), ['daerah', 'uni', 'divisi', 'nasional', 'global'], true);
+            && ($actor->role->hasGlobalAccess() || in_array($actor->role->level(), ['daerah', 'uni', 'divisi', 'nasional', 'global'], true));
 
         $pendingSuggestions = collect();
 
