@@ -78,7 +78,14 @@ class AdminSuggestionController extends Controller
         // Sent only here, after the transaction has actually committed — never on reject (see
         // that method) and never if the transaction above rolled back, so the requester is only
         // ever told "you're now admin" once it's actually true.
-        Mail::to($suggestion->user->email)->send(new AdminSuggestionApprovedMail($suggestion->user, $church));
+        //
+        // ->locale(...) (Mailable's own built-in helper) renders this mail in the REQUESTER's
+        // last-known language (see User::$locale, kept in sync by SetLocale), not the approving
+        // admin's — the two are frequently different people with different language settings,
+        // and the recipient has no session of their own active here for the app to read from
+        // otherwise. Falls back to the app default for a user somehow never seen by SetLocale.
+        Mail::to($suggestion->user->email)
+            ->send((new AdminSuggestionApprovedMail($suggestion->user, $church))->locale($suggestion->user->locale ?? config('app.locale')));
 
         AuditLogger::log(
             'admin_suggestion.approved',

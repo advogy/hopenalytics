@@ -43,6 +43,7 @@
                             method="POST"
                             action="{{ route('admin.admin-suggestions.approve', $suggestion) }}"
                             data-confirm="{{ __('admin_suggestions.approve_confirm', ['name' => $suggestion->user->name, 'church' => $suggestion->church_name]) }}"
+                            data-disable-on-submit
                         >
                             @csrf
                             <button
@@ -58,6 +59,7 @@
                             method="POST"
                             action="{{ route('admin.admin-suggestions.reject', $suggestion) }}"
                             data-confirm="{{ __('admin_suggestions.reject_confirm', ['name' => $suggestion->user->name]) }}"
+                            data-disable-on-submit
                         >
                             @csrf
                             <button

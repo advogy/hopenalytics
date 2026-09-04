@@ -14,7 +14,7 @@
                                     {{ __('admin_suggestions.mail_body') }}
                                 </p>
                                 <div style="margin:0 0 24px; padding:16px; background:#f1f5f9; border-radius:12px; text-align:center;">
-                                    <span style="font-size:20px; font-weight:700; color:#0f172a;">{{ $church }}</span>
+                                    <span style="font-size:20px; font-weight:700; color:#0f172a;">{{ $churchName }}</span>
                                 </div>
                                 <p style="margin:0 0 24px; font-size:13px; color:#64748b;">
                                     {{ __('admin_suggestions.mail_next_steps') }}

@@ -37,7 +37,12 @@ class AdminSuggestionApprovedMail extends Mailable
             view: 'emails.admin-suggestion-approved',
             with: [
                 'name' => $this->user->name,
-                'church' => $this->church->name,
+                // Named churchName rather than church — Mailable::buildViewData() auto-injects
+                // every public property (so $this->church, the whole model) as a view variable
+                // keyed by its property name too; a same-named 'church' key here would collide
+                // and get silently overwritten by that raw model, which is exactly what shipped:
+                // the email body printed the full Church row as JSON instead of just its name.
+                'churchName' => $this->church->name,
             ],
         );
     }

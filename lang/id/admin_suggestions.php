@@ -21,7 +21,7 @@ return [
     'status_rejected' => 'Ditolak',
 
     // Email — dikirim hanya saat disetujui, tidak pernah saat ditolak.
-    'mail_subject' => 'Anda kini admin Gereja ":church" di :app',
+    'mail_subject' => '[:app] Anda kini admin Gereja ":church"',
     'mail_greeting' => 'Halo :name,',
     'mail_body' => 'Kabar baik! Saran Anda untuk menjadi admin gereja berikut telah disetujui dan gerejanya baru saja dibuat di sistem:',
     'mail_next_steps' => 'Anda sekarang bisa masuk dan mulai menambahkan akun media sosial untuk gereja ini dari halaman gereja Anda.',

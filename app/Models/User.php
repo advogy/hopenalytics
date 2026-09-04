@@ -36,6 +36,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'conference_id',
         'church_id',
         'institution_id',
+        'locale',
     ];
 
     public function division(): BelongsTo

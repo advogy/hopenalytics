@@ -98,7 +98,17 @@ class UserAssignmentController extends Controller
             ->when($sort === 'date_asc', fn ($q) => $q->orderBy('created_at'))
             ->when($sort === 'date_desc', fn ($q) => $q->orderByDesc('created_at'))
             ->paginate(25)
-            ->withQueryString();
+            // withQueryString() alone only preserves whatever 'tab' happened to already be in
+            // the CURRENT url — which is nothing at all on this tab's own default landing state
+            // (it's the fallback, never written into the query string), and can even be a
+            // DIFFERENT tab's value if the visitor switched tabs client-side (tab buttons never
+            // touch the url) and then clicked this table's own pagination link. Explicitly
+            // appending 'tab' after withQueryString() overrides just that one key so this tab's
+            // own pager always points back to itself, regardless of what the url said before —
+            // confirmed live: without this a "Belum Ditugaskan" page-2 click could land back on
+            // whichever tab's query string was last written (e.g. Saran Admin's own).
+            ->withQueryString()
+            ->appends(['tab' => 'unassigned']);
 
         if ($canBootstrapAnyLevel) {
             $adminRoleValues = array_map(fn ($level) => $this->adminRoleForLevel($level)->value, $bootstrapLevels);
@@ -226,7 +236,11 @@ class UserAssignmentController extends Controller
                 ->with(['user', 'person', 'conference.union'])
                 ->orderBy('created_at')
                 ->paginate(20, ['*'], 'saran_page')
-                ->withQueryString();
+                // See the 'unassigned' paginator's own comment above — same reasoning, this tab's
+                // pager must always point back to 'saran' regardless of whatever 'tab' the url
+                // happened to carry before this link was generated.
+                ->withQueryString()
+                ->appends(['tab' => 'saran']);
 
             // Possible-duplicate hint per suggestion, computed once against every active church
             // nationwide (same reach as ChurchController::similar(), the same advisory this

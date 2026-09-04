@@ -30,6 +30,16 @@ class SetLocale
         App::setLocale($locale);
         Carbon::setLocale($locale);
 
+        // Kept in sync on every authenticated request (not just an explicit switch — see
+        // LocaleController) so a user's last-known language is always available for an email
+        // some OTHER user's action sends them, which has no session of the recipient's own to
+        // read at send time (see AdminSuggestionApprovedMail's own use of this column).
+        $user = $request->user();
+
+        if ($user !== null && $user->locale !== $locale) {
+            $user->forceFill(['locale' => $locale])->saveQuietly();
+        }
+
         return $next($request);
     }
 

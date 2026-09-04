@@ -21,7 +21,7 @@ return [
     'status_rejected' => 'Rejected',
 
     // Email — sent only on approval, never on rejection.
-    'mail_subject' => 'You are now admin of Church ":church" on :app',
+    'mail_subject' => '[:app] You are now admin of Church ":church"',
     'mail_greeting' => 'Hi :name,',
     'mail_body' => 'Good news! Your suggestion to become admin of the following church has been approved and it was just created in the system:',
     'mail_next_steps' => 'You can now log in and start adding social media accounts for this church from your church page.',

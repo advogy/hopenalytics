@@ -11,19 +11,16 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // ResolveBrand/SetLocale specifically prepended (run BEFORE the framework's own web-group
-        // middleware, including SubstituteBindings) rather than appended — a route-model-binding
-        // failure (e.g. a stale link to a since-deleted church) throws its 404 during
-        // SubstituteBindings, and if that happens before ResolveBrand ever runs, $currentBrand is
-        // never shared and the 404 error page's own layout (which renders <x-brand-mark>) 500s
-        // instead of showing the actual 404 — confirmed live in production. See also
-        // brand-mark.blade.php's own defensive fallback for the same reason, in case some other
-        // path still manages to skip this middleware entirely.
-        $middleware->web(prepend: [
+        // Appended (runs after the framework's own web-group middleware, including
+        // StartSession) — SetLocale reads/writes session('locale'), which needs a started
+        // session to mean anything, so it can't run any earlier than this. A route-model-binding
+        // 404 (e.g. a stale link to a since-deleted church) can still throw before this ever
+        // runs, in which case $currentBrand never gets shared — handled instead by
+        // brand-mark.blade.php's own defensive fallback (see that file), rather than by
+        // reordering this middleware, since SetLocale can't safely move any earlier.
+        $middleware->web(append: [
             \App\Http\Middleware\SetLocale::class,
             \App\Http\Middleware\ResolveBrand::class,
-        ]);
-        $middleware->web(append: [
             \App\Http\Middleware\SecurityHeaders::class,
         ]);
 
