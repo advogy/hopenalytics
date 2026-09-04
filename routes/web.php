@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AccountController;
+use App\Http\Controllers\Admin\AdminSuggestionController;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\BrandController;
 use App\Http\Controllers\Admin\BulkDataImportController;
@@ -324,6 +325,16 @@ Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group
     Route::middleware('can:manage-deleted-users')->prefix('admin/users')->name('admin.users.')->group(function () {
         Route::post('/{target}/restore', [UserAssignmentController::class, 'restore'])->name('restore')->withTrashed();
         Route::delete('/{target}/force', [UserAssignmentController::class, 'forceDelete'])->name('force-delete')->withTrashed();
+    });
+
+    // "Saran Admin" — Kelola Pengguna's own tab for reviewing a member's claim (made by typing a
+    // not-yet-existing Gereja name during Lengkapi Profil/Profil Saya) that they should become
+    // that new church's admin. can:review,suggestion (AdminSuggestionPolicy) is deliberately
+    // wider-reaching than delegate-users' own per-tab visibility above — see that policy's own
+    // doc comment.
+    Route::prefix('admin/admin-suggestions')->name('admin.admin-suggestions.')->group(function () {
+        Route::post('/{suggestion}/approve', [AdminSuggestionController::class, 'approve'])->name('approve')->middleware('can:review,suggestion');
+        Route::post('/{suggestion}/reject', [AdminSuggestionController::class, 'reject'])->name('reject')->middleware('can:review,suggestion');
     });
 
     Route::get('/admin/audit-log', [AuditLogController::class, 'index'])->name('admin.audit-log.index')->middleware('can:view-audit-log');

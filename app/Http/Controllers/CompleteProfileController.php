@@ -71,23 +71,28 @@ class CompleteProfileController extends Controller
         $conference = Conference::findOrFail($data['conference_id']);
         abort_if($conference->union_id !== (int) $data['union_id'], 422);
 
-        $church = $this->findOrCreateChurch($conference->id, $data['church_name']);
+        $church = $this->findExistingChurchOrSuggestAdmin($user, $conference->id, $data['church_name']);
 
         // Every role === null member reaching this endpoint already has a linked Person (see
         // this class's own doc comment above) — union_id stays null here, matching
         // PersonController::resolveOrgScope()'s "never both union_id and conference_id at once"
-        // invariant elsewhere, since a Conference already implies its own Union.
+        // invariant elsewhere, since a Conference already implies its own Union. church_id stays
+        // null when $church is null (a new-name suggestion is now pending review instead) — same
+        // breadth as reporting this Daerah with no specific Gereja at all, until it's approved.
         $user->person->update([
             'union_id' => null,
             'conference_id' => $conference->id,
-            'church_id' => $church->id,
+            'church_id' => $church?->id,
         ]);
 
         $user->forceFill(['profile_step_completed_at' => now()])->save();
 
         // The Wilayah fields now live folded into the "Info Personal" tab — see
         // profile/edit.blade.php.
-        return redirect()->route('profile.edit', ['tab' => 'personal'])->with('status', __('entity.profile_completed'));
+        return redirect()->route('profile.edit', ['tab' => 'personal'])->with(
+            'status',
+            $church === null ? __('entity.admin_suggestion_pending', ['name' => trim($data['church_name'])]) : __('entity.profile_completed')
+        );
     }
 
     public function skip(Request $request): RedirectResponse

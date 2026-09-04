@@ -112,6 +112,16 @@
         @if ($canManageInstitutions)
             <x-tab-button tab-key="institusi">{{ __('common.institution') }}</x-tab-button>
         @endif
+        @if ($canReviewSuggestions)
+            <x-tab-button tab-key="saran">
+                {{ __('admin_suggestions.tab_label') }}
+                @if ($pendingSuggestions->total() > 0)
+                    <span class="ml-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-xs font-semibold text-amber-700 dark:bg-amber-950 dark:text-amber-400">
+                        {{ $pendingSuggestions->total() }}
+                    </span>
+                @endif
+            </x-tab-button>
+        @endif
         @if ($isSuperAdmin)
             <x-tab-button tab-key="terhapus">{{ __('users.tab_terhapus') }}</x-tab-button>
         @endif
@@ -513,6 +523,12 @@
                     @endforeach
                 </tbody>
             </x-admin-list-card>
+        </div>
+    @endif
+
+    @if ($canReviewSuggestions)
+        <div data-tab-panel="saran">
+            @include('admin.users.partials.suggestions-tab')
         </div>
     @endif
 

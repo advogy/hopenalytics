@@ -172,6 +172,7 @@ return [
 
     // Flash messages — Profil Saya (own-profile edit) and initial profile completion.
     'profile_completed' => 'Profile completed successfully.',
+    'admin_suggestion_pending' => 'Profile completed. Since ":name" isn\'t registered yet, your request to become that church\'s admin is now pending approval from a Conference/Union admin.',
     'profile_updated' => 'Profile updated successfully.',
     'profile_name_updated_email_pending' => 'Name updated. A verification code has been sent to :email to confirm the new email.',
     'password_updated' => 'Password updated successfully.',

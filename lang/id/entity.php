@@ -176,6 +176,7 @@ return [
 
     // Flash messages — Profil Saya (own-profile edit) and initial profile completion.
     'profile_completed' => 'Profil berhasil dilengkapi.',
+    'admin_suggestion_pending' => 'Profil berhasil dilengkapi. Karena ":name" belum terdaftar, permintaan Anda untuk menjadi admin gereja tersebut sedang menunggu persetujuan admin Daerah/Uni.',
     'profile_updated' => 'Profil berhasil diperbarui.',
     'profile_name_updated_email_pending' => 'Nama diperbarui. Kode verifikasi telah dikirim ke :email untuk mengonfirmasi email baru.',
     'password_updated' => 'Kata sandi berhasil diperbarui.',

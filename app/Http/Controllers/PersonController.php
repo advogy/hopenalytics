@@ -373,8 +373,15 @@ class PersonController extends Controller
             return $unchanged;
         }
 
+        // findExistingChurchOrSuggestAdmin(), not findOrCreateChurch() — same reasoning as
+        // CompleteProfileController::store(): a genuinely new church name here creates a pending
+        // AdminSuggestion instead of an unreviewed Church, so this path can't be used to bypass
+        // that review by "editing Wilayah again" instead of going through Lengkapi Profil. A
+        // null result (blank field, OR a new-name suggestion was just filed) falls through to
+        // $currentChurchId below unchanged — a pending suggestion doesn't clear whatever church
+        // this Person already had linked; that only changes once the suggestion is reviewed.
         $church = $request->filled('church_name')
-            ? $this->findOrCreateChurch($conference->id, (string) $request->input('church_name'))
+            ? $this->findExistingChurchOrSuggestAdmin($request->user(), $conference->id, (string) $request->input('church_name'))
             : null;
 
         return ['union_id' => null, 'conference_id' => $conference->id, 'church_id' => $church?->id ?? $currentChurchId];

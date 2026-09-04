@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\AdminSuggestionStatus;
 use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
+use App\Models\AdminSuggestion;
 use App\Models\Church;
 use App\Models\Conference;
 use App\Models\Division;
@@ -12,6 +14,7 @@ use App\Models\Person;
 use App\Models\Union;
 use App\Models\User;
 use App\Support\AuditLogger;
+use App\Support\NameSimilarity;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -199,7 +202,40 @@ class UserAssignmentController extends Controller
             $scopeDataByLevel['institusi'] = $institutionOptions->map(fn ($i) => ['id' => $i->id, 'label' => $i->name])->values();
         }
 
-        $activeTab = in_array($request->query('tab'), ['admin', 'pemimpin', 'institusi', 'terhapus'], true) ? $request->query('tab') : 'unassigned';
+        // "admin mission dan diatasnya" per the user's explicit call — Daerah ("Mission" in
+        // Adventist English usage) and every level above it, admin roles only (never a
+        // read-only Pimpinan, matching UserPolicy::promote()'s own first check — approving one
+        // of these IS a promotion). Gereja/Institusi-level admins never see this tab: a new
+        // church is by definition outside their own single-church/institution remit.
+        $canReviewSuggestions = $actor->role !== null && ! $actor->role->isReadOnly()
+            && in_array($actor->role->level(), ['daerah', 'uni', 'divisi', 'nasional', 'global'], true);
+
+        $pendingSuggestions = collect();
+
+        if ($canReviewSuggestions) {
+            $pendingSuggestions = AdminSuggestion::query()
+                ->where('status', AdminSuggestionStatus::Pending)
+                ->visibleTo($actor)
+                ->with(['user', 'person', 'conference.union'])
+                ->orderBy('created_at')
+                ->paginate(20, ['*'], 'saran_page')
+                ->withQueryString();
+
+            // Possible-duplicate hint per suggestion, computed once against every active church
+            // nationwide (same reach as ChurchController::similar(), the same advisory this
+            // app's own create-a-church forms already show) rather than re-querying per row —
+            // per the user's explicit call, so the reviewer can catch "this is probably the same
+            // church as X, already registered under a different name/spelling" before approving.
+            $activeChurches = Church::where('is_active', true)->with('conference')->get(['id', 'name', 'conference_id']);
+
+            $pendingSuggestions->getCollection()->transform(function ($suggestion) use ($activeChurches) {
+                $suggestion->similarChurches = NameSimilarity::findSimilar($suggestion->church_name, $activeChurches);
+
+                return $suggestion;
+            });
+        }
+
+        $activeTab = in_array($request->query('tab'), ['admin', 'pemimpin', 'institusi', 'terhapus', 'saran'], true) ? $request->query('tab') : 'unassigned';
 
         // Soft-deleted (destroy()'d) users still physically exist and can silently block a
         // restrictOnDelete FK elsewhere (Union/Conference/Church/Institution) — this is where
@@ -226,6 +262,8 @@ class UserAssignmentController extends Controller
             'isSuperAdmin' => $isSuperAdmin,
             'canBootstrapAnyLevel' => $canBootstrapAnyLevel,
             'trashedUsers' => $trashedUsers,
+            'canReviewSuggestions' => $canReviewSuggestions,
+            'pendingSuggestions' => $pendingSuggestions,
         ]);
     }
 
