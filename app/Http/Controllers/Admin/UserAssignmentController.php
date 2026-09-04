@@ -269,7 +269,50 @@ class UserAssignmentController extends Controller
             });
         }
 
-        $activeTab = in_array($request->query('tab'), ['admin', 'pemimpin', 'institusi', 'terhapus', 'saran'], true) ? $request->query('tab') : 'unassigned';
+        // "Belum Ada Admin" — orgs that already exist (someone typed their name at some point)
+        // but have nobody holding the matching admin role over them yet, per the user's explicit
+        // request ("sudah ada namanya gereja, institusi, daerah, uni tapi belum ada yg diassign
+        // sebagai admin"). Read-only (no inline "assign" action here — that's still the Admin
+        // tab's own add-user form) so this is deliberately just a checklist of gaps to go act on
+        // elsewhere. Each reuses that model's own scopeVisibleTo() rather than a hand-rolled
+        // region filter, so an actor sees exactly the same orgs here they'd see anywhere else in
+        // Kelola Akun/Analitik — Institusi is included only when $canManageInstitutions, matching
+        // every other institution-related gate in this method.
+        // Optional "which Union" narrowing, per the user's explicit follow-up call for a filter
+        // once they saw how long the nationwide Gereja list gets — applied on top of
+        // scopeVisibleTo() (so it can only ever narrow, never widen, an actor's own reach) rather
+        // than replacing it.
+        $noAdminUnionFilter = $request->integer('no_admin_union') ?: null;
+
+        $noAdminUnionOptions = Union::query()->where('is_active', true)->visibleTo($actor)
+            ->orderBy('name')->get(['id', 'name']);
+
+        $noAdminUnions = Union::query()->where('is_active', true)->visibleTo($actor)
+            ->when($noAdminUnionFilter, fn ($q) => $q->where('id', $noAdminUnionFilter))
+            ->whereDoesntHave('users', fn ($q) => $q->where('role', UserRole::AdminUni->value))
+            ->orderBy('name')->get(['id', 'name', 'slug', 'division_id']);
+
+        $noAdminConferences = Conference::query()->where('is_active', true)->visibleTo($actor)
+            ->when($noAdminUnionFilter, fn ($q) => $q->where('union_id', $noAdminUnionFilter))
+            ->whereDoesntHave('users', fn ($q) => $q->where('role', UserRole::AdminDaerah->value))
+            ->with('union')->orderBy('name')->get(['id', 'name', 'slug', 'union_id']);
+
+        $noAdminChurches = Church::query()->where('is_active', true)->visibleTo($actor)
+            ->when($noAdminUnionFilter, fn ($q) => $q->whereHas('conference', fn ($q2) => $q2->where('union_id', $noAdminUnionFilter)))
+            ->whereDoesntHave('users', fn ($q) => $q->where('role', UserRole::AdminGereja->value))
+            ->with('conference.union')->orderBy('name')->get(['id', 'name', 'slug', 'conference_id']);
+
+        $noAdminInstitutions = $canManageInstitutions
+            ? Institution::query()->where('is_active', true)->visibleTo($actor)
+                ->when($noAdminUnionFilter, fn ($q) => $q->where(
+                    fn ($q2) => $q2->where('union_id', $noAdminUnionFilter)
+                        ->orWhereHas('conference', fn ($q3) => $q3->where('union_id', $noAdminUnionFilter))
+                ))
+                ->whereDoesntHave('users', fn ($q) => $q->where('role', UserRole::AdminInstitusi->value))
+                ->orderBy('name')->get(['id', 'name', 'slug'])
+            : collect();
+
+        $activeTab = in_array($request->query('tab'), ['admin', 'pemimpin', 'institusi', 'terhapus', 'saran', 'belum-admin'], true) ? $request->query('tab') : 'unassigned';
 
         // Soft-deleted (destroy()'d) users still physically exist and can silently block a
         // restrictOnDelete FK elsewhere (Union/Conference/Church/Institution) — this is where
@@ -298,6 +341,12 @@ class UserAssignmentController extends Controller
             'trashedUsers' => $trashedUsers,
             'canReviewSuggestions' => $canReviewSuggestions,
             'pendingSuggestions' => $pendingSuggestions,
+            'noAdminUnions' => $noAdminUnions,
+            'noAdminConferences' => $noAdminConferences,
+            'noAdminChurches' => $noAdminChurches,
+            'noAdminInstitutions' => $noAdminInstitutions,
+            'noAdminUnionOptions' => $noAdminUnionOptions,
+            'noAdminUnionFilter' => $noAdminUnionFilter,
         ]);
     }
 

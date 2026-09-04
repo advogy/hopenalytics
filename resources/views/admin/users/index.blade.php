@@ -117,6 +117,15 @@
                 @endif
             </x-tab-button>
         @endif
+        @php($noAdminTotal = $noAdminUnions->count() + $noAdminConferences->count() + $noAdminChurches->count() + $noAdminInstitutions->count())
+        <x-tab-button tab-key="belum-admin">
+            {{ __('users.tab_belum_admin') }}
+            @if ($noAdminTotal > 0)
+                <span class="ml-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-xs font-semibold text-amber-700 dark:bg-amber-950 dark:text-amber-400">
+                    {{ $noAdminTotal }}
+                </span>
+            @endif
+        </x-tab-button>
         <x-tab-button tab-key="admin">{{ __('users.tab_admin') }}</x-tab-button>
         <x-tab-button tab-key="pemimpin">{{ __('users.tab_pemimpin') }}</x-tab-button>
         @if ($canManageInstitutions)
@@ -405,6 +414,10 @@
             @include('admin.users.partials.suggestions-tab')
         </div>
     @endif
+
+    <div data-tab-panel="belum-admin" @class(['hidden' => $activeTab !== 'belum-admin'])>
+        @include('admin.users.partials.no-admin-tab')
+    </div>
 
     <div data-tab-panel="admin" @class(['hidden' => $activeTab !== 'admin'])>
         <x-admin-list-card
