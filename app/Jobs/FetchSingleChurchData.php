@@ -36,7 +36,15 @@ class FetchSingleChurchData implements ShouldQueue
     // several minutes. 10s still gives a struggling API a moment before hammering it again, but
     // is short enough that the SAME queue:work invocation (which keeps looping until the queue
     // is genuinely empty) can usually pick the retry back up itself.
-    public int $tries = 3;
+    //
+    // tries lowered from 3 to 2, per the user's explicit call — a batch's own progress (see
+    // QueueMonitorController) already counts a job as "done" the moment it resolves either way,
+    // success or failure (Bus\Batch::progress() is (total - pending) / total, with failures
+    // tracked separately via failedJobs), so this isn't about progress reporting being wrong;
+    // it's purely that one 2nd attempt is enough of a chance for a transient hiccup to clear
+    // before moving on to the rest of the batch, rather than spending a 3rd attempt's worth of
+    // this account's own delay budget on something that's very likely to fail the same way again.
+    public int $tries = 2;
     public int $backoff = 10;
     public int $timeout = 90;
 

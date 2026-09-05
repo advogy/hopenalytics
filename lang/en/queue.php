@@ -7,6 +7,10 @@ return [
     'stat_active_batches' => 'Active batches',
     'stat_completed_batches' => 'Completed batches',
     'stat_failed' => 'Failed jobs',
+    'tab_pending' => 'Pending Jobs',
+    'tab_active' => 'Active Batches',
+    'tab_completed' => 'Completed Batches',
+    'tab_failed' => 'Failed Jobs',
 
     'pending_title' => 'Pending Jobs per Queue',
     'pending_empty' => 'No jobs currently pending.',

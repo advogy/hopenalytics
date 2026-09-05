@@ -9,10 +9,10 @@
     </div>
 
     <div class="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <x-stat-card href="#antrean-pending" icon="clock" :label="__('queue.stat_pending')" :value="$totalPending" />
-        <x-stat-card href="#batch-aktif" icon="arrow-path" :label="__('queue.stat_active_batches')" :value="$activeBatches->count()" />
-        <x-stat-card href="#batch-selesai" icon="check-circle" :label="__('queue.stat_completed_batches')" :value="$completedBatches->count()" />
-        <x-stat-card href="#job-gagal" icon="x-circle" :label="__('queue.stat_failed')" :value="$totalFailed" />
+        <x-stat-card href="{{ route('queue.index', ['tab' => 'tertunda']) }}" icon="clock" :label="__('queue.stat_pending')" :value="$totalPending" />
+        <x-stat-card href="{{ route('queue.index', ['tab' => 'aktif']) }}" icon="arrow-path" :label="__('queue.stat_active_batches')" :value="$activeBatches->total()" />
+        <x-stat-card href="{{ route('queue.index', ['tab' => 'selesai']) }}" icon="check-circle" :label="__('queue.stat_completed_batches')" :value="$completedBatches->total()" />
+        <x-stat-card href="{{ route('queue.index', ['tab' => 'gagal']) }}" icon="x-circle" :label="__('queue.stat_failed')" :value="$totalFailed" />
     </div>
 
     {{-- Per-Uni "Fetch Now" — a scoped alternative to the global refresh button (which can take a
@@ -52,7 +52,7 @@
                                 </td>
                                 <td class="py-2 text-right">
                                     @if ($row['isRunning'])
-                                        <span title="{{ __('queue.fetch_uni_running') }}" aria-label="{{ __('queue.fetch_uni_running') }}" class="inline-flex shrink-0 text-slate-400 dark:text-slate-500">
+                                        <span title="{{ __('queue.fetch_uni_running') }}" aria-label="{{ __('queue.fetch_uni_running') }}" class="inline-flex h-8 w-8 shrink-0 items-center justify-center text-slate-400 dark:text-slate-500">
                                             <x-icon name="arrow-path" class="h-5 w-5 animate-spin" />
                                         </span>
                                     @elseif ($row['accountCount'] > 0)
@@ -62,7 +62,7 @@
                                                 type="submit"
                                                 title="{{ __('queue.fetch_uni_button') }}"
                                                 aria-label="{{ __('queue.fetch_uni_button') }}"
-                                                class="shrink-0 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                                                class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-blue-600 hover:bg-blue-50 hover:text-blue-700 dark:text-blue-400 dark:hover:bg-blue-950/40 dark:hover:text-blue-300"
                                             >
                                                 <x-icon name="arrow-path" class="h-5 w-5" />
                                             </button>
@@ -87,7 +87,7 @@
                             <td class="py-2 text-right">
                                 @can('trigger-refresh')
                                     @if ($globalFetchRow['isRunning'])
-                                        <span title="{{ __('queue.fetch_uni_running') }}" aria-label="{{ __('queue.fetch_uni_running') }}" class="inline-flex shrink-0 text-slate-400 dark:text-slate-500">
+                                        <span title="{{ __('queue.fetch_uni_running') }}" aria-label="{{ __('queue.fetch_uni_running') }}" class="inline-flex h-8 w-8 shrink-0 items-center justify-center text-slate-400 dark:text-slate-500">
                                             <x-icon name="arrow-path" class="h-5 w-5 animate-spin" />
                                         </span>
                                     @elseif ($globalFetchRow['accountCount'] > 0)
@@ -103,7 +103,7 @@
                                                 data-progress-button
                                                 title="{{ __('queue.fetch_uni_button') }}"
                                                 aria-label="{{ __('queue.fetch_uni_button') }}"
-                                                class="shrink-0 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                                                class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-blue-600 hover:bg-blue-50 hover:text-blue-700 dark:text-blue-400 dark:hover:bg-blue-950/40 dark:hover:text-blue-300"
                                             >
                                                 <x-icon name="arrow-path" class="h-5 w-5" />
                                             </button>
@@ -117,13 +117,34 @@
             </div>
     </div>
 
-    <div id="antrean-pending" class="mb-8 scroll-mt-20 rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
+    {{-- Job Tertunda / Batch Aktif / Batch Selesai / Job Gagal as four tabs rather than
+         always-visible cards, per the user's explicit call (Tertunda first) — each panel's own
+         id (antrean-pending/batch-aktif/batch-selesai/job-gagal) is kept for the stat cards
+         above and for @can/@empty markup already keyed off them. Tertunda/Aktif stay part of
+         the poll-and-swap auto-refresh below (see that script's own sectionIds) since they have
+         no interactive state to lose the way Job Gagal's checkboxes do — Selesai/Gagal are
+         excluded from it for exactly that reason (see their own comment). --}}
+    <x-tab-bar>
+        <x-tab-button tab-key="tertunda">{{ __('queue.tab_pending') }}</x-tab-button>
+        <x-tab-button tab-key="aktif">{{ __('queue.tab_active') }}</x-tab-button>
+        <x-tab-button tab-key="selesai">{{ __('queue.tab_completed') }}</x-tab-button>
+        <x-tab-button tab-key="gagal">{{ __('queue.tab_failed') }}</x-tab-button>
+    </x-tab-bar>
+
+    <div
+        id="antrean-pending"
+        data-tab-panel="tertunda"
+        @class([
+            'mb-8', 'scroll-mt-20', 'rounded-2xl', 'border', 'border-black/5', 'bg-white', 'p-5', 'shadow-sm', 'dark:border-white/5', 'dark:bg-slate-900',
+            'hidden' => $activeTab !== 'tertunda',
+        ])
+    >
         <div class="mb-4 flex items-center justify-between gap-2">
             <p class="font-bold text-slate-900 dark:text-white">{{ __('queue.pending_title') }}</p>
             @if ($pendingByQueue->isNotEmpty())
                 <form method="POST" action="{{ route('queue.clear') }}" data-confirm="{{ __('queue.clear_all_confirm') }}">
                     @csrf
-                    <button type="submit" title="{{ __('queue.clear_all') }}" aria-label="{{ __('queue.clear_all') }}" class="shrink-0 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
+                    <button type="submit" title="{{ __('queue.clear_all') }}" aria-label="{{ __('queue.clear_all') }}" class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/40 dark:hover:text-red-300">
                         <x-icon name="trash" class="h-5 w-5" />
                     </button>
                 </form>
@@ -151,7 +172,7 @@
                                     <form method="POST" action="{{ route('queue.clear') }}" data-confirm="{{ __('queue.clear_queue_confirm', ['queue' => $row->queue]) }}">
                                         @csrf
                                         <input type="hidden" name="queue" value="{{ $row->queue }}">
-                                        <button type="submit" title="{{ __('queue.clear_queue') }}" aria-label="{{ __('queue.clear_queue') }}" class="shrink-0 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
+                                        <button type="submit" title="{{ __('queue.clear_queue') }}" aria-label="{{ __('queue.clear_queue') }}" class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/40 dark:hover:text-red-300">
                                             <x-icon name="trash" class="h-5 w-5" />
                                         </button>
                                     </form>
@@ -164,7 +185,14 @@
         @endif
     </div>
 
-    <div id="batch-aktif" class="mb-8 scroll-mt-20 rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
+    <div
+        id="batch-aktif"
+        data-tab-panel="aktif"
+        @class([
+            'mb-8', 'scroll-mt-20', 'rounded-2xl', 'border', 'border-black/5', 'bg-white', 'p-5', 'shadow-sm', 'dark:border-white/5', 'dark:bg-slate-900',
+            'hidden' => $activeTab !== 'aktif',
+        ])
+    >
         <p class="mb-4 font-bold text-slate-900 dark:text-white">{{ __('queue.batches_title') }}</p>
 
         @if ($activeBatches->isEmpty())
@@ -173,15 +201,15 @@
             <div class="divide-y divide-slate-100 dark:divide-slate-800">
                 @foreach ($activeBatches as $batch)
                     <div class="py-3 first:pt-0 last:pb-0">
-                        <div class="mb-1 flex items-center justify-between gap-2 text-sm">
+                        <div class="mb-1 flex flex-wrap items-center justify-between gap-2 text-sm">
                             <span class="min-w-0 truncate font-medium">{{ $batch['name'] }}</span>
-                            <div class="flex shrink-0 items-center gap-3">
+                            <div class="flex shrink-0 flex-wrap items-center gap-3">
                                 <span class="text-slate-500 dark:text-slate-400">
                                     {{ __('queue.batches_progress', ['processed' => $batch['processed'], 'total' => $batch['total'], 'percent' => $batch['percent']]) }}
                                 </span>
                                 <form method="POST" action="{{ route('queue.cancel-batch', $batch['id']) }}" data-confirm="{{ __('queue.batches_cancel_confirm') }}">
                                     @csrf
-                                    <button type="submit" title="{{ __('queue.batches_cancel') }}" aria-label="{{ __('queue.batches_cancel') }}" class="shrink-0 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
+                                    <button type="submit" title="{{ __('queue.batches_cancel') }}" aria-label="{{ __('queue.batches_cancel') }}" class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/40 dark:hover:text-red-300">
                                         <x-icon name="x-circle" class="h-5 w-5" />
                                     </button>
                                 </form>
@@ -201,16 +229,25 @@
                     </div>
                 @endforeach
             </div>
+
+            <x-pagination :paginator="$activeBatches" />
         @endif
     </div>
 
-    <div id="batch-selesai" class="mb-8 scroll-mt-20 rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
+    <div
+        id="batch-selesai"
+        data-tab-panel="selesai"
+        @class([
+            'mb-8', 'scroll-mt-20', 'rounded-2xl', 'border', 'border-black/5', 'bg-white', 'p-5', 'shadow-sm', 'dark:border-white/5', 'dark:bg-slate-900',
+            'hidden' => $activeTab !== 'selesai',
+        ])
+    >
         <div class="mb-4 flex items-center justify-between gap-2">
             <p class="font-bold text-slate-900 dark:text-white">{{ __('queue.completed_title') }}</p>
             @if ($completedBatches->isNotEmpty())
                 <form method="POST" action="{{ route('queue.clear-completed-batches') }}" data-confirm="{{ __('queue.clear_completed_confirm') }}">
                     @csrf
-                    <button type="submit" title="{{ __('queue.clear_all') }}" aria-label="{{ __('queue.clear_all') }}" class="shrink-0 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
+                    <button type="submit" title="{{ __('queue.clear_all') }}" aria-label="{{ __('queue.clear_all') }}" class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/40 dark:hover:text-red-300">
                         <x-icon name="trash" class="h-5 w-5" />
                     </button>
                 </form>
@@ -222,7 +259,7 @@
         @else
             <div class="divide-y divide-slate-100 dark:divide-slate-800">
                 @foreach ($completedBatches as $batch)
-                    <div class="flex items-center justify-between gap-3 py-3 text-sm first:pt-0 last:pb-0">
+                    <div class="flex flex-wrap items-center justify-between gap-3 py-3 text-sm first:pt-0 last:pb-0">
                         <div class="min-w-0">
                             <div class="flex items-center gap-2">
                                 <span class="font-medium">{{ $batch['name'] }}</span>
@@ -253,7 +290,7 @@
                             </span>
                             <form method="POST" action="{{ route('queue.delete-batch', $batch['id']) }}" data-confirm="{{ __('queue.delete_batch_confirm') }}">
                                 @csrf
-                                <button type="submit" title="{{ __('common.delete') }}" aria-label="{{ __('common.delete') }}" class="shrink-0 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
+                                <button type="submit" title="{{ __('common.delete') }}" aria-label="{{ __('common.delete') }}" class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/40 dark:hover:text-red-300">
                                     <x-icon name="trash" class="h-5 w-5" />
                                 </button>
                             </form>
@@ -261,10 +298,19 @@
                     </div>
                 @endforeach
             </div>
+
+            <x-pagination :paginator="$completedBatches" />
         @endif
     </div>
 
-    <div id="job-gagal" class="scroll-mt-20 rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
+    <div
+        id="job-gagal"
+        data-tab-panel="gagal"
+        @class([
+            'scroll-mt-20', 'rounded-2xl', 'border', 'border-black/5', 'bg-white', 'p-5', 'shadow-sm', 'dark:border-white/5', 'dark:bg-slate-900',
+            'hidden' => $activeTab !== 'gagal',
+        ])
+    >
         {{-- No fixed action of its own — checkboxes below reference it purely via the form="..."
              attribute (they can't be nested inside it: each row's own Retry/Delete are already
              their own <form>, and HTML doesn't allow nested forms), and its two submit buttons
@@ -286,7 +332,7 @@
                         disabled
                         title="{{ __('queue.retry_selected') }}"
                         aria-label="{{ __('queue.retry_selected') }}"
-                        class="shrink-0 text-blue-600 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-40 dark:text-blue-400 dark:hover:text-blue-300"
+                        class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-blue-600 hover:bg-blue-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:text-blue-400 dark:hover:bg-blue-950/40 dark:hover:text-blue-300"
                     >
                         <x-icon name="arrow-path" class="h-5 w-5" />
                     </button>
@@ -299,7 +345,7 @@
                         disabled
                         title="{{ __('queue.delete_selected') }}"
                         aria-label="{{ __('queue.delete_selected') }}"
-                        class="shrink-0 text-red-600 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-40 dark:text-red-400 dark:hover:text-red-300"
+                        class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:text-red-400 dark:hover:bg-red-950/40 dark:hover:text-red-300"
                     >
                         <x-icon name="trash" class="h-5 w-5" />
                     </button>
@@ -313,7 +359,7 @@
                          apart. --}}
                     <form method="POST" action="{{ route('queue.clear-failed') }}" data-confirm="{{ __('queue.clear_failed_confirm') }}">
                         @csrf
-                        <button type="submit" title="{{ __('queue.clear_all') }}" aria-label="{{ __('queue.clear_all') }}" class="shrink-0 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
+                        <button type="submit" title="{{ __('queue.clear_all') }}" aria-label="{{ __('queue.clear_all') }}" class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/40 dark:hover:text-red-300">
                             <x-icon name="x-circle" class="h-5 w-5" />
                         </button>
                     </form>
@@ -369,7 +415,7 @@
                                                 type="submit"
                                                 title="{{ __('queue.retry') }}"
                                                 aria-label="{{ __('queue.retry') }}"
-                                                class="shrink-0 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                                                class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-blue-600 hover:bg-blue-50 hover:text-blue-700 dark:text-blue-400 dark:hover:bg-blue-950/40 dark:hover:text-blue-300"
                                             >
                                                 <x-icon name="arrow-path" class="h-5 w-5" />
                                             </button>
@@ -380,7 +426,7 @@
                                                 type="submit"
                                                 title="{{ __('common.delete') }}"
                                                 aria-label="{{ __('common.delete') }}"
-                                                class="shrink-0 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                                                class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/40 dark:hover:text-red-300"
                                             >
                                                 <x-icon name="trash" class="h-5 w-5" />
                                             </button>
@@ -404,14 +450,18 @@
         single batch id to poll a JSON status endpoint for — it shows several independent lists
         (pending queue, active/completed batches, failed jobs) all computed together in
         QueueMonitorController::index(). Re-fetching the same page as HTML and swapping each
-        section's already-stable id (#antrean-pending/#batch-aktif/#batch-selesai/#job-gagal)
+        section's already-stable id (#fetch-per-uni/#antrean-pending/#batch-aktif)
         avoids duplicating that controller's query/formatting logic in JS. Confirm-dialog clicks
         on swapped-in forms still work with no extra wiring — partials/confirm-dialog.blade.php
         listens on `document`, not on each form, so newly-injected forms are covered automatically.
     --}}
     <script>
         (function () {
-            var sectionIds = ['fetch-per-uni', 'antrean-pending', 'batch-aktif', 'batch-selesai', 'job-gagal'];
+            // batch-selesai/job-gagal deliberately excluded — they're tabs now (see their own
+            // markup comment), not always-visible sections, and Job Gagal specifically holds
+            // real interactive state (bulk-select checkboxes, a possibly-open confirm dialog)
+            // that a background swap would silently wipe out from under whoever's mid-selection.
+            var sectionIds = ['fetch-per-uni', 'antrean-pending', 'batch-aktif'];
 
             function refresh() {
                 if (document.visibilityState !== 'visible') return;
@@ -484,4 +534,6 @@
             });
         })();
     </script>
+
+    @include('partials.tab-script', ['activeTab' => $activeTab])
 @endsection

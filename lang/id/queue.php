@@ -7,6 +7,10 @@ return [
     'stat_active_batches' => 'Batch aktif',
     'stat_completed_batches' => 'Batch selesai',
     'stat_failed' => 'Job gagal',
+    'tab_pending' => 'Job Tertunda',
+    'tab_active' => 'Batch Aktif',
+    'tab_completed' => 'Batch Selesai',
+    'tab_failed' => 'Job Gagal',
 
     'pending_title' => 'Job Tertunda per Antrean',
     'pending_empty' => 'Tidak ada job yang tertunda saat ini.',

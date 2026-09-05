@@ -39,8 +39,9 @@ class ChurchRefreshController extends Controller
 
         // allowFailures() is required — without it, Laravel cancels the *entire* batch the
         // moment any single account fails (e.g. one broken TikTok handle), silently skipping
-        // every other account that hadn't run yet.
-        $batch = Bus::batch($jobs)->name('refresh-socials')->allowFailures()->dispatch();
+        // every other account that hadn't run yet. finally() is required too — see its own doc
+        // comment on markFinishedWhenAllJobsRan().
+        $batch = Bus::batch($jobs)->name('refresh-socials')->allowFailures()->finally($this->markFinishedWhenAllJobsRan())->dispatch();
 
         if ($request->wantsJson()) {
             return response()->json([
@@ -86,9 +87,39 @@ class ChurchRefreshController extends Controller
             $delaySeconds += 3;
         }
 
-        Bus::batch($jobs)->name('refresh-uni-'.$union->id)->allowFailures()->dispatch();
+        Bus::batch($jobs)->name('refresh-uni-'.$union->id)->allowFailures()->finally($this->markFinishedWhenAllJobsRan())->dispatch();
 
         return back()->with('status', __('queue.refresh_union_started', ['union' => $union->name, 'count' => $socials->count()]));
+    }
+
+    /**
+     * A real, confirmed gap in Laravel's own batching: Illuminate\Bus\Batch::recordFailedJob()
+     * never decrements pending_jobs (only recordSuccessfulJob() does, and only checks
+     * pendingJobs === 0 to mark the batch finished) — so a batch with even one PERMANENTLY
+     * failed job (retries exhausted) never sets finished_at and never satisfies finished(),
+     * no matter how long it's been since every job actually ran. Confirmed by dispatching a
+     * real 2-job test batch (one guaranteed success, one guaranteed permanent failure): after
+     * both had run, job_batches still showed pending_jobs=1/failed_jobs=1/finished_at=NULL —
+     * exactly what the user was describing seeing live, and exactly why allowFailures() alone
+     * isn't enough to get a truthful "100%, done" the moment every account has actually been
+     * attempted (success or fail — the whole point of allowFailures() and of the separate
+     * failed-count already shown elsewhere).
+     *
+     * Laravel's own UpdatedBatchJobCounts::allJobsHaveRanExactlyOnce() (pendingJobs - failedJobs
+     * === 0) is exactly the "everyone has actually run" condition wanted — it's what already
+     * gates the 'finally' callback itself, just without ever being wired to actually mark the
+     * batch finished when the LAST job to resolve happens to be a failure rather than a success.
+     * This closure closes that gap directly: once Laravel decides it's time to fire 'finally',
+     * force finished_at to the current time if nothing already set it (a batch whose last job
+     * succeeded will already have a real finished_at from Laravel's own path — whereNull() here
+     * just avoids clobbering that with a slightly later timestamp).
+     */
+    private function markFinishedWhenAllJobsRan(): \Closure
+    {
+        return function ($batch) {
+            DB::table('job_batches')->where('id', $batch->id)->whereNull('finished_at')
+                ->update(['finished_at' => now()->getTimestamp()]);
+        };
     }
 
     /**
@@ -102,10 +133,17 @@ class ChurchRefreshController extends Controller
             return response()->json(['finished' => true, 'percent' => 100, 'processed' => 0, 'total' => 0, 'failed' => 0]);
         }
 
+        // Not $batch->progress()/processedJobs() — see markFinishedWhenAllJobsRan()'s own doc
+        // comment for why: Laravel's own pendingJobs count never decrements for a permanently
+        // failed job, so relying on it directly under-counts "processed" (and understates
+        // percent) by however many accounts have already failed, right up until every last job
+        // has resolved.
+        $processed = $batch->totalJobs - $batch->pendingJobs + $batch->failedJobs;
+
         return response()->json([
             'finished' => $batch->finished(),
-            'percent' => $batch->progress(),
-            'processed' => $batch->processedJobs(),
+            'percent' => $batch->totalJobs > 0 ? (int) round(($processed / $batch->totalJobs) * 100) : 100,
+            'processed' => $processed,
             'total' => $batch->totalJobs,
             'failed' => $batch->failedJobs,
         ]);

@@ -15,8 +15,17 @@ use Illuminate\Support\Str;
 
 class QueueMonitorController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        // Job Tertunda / Batch Aktif / Batch Selesai / Job Gagal are four tabs — separated per
+        // the user's explicit call, Tertunda first (default landing tab) since it's the
+        // earliest stage of the pipeline. Job Gagal specifically is no longer part of the
+        // poll-and-swap auto-refresh below, since its bulk-select checkboxes are real
+        // interactive state a background refresh would otherwise silently wipe out from under
+        // whoever's mid-selection — Tertunda/Aktif stay in that auto-refresh (see the script's
+        // own sectionIds) since they have no similar state to lose.
+        $activeTab = in_array($request->query('tab'), ['aktif', 'selesai', 'gagal'], true) ? $request->query('tab') : 'tertunda';
+
         $pendingByQueue = DB::table('jobs')
             ->select('queue', DB::raw('count(*) as total'))
             ->groupBy('queue')
@@ -25,22 +34,36 @@ class QueueMonitorController extends Controller
 
         $totalPending = $pendingByQueue->sum('total');
 
+        // ->appends() runs AFTER withQueryString() so each tab's own pager always points back
+        // to itself even when the current URL's ?tab= is stale or missing — tab-switching is
+        // pure client-side (see partials/tab-script.blade.php), so the URL the pager was built
+        // from doesn't necessarily carry the tab the user is actually looking at.
         $activeBatches = DB::table('job_batches')
             ->whereNull('finished_at')
             ->orderByDesc('created_at')
-            ->limit(20)
-            ->get()
-            ->map(fn ($batch) => [
-                'id' => $batch->id,
-                'name' => $batch->name,
-                'total' => $batch->total_jobs,
-                'processed' => $batch->total_jobs - $batch->pending_jobs,
-                'failed' => $batch->failed_jobs,
-                'percent' => $batch->total_jobs > 0
-                    ? (int) round((($batch->total_jobs - $batch->pending_jobs) / $batch->total_jobs) * 100)
-                    : 100,
-                'createdAt' => Carbon::createFromTimestamp($batch->created_at, config('app.timezone')),
-            ]);
+            ->paginate(20, ['*'], 'aktif_page')
+            ->withQueryString()
+            ->appends(['tab' => 'aktif'])
+            ->through(function ($batch) {
+                // total_jobs - pending_jobs alone under-counts "processed" by however many
+                // accounts have already permanently failed — see
+                // ChurchRefreshController::markFinishedWhenAllJobsRan()'s own doc comment: a
+                // permanently-failed job never decrements pending_jobs, only a successful one
+                // does, so a batch sitting at (say) "70% done" here could well have already
+                // finished running every account, just with some of them counted as failed
+                // instead of successful.
+                $processed = $batch->total_jobs - $batch->pending_jobs + $batch->failed_jobs;
+
+                return [
+                    'id' => $batch->id,
+                    'name' => $batch->name,
+                    'total' => $batch->total_jobs,
+                    'processed' => $processed,
+                    'failed' => $batch->failed_jobs,
+                    'percent' => $batch->total_jobs > 0 ? (int) round(($processed / $batch->total_jobs) * 100) : 100,
+                    'createdAt' => Carbon::createFromTimestamp($batch->created_at, config('app.timezone')),
+                ];
+            });
 
         $totalFailed = DB::table('failed_jobs')->count();
 
@@ -48,6 +71,7 @@ class QueueMonitorController extends Controller
             ->orderByDesc('failed_at')
             ->paginate(30, ['*'], 'failed_page')
             ->withQueryString()
+            ->appends(['tab' => 'gagal'])
             ->through(fn ($row) => [
                 'id' => $row->id,
                 'queue' => $row->queue,
@@ -59,19 +83,29 @@ class QueueMonitorController extends Controller
         $completedBatches = DB::table('job_batches')
             ->whereNotNull('finished_at')
             ->orderByDesc('finished_at')
-            ->limit(20)
-            ->get()
-            ->map(fn ($batch) => [
-                'id' => $batch->id,
-                'name' => $batch->name,
-                'total' => $batch->total_jobs,
-                'processed' => $batch->total_jobs - $batch->pending_jobs,
-                'failed' => $batch->failed_jobs,
-                'cancelled' => $batch->cancelled_at !== null,
-                'finishedAt' => Carbon::createFromTimestamp($batch->finished_at, config('app.timezone')),
-            ]);
+            ->paginate(20, ['*'], 'selesai_page')
+            ->withQueryString()
+            ->appends(['tab' => 'selesai'])
+            ->through(function ($batch) {
+                // Same under-counting gap as $activeBatches above — a completed batch that had
+                // any permanently-failed job still sits with pending_jobs stuck at the
+                // failed-job count (never decremented), so total_jobs - pending_jobs alone
+                // would under-report "processed" by that same amount here too.
+                $processed = $batch->total_jobs - $batch->pending_jobs + $batch->failed_jobs;
+
+                return [
+                    'id' => $batch->id,
+                    'name' => $batch->name,
+                    'total' => $batch->total_jobs,
+                    'processed' => $processed,
+                    'failed' => $batch->failed_jobs,
+                    'cancelled' => $batch->cancelled_at !== null,
+                    'finishedAt' => Carbon::createFromTimestamp($batch->finished_at, config('app.timezone')),
+                ];
+            });
 
         return view('admin.queue', [
+            'activeTab' => $activeTab,
             'pendingByQueue' => $pendingByQueue,
             'totalPending' => $totalPending,
             'activeBatches' => $activeBatches,
