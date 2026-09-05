@@ -52,19 +52,19 @@
                                 </td>
                                 <td class="py-2 text-right">
                                     @if ($row['isRunning'])
-                                        <span title="{{ __('queue.fetch_uni_running') }}" aria-label="{{ __('queue.fetch_uni_running') }}" class="inline-flex h-8 w-8 shrink-0 items-center justify-center text-slate-400 dark:text-slate-500">
-                                            <x-icon name="arrow-path" class="h-5 w-5 animate-spin" />
+                                        <span class="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap text-xs font-medium text-slate-400 dark:text-slate-500">
+                                            <x-icon name="arrow-path" class="h-4 w-4 animate-spin" />
+                                            {{ __('queue.fetch_uni_running') }}
                                         </span>
                                     @elseif ($row['accountCount'] > 0)
                                         <form method="POST" action="{{ route('socials.refresh-union', $row['union']) }}" data-confirm="{{ __('queue.fetch_uni_confirm', ['count' => $row['accountCount'], 'union' => $row['union']->name]) }}" data-disable-on-submit>
                                             @csrf
                                             <button
                                                 type="submit"
-                                                title="{{ __('queue.fetch_uni_button') }}"
-                                                aria-label="{{ __('queue.fetch_uni_button') }}"
-                                                class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-blue-600 hover:bg-blue-50 hover:text-blue-700 dark:text-blue-400 dark:hover:bg-blue-950/40 dark:hover:text-blue-300"
+                                                class="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
                                             >
-                                                <x-icon name="arrow-path" class="h-5 w-5" />
+                                                <x-icon name="arrow-path" class="h-4 w-4" />
+                                                {{ __('queue.fetch_uni_button') }}
                                             </button>
                                         </form>
                                     @endif
@@ -87,8 +87,9 @@
                             <td class="py-2 text-right">
                                 @can('trigger-refresh')
                                     @if ($globalFetchRow['isRunning'])
-                                        <span title="{{ __('queue.fetch_uni_running') }}" aria-label="{{ __('queue.fetch_uni_running') }}" class="inline-flex h-8 w-8 shrink-0 items-center justify-center text-slate-400 dark:text-slate-500">
-                                            <x-icon name="arrow-path" class="h-5 w-5 animate-spin" />
+                                        <span class="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap text-xs font-medium text-slate-400 dark:text-slate-500">
+                                            <x-icon name="arrow-path" class="h-4 w-4 animate-spin" />
+                                            {{ __('queue.fetch_uni_running') }}
                                         </span>
                                     @elseif ($globalFetchRow['accountCount'] > 0)
                                         <form
@@ -101,11 +102,10 @@
                                             <button
                                                 type="submit"
                                                 data-progress-button
-                                                title="{{ __('queue.fetch_uni_button') }}"
-                                                aria-label="{{ __('queue.fetch_uni_button') }}"
-                                                class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-blue-600 hover:bg-blue-50 hover:text-blue-700 dark:text-blue-400 dark:hover:bg-blue-950/40 dark:hover:text-blue-300"
+                                                class="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
                                             >
-                                                <x-icon name="arrow-path" class="h-5 w-5" />
+                                                <x-icon name="arrow-path" class="h-4 w-4" />
+                                                {{ __('queue.fetch_uni_button') }}
                                             </button>
                                         </form>
                                     @endif

@@ -26,7 +26,7 @@ return [
     'fetch_uni_col_union' => 'Uni',
     'fetch_uni_col_accounts' => 'Jumlah Akun',
     'fetch_uni_col_last_fetched' => 'Terakhir Diambil',
-    'fetch_all_label' => 'Semua Data (Nasional)',
+    'fetch_all_label' => 'Semua Data',
     'fetch_uni_never' => 'Belum pernah',
     'fetch_uni_button' => 'Ambil Sekarang',
     'fetch_uni_running' => 'Sedang berjalan…',

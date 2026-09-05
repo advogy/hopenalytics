@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Jobs\FetchSingleChurchData;
 use App\Models\ChurchSocial;
 use App\Models\Union;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -149,15 +150,19 @@ class QueueMonitorController extends Controller
             ->orderBy('name')
             ->get(['id', 'slug', 'name'])
             ->map(function ($union) {
-                $accountCount = ChurchSocial::query()
+                $query = ChurchSocial::query()
                     ->where('is_active', true)
                     ->where('is_auto_fetch', true)
                     ->ownerActive()
                     ->consentGranted()
-                    ->inUnion($union->id)
-                    ->count();
+                    ->inUnion($union->id);
 
-                return ['union' => $union, 'accountCount' => $accountCount] + $this->batchStatus('refresh-uni-'.$union->id);
+                return [
+                    'union' => $union,
+                    'accountCount' => (clone $query)->count(),
+                    'lastFetchedAt' => $this->maxLastFetchedAt(clone $query),
+                    'isRunning' => $this->isBatchRunning('refresh-uni-'.$union->id),
+                ];
             });
     }
 
@@ -171,37 +176,46 @@ class QueueMonitorController extends Controller
      */
     private function globalFetchRow(): array
     {
-        $accountCount = ChurchSocial::query()
+        $query = ChurchSocial::query()
             ->where('is_active', true)
             ->where('is_auto_fetch', true)
             ->ownerActive()
-            ->consentGranted()
-            ->count();
-
-        return ['accountCount' => $accountCount] + $this->batchStatus('refresh-socials');
-    }
-
-    /** @return array{isRunning: bool, lastFetchedAt: ?Carbon} */
-    private function batchStatus(string $batchName): array
-    {
-        $activeBatch = DB::table('job_batches')
-            ->where('name', $batchName)
-            ->whereNull('finished_at')
-            ->orderByDesc('created_at')
-            ->first();
-
-        $lastFinished = DB::table('job_batches')
-            ->where('name', $batchName)
-            ->whereNotNull('finished_at')
-            ->orderByDesc('finished_at')
-            ->first();
+            ->consentGranted();
 
         return [
-            'isRunning' => $activeBatch !== null,
-            'lastFetchedAt' => $lastFinished
-                ? Carbon::createFromTimestamp($lastFinished->finished_at, config('app.timezone'))
-                : null,
+            'accountCount' => (clone $query)->count(),
+            'lastFetchedAt' => $this->maxLastFetchedAt(clone $query),
+            'isRunning' => $this->isBatchRunning('refresh-socials'),
         ];
+    }
+
+    /**
+     * "Terakhir Diambil" per row is read straight off ChurchSocial.last_fetched_at (each
+     * account's own record of when IT was last actually fetched) rather than off job_batches —
+     * per the user's explicit call: running "Semua Data" (ChurchRefreshController::all(),
+     * batch 'refresh-socials') fetches every Union's accounts too, along with the weekly
+     * automatic fetch (FetchAllChurchStats) and any account's own manual single refresh — none
+     * of those touch a Union's own 'refresh-uni-{id}' batch, so keying "last fetched" off THAT
+     * batch's own finished_at (the previous approach) left a Union's row stuck on "Belum
+     * pernah" even after its accounts had genuinely just been fetched by one of those other
+     * paths. max() is a raw aggregate query — it returns the column's raw DB value, not run
+     * through ChurchSocial's own 'last_fetched_at' => 'datetime' cast (same reason
+     * ChurchDashboardController::analytics() parses its own $lastFetchedAt the same way).
+     */
+    private function maxLastFetchedAt(Builder $query): ?Carbon
+    {
+        $raw = $query->max('last_fetched_at');
+
+        return $raw ? Carbon::parse($raw) : null;
+    }
+
+    /** Whether this scope's OWN dedicated batch (not a broader one that happens to include it) is currently in flight. */
+    private function isBatchRunning(string $batchName): bool
+    {
+        return DB::table('job_batches')
+            ->where('name', $batchName)
+            ->whereNull('finished_at')
+            ->exists();
     }
 
     /**

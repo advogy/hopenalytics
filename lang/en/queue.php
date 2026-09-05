@@ -26,7 +26,7 @@ return [
     'fetch_uni_col_union' => 'Union',
     'fetch_uni_col_accounts' => 'Accounts',
     'fetch_uni_col_last_fetched' => 'Last Fetched',
-    'fetch_all_label' => 'All Data (Nationwide)',
+    'fetch_all_label' => 'All Data',
     'fetch_uni_never' => 'Never',
     'fetch_uni_button' => 'Fetch Now',
     'fetch_uni_running' => 'Running…',

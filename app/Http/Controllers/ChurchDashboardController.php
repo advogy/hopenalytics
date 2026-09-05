@@ -1049,25 +1049,17 @@ class ChurchDashboardController extends Controller
         $hashtagData = $this->hashtagComparisonData($request->query('hashtag'), $request->query('hashtag_platform'));
 
         // "Dapatkan Data Terbaru" — moved here from the dashboard, per the user's explicit call;
-        // same can:trigger-refresh gate and ChurchRefreshController::all() target as before, just
-        // relocated. max() is a raw aggregate query — it returns the column's raw DB value, not
-        // run through ChurchSocial's own 'last_fetched_at' => 'datetime' cast, so it needs
-        // parsing into a Carbon instance before the view can call translatedFormat() on it.
+        // now just links to Monitoring Antrean rather than dispatching a refresh directly (see
+        // that button's own comment in the view), so there's no longer a confirm-dialog count
+        // to compute here. max() is a raw aggregate query — it returns the column's raw DB
+        // value, not run through ChurchSocial's own 'last_fetched_at' => 'datetime' cast, so it
+        // needs parsing into a Carbon instance before the view can call translatedFormat() on it.
         $lastFetchedAtRaw = ChurchSocial::where('is_active', true)->visibleTo($user)->max('last_fetched_at');
         $lastFetchedAt = $lastFetchedAtRaw ? Carbon::parse($lastFetchedAtRaw) : null;
-
-        // Matches ChurchRefreshController::all()'s own query exactly, so the confirm dialog's
-        // count reflects the true number of accounts that button is about to refresh.
-        $totalRefreshableSocials = ChurchSocial::where('is_active', true)
-            ->where('is_auto_fetch', true)
-            ->ownerActive()
-            ->visibleTo($user)
-            ->count();
 
         return view('churches.analytics', [
             'hashtagData' => $hashtagData,
             'lastFetchedAt' => $lastFetchedAt,
-            'totalRefreshableSocials' => $totalRefreshableSocials,
             // A plain member (role === null) with no Daerah/Uni set at all sees zero rows on
             // every tab of this page (see analyticsChurchScope() and friends) — without this,
             // that just looks like "there's no data" rather than "you haven't completed

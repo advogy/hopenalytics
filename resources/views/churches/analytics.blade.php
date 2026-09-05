@@ -278,22 +278,17 @@
 
         @can('trigger-refresh')
             <div class="flex flex-col items-end gap-1.5">
-                <form
-                    method="POST"
-                    action="{{ route('socials.refresh-all') }}"
-                    data-confirm="{{ __('dashboard.refresh_confirm', ['count' => $totalRefreshableSocials]) }}"
-                    data-progress-form
+                {{-- No longer dispatches the global refresh directly — per the user's explicit
+                     call, this now hands off to Monitoring Antrean, where an admin can choose to
+                     fetch just one Union or everything ("Semua Data") instead of always kicking
+                     off the slow nationwide batch. --}}
+                <a
+                    href="{{ route('queue.index') }}"
+                    class="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700"
                 >
-                    @csrf
-                    <button
-                        type="submit"
-                        data-progress-button
-                        class="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
-                    >
-                        <x-icon name="arrow-path" class="h-4 w-4" />
-                        {{ __('dashboard.refresh_button') }}
-                    </button>
-                </form>
+                    <x-icon name="arrow-path" class="h-4 w-4" />
+                    {{ __('dashboard.refresh_button') }}
+                </a>
                 <p class="text-xs text-slate-400 dark:text-slate-500">
                     {{ $lastFetchedAt ? __('dashboard.last_updated_at', ['time' => $lastFetchedAt->translatedFormat('d M Y H:i')]) : __('dashboard.last_updated_never') }}
                 </p>

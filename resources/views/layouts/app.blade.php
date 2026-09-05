@@ -484,11 +484,21 @@
             var refreshStatusUrlTemplate = @json(route('socials.refresh-status', ['batch' => '__BATCH__']));
             var refreshActiveUrl = @json(route('socials.refresh-active'));
 
-            document.getElementById('theme-toggle').addEventListener('click', function () {
-                var isDark = document.documentElement.classList.toggle('dark');
-                localStorage.setItem('theme', isDark ? 'dark' : 'light');
-            });
+            // Each independent widget below is wrapped in its own try/catch — previously an
+            // uncaught throw in any ONE of them (e.g. a page missing an element one of these
+            // expects) silently killed every widget declared AFTER it in this same <script> tag,
+            // since a synchronous throw aborts the remaining top-level statements in a script —
+            // the account-menu dropdown going dead sitewide from an unrelated earlier failure
+            // (with no visible error unless DevTools happened to be open) is exactly the shape of
+            // bug this guards against.
+            try {
+                document.getElementById('theme-toggle').addEventListener('click', function () {
+                    var isDark = document.documentElement.classList.toggle('dark');
+                    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+                });
+            } catch (e) { console.error('theme-toggle init failed', e); }
 
+            try {
             (function () {
                 var toggle = document.getElementById('mobile-menu-toggle');
                 var menu = document.getElementById('mobile-menu');
@@ -554,7 +564,9 @@
                     }
                 });
             })();
+            } catch (e) { console.error('mobile-menu init failed', e); }
 
+            try {
             (function () {
                 var wrapper = document.querySelector('[data-account-menu]');
                 if (! wrapper) return;
@@ -582,7 +594,9 @@
                     }
                 });
             })();
+            } catch (e) { console.error('account-menu init failed', e); }
 
+            try {
             (function () {
                 var STORAGE_KEY = 'hopenalytics.refreshBatch';
                 var widget = document.getElementById('refresh-progress-widget');
@@ -708,7 +722,9 @@
                         });
                 });
             })();
+            } catch (e) { console.error('refresh-progress-widget init failed', e); }
 
+            try {
             (function () {
                 document.addEventListener('submit', function (e) {
                     var form = e.target;
@@ -737,7 +753,9 @@
                         });
                 });
             })();
+            } catch (e) { console.error('inline-refresh-form init failed', e); }
 
+            try {
             (function () {
                 var dialog = document.getElementById('export-dialog');
                 var content = document.getElementById('export-dialog-content');
@@ -766,6 +784,7 @@
                     dialog.close();
                 });
             })();
+            } catch (e) { console.error('export-dialog init failed', e); }
         </script>
 
         @include('partials.disable-on-submit')
