@@ -26,6 +26,21 @@ class QueueMonitorController extends Controller
         // own sectionIds) since they have no similar state to lose.
         $activeTab = in_array($request->query('tab'), ['aktif', 'selesai', 'gagal'], true) ? $request->query('tab') : 'tertunda';
 
+        // Self-heals any batch that has actually finished (every job has run — see
+        // ChurchRefreshController::markFinishedWhenAllJobsRan()'s own doc comment for
+        // pending_jobs - failed_jobs <= 0 being Laravel's own "everyone has run" condition) but
+        // never got its finished_at set. markFinishedWhenAllJobsRan()'s ->finally() callback
+        // only fires for batches DISPATCHED after that fix shipped — the serialized 'options'
+        // column of any batch already in flight before then has no finally callback recorded
+        // at all, so those batches would otherwise sit at "100%, still Batch Aktif" forever.
+        // Running this here (cheap, indexed, admin-only page) heals those permanently, and
+        // doubles as a safety net for any other Bus::batch() call site in the app that forgets
+        // to chain ->finally() the same way.
+        DB::table('job_batches')
+            ->whereNull('finished_at')
+            ->whereRaw('pending_jobs - failed_jobs <= 0')
+            ->update(['finished_at' => now()->getTimestamp()]);
+
         $pendingByQueue = DB::table('jobs')
             ->select('queue', DB::raw('count(*) as total'))
             ->groupBy('queue')
