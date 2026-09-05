@@ -114,6 +114,8 @@ Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group
         Route::post('/queue/failed/clear', [QueueMonitorController::class, 'clearFailed'])->name('queue.clear-failed');
         Route::post('/queue/failed/{id}/delete', [QueueMonitorController::class, 'deleteFailed'])->name('queue.delete-failed');
         Route::post('/queue/failed/{id}/retry', [QueueMonitorController::class, 'retryFailed'])->name('queue.retry-failed');
+        Route::post('/queue/failed/retry-batch', [QueueMonitorController::class, 'retryFailedBatch'])->name('queue.retry-failed-batch');
+        Route::post('/queue/failed/delete-batch', [QueueMonitorController::class, 'deleteFailedBatch'])->name('queue.delete-failed-batch');
         Route::post('/queue/batches/clear', [QueueMonitorController::class, 'clearCompletedBatches'])->name('queue.clear-completed-batches');
         Route::post('/queue/batches/{batch}/delete', [QueueMonitorController::class, 'deleteBatch'])->name('queue.delete-batch');
     });
@@ -233,6 +235,7 @@ Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group
     Route::get('/churches/{church:slug}', [ChurchDashboardController::class, 'show'])->name('churches.show')->middleware('can:view,church');
 
     Route::post('/refresh', [ChurchRefreshController::class, 'all'])->name('socials.refresh-all')->middleware(['can:trigger-refresh', 'throttle:3,10']);
+    Route::post('/refresh/union/{union:slug}', [ChurchRefreshController::class, 'union'])->name('socials.refresh-union')->middleware(['can:trigger-refresh', 'throttle:6,10']);
     Route::get('/refresh/active', [ChurchRefreshController::class, 'active'])->name('socials.refresh-active');
     Route::get('/refresh/{batch}/status', [ChurchRefreshController::class, 'status'])->name('socials.refresh-status');
     Route::post('/socials/{social}/refresh', [ChurchRefreshController::class, 'single'])->name('socials.refresh')->middleware(['can:trigger-refresh', 'throttle:10,1']);

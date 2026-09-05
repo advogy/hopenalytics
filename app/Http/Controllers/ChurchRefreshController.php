@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Jobs\FetchSingleChurchData;
 use App\Models\ChurchSocial;
+use App\Models\Union;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -49,6 +50,45 @@ class ChurchRefreshController extends Controller
         }
 
         return back()->with('status', __('dashboard.refresh_started', ['count' => $socials->count()]));
+    }
+
+    /**
+     * Queue a refresh for just one Union's worth of accounts — Monitoring Antrean's "Fetch
+     * per Uni" section, per the user's explicit call: the global refresh above can take a long
+     * time (dozens/hundreds of accounts, 3s apart each), so this lets an admin fetch one Union
+     * at a time instead of waiting on the whole thing. Named uniquely per Union
+     * ("refresh-uni-{id}") rather than the shared 'refresh-socials' name all() uses, so
+     * QueueMonitorController::index() can look up each Union's own last-finished batch
+     * independently (see its own doc comment) without the two mechanisms colliding — a global
+     * refresh and several per-Union refreshes can all be in flight at once, each tracked by its
+     * own batch id.
+     */
+    public function union(Request $request, Union $union): RedirectResponse
+    {
+        $socials = ChurchSocial::query()
+            ->where('is_active', true)
+            ->where('is_auto_fetch', true)
+            ->ownerActive()
+            ->consentGranted()
+            ->visibleTo($request->user())
+            ->inUnion($union->id)
+            ->get();
+
+        if ($socials->isEmpty()) {
+            return back()->with('error', __('queue.refresh_union_empty', ['union' => $union->name]));
+        }
+
+        $delaySeconds = 0;
+        $jobs = [];
+
+        foreach ($socials as $social) {
+            $jobs[] = (new FetchSingleChurchData($social))->delay(now()->addSeconds($delaySeconds));
+            $delaySeconds += 3;
+        }
+
+        Bus::batch($jobs)->name('refresh-uni-'.$union->id)->allowFailures()->dispatch();
+
+        return back()->with('status', __('queue.refresh_union_started', ['union' => $union->name, 'count' => $socials->count()]));
     }
 
     /**

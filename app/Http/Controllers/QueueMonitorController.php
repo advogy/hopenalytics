@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Jobs\FetchSingleChurchData;
+use App\Models\ChurchSocial;
+use App\Models\Union;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -44,9 +46,9 @@ class QueueMonitorController extends Controller
 
         $failedJobs = DB::table('failed_jobs')
             ->orderByDesc('failed_at')
-            ->limit(20)
-            ->get()
-            ->map(fn ($row) => [
+            ->paginate(30, ['*'], 'failed_page')
+            ->withQueryString()
+            ->through(fn ($row) => [
                 'id' => $row->id,
                 'queue' => $row->queue,
                 'failedAt' => $row->failed_at,
@@ -76,7 +78,81 @@ class QueueMonitorController extends Controller
             'failedJobs' => $failedJobs,
             'totalFailed' => $totalFailed,
             'completedBatches' => $completedBatches,
+            'unionFetchRows' => $this->unionFetchRows(),
+            'globalFetchRow' => $this->globalFetchRow(),
         ]);
+    }
+
+    /**
+     * "Fetch per Uni" — per the user's explicit call: the global refresh (ChurchRefreshController
+     * ::all()) can take a long time across every account nationwide, so this lets an admin
+     * trigger just one Union's worth first. Each Union's own account count is a live query (same
+     * eligibility filters ChurchRefreshController::union() itself dispatches against, so the
+     * number shown is exactly what a click would queue) and its "last fetched" timestamp/running
+     * state come from job_batches, keyed off that Union's own uniquely-named batch
+     * ("refresh-uni-{id}") — no separate tracking table needed, mirroring how
+     * ChurchRefreshController::active() already reads 'refresh-socials' the same way for the
+     * global button.
+     */
+    private function unionFetchRows()
+    {
+        return Union::where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'slug', 'name'])
+            ->map(function ($union) {
+                $accountCount = ChurchSocial::query()
+                    ->where('is_active', true)
+                    ->where('is_auto_fetch', true)
+                    ->ownerActive()
+                    ->consentGranted()
+                    ->inUnion($union->id)
+                    ->count();
+
+                return ['union' => $union, 'accountCount' => $accountCount] + $this->batchStatus('refresh-uni-'.$union->id);
+            });
+    }
+
+    /**
+     * The same "Fetch Now" row shape as unionFetchRows() above, for the nationwide total —
+     * rendered as one extra row below the per-Union ones (per the user's explicit call), sharing
+     * the exact eligibility filters ChurchRefreshController::all() itself dispatches against and
+     * the exact 'refresh-socials' batch name ChurchRefreshController::active() already reads for
+     * the Analitik & Grafik page's own global refresh button, so both buttons/trackers agree on
+     * what's currently running.
+     */
+    private function globalFetchRow(): array
+    {
+        $accountCount = ChurchSocial::query()
+            ->where('is_active', true)
+            ->where('is_auto_fetch', true)
+            ->ownerActive()
+            ->consentGranted()
+            ->count();
+
+        return ['accountCount' => $accountCount] + $this->batchStatus('refresh-socials');
+    }
+
+    /** @return array{isRunning: bool, lastFetchedAt: ?Carbon} */
+    private function batchStatus(string $batchName): array
+    {
+        $activeBatch = DB::table('job_batches')
+            ->where('name', $batchName)
+            ->whereNull('finished_at')
+            ->orderByDesc('created_at')
+            ->first();
+
+        $lastFinished = DB::table('job_batches')
+            ->where('name', $batchName)
+            ->whereNotNull('finished_at')
+            ->orderByDesc('finished_at')
+            ->first();
+
+        return [
+            'isRunning' => $activeBatch !== null,
+            'lastFetchedAt' => $lastFinished
+                ? Carbon::createFromTimestamp($lastFinished->finished_at, config('app.timezone'))
+                : null,
+        ];
     }
 
     /**
@@ -225,6 +301,38 @@ class QueueMonitorController extends Controller
         }
 
         return back()->with('status', __('queue.failed_retried'));
+    }
+
+    /**
+     * Same as retryFailed() above, just for several rows picked via the Job Gagal table's
+     * checkboxes at once instead of one at a time — queue:retry already accepts more than one
+     * uuid in a single call.
+     */
+    public function retryFailedBatch(Request $request): RedirectResponse
+    {
+        $data = $request->validate(['ids' => ['required', 'array', 'min:1'], 'ids.*' => ['integer']]);
+
+        $uuids = DB::table('failed_jobs')->whereIn('id', $data['ids'])->pluck('uuid')->all();
+
+        if ($uuids !== []) {
+            Artisan::call('queue:retry', ['id' => $uuids]);
+        }
+
+        return back()->with('status', __('queue.failed_retried_batch', ['count' => count($uuids)]));
+    }
+
+    /**
+     * Same as deleteFailed() above, for several rows at once — shares the same checkboxes as
+     * retryFailedBatch() (one submit button per action, both pointing at the one set of
+     * checkboxes via their own formaction — see queue.blade.php).
+     */
+    public function deleteFailedBatch(Request $request): RedirectResponse
+    {
+        $data = $request->validate(['ids' => ['required', 'array', 'min:1'], 'ids.*' => ['integer']]);
+
+        $count = DB::table('failed_jobs')->whereIn('id', $data['ids'])->delete();
+
+        return back()->with('status', __('queue.failed_deleted_batch', ['count' => $count]));
     }
 
     /**

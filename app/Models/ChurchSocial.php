@@ -108,6 +108,28 @@ class ChurchSocial extends Model
     }
 
     /**
+     * Every owner type that can belong to a Union, checked the same way each of their own
+     * scopeVisibleTo() 'uni'-level branches already resolves it — Church has no direct union_id
+     * (only via conference), Person/Institution have both a direct union_id AND a conference_id
+     * (either can be set), Union/Conference are straightforward. Division-owned socials never
+     * match — a Division sits one tier ABOVE Union (Division::unions() is hasMany), so there's no
+     * single Union for one to belong to. Used by ChurchRefreshController::union() (the per-Uni
+     * manual "Fetch Now" on Monitoring Antrean, per the user's explicit call to fetch a slower
+     * global refresh one Union at a time instead) to scope which accounts that button fetches.
+     */
+    public function scopeInUnion(Builder $query, int $unionId): Builder
+    {
+        return $query->where(fn (Builder $q) => $q
+            ->where('union_id', $unionId)
+            ->orWhereHas('church.conference', fn (Builder $q2) => $q2->where('union_id', $unionId))
+            ->orWhereHas('person', fn (Builder $q2) => $q2
+                ->where('union_id', $unionId)
+                ->orWhereHas('conference', fn (Builder $q3) => $q3->where('union_id', $unionId)))
+            ->orWhereHas('conference', fn (Builder $q2) => $q2->where('union_id', $unionId))
+            ->orWhereHas('institution', fn (Builder $q2) => $q2->where('union_id', $unionId)));
+    }
+
+    /**
      * Restrict to accounts whose owning entity — whichever of the five it is — is itself
      * active. Previously several callers (the weekly auto-fetch dispatch, bulk refresh, "needs
      * attention") each re-wrote this checking church/person only, silently skipping every
