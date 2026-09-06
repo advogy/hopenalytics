@@ -14,6 +14,8 @@ class FetchAllChurchStats extends Command
 
     public function handle(): int
     {
+        ChurchSocial::disableAutoFetchForMissingFacebookProfileUrl();
+
         $delaySeconds = 0;
 
         ChurchSocial::query()
@@ -21,6 +23,7 @@ class FetchAllChurchStats extends Command
             ->where('is_auto_fetch', true)
             ->ownerActive()
             ->consentGranted()
+            ->readyToFetch()
             ->chunkById(50, function ($churchSocials) use (&$delaySeconds) {
                 foreach ($churchSocials as $churchSocial) {
                     FetchSingleChurchData::dispatch($churchSocial)

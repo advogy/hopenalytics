@@ -120,7 +120,7 @@ class PersonSocialController extends Controller
                     ->where(fn ($query) => $query->where('person_id', $personId)->where('category', 'personal')->where('handle', $handle)->where('is_active', true)),
             ],
             'handle' => ['required', 'string', 'max:255'],
-            'profile_url' => ['nullable', 'url', 'max:2048'],
+            'profile_url' => ['nullable', 'required_if:platform,'.SocialPlatform::Facebook->value, 'url', 'max:2048'],
             'is_auto_fetch' => ['nullable', 'boolean'],
             // Personal-only requirement, per the user's explicit call — see
             // ChurchSocial::scopeConsentGranted(). 'accepted' already implies "must be checked",
@@ -130,6 +130,7 @@ class PersonSocialController extends Controller
         ], [
             'platform.unique' => __('entity.social_duplicate_platform_handle'),
             'consent.accepted' => __('entity.social_consent_required'),
+            'profile_url.required_if' => __('entity.social_facebook_url_required'),
         ]);
 
         $data['handle'] = ltrim($data['handle'], '@');

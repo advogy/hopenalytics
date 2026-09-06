@@ -170,10 +170,11 @@ class OrganizationSocialController extends Controller
                     ->ignore($ignoreId),
             ],
             'handle' => ['required', 'string', 'max:255'],
-            'profile_url' => ['nullable', 'url', 'max:2048'],
+            'profile_url' => ['nullable', 'required_if:platform,'.SocialPlatform::Facebook->value, 'url', 'max:2048'],
             'is_auto_fetch' => ['nullable', 'boolean'],
         ], [
             'platform.unique' => __('entity.social_duplicate_platform_handle'),
+            'profile_url.required_if' => __('entity.social_facebook_url_required'),
         ]);
 
         $data['handle'] = ltrim($data['handle'], '@');

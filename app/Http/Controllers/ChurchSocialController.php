@@ -313,7 +313,12 @@ class ChurchSocialController extends Controller
                     ->ignore($ignoreId),
             ],
             'handle' => ['required', 'string', 'max:255'],
-            'profile_url' => ['nullable', 'url', 'max:2048'],
+            // required_if — per the user's explicit call: a Facebook fetch can never succeed
+            // without a profile link (see FetchSingleChurchData::fetchFacebook()), so an account
+            // saved without one was previously guaranteed to just sit failing (or, if
+            // is_auto_fetch was on, be silently skipped forever — see
+            // ChurchSocial::scopeReadyToFetch()) rather than being caught at entry.
+            'profile_url' => ['nullable', 'required_if:platform,'.SocialPlatform::Facebook->value, 'url', 'max:2048'],
             'is_auto_fetch' => ['nullable', 'boolean'],
         ];
 
@@ -331,6 +336,7 @@ class ChurchSocialController extends Controller
         $data = $request->validate($rules, [
             'platform.unique' => __('entity.social_duplicate_platform_handle'),
             'consent.accepted' => __('entity.social_consent_required'),
+            'profile_url.required_if' => __('entity.social_facebook_url_required'),
         ]);
 
         $data['handle'] = ltrim($data['handle'], '@');
@@ -369,10 +375,11 @@ class ChurchSocialController extends Controller
                     ->ignore($ignoreId),
             ],
             'handle' => ['required', 'string', 'max:255'],
-            'profile_url' => ['nullable', 'url', 'max:2048'],
+            'profile_url' => ['nullable', 'required_if:platform,'.SocialPlatform::Facebook->value, 'url', 'max:2048'],
             'is_auto_fetch' => ['nullable', 'boolean'],
         ], [
             'platform.unique' => __('entity.social_duplicate_platform_handle'),
+            'profile_url.required_if' => __('entity.social_facebook_url_required'),
         ]);
 
         $data['handle'] = ltrim($data['handle'], '@');

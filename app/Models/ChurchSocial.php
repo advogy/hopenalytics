@@ -163,6 +163,50 @@ class ChurchSocial extends Model
     }
 
     /**
+     * Excludes accounts that are guaranteed to fail no matter how many times they're attempted
+     * — right now just a Facebook account with no profile link set. FetchSingleChurchData::
+     * fetchFacebook() already fails this case immediately without ever calling Apify (so no
+     * credit was ever at risk from it), but per the user's explicit call it should be kept out
+     * of the batch entirely rather than dispatched only to fail — a doomed job still shows up in
+     * Job Gagal and counts toward the batch's total, for zero benefit.
+     */
+    public function scopeReadyToFetch(Builder $query): Builder
+    {
+        return $query->where(fn (Builder $q) => $q
+            ->where('platform', '!=', SocialPlatform::Facebook)
+            ->orWhereNotNull('profile_url'));
+    }
+
+    /**
+     * Turns off auto-fetch for any Facebook account still missing its profile link — per the
+     * user's explicit call: leaving is_auto_fetch on for one of these just means
+     * scopeReadyToFetch() keeps silently skipping it forever, with no visible sign to whoever
+     * owns the account that anything is wrong. Disabling it outright instead surfaces it on
+     * "Akun Perlu Perhatian" (see BuildsLeaderboards::accountsNeedingAttentionQuery(), which
+     * specifically looks for this exact condition) until the missing link is filled in — at
+     * which point re-saving the account (see ChurchSocialController::validated()'s new
+     * required_if rule, which prevents this state from being newly created at all) is what
+     * turns it back on.
+     *
+     * Called right before every batch-dispatch eligibility query (ChurchRefreshController::
+     * all()/union(), FetchAllChurchStats) rather than only relying on form-time validation, so
+     * it also self-heals any row that ends up in this state some other way (e.g. one already in
+     * the database from before that validation rule existed).
+     */
+    public static function disableAutoFetchForMissingFacebookProfileUrl(): void
+    {
+        static::query()
+            ->where('platform', SocialPlatform::Facebook)
+            ->where('is_auto_fetch', true)
+            ->whereNull('profile_url')
+            ->update([
+                'is_auto_fetch' => false,
+                'last_fetch_status' => 'failed',
+                'last_fetch_error' => __('entity.facebook_missing_url_disabled'),
+            ]);
+    }
+
+    /**
      * Handle for display, e.g. "@handle" — normalizes handles that were already stored with a leading @.
      */
     public function getDisplayHandleAttribute(): string

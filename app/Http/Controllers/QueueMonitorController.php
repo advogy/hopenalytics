@@ -155,6 +155,7 @@ class QueueMonitorController extends Controller
                     ->where('is_auto_fetch', true)
                     ->ownerActive()
                     ->consentGranted()
+                    ->readyToFetch()
                     ->inUnion($union->id);
 
                 return [
@@ -180,7 +181,8 @@ class QueueMonitorController extends Controller
             ->where('is_active', true)
             ->where('is_auto_fetch', true)
             ->ownerActive()
-            ->consentGranted();
+            ->consentGranted()
+            ->readyToFetch();
 
         return [
             'accountCount' => (clone $query)->count(),

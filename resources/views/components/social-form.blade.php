@@ -71,6 +71,22 @@
                 excludeId: {{ $social->exists ? $social->id : 'null' }},
             }
         );
+
+        // Matches the profile_url.required_if:platform,facebook server-side rule (see
+        // ChurchSocialController/PersonSocialController/OrganizationSocialController's
+        // validated()) — a Facebook fetch can never succeed without a profile link, so this
+        // just surfaces that requirement in the browser too instead of only after a round-trip.
+        (function () {
+            var platformField = document.getElementById('platform');
+            var profileUrlField = document.getElementById('profile_url');
+
+            function syncRequired() {
+                profileUrlField.required = platformField.value === 'facebook';
+            }
+
+            platformField.addEventListener('change', syncRequired);
+            syncRequired();
+        })();
     </script>
 
     @if ($requireConsent)

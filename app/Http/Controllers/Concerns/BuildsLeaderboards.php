@@ -1124,6 +1124,13 @@ trait BuildsLeaderboards
      * on Kelola Akun), so both always agree on what counts as "needs attention". Covers every
      * owner type (church/person/institution/union/conference) — see ChurchSocial::scopeOwnerActive().
      *
+     * The is_auto_fetch=true OR (Facebook with no profile_url) condition — rather than plain
+     * is_auto_fetch=true — is what still surfaces a Facebook account here even after
+     * ChurchSocial::disableAutoFetchForMissingFacebookProfileUrl() has turned its own
+     * is_auto_fetch off: per the user's explicit call, that account should keep showing up on
+     * this exact page until its owner fills in the missing link, not silently disappear the
+     * moment auto-fetch gets switched off for it.
+     *
      * applyCeiling: true, same as ChurchDashboardController::index() — this is an operational
      * audit list with no region filter of its own to leave blank for "Global" the way every
      * Analitik & Grafik comparison tab now does, so a Daerah/Uni admin's own account-maintenance
@@ -1134,8 +1141,10 @@ trait BuildsLeaderboards
         return $this->analyticsAnyOwnerScope(
             ChurchSocial::query()
                 ->where('is_active', true)
-                ->where('is_auto_fetch', true)
                 ->where('last_fetch_status', 'failed')
+                ->where(fn ($q) => $q
+                    ->where('is_auto_fetch', true)
+                    ->orWhere(fn ($q2) => $q2->where('platform', SocialPlatform::Facebook)->whereNull('profile_url')))
                 ->ownerActive(),
             applyCeiling: true
         );

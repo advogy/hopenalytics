@@ -21,11 +21,14 @@ class ChurchRefreshController extends Controller
      */
     public function all(Request $request): RedirectResponse|JsonResponse
     {
+        ChurchSocial::disableAutoFetchForMissingFacebookProfileUrl();
+
         $socials = ChurchSocial::query()
             ->where('is_active', true)
             ->where('is_auto_fetch', true)
             ->ownerActive()
             ->consentGranted()
+            ->readyToFetch()
             ->visibleTo($request->user())
             ->get();
 
@@ -66,11 +69,14 @@ class ChurchRefreshController extends Controller
      */
     public function union(Request $request, Union $union): RedirectResponse
     {
+        ChurchSocial::disableAutoFetchForMissingFacebookProfileUrl();
+
         $socials = ChurchSocial::query()
             ->where('is_active', true)
             ->where('is_auto_fetch', true)
             ->ownerActive()
             ->consentGranted()
+            ->readyToFetch()
             ->visibleTo($request->user())
             ->inUnion($union->id)
             ->get();
