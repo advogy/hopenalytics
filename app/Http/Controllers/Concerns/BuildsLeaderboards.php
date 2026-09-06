@@ -342,12 +342,18 @@ trait BuildsLeaderboards
 
     protected function leaderboardTitles(): array
     {
-        return [
+        // Filtered the same way as every other $metricLabels-shaped array (see AppSetting::
+        // filterEnabledMetrics()) — this is also what leaderboard()'s own abort_unless() gates
+        // direct URL access on, so a disabled metric 404s here too, not just disappearing from
+        // the pill list.
+        return AppSetting::filterEnabledMetrics([
             'reach' => ['title' => __('common.metric_reach'), 'subtitle' => __('dashboard.reach_subtitle')],
             'views' => ['title' => __('common.metric_views'), 'subtitle' => __('dashboard.views_subtitle')],
             'likes' => ['title' => __('common.metric_likes'), 'subtitle' => __('dashboard.likes_subtitle')],
             'posts' => ['title' => __('common.metric_posts'), 'subtitle' => __('dashboard.posts_subtitle')],
-        ];
+            'comments' => ['title' => __('common.metric_comments'), 'subtitle' => __('dashboard.comments_subtitle')],
+            'shares' => ['title' => __('common.metric_shares'), 'subtitle' => __('dashboard.shares_subtitle')],
+        ]);
     }
 
     /**
@@ -369,12 +375,21 @@ trait BuildsLeaderboards
         $enabled = AppSetting::current()->enabledPlatformValues();
         $onlyEnabled = fn (array $platforms) => array_values(array_intersect($platforms, ['semua', ...$enabled]));
 
-        return [
+        // Also filtered by which METRICS (not platforms) are currently enabled — see
+        // AppSetting::filterEnabledMetrics() — so a disabled metric's key is absent here too,
+        // not just given an empty platform list. This is what drives $applicableMetrics on the
+        // per-platform Perbandingan Platform page, so this is the actual gate that hides its
+        // Comment/Share cards, not just $metricLabels above.
+        return AppSetting::filterEnabledMetrics([
             'reach' => $onlyEnabled(['semua', 'youtube', 'instagram', 'tiktok', 'facebook', 'x', 'threads']),
             'views' => $onlyEnabled(['semua', 'youtube', 'instagram', 'tiktok']),
             'likes' => $onlyEnabled(['semua', 'tiktok']),
             'posts' => $onlyEnabled(['semua', 'youtube', 'instagram', 'tiktok', 'facebook', 'x', 'threads']),
-        ];
+            // Matches metricDefinition()'s own platform lists for these two — see its own doc
+            // comment for why YouTube/X/Threads are left out of both.
+            'comments' => $onlyEnabled(['semua', 'instagram', 'tiktok', 'facebook']),
+            'shares' => $onlyEnabled(['semua', 'tiktok', 'facebook']),
+        ]);
     }
 
     /**
@@ -873,6 +888,26 @@ trait BuildsLeaderboards
                     default => 'posts_count',
                 },
             ],
+            // Recent-sample aggregates, same asymmetric platform coverage as 'views'/'likes'
+            // above — each only applies where the underlying fetcher actually sums it (see
+            // Instagram/TikTok/FacebookStatsFetcher's own recent_*_comments/shares fields).
+            // YouTube/X/Threads have no comparable data source for either, so they're simply
+            // absent rather than guessed at.
+            'comments' => [
+                $activeSocials->whereIn('platform', [SocialPlatform::Instagram, SocialPlatform::TikTok, SocialPlatform::Facebook]),
+                fn ($social) => match ($social->platform) {
+                    SocialPlatform::Instagram => 'recent_reels_comments',
+                    SocialPlatform::TikTok => 'recent_video_comments',
+                    default => 'recent_posts_comments',
+                },
+            ],
+            'shares' => [
+                $activeSocials->whereIn('platform', [SocialPlatform::Facebook, SocialPlatform::TikTok]),
+                fn ($social) => match ($social->platform) {
+                    SocialPlatform::TikTok => 'recent_video_shares',
+                    default => 'recent_posts_shares',
+                },
+            ],
         };
     }
 
@@ -1197,7 +1232,7 @@ trait BuildsLeaderboards
     protected function growthScoreRows(bool $scoped = true, ?string $category = null, bool $applyCeiling = false): Collection
     {
         $activeSocials = $this->activeSocials($scoped, $category, $applyCeiling);
-        $metrics = ['reach', 'views', 'likes', 'posts'];
+        $metrics = AppSetting::filterEnabledMetricKeys(['reach', 'views', 'likes', 'posts', 'comments', 'shares']);
 
         $percentBySocial = [];
 
@@ -1261,7 +1296,7 @@ trait BuildsLeaderboards
      */
     protected function growthScoreRowsByPlatform(Collection $activeSocials): Collection
     {
-        $metrics = ['reach', 'views', 'likes', 'posts'];
+        $metrics = AppSetting::filterEnabledMetricKeys(['reach', 'views', 'likes', 'posts', 'comments', 'shares']);
 
         $percentsByPlatform = [];
 
@@ -1317,7 +1352,7 @@ trait BuildsLeaderboards
     protected function growthScoreRowsPersonal(bool $scoped = true, bool $applyCeiling = false): Collection
     {
         $activeSocials = $this->activeSocialsPersonal($scoped, $applyCeiling);
-        $metrics = ['reach', 'views', 'likes', 'posts'];
+        $metrics = AppSetting::filterEnabledMetricKeys(['reach', 'views', 'likes', 'posts', 'comments', 'shares']);
 
         $percentBySocial = [];
 
@@ -1381,7 +1416,7 @@ trait BuildsLeaderboards
     protected function growthScoreRowsInstitution(bool $scoped = true, bool $applyCeiling = false): Collection
     {
         $activeSocials = $this->activeSocialsInstitution($scoped, $applyCeiling);
-        $metrics = ['reach', 'views', 'likes', 'posts'];
+        $metrics = AppSetting::filterEnabledMetricKeys(['reach', 'views', 'likes', 'posts', 'comments', 'shares']);
 
         $percentBySocial = [];
 
@@ -1448,7 +1483,7 @@ trait BuildsLeaderboards
     protected function growthScoreRowsOrganization(bool $scoped = true, bool $applyCeiling = false): Collection
     {
         $activeSocials = $this->activeSocialsOrganization($scoped, $applyCeiling);
-        $metrics = ['reach', 'views', 'likes', 'posts'];
+        $metrics = AppSetting::filterEnabledMetricKeys(['reach', 'views', 'likes', 'posts', 'comments', 'shares']);
 
         $percentBySocial = [];
 
@@ -1545,7 +1580,11 @@ trait BuildsLeaderboards
             return $empty;
         }
 
-        $metricNames = ['reach', 'views', 'likes', 'posts'];
+        // Every metric currently enabled in Settings' "Metrik" tab counts toward the composite
+        // score below — per the user's explicit call: checking Comment/Share on there folds it
+        // into the average the same way Reach/Views/Likes/Post already do, and unchecking any
+        // of the six drops it out, score included (not just the display breakdown).
+        $metricNames = AppSetting::current()->enabledMetricValues();
         $platformLabels = ['youtube' => 'YouTube', 'instagram' => 'Instagram', 'tiktok' => 'TikTok', 'facebook' => 'Facebook', 'x' => 'X', 'threads' => 'Threads'];
 
         $statsBySocial = $socials->mapWithKeys(fn ($social) => [
@@ -1590,8 +1629,8 @@ trait BuildsLeaderboards
                     // — so the modal's displayed samples always sum to exactly the displayed
                     // final score, with no "why doesn't the math add up" floating-point gap.
                     $pct = round((($current - $previous) / $previous) * 100, 2);
-                    $percents[] = $pct;
                     $percentsByStepAndMetric[$step][$metric][] = $pct;
+                    $percents[] = $pct;
 
                     // Only the latest transition (step 0) is what the card/modal actually
                     // shows — the deeper history steps only ever feed the sparkline.
@@ -1602,6 +1641,7 @@ trait BuildsLeaderboards
                             'current' => $current,
                             'percent' => $pct,
                         ];
+
                         $sampleCount++;
                         $sampleSum += $pct;
                     }

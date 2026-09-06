@@ -6,6 +6,7 @@ return [
     'saved' => 'Pengaturan berhasil disimpan.',
     'tab_general' => 'Umum',
     'tab_platform' => 'Platform',
+    'tab_metric' => 'Metrik',
     'tab_coordinator' => 'Koordinator Global',
     'auto_fetch_active' => 'Auto-fetch mingguan aktif',
     'day' => 'Hari',
@@ -49,4 +50,7 @@ return [
     'platform_title' => 'Platform yang Dilacak',
     'platform_subtitle' => 'Matikan centang untuk menyembunyikan platform ini di seluruh aplikasi — tidak jadi pilihan saat menambah akun, tidak tampil di kartu/grafik/direktori, dan tidak lagi diambil datanya mingguan. Data yang sudah ada tetap tersimpan dan langsung muncul kembali begitu dicentang lagi.',
     'platform_account_count' => ':count akun',
+
+    'metric_title' => 'Metrik yang Ditampilkan',
+    'metric_subtitle' => 'Matikan centang untuk menyembunyikan komponen ini di seluruh aplikasi — Perbandingan Metrik, Perbandingan Platform, halaman detail Uni/Daerah/Gereja/Institusi/Personal, dan Skor Pertumbuhan. Data yang sudah tersimpan tetap ada dan langsung muncul kembali begitu dicentang lagi.',
 ];

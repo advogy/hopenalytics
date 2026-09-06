@@ -72,7 +72,7 @@
     <div id="top-pertumbuhan" class="mb-8 grid gap-6 scroll-mt-20 lg:grid-cols-2">
         <x-growth-score-card
             :title="__('dashboard.top_growth_title')"
-            :subtitle="__('dashboard.top_growth_subtitle')"
+            :subtitle="__('dashboard.top_growth_subtitle', ['metrics' => strtolower(implode(', ', \App\Models\AppSetting::current()->enabledMetricLabels()))])"
             :rows="$topGrowthScores"
             :view-all-url="route('churches.metric-comparison')"
             :show-metrics="false"

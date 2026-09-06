@@ -8,13 +8,19 @@
      score — same shape and same per-metric averaging as growth-score-row.blade.php's dashboard
      leaderboard rows (see BuildsLeaderboards::growthScoreHistory()), so this card always shows
      "where the number comes from" consistently with Perbandingan Metrik and the dashboard.
+     Comments/Shares ride along in this same $scoreMetrics/$scoreBreakdown array whenever
+     Settings' "Metrik" tab has them checked (and whichever platforms actually have that data) —
+     per the user's explicit call, a checked metric counts toward the score average the same
+     way Reach/Views/Likes/Post already do; unchecking one drops it from both the display and
+     the score itself (see BuildsLeaderboards::growthScoreHistory()'s own $metricNames, which is
+     just AppSetting::current()->enabledMetricValues() outright now).
      $scoreBreakdown/$scoreSampleCount/$scoreSampleSum are the underlying per-account samples
      behind $scoreMetrics — the info button opens a dialog walking through the full calculation,
      account by account, down to the final average, so nothing about the score is a black box. --}}
 @props(['scoreHistory' => [], 'scoreMetrics' => [], 'scoreBreakdown' => [], 'scoreSampleCount' => 0, 'scoreSampleSum' => 0, 'anchored' => false])
 
 @php
-    $metricLabels = ['reach' => 'Reach', 'views' => 'Views', 'likes' => 'Likes', 'posts' => 'Post / Video'];
+    $metricLabels = \App\Models\AppSetting::filterEnabledMetrics(['reach' => __('common.metric_reach_short'), 'views' => __('common.metric_views'), 'likes' => __('common.metric_likes'), 'posts' => __('common.metric_posts'), 'comments' => __('common.metric_comments'), 'shares' => __('common.metric_shares')]);
     $dialogId = 'growth-score-detail-'.\Illuminate\Support\Str::random(8);
 @endphp
 
@@ -36,9 +42,9 @@
                         data-growth-score-detail-trigger="{{ $dialogId }}"
                         title="{{ __('entity.growth_score_detail_trigger') }}"
                         aria-label="{{ __('entity.growth_score_detail_trigger') }}"
-                        class="inline-flex h-5 w-5 cursor-pointer items-center justify-center rounded-full text-blue-600 transition hover:bg-slate-100 dark:text-blue-400 dark:hover:bg-slate-800"
+                        class="inline-flex h-5 w-5 cursor-pointer items-center justify-center rounded-full bg-blue-50 text-blue-600 transition hover:bg-blue-100 dark:bg-blue-950/50 dark:text-blue-300 dark:hover:bg-blue-900/60"
                     >
-                        <x-icon name="arrow-trending-up" class="h-4 w-4" />
+                        <x-icon name="information-circle" class="h-4 w-4" />
                     </button>
                 </p>
                 <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('entity.growth_score_subtitle') }}</p>
@@ -84,7 +90,7 @@
                     class="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
                 >
                     {{ __('entity.growth_score_learn_more') }}
-                    <x-icon name="question-mark-circle" class="h-3 w-3" />
+                    <x-icon name="information-circle" class="h-3 w-3" />
                 </a>
             </div>
         @endif

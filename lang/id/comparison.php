@@ -20,7 +20,7 @@ return [
     'metric_comparison_title' => 'Perbandingan Metrik :label',
     'metric_comparison_subtitle_value' => 'Peringkat akun media sosial berdasarkan nilai saat ini — subscriber/followers, views, likes, dan post, untuk :scope.',
     'metric_comparison_subtitle_delta' => 'Peringkat akun media sosial berdasarkan pertumbuhan mingguan tertinggi — subscriber/followers, views, likes, dan post, untuk :scope.',
-    'metric_comparison_subtitle_score' => 'Skor pertumbuhan mingguan komposit untuk :scope — rata-rata persentase perubahan reach, views, likes, dan post dibanding minggu lalu.',
+    'metric_comparison_subtitle_score' => 'Skor pertumbuhan mingguan komposit untuk :scope — rata-rata persentase perubahan :metrics dibanding minggu lalu.',
     'growth_score_title' => 'Skor Pertumbuhan Mingguan',
     'reach_label' => 'Jangkauan',
     'platform_score_title' => 'Skor Performa Platform',

@@ -63,12 +63,14 @@ class ExportController extends Controller
             'personal' => __('entity.personal_account'),
         ];
 
-        $this->metricLabels = [
-            'reach' => __('export.metric_reach'),
+        $this->metricLabels = AppSetting::filterEnabledMetrics([
+            'posts' => __('common.metric_posts'),
             'views' => __('common.metric_views'),
             'likes' => __('common.metric_likes'),
-            'posts' => __('common.metric_posts'),
-        ];
+            'comments' => __('common.metric_comments'),
+            'shares' => __('common.metric_shares'),
+            'reach' => __('export.metric_reach'),
+        ]);
     }
 
     public function leaderboardPreview(string $metric)
@@ -181,7 +183,7 @@ class ExportController extends Controller
     {
         abort_unless(isset($this->platformLabels[$platform]), 404);
 
-        $metric = request()->query('metric', 'reach');
+        $metric = request()->query('metric') ?? array_key_first($this->metricLabels);
         abort_unless(isset($this->metricLabels[$metric]), 404);
 
         $sort = request()->query('sort') === 'value' ? 'value' : 'delta';
@@ -190,7 +192,7 @@ class ExportController extends Controller
         $downloadUrl = route('export.institution-platform.download', array_filter([
             'platform' => $platform,
             'format' => 'pdf',
-            'metric' => $metric === 'reach' ? null : $metric,
+            'metric' => $metric === array_key_first($this->metricLabels) ? null : $metric,
             'sort' => $sort === 'value' ? 'value' : null,
         ]));
 
@@ -201,7 +203,7 @@ class ExportController extends Controller
     {
         abort_unless(isset($this->platformLabels[$platform]), 404);
 
-        $metric = request()->query('metric', 'reach');
+        $metric = request()->query('metric') ?? array_key_first($this->metricLabels);
         abort_unless(isset($this->metricLabels[$metric]), 404);
 
         $sort = request()->query('sort') === 'value' ? 'value' : 'delta';
@@ -287,7 +289,7 @@ class ExportController extends Controller
     {
         abort_unless(isset($this->platformLabels[$platform]), 404);
 
-        $metric = request()->query('metric', 'reach');
+        $metric = request()->query('metric') ?? array_key_first($this->metricLabels);
         abort_unless(isset($this->metricLabels[$metric]), 404);
 
         $sort = request()->query('sort') === 'value' ? 'value' : 'delta';
@@ -296,7 +298,7 @@ class ExportController extends Controller
         $downloadUrl = route('export.organization-platform.download', array_filter([
             'platform' => $platform,
             'format' => 'pdf',
-            'metric' => $metric === 'reach' ? null : $metric,
+            'metric' => $metric === array_key_first($this->metricLabels) ? null : $metric,
             'sort' => $sort === 'value' ? 'value' : null,
         ]));
 
@@ -307,7 +309,7 @@ class ExportController extends Controller
     {
         abort_unless(isset($this->platformLabels[$platform]), 404);
 
-        $metric = request()->query('metric', 'reach');
+        $metric = request()->query('metric') ?? array_key_first($this->metricLabels);
         abort_unless(isset($this->metricLabels[$metric]), 404);
 
         $sort = request()->query('sort') === 'value' ? 'value' : 'delta';
@@ -485,7 +487,7 @@ class ExportController extends Controller
     {
         abort_unless(isset($this->platformLabels[$platform]), 404);
 
-        $metric = request()->query('metric', 'reach');
+        $metric = request()->query('metric') ?? array_key_first($this->metricLabels);
         abort_unless(isset($this->metricLabels[$metric]), 404);
 
         $sort = request()->query('sort') === 'value' ? 'value' : 'delta';
@@ -495,7 +497,7 @@ class ExportController extends Controller
         $downloadUrl = route('export.platform.download', array_filter([
             'platform' => $platform,
             'format' => 'pdf',
-            'metric' => $metric === 'reach' ? null : $metric,
+            'metric' => $metric === array_key_first($this->metricLabels) ? null : $metric,
             'sort' => $sort === 'value' ? 'value' : null,
             'category' => $category,
         ]));
@@ -507,7 +509,7 @@ class ExportController extends Controller
     {
         abort_unless(isset($this->platformLabels[$platform]), 404);
 
-        $metric = request()->query('metric', 'reach');
+        $metric = request()->query('metric') ?? array_key_first($this->metricLabels);
         abort_unless(isset($this->metricLabels[$metric]), 404);
 
         $sort = request()->query('sort') === 'value' ? 'value' : 'delta';
@@ -541,7 +543,7 @@ class ExportController extends Controller
     {
         abort_unless(isset($this->platformLabels[$platform]), 404);
 
-        $metric = request()->query('metric', 'reach');
+        $metric = request()->query('metric') ?? array_key_first($this->metricLabels);
         abort_unless(isset($this->metricLabels[$metric]), 404);
 
         $sort = request()->query('sort') === 'value' ? 'value' : 'delta';
@@ -550,7 +552,7 @@ class ExportController extends Controller
         $downloadUrl = route('export.personal-platform.download', array_filter([
             'platform' => $platform,
             'format' => 'pdf',
-            'metric' => $metric === 'reach' ? null : $metric,
+            'metric' => $metric === array_key_first($this->metricLabels) ? null : $metric,
             'sort' => $sort === 'value' ? 'value' : null,
         ]));
 
@@ -561,7 +563,7 @@ class ExportController extends Controller
     {
         abort_unless(isset($this->platformLabels[$platform]), 404);
 
-        $metric = request()->query('metric', 'reach');
+        $metric = request()->query('metric') ?? array_key_first($this->metricLabels);
         abort_unless(isset($this->metricLabels[$metric]), 404);
 
         $sort = request()->query('sort') === 'value' ? 'value' : 'delta';
@@ -739,6 +741,31 @@ class ExportController extends Controller
         return $value === null ? '—' : ($value > 0 ? '+' : '').number_format($value, 1).'%';
     }
 
+    /**
+     * Column headers for the score-breakdown metrics in metricComparisonDataset*() below —
+     * $this->metricLabels is already filtered to whatever's currently enabled in Settings'
+     * "Metrik" tab (see the constructor), so a disabled metric's column simply isn't generated
+     * at all, matching the live "Perbandingan Metrik" page exactly.
+     */
+    private function metricScoreHeaders(): array
+    {
+        return array_values($this->metricLabels);
+    }
+
+    /**
+     * Same order/gating as metricScoreHeaders() — one formatted cell per currently-enabled
+     * metric, pulled from a growthScoreRows()-shaped row's own 'metrics' breakdown. That
+     * breakdown is a Collection (see BuildsLeaderboards::growthScoreRows()'s own $byMetric),
+     * not a plain array — untyped here so either works via the same [$key] access.
+     */
+    private function metricScoreCells($metrics): array
+    {
+        return collect($this->metricLabels)
+            ->keys()
+            ->map(fn ($key) => $this->formatPercent($metrics[$key] ?? null))
+            ->all();
+    }
+
     private function leaderboardHeaders(string $entityColumn): array
     {
         return ['#', $entityColumn, __('common.platform'), __('common.account'), __('comparison.growth'), __('export.col_current')];
@@ -810,10 +837,10 @@ class ExportController extends Controller
 
         return [
             'title' => __('comparison.metric_comparison_title', ['label' => __('common.church')]),
-            'subtitle' => __('comparison.metric_comparison_subtitle_score', ['scope' => __('comparison.for_all_churches')]),
+            'subtitle' => __('comparison.metric_comparison_subtitle_score', ['scope' => __('comparison.for_all_churches'), 'metrics' => strtolower(implode(', ', $this->metricLabels))]),
             'headers' => [
                 '#', __('common.church'), __('entity.city'), __('export.col_account_count'),
-                __('common.metric_reach'), __('common.metric_views'), __('common.metric_likes'), __('common.metric_posts'),
+                ...$this->metricScoreHeaders(),
                 __('export.col_score'),
             ],
             'rows' => $scoreRows->values()->map(fn ($row, $i) => [
@@ -821,10 +848,7 @@ class ExportController extends Controller
                 $row['church']->name,
                 $row['church']->city ?? '—',
                 $row['accountCount'],
-                $this->formatPercent($row['metrics']['reach'] ?? null),
-                $this->formatPercent($row['metrics']['views'] ?? null),
-                $this->formatPercent($row['metrics']['likes'] ?? null),
-                $this->formatPercent($row['metrics']['posts'] ?? null),
+                ...$this->metricScoreCells($row['metrics']),
                 $this->formatPercent($row['score']),
             ])->all(),
         ];
@@ -837,10 +861,10 @@ class ExportController extends Controller
 
         return [
             'title' => __('comparison.metric_comparison_title', ['label' => __('common.personal')]),
-            'subtitle' => __('comparison.metric_comparison_subtitle_score', ['scope' => __('comparison.for_all_personal')]),
+            'subtitle' => __('comparison.metric_comparison_subtitle_score', ['scope' => __('comparison.for_all_personal'), 'metrics' => strtolower(implode(', ', $this->metricLabels))]),
             'headers' => [
                 '#', __('common.name'), __('entity.city'), __('export.col_account_count'),
-                __('common.metric_reach'), __('common.metric_views'), __('common.metric_likes'), __('common.metric_posts'),
+                ...$this->metricScoreHeaders(),
                 __('export.col_score'),
             ],
             'rows' => $scoreRows->values()->map(fn ($row, $i) => [
@@ -848,10 +872,7 @@ class ExportController extends Controller
                 $row['person']->name,
                 $row['person']->city ?? '—',
                 $row['accountCount'],
-                $this->formatPercent($row['metrics']['reach'] ?? null),
-                $this->formatPercent($row['metrics']['views'] ?? null),
-                $this->formatPercent($row['metrics']['likes'] ?? null),
-                $this->formatPercent($row['metrics']['posts'] ?? null),
+                ...$this->metricScoreCells($row['metrics']),
                 $this->formatPercent($row['score']),
             ])->all(),
         ];
@@ -891,10 +912,10 @@ class ExportController extends Controller
 
         return [
             'title' => __('comparison.metric_comparison_title', ['label' => __('common.institution')]),
-            'subtitle' => __('comparison.metric_comparison_subtitle_score', ['scope' => __('comparison.for_all_institutions')]),
+            'subtitle' => __('comparison.metric_comparison_subtitle_score', ['scope' => __('comparison.for_all_institutions'), 'metrics' => strtolower(implode(', ', $this->metricLabels))]),
             'headers' => [
                 '#', __('common.institution'), __('entity.city'), __('export.col_account_count'),
-                __('common.metric_reach'), __('common.metric_views'), __('common.metric_likes'), __('common.metric_posts'),
+                ...$this->metricScoreHeaders(),
                 __('export.col_score'),
             ],
             'rows' => $scoreRows->values()->map(fn ($row, $i) => [
@@ -902,10 +923,7 @@ class ExportController extends Controller
                 $row['institution']->name,
                 $row['institution']->city ?? '—',
                 $row['accountCount'],
-                $this->formatPercent($row['metrics']['reach'] ?? null),
-                $this->formatPercent($row['metrics']['views'] ?? null),
-                $this->formatPercent($row['metrics']['likes'] ?? null),
-                $this->formatPercent($row['metrics']['posts'] ?? null),
+                ...$this->metricScoreCells($row['metrics']),
                 $this->formatPercent($row['score']),
             ])->all(),
         ];
@@ -954,20 +972,17 @@ class ExportController extends Controller
 
         return [
             'title' => __('comparison.metric_comparison_title', ['label' => __('comparison.organization_label')]),
-            'subtitle' => __('comparison.metric_comparison_subtitle_score', ['scope' => __('comparison.for_all_organizations')]),
+            'subtitle' => __('comparison.metric_comparison_subtitle_score', ['scope' => __('comparison.for_all_organizations'), 'metrics' => strtolower(implode(', ', $this->metricLabels))]),
             'headers' => [
                 '#', __('comparison.organization_label'), __('export.col_account_count'),
-                __('common.metric_reach'), __('common.metric_views'), __('common.metric_likes'), __('common.metric_posts'),
+                ...$this->metricScoreHeaders(),
                 __('export.col_score'),
             ],
             'rows' => $scoreRows->values()->map(fn ($row, $i) => [
                 $i + 1,
                 $row['organization']->name,
                 $row['accountCount'],
-                $this->formatPercent($row['metrics']['reach'] ?? null),
-                $this->formatPercent($row['metrics']['views'] ?? null),
-                $this->formatPercent($row['metrics']['likes'] ?? null),
-                $this->formatPercent($row['metrics']['posts'] ?? null),
+                ...$this->metricScoreCells($row['metrics']),
                 $this->formatPercent($row['score']),
             ])->all(),
         ];

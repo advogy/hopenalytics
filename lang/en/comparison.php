@@ -20,7 +20,7 @@ return [
     'metric_comparison_title' => ':label Metric Comparison',
     'metric_comparison_subtitle_value' => 'Social media accounts ranked by current value — subscribers/followers, views, likes, and posts, for :scope.',
     'metric_comparison_subtitle_delta' => 'Social media accounts ranked by highest weekly growth — subscribers/followers, views, likes, and posts, for :scope.',
-    'metric_comparison_subtitle_score' => 'Composite weekly growth score for :scope — average percentage change in reach, views, likes, and posts versus last week.',
+    'metric_comparison_subtitle_score' => 'Composite weekly growth score for :scope — average percentage change in :metrics versus last week.',
     'growth_score_title' => 'Weekly Growth Score',
     'reach_label' => 'Reach',
     'platform_score_title' => 'Platform Performance Score',

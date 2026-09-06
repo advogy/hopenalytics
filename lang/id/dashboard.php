@@ -59,7 +59,7 @@ return [
     'map_region_legend_no_data' => 'Belum ada data',
 
     'top_growth_title' => 'Top 5 Skor Pertumbuhan Mingguan',
-    'top_growth_subtitle' => 'Skor komposit rata-rata pertumbuhan reach, views, likes, dan post, minggu ini.',
+    'top_growth_subtitle' => 'Skor komposit rata-rata pertumbuhan :metrics, minggu ini.',
     'bottom_growth_title' => '5 Skor Pertumbuhan Terendah',
     'bottom_growth_subtitle' => 'Gereja dengan skor pertumbuhan mingguan terendah — perlu perhatian lebih.',
     'platform_score_subtitle' => 'Performa tiap platform media sosial, berdasarkan skor komposit pertumbuhan mingguan.',
@@ -68,6 +68,8 @@ return [
     'views_subtitle' => 'Pertumbuhan views YouTube tertinggi, minggu ini',
     'likes_subtitle' => 'Pertumbuhan likes TikTok tertinggi, minggu ini',
     'posts_subtitle' => 'Pertumbuhan konten (post/video) tertinggi, minggu ini',
+    'comments_subtitle' => 'Pertumbuhan komentar tertinggi (Instagram/TikTok/Facebook), minggu ini',
+    'shares_subtitle' => 'Pertumbuhan share tertinggi (TikTok/Facebook), minggu ini',
 
     'distribution_channels' => 'Distribusi Platform',
     'distribution_channels_subtitle' => 'Sebaran jangkauan (followers/subscriber) di tiap platform media sosial.',

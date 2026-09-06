@@ -47,7 +47,10 @@
     </div>
 
     @if ($showMetrics)
-        <div class="hidden shrink-0 items-center gap-3 text-sm sm:flex">
+        {{-- lg: (not sm:) and flex-wrap — up to 6 metric badges now (Settings can enable
+             Comment/Share alongside Reach/Views/Likes/Post), which no longer reliably fits
+             beside the avatar/name/score on a merely-sm-width viewport without wrapping. --}}
+        <div class="hidden shrink-0 flex-wrap items-center justify-end gap-3 text-sm lg:flex">
             @foreach ($metricLabels as $key => $label)
                 @php $value = $row['metrics'][$key] ?? null; @endphp
                 <span class="inline-flex items-center gap-1">

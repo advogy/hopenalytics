@@ -7,8 +7,8 @@
 
     Expected: $hashtags, $platforms, $lastUpdatedAt, $rows, $grandTotalByPlatform, $grandTotal,
     $posts (paginator, each row's churchSocial relation eager-loaded), $interactionTotals
-    (['likes' => int, 'views' => int, 'shares' => int], summed across every matching post under
-    the same filters as $posts — not just the current page), $selectedHashtagId,
+    (['likes' => int, 'comments' => int, 'views' => int, 'shares' => int], summed across every
+    matching post under the same filters as $posts — not just the current page), $selectedHashtagId,
     $selectedPlatform, $isNasionalView, $isUniView, $unionOptions, $conferenceOptions,
     $selectedUnionId, $selectedConferenceId.
     Optional: $formAction (omit for a self-submitting form on the current URL), $clearUrl (passed
@@ -217,10 +217,14 @@
     <div class="mb-8 w-full rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
         <p class="font-bold text-slate-900 dark:text-white">{{ __('hashtag.interaction_summary_title') }}</p>
         <p class="mb-4 text-sm text-slate-500 dark:text-slate-400">{{ __('hashtag.interaction_summary_subtitle') }}</p>
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div class="rounded-xl bg-slate-50 p-4 dark:bg-slate-800/60">
                 <p class="text-sm text-slate-500 dark:text-slate-400">❤ {{ __('hashtag.interaction_likes') }}</p>
                 <p class="text-2xl font-bold tabular-nums text-slate-900 dark:text-white">{{ number_format($interactionTotals['likes']) }}</p>
+            </div>
+            <div class="rounded-xl bg-slate-50 p-4 dark:bg-slate-800/60">
+                <p class="text-sm text-slate-500 dark:text-slate-400">💬 {{ __('hashtag.interaction_comments') }}</p>
+                <p class="text-2xl font-bold tabular-nums text-slate-900 dark:text-white">{{ number_format($interactionTotals['comments']) }}</p>
             </div>
             <div class="rounded-xl bg-slate-50 p-4 dark:bg-slate-800/60">
                 <p class="text-sm text-slate-500 dark:text-slate-400">👁 {{ __('hashtag.interaction_views') }}</p>
@@ -271,6 +275,9 @@
                             <div class="flex flex-col items-end gap-0.5 text-xs text-slate-500 dark:text-slate-400">
                                 @if ($post->likes_count !== null)
                                     <span>{{ number_format($post->likes_count) }} ❤</span>
+                                @endif
+                                @if ($post->comments_count !== null)
+                                    <span>{{ number_format($post->comments_count) }} 💬</span>
                                 @endif
                                 @if ($post->views_count !== null)
                                     <span>{{ number_format($post->views_count) }} 👁</span>

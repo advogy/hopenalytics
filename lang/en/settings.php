@@ -6,6 +6,7 @@ return [
     'saved' => 'Settings saved successfully.',
     'tab_general' => 'General',
     'tab_platform' => 'Platform',
+    'tab_metric' => 'Metrics',
     'tab_coordinator' => 'Global Coordinator',
     'auto_fetch_active' => 'Weekly auto-fetch active',
     'day' => 'Day',
@@ -49,4 +50,7 @@ return [
     'platform_title' => 'Tracked Platforms',
     'platform_subtitle' => 'Uncheck a platform to hide it across the whole app — it won\'t be offered when adding an account, won\'t show on any card/chart/directory, and stops being fetched weekly. Existing data stays saved and reappears instantly once checked again.',
     'platform_account_count' => ':count accounts',
+
+    'metric_title' => 'Displayed Metrics',
+    'metric_subtitle' => 'Uncheck a component to hide it across the whole app — Metric Comparison, Platform Comparison, the Union/Conference/Church/Institution/Personal detail pages, and the Growth Score. Existing data stays saved and reappears instantly once checked again.',
 ];

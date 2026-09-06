@@ -413,7 +413,7 @@ class ChurchDashboardController extends Controller
 
     public function personalMetricComparison(Request $request)
     {
-        $metricLabels = ['reach' => 'Followers/Subscribers', 'views' => 'Views', 'likes' => 'Likes', 'posts' => 'Post / Video'];
+        $metricLabels = AppSetting::filterEnabledMetrics(['posts' => __('common.metric_posts'), 'views' => __('common.metric_views'), 'likes' => __('common.metric_likes'), 'comments' => __('common.metric_comments'), 'shares' => __('common.metric_shares'), 'reach' => __('common.metric_reach')]);
 
         $isUniView = $this->isUniView();
         $selectedUnionId = $isUniView ? (string) $request->user()->union_id : $request->query('union_id');
@@ -453,7 +453,7 @@ class ChurchDashboardController extends Controller
     public function personalLeaderboard(Request $request, string $metric)
     {
         $titles = $this->leaderboardTitles();
-        $metricLabels = ['reach' => 'Followers/Subscribers', 'views' => 'Views', 'likes' => 'Likes', 'posts' => 'Post / Video'];
+        $metricLabels = AppSetting::filterEnabledMetrics(['posts' => __('common.metric_posts'), 'views' => __('common.metric_views'), 'likes' => __('common.metric_likes'), 'comments' => __('common.metric_comments'), 'shares' => __('common.metric_shares'), 'reach' => __('common.metric_reach')]);
 
         abort_unless(isset($titles[$metric]), 404);
 
@@ -497,7 +497,7 @@ class ChurchDashboardController extends Controller
     public function personalPlatformComparison(Request $request, string $platform = 'semua')
     {
         $platformLabels = ['semua' => 'Semua'] + AppSetting::current()->enabledPlatformLabels();
-        $metricLabels = ['reach' => 'Followers/Subscribers', 'views' => 'Views', 'likes' => 'Likes', 'posts' => 'Post / Video'];
+        $metricLabels = AppSetting::filterEnabledMetrics(['posts' => __('common.metric_posts'), 'views' => __('common.metric_views'), 'likes' => __('common.metric_likes'), 'comments' => __('common.metric_comments'), 'shares' => __('common.metric_shares'), 'reach' => __('common.metric_reach')]);
         $metricPlatforms = $this->metricPlatforms();
 
         abort_unless(isset($platformLabels[$platform]), 404);
@@ -580,7 +580,7 @@ class ChurchDashboardController extends Controller
 
     public function institutionMetricComparison(Request $request)
     {
-        $metricLabels = ['reach' => 'Followers/Subscribers', 'views' => 'Views', 'likes' => 'Likes', 'posts' => 'Post / Video'];
+        $metricLabels = AppSetting::filterEnabledMetrics(['posts' => __('common.metric_posts'), 'views' => __('common.metric_views'), 'likes' => __('common.metric_likes'), 'comments' => __('common.metric_comments'), 'shares' => __('common.metric_shares'), 'reach' => __('common.metric_reach')]);
 
         $isUniView = $this->isUniView();
         $selectedUnionId = $isUniView ? (string) $request->user()->union_id : $request->query('union_id');
@@ -620,7 +620,7 @@ class ChurchDashboardController extends Controller
     public function institutionLeaderboard(Request $request, string $metric)
     {
         $titles = $this->leaderboardTitles();
-        $metricLabels = ['reach' => 'Followers/Subscribers', 'views' => 'Views', 'likes' => 'Likes', 'posts' => 'Post / Video'];
+        $metricLabels = AppSetting::filterEnabledMetrics(['posts' => __('common.metric_posts'), 'views' => __('common.metric_views'), 'likes' => __('common.metric_likes'), 'comments' => __('common.metric_comments'), 'shares' => __('common.metric_shares'), 'reach' => __('common.metric_reach')]);
 
         abort_unless(isset($titles[$metric]), 404);
 
@@ -663,7 +663,7 @@ class ChurchDashboardController extends Controller
 
     public function organizationMetricComparison(Request $request)
     {
-        $metricLabels = ['reach' => 'Followers/Subscribers', 'views' => 'Views', 'likes' => 'Likes', 'posts' => 'Post / Video'];
+        $metricLabels = AppSetting::filterEnabledMetrics(['posts' => __('common.metric_posts'), 'views' => __('common.metric_views'), 'likes' => __('common.metric_likes'), 'comments' => __('common.metric_comments'), 'shares' => __('common.metric_shares'), 'reach' => __('common.metric_reach')]);
 
         $isUniView = $this->isUniView();
         $selectedUnionId = $isUniView ? (string) $request->user()->union_id : $request->query('union_id');
@@ -703,7 +703,7 @@ class ChurchDashboardController extends Controller
     public function organizationLeaderboard(Request $request, string $metric)
     {
         $titles = $this->leaderboardTitles();
-        $metricLabels = ['reach' => 'Followers/Subscribers', 'views' => 'Views', 'likes' => 'Likes', 'posts' => 'Post / Video'];
+        $metricLabels = AppSetting::filterEnabledMetrics(['posts' => __('common.metric_posts'), 'views' => __('common.metric_views'), 'likes' => __('common.metric_likes'), 'comments' => __('common.metric_comments'), 'shares' => __('common.metric_shares'), 'reach' => __('common.metric_reach')]);
 
         abort_unless(isset($titles[$metric]), 404);
 
@@ -747,7 +747,7 @@ class ChurchDashboardController extends Controller
     public function organizationPlatformComparison(Request $request, string $platform = 'semua')
     {
         $platformLabels = ['semua' => 'Semua'] + AppSetting::current()->enabledPlatformLabels();
-        $metricLabels = ['reach' => 'Followers/Subscribers', 'views' => 'Views', 'likes' => 'Likes', 'posts' => 'Post / Video'];
+        $metricLabels = AppSetting::filterEnabledMetrics(['posts' => __('common.metric_posts'), 'views' => __('common.metric_views'), 'likes' => __('common.metric_likes'), 'comments' => __('common.metric_comments'), 'shares' => __('common.metric_shares'), 'reach' => __('common.metric_reach')]);
         $metricPlatforms = $this->metricPlatforms();
 
         abort_unless(isset($platformLabels[$platform]), 404);
@@ -831,7 +831,7 @@ class ChurchDashboardController extends Controller
     public function institutionPlatformComparison(Request $request, string $platform = 'semua')
     {
         $platformLabels = ['semua' => 'Semua'] + AppSetting::current()->enabledPlatformLabels();
-        $metricLabels = ['reach' => 'Followers/Subscribers', 'views' => 'Views', 'likes' => 'Likes', 'posts' => 'Post / Video'];
+        $metricLabels = AppSetting::filterEnabledMetrics(['posts' => __('common.metric_posts'), 'views' => __('common.metric_views'), 'likes' => __('common.metric_likes'), 'comments' => __('common.metric_comments'), 'shares' => __('common.metric_shares'), 'reach' => __('common.metric_reach')]);
         $metricPlatforms = $this->metricPlatforms();
 
         abort_unless(isset($platformLabels[$platform]), 404);
@@ -1423,7 +1423,7 @@ class ChurchDashboardController extends Controller
 
     public function metricComparison(Request $request)
     {
-        $metricLabels = ['reach' => 'Followers/Subscribers', 'views' => 'Views', 'likes' => 'Likes', 'posts' => 'Post / Video'];
+        $metricLabels = AppSetting::filterEnabledMetrics(['posts' => __('common.metric_posts'), 'views' => __('common.metric_views'), 'likes' => __('common.metric_likes'), 'comments' => __('common.metric_comments'), 'shares' => __('common.metric_shares'), 'reach' => __('common.metric_reach')]);
 
         $isUniView = $this->isUniView();
         $selectedUnionId = $isUniView ? (string) $request->user()->union_id : $request->query('union_id');
@@ -1467,7 +1467,7 @@ class ChurchDashboardController extends Controller
     public function leaderboard(Request $request, string $metric)
     {
         $titles = $this->leaderboardTitles();
-        $metricLabels = ['reach' => 'Followers/Subscribers', 'views' => 'Views', 'likes' => 'Likes', 'posts' => 'Post / Video'];
+        $metricLabels = AppSetting::filterEnabledMetrics(['posts' => __('common.metric_posts'), 'views' => __('common.metric_views'), 'likes' => __('common.metric_likes'), 'comments' => __('common.metric_comments'), 'shares' => __('common.metric_shares'), 'reach' => __('common.metric_reach')]);
 
         abort_unless(isset($titles[$metric]), 404);
 
@@ -1648,7 +1648,7 @@ class ChurchDashboardController extends Controller
     public function platformComparison(Request $request, string $platform = 'semua')
     {
         $platformLabels = ['semua' => 'Semua'] + AppSetting::current()->enabledPlatformLabels();
-        $metricLabels = ['reach' => 'Followers/Subscribers', 'views' => 'Views', 'likes' => 'Likes', 'posts' => 'Post / Video'];
+        $metricLabels = AppSetting::filterEnabledMetrics(['posts' => __('common.metric_posts'), 'views' => __('common.metric_views'), 'likes' => __('common.metric_likes'), 'comments' => __('common.metric_comments'), 'shares' => __('common.metric_shares'), 'reach' => __('common.metric_reach')]);
         $metricPlatforms = $this->metricPlatforms();
 
         abort_unless(isset($platformLabels[$platform]), 404);
@@ -1946,7 +1946,7 @@ class ChurchDashboardController extends Controller
             ->when($selectedPlatform, fn ($q) => $q->where('platform', $selectedPlatform))
             ->when($isMonitoringWindow, fn ($q) => $q->whereBetween('posted_at', [$postedFrom, $postedTo]))
             ->tap(fn ($q) => $noPersonalRegion ? $q->whereRaw('1 = 0') : $this->applyHashtagRegionFilter($q, $selectedUnionId, $selectedConferenceId))
-            ->selectRaw('COALESCE(SUM(likes_count), 0) as likes, COALESCE(SUM(views_count), 0) as views, COALESCE(SUM(shares_count), 0) as shares')
+            ->selectRaw('COALESCE(SUM(likes_count), 0) as likes, COALESCE(SUM(comments_count), 0) as comments, COALESCE(SUM(views_count), 0) as views, COALESCE(SUM(shares_count), 0) as shares')
             ->first();
 
         return [
@@ -1966,6 +1966,7 @@ class ChurchDashboardController extends Controller
             'posts' => $posts,
             'interactionTotals' => [
                 'likes' => (int) $interactionTotals->likes,
+                'comments' => (int) $interactionTotals->comments,
                 'views' => (int) $interactionTotals->views,
                 'shares' => (int) $interactionTotals->shares,
             ],

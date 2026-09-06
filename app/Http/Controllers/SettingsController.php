@@ -14,7 +14,7 @@ use Illuminate\Validation\Rule;
 
 class SettingsController extends Controller
 {
-    private const TABS = ['general', 'platform', 'coordinator'];
+    private const TABS = ['general', 'platform', 'metric', 'coordinator'];
 
     public function edit(Request $request)
     {
@@ -126,6 +126,14 @@ class SettingsController extends Controller
             foreach (['youtube', 'instagram', 'tiktok', 'facebook', 'x', 'threads'] as $platform) {
                 $data["{$platform}_enabled"] = $request->boolean("{$platform}_enabled");
             }
+
+            // Same gate as platform visibility above (same @can wrap in the view, same
+            // "don't reset toggles a non-superadmin never saw" reasoning) — one settings row
+            // controls both, per the user's explicit call for a single superadmin-only place
+            // governing everything the app shows.
+            foreach (\App\Models\AppSetting::allMetrics() as $metric) {
+                $data[$metric['column']] = $request->boolean($metric['column']);
+            }
         }
 
         // Global chat groups (WhatsApp/Messenger/…) now live in their own table — see
@@ -151,15 +159,15 @@ class SettingsController extends Controller
     }
 
     /**
-     * Falls back to 'general' both for an unrecognized tab AND for 'platform' when the viewer
-     * can't see that tab at all (settings/edit.blade.php only renders its button/panel behind
-     * the same manage-platform-visibility check) — otherwise a stale/tampered ?tab=platform
-     * would tell the tab script to activate a panel that was never rendered for this viewer,
-     * leaving the page showing nothing.
+     * Falls back to 'general' both for an unrecognized tab AND for 'platform'/'metric' when the
+     * viewer can't see either tab at all (settings/edit.blade.php only renders their button/
+     * panel behind the same manage-platform-visibility check) — otherwise a stale/tampered
+     * ?tab=platform would tell the tab script to activate a panel that was never rendered for
+     * this viewer, leaving the page showing nothing.
      */
     private function resolveTab(Request $request, ?string $tab): string
     {
-        if ($tab === 'platform' && ! $request->user()->can('manage-platform-visibility')) {
+        if (in_array($tab, ['platform', 'metric'], true) && ! $request->user()->can('manage-platform-visibility')) {
             return 'general';
         }
 

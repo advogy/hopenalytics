@@ -1,7 +1,7 @@
 @props(['title', 'subtitle', 'rows', 'platformLabels', 'scope', 'viewAllUrl' => null, 'showMetrics' => true])
 
 @php
-    $metricLabels = ['reach' => 'Reach', 'views' => 'Views', 'likes' => 'Likes', 'posts' => 'Post / Video'];
+    $metricLabels = \App\Models\AppSetting::filterEnabledMetrics(['reach' => __('common.metric_reach_short'), 'views' => __('common.metric_views'), 'likes' => __('common.metric_likes'), 'posts' => __('common.metric_posts'), 'comments' => __('common.metric_comments'), 'shares' => __('common.metric_shares')]);
 @endphp
 
 <div class="min-w-0 rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
@@ -39,7 +39,11 @@
                     </div>
 
                     @if ($showMetrics)
-                        <div class="hidden shrink-0 items-center gap-3 text-sm sm:flex">
+                        {{-- lg: (not sm:) and flex-wrap — up to 6 metric badges now (Settings
+                             can enable Comment/Share alongside Reach/Views/Likes/Post), which no
+                             longer reliably fits beside the icon/name/score on a merely-sm-width
+                             viewport without wrapping. --}}
+                        <div class="hidden shrink-0 flex-wrap items-center justify-end gap-3 text-sm lg:flex">
                             @foreach ($metricLabels as $key => $label)
                                 @php $value = $row['metrics'][$key] ?? null; @endphp
                                 <span class="inline-flex items-center gap-1">

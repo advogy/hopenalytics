@@ -74,6 +74,7 @@ class FacebookStatsFetcher
             'recent_posts_count' => $posts->count(),
             'recent_posts_likes' => (int) $posts->sum('likes'),
             'recent_posts_shares' => (int) $posts->sum('shares'),
+            'recent_posts_comments' => (int) $posts->sum('comments'),
             // The full post sample — a free ride on the same call above, picked back out by
             // HashtagCandidateExtractor for hashtag matching. Never persisted to church_stats
             // itself; FetchSingleChurchData strips this key before saving.

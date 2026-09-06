@@ -8,7 +8,7 @@
 @props(['title', 'subtitle', 'rows', 'viewAllUrl' => null, 'showMetrics' => true, 'groupedRows' => null, 'groupPrefix' => null, 'isNasionalView' => false, 'showDivisionHeader' => false, 'scope' => null])
 
 @php
-    $metricLabels = ['reach' => 'Reach', 'views' => 'Views', 'likes' => 'Likes', 'posts' => 'Post / Video'];
+    $metricLabels = \App\Models\AppSetting::filterEnabledMetrics(['reach' => __('common.metric_reach_short'), 'views' => __('common.metric_views'), 'likes' => __('common.metric_likes'), 'posts' => __('common.metric_posts'), 'comments' => __('common.metric_comments'), 'shares' => __('common.metric_shares')]);
 @endphp
 
 <div class="min-w-0 rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">

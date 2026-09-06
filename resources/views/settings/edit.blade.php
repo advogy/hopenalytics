@@ -14,6 +14,7 @@
         <x-tab-button tab-key="general">{{ __('settings.tab_general') }}</x-tab-button>
         @can('manage-platform-visibility')
             <x-tab-button tab-key="platform">{{ __('settings.tab_platform') }}</x-tab-button>
+            <x-tab-button tab-key="metric">{{ __('settings.tab_metric') }}</x-tab-button>
         @endcan
         <x-tab-button tab-key="coordinator">{{ __('settings.tab_coordinator') }}</x-tab-button>
     </x-tab-bar>
@@ -125,6 +126,26 @@
                             <span class="text-xs text-slate-400 dark:text-slate-500">
                                 {{ __('settings.platform_account_count', ['count' => $platformAccountCounts[$platform['value']] ?? 0]) }}
                             </span>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+
+            <div data-tab-panel="metric" class="rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/5 dark:bg-slate-900">
+                <h2 class="mb-1 font-bold text-slate-900 dark:text-white">{{ __('settings.metric_title') }}</h2>
+                <p class="mb-4 text-sm text-slate-500 dark:text-slate-400">{{ __('settings.metric_subtitle') }}</p>
+
+                <div class="space-y-3">
+                    @foreach (\App\Models\AppSetting::allMetrics() as $metric)
+                        <div class="flex items-center gap-2">
+                            <input
+                                type="checkbox" id="{{ $metric['column'] }}" name="{{ $metric['column'] }}" value="1"
+                                @checked(old($metric['column'], $settings->{$metric['column']}))
+                                class="h-4 w-4 rounded border-black/20 text-blue-600 focus:ring-blue-500"
+                            >
+                            <label for="{{ $metric['column'] }}" class="flex-1 text-sm font-medium">
+                                {{ $metric['label'] }}
+                            </label>
                         </div>
                     @endforeach
                 </div>

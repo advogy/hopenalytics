@@ -11,7 +11,7 @@
         <div>
             <h1 class="mb-1 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{{ __('comparison.metric_comparison_title', ['label' => $scope->labelCap()]) }}</h1>
             <p class="text-sm text-slate-500 dark:text-slate-400">
-                {{ __('comparison.metric_comparison_subtitle_score', ['scope' => $scope->forAllLabel()]) }}
+                {{ __('comparison.metric_comparison_subtitle_score', ['scope' => $scope->forAllLabel(), 'metrics' => strtolower(implode(', ', $metricLabels))]) }}
             </p>
         </div>
         @can('browse-directory-analytics')

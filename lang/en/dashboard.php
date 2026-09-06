@@ -60,7 +60,7 @@ return [
     'map_region_legend_no_data' => 'No data yet',
 
     'top_growth_title' => 'Top 5 Weekly Growth Score',
-    'top_growth_subtitle' => 'Composite score averaging weekly growth in reach, views, likes, and posts.',
+    'top_growth_subtitle' => 'Composite score averaging weekly growth in :metrics.',
     'bottom_growth_title' => 'Bottom 5 Growth Score',
     'bottom_growth_subtitle' => 'Churches with the lowest weekly growth score — may need extra attention.',
     'platform_score_subtitle' => 'Performance of each social platform, based on composite weekly growth score.',
@@ -69,6 +69,8 @@ return [
     'views_subtitle' => 'Highest YouTube views growth, this week',
     'likes_subtitle' => 'Highest TikTok likes growth, this week',
     'posts_subtitle' => 'Highest content (post/video) growth, this week',
+    'comments_subtitle' => 'Highest comment growth (Instagram/TikTok/Facebook), this week',
+    'shares_subtitle' => 'Highest share growth (TikTok/Facebook), this week',
 
     'distribution_channels' => 'Distribution Channels',
     'distribution_channels_subtitle' => 'How reach (followers/subscribers) is spread across each social media platform.',

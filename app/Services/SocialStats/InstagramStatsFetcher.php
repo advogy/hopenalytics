@@ -27,6 +27,7 @@ class InstagramStatsFetcher
             'posts_count' => (int) ($item['postsCount'] ?? 0),
             'recent_reels_count' => $reels->count(),
             'recent_reels_views' => (int) $reels->sum('videoViewCount'),
+            'recent_reels_comments' => (int) $reels->sum('commentsCount'),
             'raw_payload' => $item,
         ];
     }

@@ -1,5 +1,5 @@
 @php
-    $metricLabels = ['reach' => 'Reach', 'views' => 'Views', 'likes' => 'Likes', 'posts' => 'Post / Video'];
+    $metricLabels = \App\Models\AppSetting::filterEnabledMetrics(['reach' => __('common.metric_reach_short'), 'views' => __('common.metric_views'), 'likes' => __('common.metric_likes'), 'posts' => __('common.metric_posts'), 'comments' => __('common.metric_comments'), 'shares' => __('common.metric_shares')]);
     $hasScore = $row['score'] !== null;
 @endphp
 <div class="flex items-center gap-4 rounded-xl border px-4 py-3 {{ $i === 0 ? 'border-blue-500/40 bg-blue-600/10 ring-1 ring-blue-500/40 dark:bg-blue-600/20' : 'border-black/5 bg-white dark:border-white/5 dark:bg-[#0f1e33]' }} {{ $hasScore ? '' : 'opacity-40' }}">
@@ -16,7 +16,10 @@
         @endif
     </div>
 
-    <div class="hidden shrink-0 items-center gap-3 sm:flex">
+    {{-- lg: (not sm:) and flex-wrap — up to 6 metric badges now (Settings can enable
+         Comment/Share alongside Reach/Views/Likes/Post), which no longer reliably fits beside
+         the avatar/name/score on a merely-sm-width viewport without wrapping. --}}
+    <div class="hidden shrink-0 flex-wrap items-center justify-end gap-3 lg:flex">
         @foreach ($metricLabels as $key => $label)
             @php $value = $row['metrics'][$key] ?? null; @endphp
             <span class="inline-flex items-center gap-1 text-sm {{ $value === null ? 'text-slate-400 dark:text-slate-600' : 'text-slate-700 dark:text-slate-200' }}">

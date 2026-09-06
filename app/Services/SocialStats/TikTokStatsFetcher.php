@@ -44,6 +44,7 @@ class TikTokStatsFetcher
             'recent_video_count' => $videos->count(),
             'recent_video_plays' => (int) $videos->sum('playCount'),
             'recent_video_shares' => (int) $videos->sum('shareCount'),
+            'recent_video_comments' => (int) $videos->sum('commentCount'),
             'raw_payload' => $items[0],
             // The full video sample (not just $items[0]) — a free ride on the same call above,
             // picked back out by HashtagCandidateExtractor for hashtag matching. Never persisted
