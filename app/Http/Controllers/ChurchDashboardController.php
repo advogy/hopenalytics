@@ -1933,6 +1933,17 @@ class ChurchDashboardController extends Controller
             ->paginate(40, ['*'], 'hashtag_page')
             ->withQueryString();
 
+        // On analytics()'s tabbed page, the active tab is purely client-side (see
+        // partials/tab-script.blade.php) and never lands in the URL just from clicking the
+        // "Hastag" tab button — so without this, clicking next/previous here navigates to a
+        // URL with no `tab` param, and the reloaded page falls back to its default "organisasi"
+        // tab, stranding you off the Hastag tab you were just paginating. ->appends() after
+        // withQueryString() always wins over any stale `tab` value already in the query string.
+        // The 4 standalone hashtagComparison*() pages have no tab concept, so they're skipped.
+        if (request()->routeIs('churches.analytics')) {
+            $posts->appends(['tab' => 'hastag']);
+        }
+
         // Interaction summary card, below the "Jumlah Post per Tanggal" chart — per the user's
         // explicit call, a total across EVERY matching post (not just the current page of
         // $posts above), under the exact same filters as the chart/table (hashtag, platform,
