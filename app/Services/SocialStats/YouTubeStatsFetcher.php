@@ -86,7 +86,7 @@ class YouTubeStatsFetcher
             throw new RuntimeException("YouTube playlistItems API error [{$response->status()}]: {$response->body()}");
         }
 
-        return collect($response->json('items') ?? [])
+        $videos = collect($response->json('items') ?? [])
             ->map(function ($item) {
                 $snippet = $item['snippet'] ?? [];
                 $videoId = $snippet['resourceId']['videoId'] ?? '';
@@ -107,7 +107,67 @@ class YouTubeStatsFetcher
                 ];
             })
             ->filter(fn ($video) => $video['external_post_id'] !== '')
-            ->values()
+            ->values();
+
+        $statsByVideoId = $this->fetchVideoStatistics($videos->pluck('external_post_id')->all());
+
+        return $videos
+            ->map(function ($video) use ($statsByVideoId) {
+                $stats = $statsByVideoId[$video['external_post_id']] ?? null;
+
+                if ($stats) {
+                    $video['likes_count'] = $stats['likes_count'];
+                    $video['comments_count'] = $stats['comments_count'];
+                    $video['views_count'] = $stats['views_count'];
+                }
+
+                return $video;
+            })
+            ->all();
+    }
+
+    /**
+     * playlistItems (above) only carries snippet data — no view/like/comment counts at all — so
+     * this second, batched videos.list call is what actually fills those in for hashtag matching.
+     * Like channels.list, videos.list is a flat 1 quota unit per call regardless of how many
+     * `part`s or ids are requested (up to 100 ids), so batching every video from one
+     * fetchRecentVideos() call into a single comma-joined id list costs exactly the same 1 unit
+     * as fetching just one video's stats would. Best-effort: if this call fails for any reason,
+     * the caller falls back to its own null defaults rather than losing the whole post list over
+     * a stats-only failure.
+     *
+     * @return array<string, array{likes_count: int, comments_count: int, views_count: int}>
+     */
+    private function fetchVideoStatistics(array $videoIds): array
+    {
+        if (! $videoIds) {
+            return [];
+        }
+
+        $response = Http::retry(3, 2000)
+            ->timeout(15)
+            ->get('https://www.googleapis.com/youtube/v3/videos', [
+                'part' => 'statistics',
+                'id' => implode(',', $videoIds),
+                'key' => $this->apiKey,
+            ]);
+
+        if ($response->failed()) {
+            return [];
+        }
+
+        return collect($response->json('items') ?? [])
+            ->mapWithKeys(function ($item) {
+                $stats = $item['statistics'] ?? [];
+
+                return [
+                    $item['id'] => [
+                        'likes_count' => (int) ($stats['likeCount'] ?? 0),
+                        'comments_count' => (int) ($stats['commentCount'] ?? 0),
+                        'views_count' => (int) ($stats['viewCount'] ?? 0),
+                    ],
+                ];
+            })
             ->all();
     }
 }
