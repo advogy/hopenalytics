@@ -19,7 +19,7 @@ class XPostsFetcher
         private readonly ApifyClient $apify,
     ) {}
 
-    /** @return array<int, array{external_post_id: string, post_url: string, author_handle: ?string, caption: ?string, likes_count: int, comments_count: int, views_count: null, posted_at: ?string}> */
+    /** @return array<int, array{external_post_id: string, post_url: string, author_handle: ?string, caption: ?string, likes_count: int, comments_count: int, views_count: null, shares_count: null, posted_at: ?string}> */
     public function fetch(string $username): array
     {
         $items = $this->apify->runActorSyncAll(self::ACTOR_ID, [
@@ -36,6 +36,10 @@ class XPostsFetcher
                 'likes_count' => (int) ($item['likeCount'] ?? 0),
                 'comments_count' => (int) ($item['replyCount'] ?? 0),
                 'views_count' => null,
+                // Field name for a repost/share count on this actor (apidojo~twitter-scraper-lite)
+                // hasn't been confirmed against a live response — left null rather than guessed
+                // at, same caution as ThreadsStatsFetcher's own doc comment.
+                'shares_count' => null,
                 'posted_at' => $item['createdAt'] ?? null,
             ])
             ->filter(fn ($post) => $post['external_post_id'] !== '' && $post['post_url'] !== '')

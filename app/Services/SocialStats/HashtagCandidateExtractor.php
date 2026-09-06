@@ -22,7 +22,7 @@ use Illuminate\Support\Collection;
 class HashtagCandidateExtractor
 {
     /**
-     * @return array<int, array{external_post_id: string, post_url: string, author_handle: ?string, caption: ?string, likes_count: ?int, comments_count: ?int, views_count: ?int, posted_at: ?string}>
+     * @return array<int, array{external_post_id: string, post_url: string, author_handle: ?string, caption: ?string, likes_count: ?int, comments_count: ?int, views_count: ?int, shares_count: ?int, posted_at: ?string}>
      */
     public function extract(SocialPlatform $platform, array $data, string $fallbackHandle): array
     {
@@ -46,6 +46,10 @@ class HashtagCandidateExtractor
                 'likes_count' => (int) ($post['likesCount'] ?? 0),
                 'comments_count' => (int) ($post['commentsCount'] ?? 0),
                 'views_count' => isset($post['videoViewCount']) ? (int) $post['videoViewCount'] : null,
+                // Instagram's scraper/public data exposes no share count at all (unlike
+                // TikTok/Facebook below) — left null rather than guessed at 0, same convention
+                // as views_count above for a photo post with no video view count.
+                'shares_count' => null,
                 'posted_at' => $post['timestamp'] ?? null,
             ])
             ->pipe(fn (Collection $posts) => $this->rejectMissingId($posts));
@@ -62,6 +66,9 @@ class HashtagCandidateExtractor
                 'likes_count' => (int) ($item['diggCount'] ?? 0),
                 'comments_count' => (int) ($item['commentCount'] ?? 0),
                 'views_count' => (int) ($item['playCount'] ?? 0),
+                // Same field TikTokStatsFetcher::fetch() already sums across this same raw
+                // sample for its own account-level 'recent_video_shares' total.
+                'shares_count' => (int) ($item['shareCount'] ?? 0),
                 'posted_at' => $item['createTimeISO'] ?? null,
             ])
             ->pipe(fn (Collection $posts) => $this->rejectMissingId($posts));
@@ -78,6 +85,9 @@ class HashtagCandidateExtractor
                 'likes_count' => (int) ($item['likes'] ?? 0),
                 'comments_count' => (int) ($item['comments'] ?? 0),
                 'views_count' => null,
+                // Same field FacebookStatsFetcher::fetchRecentPosts() already sums across this
+                // same raw sample for its own account-level 'recent_posts_shares' total.
+                'shares_count' => (int) ($item['shares'] ?? 0),
                 'posted_at' => $item['time'] ?? null,
             ])
             ->pipe(fn (Collection $posts) => $this->rejectMissingId($posts));
@@ -97,6 +107,10 @@ class HashtagCandidateExtractor
                 'likes_count' => (int) ($item['likeCount'] ?? 0),
                 'comments_count' => (int) ($item['replyCount'] ?? 0),
                 'views_count' => null,
+                // Unconfirmed field name, same caveat as this whole file's own doc comment — left
+                // null rather than guessed at, until a real fetch confirms what (if anything) a
+                // repost/share count is called in this actor's response.
+                'shares_count' => null,
                 'posted_at' => $item['date'] ?? null,
             ])
             ->pipe(fn (Collection $posts) => $this->rejectMissingId($posts));

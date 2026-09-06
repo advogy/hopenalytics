@@ -1214,6 +1214,7 @@
             'selectedPostedFrom' => $hashtagData['selectedPostedFrom'],
             'selectedPostedTo' => $hashtagData['selectedPostedTo'],
             'posts' => $hashtagData['posts'],
+            'interactionTotals' => $hashtagData['interactionTotals'],
             'selectedHashtagId' => $hashtagData['selectedHashtagId'],
             'selectedPlatform' => $hashtagData['selectedPlatform'],
             // Explicitly $hashtagData's own copies, not this page's top-level $isNasionalView/

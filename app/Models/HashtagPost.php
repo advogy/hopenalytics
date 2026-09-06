@@ -13,8 +13,8 @@ class HashtagPost extends Model
 
     protected $fillable = [
         'hashtag_id', 'church_social_id', 'platform', 'external_post_id', 'post_url',
-        'author_handle', 'caption', 'likes_count', 'comments_count', 'views_count', 'posted_at',
-        'last_seen_at', 'raw_payload',
+        'author_handle', 'caption', 'likes_count', 'comments_count', 'views_count', 'shares_count',
+        'posted_at', 'last_seen_at', 'raw_payload',
     ];
 
     protected $casts = [

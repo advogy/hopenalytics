@@ -6,7 +6,9 @@
     ChurchDashboardController::hashtagComparisonData()).
 
     Expected: $hashtags, $platforms, $lastUpdatedAt, $rows, $grandTotalByPlatform, $grandTotal,
-    $posts (paginator, each row's churchSocial relation eager-loaded), $selectedHashtagId,
+    $posts (paginator, each row's churchSocial relation eager-loaded), $interactionTotals
+    (['likes' => int, 'views' => int, 'shares' => int], summed across every matching post under
+    the same filters as $posts — not just the current page), $selectedHashtagId,
     $selectedPlatform, $isNasionalView, $isUniView, $unionOptions, $conferenceOptions,
     $selectedUnionId, $selectedConferenceId.
     Optional: $formAction (omit for a self-submitting form on the current URL), $clearUrl (passed
@@ -206,6 +208,32 @@
         <x-growth-chart :values="$growthValues" :labels="$growthLabels" :short-labels="$growthShortLabels" :date-keys="$growthDateKeys" :width="960" :height="180" label-density="dense" />
     </div>
 
+    {{-- Interaction summary — per the user's explicit call, a total across EVERY matching post
+         (not just the current page of the table below), under the exact same filters as the
+         chart above. Share is only ever non-zero for Facebook/TikTok, the only two platforms
+         whose actor exposes a share count at all (see HashtagCandidateExtractor's own
+         per-platform doc comments) — Instagram/YouTube simply have no such public metric, hence
+         the hint line rather than leaving a silent 0 unexplained. --}}
+    <div class="mb-8 w-full rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
+        <p class="font-bold text-slate-900 dark:text-white">{{ __('hashtag.interaction_summary_title') }}</p>
+        <p class="mb-4 text-sm text-slate-500 dark:text-slate-400">{{ __('hashtag.interaction_summary_subtitle') }}</p>
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div class="rounded-xl bg-slate-50 p-4 dark:bg-slate-800/60">
+                <p class="text-sm text-slate-500 dark:text-slate-400">❤ {{ __('hashtag.interaction_likes') }}</p>
+                <p class="text-2xl font-bold tabular-nums text-slate-900 dark:text-white">{{ number_format($interactionTotals['likes']) }}</p>
+            </div>
+            <div class="rounded-xl bg-slate-50 p-4 dark:bg-slate-800/60">
+                <p class="text-sm text-slate-500 dark:text-slate-400">👁 {{ __('hashtag.interaction_views') }}</p>
+                <p class="text-2xl font-bold tabular-nums text-slate-900 dark:text-white">{{ number_format($interactionTotals['views']) }}</p>
+            </div>
+            <div class="rounded-xl bg-slate-50 p-4 dark:bg-slate-800/60">
+                <p class="text-sm text-slate-500 dark:text-slate-400">🔁 {{ __('hashtag.interaction_shares') }}</p>
+                <p class="text-2xl font-bold tabular-nums text-slate-900 dark:text-white">{{ number_format($interactionTotals['shares']) }}</p>
+                <p class="mt-0.5 text-xs text-slate-400 dark:text-slate-500">{{ __('hashtag.interaction_shares_hint') }}</p>
+            </div>
+        </div>
+    </div>
+
     <div class="overflow-x-auto rounded-2xl border border-black/5 dark:border-white/5">
         <table class="w-full text-left text-sm">
             <thead class="bg-slate-50 dark:bg-slate-800/60">
@@ -246,6 +274,9 @@
                                 @endif
                                 @if ($post->views_count !== null)
                                     <span>{{ number_format($post->views_count) }} 👁</span>
+                                @endif
+                                @if ($post->shares_count !== null)
+                                    <span>{{ number_format($post->shares_count) }} 🔁</span>
                                 @endif
                             </div>
                         </td>

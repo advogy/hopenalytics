@@ -39,6 +39,7 @@
         'selectedPostedFrom' => $selectedPostedFrom,
         'selectedPostedTo' => $selectedPostedTo,
         'posts' => $posts,
+        'interactionTotals' => $interactionTotals,
         'selectedHashtagId' => $selectedHashtagId,
         'selectedPlatform' => $selectedPlatform,
         'isNasionalView' => $isNasionalView,

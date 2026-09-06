@@ -1933,6 +1933,22 @@ class ChurchDashboardController extends Controller
             ->paginate(40, ['*'], 'hashtag_page')
             ->withQueryString();
 
+        // Interaction summary card, below the "Jumlah Post per Tanggal" chart — per the user's
+        // explicit call, a total across EVERY matching post (not just the current page of
+        // $posts above), under the exact same filters as the chart/table (hashtag, platform,
+        // monitoring window, region). COALESCE(..., 0) since SQL SUM() of an all-NULL column
+        // returns NULL, not 0 — relevant here because shares_count (and, for some platforms,
+        // views_count) is genuinely null on every row for a platform whose actor never exposes
+        // that metric (see HashtagCandidateExtractor's own per-platform doc comments), not
+        // merely zero.
+        $interactionTotals = HashtagPost::query()
+            ->when($selectedHashtagId, fn ($q) => $q->where('hashtag_id', $selectedHashtagId))
+            ->when($selectedPlatform, fn ($q) => $q->where('platform', $selectedPlatform))
+            ->when($isMonitoringWindow, fn ($q) => $q->whereBetween('posted_at', [$postedFrom, $postedTo]))
+            ->tap(fn ($q) => $noPersonalRegion ? $q->whereRaw('1 = 0') : $this->applyHashtagRegionFilter($q, $selectedUnionId, $selectedConferenceId))
+            ->selectRaw('COALESCE(SUM(likes_count), 0) as likes, COALESCE(SUM(views_count), 0) as views, COALESCE(SUM(shares_count), 0) as shares')
+            ->first();
+
         return [
             'hashtags' => $hashtags,
             'platforms' => $platforms,
@@ -1948,6 +1964,11 @@ class ChurchDashboardController extends Controller
             'selectedPostedFrom' => $postedFrom?->format('Y-m-d\TH:i'),
             'selectedPostedTo' => $postedTo?->format('Y-m-d\TH:i'),
             'posts' => $posts,
+            'interactionTotals' => [
+                'likes' => (int) $interactionTotals->likes,
+                'views' => (int) $interactionTotals->views,
+                'shares' => (int) $interactionTotals->shares,
+            ],
             'selectedHashtagId' => $selectedHashtagId,
             'selectedPlatform' => $selectedPlatform,
             'isNasionalView' => $this->isNasionalView(),

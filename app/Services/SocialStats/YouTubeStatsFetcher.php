@@ -101,6 +101,8 @@ class YouTubeStatsFetcher
                     'likes_count' => null,
                     'comments_count' => null,
                     'views_count' => null,
+                    // YouTube's Data API has no "shares" metric for a video at all.
+                    'shares_count' => null,
                     'posted_at' => $snippet['publishedAt'] ?? null,
                 ];
             })

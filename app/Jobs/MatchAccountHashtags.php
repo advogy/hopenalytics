@@ -115,6 +115,7 @@ class MatchAccountHashtags implements ShouldQueue
                         'likes_count' => $post['likes_count'],
                         'comments_count' => $post['comments_count'],
                         'views_count' => $post['views_count'],
+                        'shares_count' => $post['shares_count'] ?? null,
                         'posted_at' => $post['posted_at'],
                         'last_seen_at' => $now,
                     ],

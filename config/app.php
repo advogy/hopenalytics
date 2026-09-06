@@ -15,7 +15,7 @@ return [
 
     'name' => env('APP_NAME', 'Hopenalytics'),
 
-    'version' => '1.16.1',
+    'version' => '1.16.2',
 
     'developer' => env('APP_DEVELOPER', 'Advogy'),
 
