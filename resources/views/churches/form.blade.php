@@ -1,4 +1,5 @@
-@extends('layouts.app')
+{{-- $modal: see admin/divisions/form.blade.php's own doc comment for the pattern. --}}
+@extends(($modal ?? false) ? 'layouts.blank' : 'layouts.app')
 
 @section('title', ($church->exists ? __('entity.title_edit_church') : __('entity.title_add_church')) . ' — ' . config('app.name'))
 
@@ -12,6 +13,7 @@
         :toggle-action="$church->exists ? route('churches.toggle-active', $church) : null"
         :toggle-confirm="$church->is_active ? __('entity.deactivate_church_confirm') : null"
         :toggle-label="$church->is_active ? __('entity.deactivate_church') : __('entity.activate_church')"
+        :modal="$modal ?? false"
     >
         <x-form-field name="name" :label="__('entity.church_name')" required :value="$church->name" :placeholder="__('entity.name_placeholder')" />
         <x-similar-name-check :route="route('churches.similar')" :exclude-id="$church->exists ? $church->id : null" />

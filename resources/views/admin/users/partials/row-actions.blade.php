@@ -13,14 +13,19 @@
     <p class="text-right text-xs text-slate-400 dark:text-slate-500">{{ __('users.this_is_you') }}</p>
 @else
     <div class="flex flex-nowrap items-center justify-end gap-3">
-        <a
-            href="{{ route('admin.users.edit', ['target' => $user, 'tab' => $tab]) }}"
+        {{-- Opens the same edit form in Kelola Pengguna's shared modal instead of navigating to
+             a separate page — see admin/users/index.blade.php's edit-modal JS, which fetches
+             this URL with ?modal=1 appended (same contract as Kelola Akun's own, see
+             admin/accounts/partials/row-actions.blade.php's own trigger button). --}}
+        <button
+            type="button"
+            data-entity-modal-trigger="{{ route('admin.users.edit', ['target' => $user, 'tab' => $tab]) }}"
             title="{{ __('common.edit') }}"
             aria-label="{{ __('common.edit') }}"
-            class="shrink-0 text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400"
+            class="shrink-0 cursor-pointer text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400"
         >
             <x-icon name="pencil-square" class="h-5 w-5" />
-        </a>
+        </button>
 
         @can('releaseRegion', $user)
             @if ($user->division_id || $user->union_id || $user->conference_id || $user->church_id)
@@ -33,17 +38,20 @@
                 <form method="POST" action="{{ route('admin.users.release-region', $user) }}" data-confirm="{{ $releaseRegionConfirm }}">
                     @csrf
                     <input type="hidden" name="tab" value="{{ $tab }}">
-                    {{-- $search/$sort: only ever passed for the 'unassigned' tab (its own filter
-                         state — see index.blade.php's own include call). Without these, every
-                         action below used to bounce back to a blank, unfiltered/unsorted
-                         unassigned list regardless of what was actually showing, since
-                         redirectToTab() only ever preserved $tab. --}}
+                    {{-- $search/$sort/$pendingVerification: only ever passed for the
+                         'unassigned' tab (its own filter state — see index.blade.php's own
+                         include call). Without these, every action below used to bounce back to
+                         a blank, unfiltered/unsorted unassigned list regardless of what was
+                         actually showing, since redirectToTab() only ever preserved $tab. --}}
                     @isset($search)
                         <input type="hidden" name="search" value="{{ $search }}">
                     @endisset
                     @isset($sort)
                         <input type="hidden" name="sort" value="{{ $sort }}">
                     @endisset
+                    @if (($pendingVerification ?? false))
+                        <input type="hidden" name="pending_verification" value="1">
+                    @endif
                     <button
                         type="submit"
                         title="{{ __('users.release_region') }}"
@@ -60,13 +68,16 @@
             <form method="POST" action="{{ route('admin.users.resend-otp', $user) }}" data-disable-on-submit>
                 @csrf
                 <input type="hidden" name="tab" value="{{ $tab }}">
-            {{-- $search/$sort — see the release-region form above for why these are here. --}}
+            {{-- $search/$sort/$pendingVerification — see the release-region form above for why these are here. --}}
             @isset($search)
                 <input type="hidden" name="search" value="{{ $search }}">
             @endisset
             @isset($sort)
                 <input type="hidden" name="sort" value="{{ $sort }}">
             @endisset
+            @if (($pendingVerification ?? false))
+                <input type="hidden" name="pending_verification" value="1">
+            @endif
                 <button
                     type="submit"
                     title="{{ __('users.resend_otp') }}"
@@ -85,13 +96,16 @@
         >
             @csrf
             <input type="hidden" name="tab" value="{{ $tab }}">
-            {{-- $search/$sort — see the release-region form above for why these are here. --}}
+            {{-- $search/$sort/$pendingVerification — see the release-region form above for why these are here. --}}
             @isset($search)
                 <input type="hidden" name="search" value="{{ $search }}">
             @endisset
             @isset($sort)
                 <input type="hidden" name="sort" value="{{ $sort }}">
             @endisset
+            @if (($pendingVerification ?? false))
+                <input type="hidden" name="pending_verification" value="1">
+            @endif
             <button
                 type="submit"
                 title="{{ $user->is_active ? __('accounts.deactivate') : __('accounts.activate') }}"
@@ -110,13 +124,16 @@
             @csrf
             @method('DELETE')
             <input type="hidden" name="tab" value="{{ $tab }}">
-            {{-- $search/$sort — see the release-region form above for why these are here. --}}
+            {{-- $search/$sort/$pendingVerification — see the release-region form above for why these are here. --}}
             @isset($search)
                 <input type="hidden" name="search" value="{{ $search }}">
             @endisset
             @isset($sort)
                 <input type="hidden" name="sort" value="{{ $sort }}">
             @endisset
+            @if (($pendingVerification ?? false))
+                <input type="hidden" name="pending_verification" value="1">
+            @endif
             <button
                 type="submit"
                 title="{{ __('common.delete') }}"

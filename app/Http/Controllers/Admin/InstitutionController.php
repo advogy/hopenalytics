@@ -14,6 +14,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\Response;
 
 class InstitutionController extends Controller
 {
@@ -21,7 +22,7 @@ class InstitutionController extends Controller
 
     public function create(Request $request)
     {
-        return view('admin.institutions.form', ['institution' => new Institution] + $this->regionPickerData($request));
+        return view('admin.institutions.form', ['institution' => new Institution, 'modal' => $request->boolean('modal')] + $this->regionPickerData($request));
     }
 
     /** Advisory "did you mean" lookup for the name field — see NameSimilarity. */
@@ -42,15 +43,19 @@ class InstitutionController extends Controller
         ])->values());
     }
 
-    public function store(Request $request, GeocodingService $geocoding): RedirectResponse
+    public function store(Request $request, GeocodingService $geocoding): Response
     {
-        $data = $request->validate([
+        $data = $this->validateOrRespondModal($request, [
             'name' => ['required', 'string', 'max:255'],
             'city' => ['nullable', 'string', 'max:255'],
             'country' => ['nullable', 'string', 'max:255'],
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
-        ]);
+        ], 'admin.institutions.form', ['institution' => new Institution] + $this->regionPickerData($request));
+
+        if ($data instanceof Response) {
+            return $data;
+        }
 
         $data['latitude'] = $request->filled('latitude') ? (float) $data['latitude'] : null;
         $data['longitude'] = $request->filled('longitude') ? (float) $data['longitude'] : null;
@@ -71,23 +76,27 @@ class InstitutionController extends Controller
         // Straight to Kelola Akun Media Sosial rather than the accounts list — adding social
         // accounts is always the very next thing an admin does right after creating an entity,
         // per the user's explicit call (see ChurchController::store()).
-        return redirect()->route('admin.institutions.socials.index', $institution)->with('status', __('accounts.entity_created', ['entity' => __('common.institution'), 'name' => $institution->name]));
+        return $this->respondModalOrRedirect($request, 'admin.institutions.socials.index', ['institution' => $institution], 'status', __('accounts.entity_created', ['entity' => __('common.institution'), 'name' => $institution->name]));
     }
 
     public function edit(Request $request, Institution $institution)
     {
-        return view('admin.institutions.form', ['institution' => $institution] + $this->regionPickerData($request));
+        return view('admin.institutions.form', ['institution' => $institution, 'modal' => $request->boolean('modal')] + $this->regionPickerData($request));
     }
 
-    public function update(Request $request, Institution $institution, GeocodingService $geocoding): RedirectResponse
+    public function update(Request $request, Institution $institution, GeocodingService $geocoding): Response
     {
-        $data = $request->validate([
+        $data = $this->validateOrRespondModal($request, [
             'name' => ['required', 'string', 'max:255'],
             'city' => ['nullable', 'string', 'max:255'],
             'country' => ['nullable', 'string', 'max:255'],
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
-        ]);
+        ], 'admin.institutions.form', ['institution' => $institution] + $this->regionPickerData($request));
+
+        if ($data instanceof Response) {
+            return $data;
+        }
 
         $data['latitude'] = $request->filled('latitude') ? (float) $data['latitude'] : null;
         $data['longitude'] = $request->filled('longitude') ? (float) $data['longitude'] : null;
@@ -106,7 +115,7 @@ class InstitutionController extends Controller
 
         AuditLogger::log('institution.updated', $institution, "Memperbarui Institusi \"{$institution->name}\".");
 
-        return redirect()->route('admin.accounts.index', ['tab' => 'institusi'])->with('status', __('accounts.entity_updated', ['entity' => __('common.institution'), 'name' => $institution->name]));
+        return $this->respondModalOrRedirect($request, 'admin.accounts.index', ['tab' => 'institusi'], 'status', __('accounts.entity_updated', ['entity' => __('common.institution'), 'name' => $institution->name]));
     }
 
     /**

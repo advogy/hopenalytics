@@ -57,20 +57,40 @@
                 </div>
             @endif
 
+            {{-- Daerah/Gereja can each run into dozens or hundreds of rows nationwide — a flat
+                 wall of pills at that size is exactly the "not easy on the eyes" problem the
+                 user flagged, so both are now grouped into collapsible Uni (and, for Gereja,
+                 Uni → Daerah) sections instead, reusing the exact same collapsible-group
+                 components/script the Admin/Pimpinan tabs on this same page already use
+                 (components/analytics-group-header-div.blade.php +
+                 partials/analytics-group-toggle.blade.php — see index.blade.php's own include
+                 of that script) rather than inventing a second pattern. Uni and Institusi below
+                 stay flat: an org only ever has a handful of Unions/Institusi active nationwide,
+                 so grouping/collapsing them would add UI weight without solving anything. --}}
             @if ($noAdminConferences->isNotEmpty())
                 <div>
-                    <p class="mb-2 text-xs font-semibold tracking-wide text-slate-400 uppercase dark:text-slate-500">
-                        {{ __('users.no_admin_group_conference') }} ({{ $noAdminConferences->count() }})
-                    </p>
-                    <div class="space-y-3">
-                        @foreach ($noAdminConferences->groupBy(fn ($c) => $c->union?->name ?? '—') as $unionName => $conferences)
+                    <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+                        <p class="text-xs font-semibold tracking-wide text-slate-400 uppercase dark:text-slate-500">
+                            {{ __('users.no_admin_group_conference') }} ({{ $noAdminConferences->count() }})
+                        </p>
+                        <x-group-toggle-all-button scope="belum-admin-daerah" />
+                    </div>
+                    <div class="space-y-2">
+                        @foreach ($noAdminConferences->groupBy(fn ($c) => $c->union_id ?? 0) as $unionId => $conferences)
+                            @php $daerahUniToggleId = 'belum-admin-daerah-uni-'.$unionId; @endphp
                             <div>
-                                <p class="mb-1 text-xs font-medium text-slate-500 dark:text-slate-400">{{ $unionName }}</p>
-                                <ul class="flex flex-wrap gap-2 text-sm">
-                                    @foreach ($conferences as $conference)
-                                        <li class="rounded-lg border border-black/5 px-3 py-1.5 font-medium text-slate-900 dark:border-white/5 dark:text-white">{{ $conference->name }}</li>
-                                    @endforeach
-                                </ul>
+                                <x-analytics-group-header-div
+                                    :label="$conferences->first()->union?->name ?? '—'"
+                                    :count="$conferences->count()"
+                                    :toggle-id="$daerahUniToggleId"
+                                />
+                                <div data-group-ancestors="{{ $daerahUniToggleId }}" class="mt-2 pl-3">
+                                    <ul class="flex flex-wrap gap-2 text-sm">
+                                        @foreach ($conferences as $conference)
+                                            <li class="rounded-lg border border-black/5 px-3 py-1.5 font-medium text-slate-900 dark:border-white/5 dark:text-white">{{ $conference->name }}</li>
+                                        @endforeach
+                                    </ul>
+                                </div>
                             </div>
                         @endforeach
                     </div>
@@ -79,18 +99,42 @@
 
             @if ($noAdminChurches->isNotEmpty())
                 <div>
-                    <p class="mb-2 text-xs font-semibold tracking-wide text-slate-400 uppercase dark:text-slate-500">
-                        {{ __('users.no_admin_group_church') }} ({{ $noAdminChurches->count() }})
-                    </p>
-                    <div class="space-y-3">
-                        @foreach ($noAdminChurches->groupBy(fn ($c) => ($c->conference?->union?->name ?? '—') . ' — ' . ($c->conference?->name ?? '—')) as $groupLabel => $churches)
+                    <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+                        <p class="text-xs font-semibold tracking-wide text-slate-400 uppercase dark:text-slate-500">
+                            {{ __('users.no_admin_group_church') }} ({{ $noAdminChurches->count() }})
+                        </p>
+                        <x-group-toggle-all-button scope="belum-admin-gereja" />
+                    </div>
+                    <div class="space-y-2">
+                        @foreach ($noAdminChurches->groupBy(fn ($c) => $c->conference?->union_id ?? 0) as $unionId => $unionChurches)
+                            @php $gerejaUniToggleId = 'belum-admin-gereja-uni-'.$unionId; @endphp
                             <div>
-                                <p class="mb-1 text-xs font-medium text-slate-500 dark:text-slate-400">{{ $groupLabel }}</p>
-                                <ul class="flex flex-wrap gap-2 text-sm">
-                                    @foreach ($churches as $church)
-                                        <li class="rounded-lg border border-black/5 px-3 py-1.5 font-medium text-slate-900 dark:border-white/5 dark:text-white">{{ $church->name }}</li>
+                                <x-analytics-group-header-div
+                                    :label="$unionChurches->first()->conference?->union?->name ?? '—'"
+                                    :count="$unionChurches->count()"
+                                    :toggle-id="$gerejaUniToggleId"
+                                />
+                                <div data-group-ancestors="{{ $gerejaUniToggleId }}" class="mt-2 space-y-2 pl-3">
+                                    @foreach ($unionChurches->groupBy(fn ($c) => $c->conference_id ?? 0) as $conferenceId => $churches)
+                                        @php $gerejaDaerahToggleId = $gerejaUniToggleId.'-daerah-'.$conferenceId; @endphp
+                                        <div>
+                                            <x-analytics-group-header-div
+                                                :label="$churches->first()->conference?->name ?? '—'"
+                                                :count="$churches->count()"
+                                                :toggle-id="$gerejaDaerahToggleId"
+                                                :ancestors="$gerejaUniToggleId"
+                                                :depth="1"
+                                            />
+                                            <div data-group-ancestors="{{ $gerejaUniToggleId }} {{ $gerejaDaerahToggleId }}" class="mt-2 pl-6">
+                                                <ul class="flex flex-wrap gap-2 text-sm">
+                                                    @foreach ($churches as $church)
+                                                        <li class="rounded-lg border border-black/5 px-3 py-1.5 font-medium text-slate-900 dark:border-white/5 dark:text-white">{{ $church->name }}</li>
+                                                    @endforeach
+                                                </ul>
+                                            </div>
+                                        </div>
                                     @endforeach
-                                </ul>
+                                </div>
                             </div>
                         @endforeach
                     </div>

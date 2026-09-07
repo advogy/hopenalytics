@@ -1,4 +1,5 @@
-@extends('layouts.app')
+{{-- $modal: see admin/divisions/form.blade.php's own doc comment for the pattern. --}}
+@extends(($modal ?? false) ? 'layouts.blank' : 'layouts.app')
 
 @section('title', ($conference->exists ? __('accounts.title_edit_daerah') : __('accounts.title_add_daerah')) . ' — ' . config('app.name'))
 
@@ -12,6 +13,7 @@
         :destroy-action="$conference->exists ? route('admin.conferences.destroy', $conference) : null"
         :destroy-confirm="__('accounts.deactivate_daerah_confirm', ['name' => $conference->name])"
         :destroy-label="__('accounts.deactivate_daerah')"
+        :modal="$modal ?? false"
     >
         <x-form-field name="name" :label="__('accounts.daerah_name')" required :value="$conference->name" />
         <x-similar-name-check :route="route('admin.conferences.similar')" :exclude-id="$conference->exists ? $conference->id : null" />

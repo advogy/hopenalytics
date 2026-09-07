@@ -1,4 +1,5 @@
-@extends('layouts.app')
+{{-- $modal: see admin/divisions/form.blade.php's own doc comment for the pattern. --}}
+@extends(($modal ?? false) ? 'layouts.blank' : 'layouts.app')
 
 @section('title', ($person->exists ? __('entity.title_edit_person') : __('entity.title_add_person')) . ' — ' . config('app.name'))
 
@@ -26,6 +27,7 @@
         :toggle-action="$canManagePerson ? route('people.toggle-active', $person) : null"
         :toggle-confirm="$canManagePerson && $person->is_active ? __('entity.deactivate_person_confirm', ['name' => $person->name]) : null"
         :toggle-label="$person->is_active ? __('entity.deactivate_person') : __('entity.activate_person')"
+        :modal="$modal ?? false"
     >
         <x-form-field name="name" :label="__('entity.name')" required :value="$person->name" :placeholder="__('entity.name_placeholder_person')" />
         <x-similar-name-check :route="route('people.similar')" :exclude-id="$person->exists ? $person->id : null" />

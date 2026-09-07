@@ -12,13 +12,13 @@
     :empty-message="__('admin_suggestions.none_pending')"
 >
     <thead>
-        <tr class="text-slate-500 dark:text-slate-400">
-            <th class="py-2 pr-2 font-medium">#</th>
-            <th class="py-2 pr-2 font-medium">{{ __('admin_suggestions.col_requester') }}</th>
-            <th class="py-2 pr-2 font-medium">{{ __('admin_suggestions.col_church_name') }}</th>
-            <th class="py-2 pr-2 font-medium">{{ __('common.conference') }}</th>
-            <th class="py-2 pr-2 font-medium">{{ __('admin_suggestions.col_submitted_at') }}</th>
-            <th class="py-2 text-right font-medium">{{ __('common.action') }}</th>
+        <tr class="bg-slate-50 text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
+            <th class="py-2 pr-2 font-semibold">#</th>
+            <th class="py-2 pr-2 font-semibold">{{ __('admin_suggestions.col_requester') }}</th>
+            <th class="py-2 pr-2 font-semibold">{{ __('admin_suggestions.col_church_name') }}</th>
+            <th class="py-2 pr-2 font-semibold">{{ __('common.conference') }}</th>
+            <th class="py-2 pr-2 font-semibold">{{ __('admin_suggestions.col_submitted_at') }}</th>
+            <th class="py-2 text-right font-semibold">{{ __('common.action') }}</th>
         </tr>
     </thead>
     <tbody class="divide-y divide-slate-100 dark:divide-slate-800">

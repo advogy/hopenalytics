@@ -13,6 +13,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\Response;
 
 class ChurchController extends Controller
 {
@@ -20,7 +21,7 @@ class ChurchController extends Controller
 
     public function create(Request $request)
     {
-        return view('churches.form', ['church' => new Church] + $this->conferencePickerData($request));
+        return view('churches.form', ['church' => new Church, 'modal' => $request->boolean('modal')] + $this->conferencePickerData($request));
     }
 
     /**
@@ -47,16 +48,20 @@ class ChurchController extends Controller
         ])->values());
     }
 
-    public function store(Request $request, GeocodingService $geocoding): RedirectResponse
+    public function store(Request $request, GeocodingService $geocoding): Response
     {
-        $data = $request->validate([
+        $data = $this->validateOrRespondModal($request, [
             'name' => ['required', 'string', 'max:255'],
             'city' => ['nullable', 'string', 'max:255'],
             'country' => ['nullable', 'string', 'max:255'],
             'logo_url' => ['nullable', 'url', 'max:2048'],
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
-        ]);
+        ], 'churches.form', ['church' => new Church] + $this->conferencePickerData($request));
+
+        if ($data instanceof Response) {
+            return $data;
+        }
 
         $data['latitude'] = $request->filled('latitude') ? (float) $data['latitude'] : null;
         $data['longitude'] = $request->filled('longitude') ? (float) $data['longitude'] : null;
@@ -76,24 +81,28 @@ class ChurchController extends Controller
         // Straight to Kelola Akun Media Sosial rather than the (still-empty) Analitik &
         // Statistik page — adding social accounts is always the very next thing an admin does
         // right after creating a church, per the user's explicit call.
-        return redirect()->route('churches.socials.index', $church)->with('status', __('accounts.entity_created', ['entity' => __('common.church'), 'name' => $church->name]));
+        return $this->respondModalOrRedirect($request, 'churches.socials.index', ['church' => $church], 'status', __('accounts.entity_created', ['entity' => __('common.church'), 'name' => $church->name]));
     }
 
     public function edit(Request $request, Church $church)
     {
-        return view('churches.form', ['church' => $church] + $this->conferencePickerData($request));
+        return view('churches.form', ['church' => $church, 'modal' => $request->boolean('modal')] + $this->conferencePickerData($request));
     }
 
-    public function update(Request $request, Church $church, GeocodingService $geocoding): RedirectResponse
+    public function update(Request $request, Church $church, GeocodingService $geocoding): Response
     {
-        $data = $request->validate([
+        $data = $this->validateOrRespondModal($request, [
             'name' => ['required', 'string', 'max:255'],
             'city' => ['nullable', 'string', 'max:255'],
             'country' => ['nullable', 'string', 'max:255'],
             'logo_url' => ['nullable', 'url', 'max:2048'],
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
-        ]);
+        ], 'churches.form', ['church' => $church] + $this->conferencePickerData($request));
+
+        if ($data instanceof Response) {
+            return $data;
+        }
 
         $data['latitude'] = $request->filled('latitude') ? (float) $data['latitude'] : null;
         $data['longitude'] = $request->filled('longitude') ? (float) $data['longitude'] : null;
@@ -115,7 +124,7 @@ class ChurchController extends Controller
         // churches.edit is only ever reached from Kelola Akun (see admin.accounts.partials.
         // row-actions) — same destination as this form's own Back/Cancel links, so a successful
         // save lands back where the admin actually came from instead of the public show page.
-        return redirect()->route('admin.accounts.index', ['tab' => 'gereja'])->with('status', __('accounts.entity_updated', ['entity' => __('common.church'), 'name' => $church->name]));
+        return $this->respondModalOrRedirect($request, 'admin.accounts.index', ['tab' => 'gereja'], 'status', __('accounts.entity_updated', ['entity' => __('common.church'), 'name' => $church->name]));
     }
 
     /**

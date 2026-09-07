@@ -28,11 +28,11 @@
         <div class="overflow-x-auto">
             <table class="w-full text-left text-sm">
                 <thead>
-                    <tr class="text-slate-500 dark:text-slate-400">
-                        <th class="py-2 pr-2 font-medium">{{ __('queue.fetch_uni_col_union') }}</th>
-                        <th class="py-2 pr-2 text-right font-medium">{{ __('queue.fetch_uni_col_accounts') }}</th>
-                        <th class="py-2 pr-2 font-medium">{{ __('queue.fetch_uni_col_last_fetched') }}</th>
-                        <th class="py-2"></th>
+                    <tr class="bg-slate-50 text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
+                        <th class="py-2 pr-2 font-semibold">{{ __('queue.fetch_uni_col_union') }}</th>
+                        <th class="py-2 pr-2 text-right font-semibold">{{ __('queue.fetch_uni_col_accounts') }}</th>
+                        <th class="py-2 pr-2 font-semibold">{{ __('queue.fetch_uni_col_last_fetched') }}</th>
+                        <th class="py-2 text-right font-semibold">{{ __('common.action') }}</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
@@ -61,7 +61,7 @@
                                             @csrf
                                             <button
                                                 type="submit"
-                                                class="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
+                                                class="inline-flex shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
                                             >
                                                 <x-icon name="arrow-path" class="h-4 w-4" />
                                                 {{ __('queue.fetch_uni_button') }}
@@ -102,7 +102,7 @@
                                             <button
                                                 type="submit"
                                                 data-progress-button
-                                                class="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
+                                                class="inline-flex shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
                                             >
                                                 <x-icon name="arrow-path" class="h-4 w-4" />
                                                 {{ __('queue.fetch_uni_button') }}
@@ -120,10 +120,12 @@
     {{-- Job Tertunda / Batch Aktif / Batch Selesai / Job Gagal as four tabs rather than
          always-visible cards, per the user's explicit call (Tertunda first) — each panel's own
          id (antrean-pending/batch-aktif/batch-selesai/job-gagal) is kept for the stat cards
-         above and for @can/@empty markup already keyed off them. Tertunda/Aktif stay part of
-         the poll-and-swap auto-refresh below (see that script's own sectionIds) since they have
-         no interactive state to lose the way Job Gagal's checkboxes do — Selesai/Gagal are
-         excluded from it for exactly that reason (see their own comment). --}}
+         above and for @can/@empty markup already keyed off them. Only Tertunda stays part of the
+         poll-and-swap auto-refresh below (see that script's own sectionIds) — it has no
+         interactive state to lose; Aktif/Selesai/Gagal all carry their own bulk-select
+         checkboxes now (a background swap would silently clear an in-progress selection, or
+         yank a form out from under an open confirm dialog) and are excluded for that reason
+         (see their own comment). --}}
     <x-tab-bar>
         <x-tab-button tab-key="tertunda">{{ __('queue.tab_pending') }}</x-tab-button>
         <x-tab-button tab-key="aktif">{{ __('queue.tab_active') }}</x-tab-button>
@@ -139,15 +141,20 @@
             'hidden' => $activeTab !== 'tertunda',
         ])
     >
-        <div class="mb-4 flex items-center justify-between gap-2">
+        {{-- Title-left / actions-right header, same shape on every one of these four panels
+             (see e.g. #job-gagal's own) — just this panel's own single action instead of a
+             row of bulk buttons. --}}
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
             <p class="font-bold text-slate-900 dark:text-white">{{ __('queue.pending_title') }}</p>
             @if ($pendingByQueue->isNotEmpty())
-                <form method="POST" action="{{ route('queue.clear') }}" data-confirm="{{ __('queue.clear_all_confirm') }}">
-                    @csrf
-                    <button type="submit" title="{{ __('queue.clear_all') }}" aria-label="{{ __('queue.clear_all') }}" class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/40 dark:hover:text-red-300">
-                        <x-icon name="trash" class="h-5 w-5" />
-                    </button>
-                </form>
+                <div class="flex items-center gap-3">
+                    <form method="POST" action="{{ route('queue.clear') }}" data-confirm="{{ __('queue.clear_all_confirm') }}">
+                        @csrf
+                        <button type="submit" title="{{ __('queue.clear_all') }}" aria-label="{{ __('queue.clear_all') }}" class="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/40 dark:hover:text-red-300">
+                            <x-icon name="trash" class="h-5 w-5" />
+                        </button>
+                    </form>
+                </div>
             @endif
         </div>
 
@@ -157,10 +164,10 @@
             <div class="overflow-x-auto">
                 <table class="w-full text-left text-sm">
                     <thead>
-                        <tr class="text-slate-500 dark:text-slate-400">
-                            <th class="py-2 pr-2 font-medium">{{ __('queue.pending_queue_col') }}</th>
-                            <th class="py-2 pr-2 text-right font-medium">{{ __('queue.pending_count_col') }}</th>
-                            <th class="py-2"></th>
+                        <tr class="bg-slate-50 text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
+                            <th class="py-2 pr-2 font-semibold">{{ __('queue.pending_queue_col') }}</th>
+                            <th class="py-2 pr-2 text-right font-semibold">{{ __('queue.pending_count_col') }}</th>
+                            <th class="py-2 text-right font-semibold">{{ __('common.action') }}</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
@@ -172,7 +179,7 @@
                                     <form method="POST" action="{{ route('queue.clear') }}" data-confirm="{{ __('queue.clear_queue_confirm', ['queue' => $row->queue]) }}">
                                         @csrf
                                         <input type="hidden" name="queue" value="{{ $row->queue }}">
-                                        <button type="submit" title="{{ __('queue.clear_queue') }}" aria-label="{{ __('queue.clear_queue') }}" class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/40 dark:hover:text-red-300">
+                                        <button type="submit" title="{{ __('queue.clear_queue') }}" aria-label="{{ __('queue.clear_queue') }}" class="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/40 dark:hover:text-red-300">
                                             <x-icon name="trash" class="h-5 w-5" />
                                         </button>
                                     </form>
@@ -193,38 +200,94 @@
             'hidden' => $activeTab !== 'aktif',
         ])
     >
-        <p class="mb-4 font-bold text-slate-900 dark:text-white">{{ __('queue.batches_title') }}</p>
+        {{-- Same shared-external-form shape as Job Gagal's own bulk actions (see
+             #failed-bulk-form's doc comment) — checkboxes below reference it purely via
+             form="active-bulk-form" since they can't nest inside it (each row's own Cancel is
+             already its own <form>). --}}
+        <form method="POST" id="active-bulk-form" data-disable-on-submit>@csrf</form>
+
+        {{-- Title-left / bulk-actions-right — same shape as every other panel on this page (see
+             #job-gagal's own header comment); the select-all checkbox itself lives in the row
+             list's own header bar just below instead of floating here, matching Job Gagal's
+             select-all living in its <thead> rather than beside the title. --}}
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <p class="font-bold text-slate-900 dark:text-white">{{ __('queue.batches_title') }}</p>
+            @if ($activeBatches->isNotEmpty())
+                <div class="flex items-center gap-3">
+                    <button
+                        type="submit"
+                        form="active-bulk-form"
+                        formaction="{{ route('queue.cancel-batches-batch') }}"
+                        data-bulk-cancel-button
+                        data-confirm-template="{{ __('queue.batches_cancel_selected_confirm', ['count' => ':count']) }}"
+                        disabled
+                        title="{{ __('queue.batches_cancel_selected') }}"
+                        aria-label="{{ __('queue.batches_cancel_selected') }}"
+                        class="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:text-red-400 dark:hover:bg-red-950/40 dark:hover:text-red-300"
+                    >
+                        <x-icon name="x-circle" class="h-5 w-5" />
+                    </button>
+                </div>
+            @endif
+        </div>
 
         @if ($activeBatches->isEmpty())
             <x-empty-state variant="inline">{{ __('queue.batches_empty') }}</x-empty-state>
         @else
+            {{-- Mimics a <table>'s own <thead> row — same bg-slate-50/dark:bg-slate-800/60 tint,
+                 text-sm/font-semibold weight, and "no text next to the select-all checkbox
+                 itself" convention (position alone reads as "select all") every real <thead> on
+                 this page uses (see e.g. #failed-jobs-table's own) — but still needs real column
+                 labels the way Job Gagal's does (Antrean/Akun/Waktu/Error) rather than just a
+                 lone checkbox with nothing else, or the header row loses its whole point. The
+                 two labels here mirror each row's own two pieces of info on its first line (name
+                 left, progress right) — the progress bar/started-date lines underneath have no
+                 header of their own, same as how a table row can carry more than what its column
+                 headers alone describe. --}}
+            <div class="mb-1 flex items-center justify-between gap-2 bg-slate-50 py-2 text-sm font-semibold text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
+                <div class="flex items-center gap-3">
+                    <input type="checkbox" data-select-all-active aria-label="{{ __('queue.select_all') }}" title="{{ __('queue.select_all') }}" class="h-4 w-4 shrink-0 cursor-pointer rounded border-black/20 text-blue-600 focus:ring-blue-500">
+                    <span>{{ __('queue.batches_col_name') }}</span>
+                </div>
+                {{-- Mirrors the row's own right-side grouping exactly (see the flex
+                     shrink-0 ... gap-3 wrapper around progress text + Cancel button below) so
+                     "Aksi" lines up with where that icon actually sits, same as every real
+                     table's own Aksi column on this page. --}}
+                <div class="flex shrink-0 items-center gap-3">
+                    <span>{{ __('queue.batches_col_progress') }}</span>
+                    <span>{{ __('common.action') }}</span>
+                </div>
+            </div>
             <div class="divide-y divide-slate-100 dark:divide-slate-800">
                 @foreach ($activeBatches as $batch)
-                    <div class="py-3 first:pt-0 last:pb-0">
-                        <div class="mb-1 flex flex-wrap items-center justify-between gap-2 text-sm">
-                            <span class="min-w-0 truncate font-medium">{{ $batch['name'] }}</span>
-                            <div class="flex shrink-0 flex-wrap items-center gap-3">
-                                <span class="text-slate-500 dark:text-slate-400">
-                                    {{ __('queue.batches_progress', ['processed' => $batch['processed'], 'total' => $batch['total'], 'percent' => $batch['percent']]) }}
-                                </span>
-                                <form method="POST" action="{{ route('queue.cancel-batch', $batch['id']) }}" data-confirm="{{ __('queue.batches_cancel_confirm') }}">
-                                    @csrf
-                                    <button type="submit" title="{{ __('queue.batches_cancel') }}" aria-label="{{ __('queue.batches_cancel') }}" class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/40 dark:hover:text-red-300">
-                                        <x-icon name="x-circle" class="h-5 w-5" />
-                                    </button>
-                                </form>
+                    <div class="flex items-start gap-3 py-2 first:pt-0 last:pb-0">
+                        <input type="checkbox" name="ids[]" value="{{ $batch['id'] }}" form="active-bulk-form" data-active-batch-checkbox class="mt-1 h-4 w-4 shrink-0 cursor-pointer rounded border-black/20 text-blue-600 focus:ring-blue-500">
+                        <div class="min-w-0 flex-1">
+                            <div class="mb-1 flex flex-wrap items-center justify-between gap-2 text-sm">
+                                <span class="min-w-0 truncate font-medium">{{ $batch['name'] }}</span>
+                                <div class="flex shrink-0 flex-wrap items-center gap-3">
+                                    <span class="text-slate-500 dark:text-slate-400">
+                                        {{ __('queue.batches_progress', ['processed' => $batch['processed'], 'total' => $batch['total'], 'percent' => $batch['percent']]) }}
+                                    </span>
+                                    <form method="POST" action="{{ route('queue.cancel-batch', $batch['id']) }}" data-confirm="{{ __('queue.batches_cancel_confirm') }}">
+                                        @csrf
+                                        <button type="submit" title="{{ __('queue.batches_cancel') }}" aria-label="{{ __('queue.batches_cancel') }}" class="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/40 dark:hover:text-red-300">
+                                            <x-icon name="x-circle" class="h-5 w-5" />
+                                        </button>
+                                    </form>
+                                </div>
                             </div>
-                        </div>
-                        <div class="h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
-                            <div class="h-full rounded-full bg-blue-600 transition-all" style="width: {{ $batch['percent'] }}%"></div>
-                        </div>
-                        <div class="mt-1 flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
-                            <span>{{ __('queue.batches_started', ['date' => $batch['createdAt']->translatedFormat('d M Y, H:i')]) }}</span>
-                            @if ($batch['failed'] > 0)
-                                <span class="text-red-500 dark:text-red-400">
-                                    &middot; {{ __('queue.batches_failed_note', ['count' => $batch['failed']]) }}
-                                </span>
-                            @endif
+                            <div class="h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
+                                <div class="h-full rounded-full bg-blue-600 transition-all" style="width: {{ $batch['percent'] }}%"></div>
+                            </div>
+                            <div class="mt-1 flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
+                                <span>{{ __('queue.batches_started', ['date' => $batch['createdAt']->translatedFormat('d M Y, H:i')]) }}</span>
+                                @if ($batch['failed'] > 0)
+                                    <span class="text-red-500 dark:text-red-400">
+                                        &middot; {{ __('queue.batches_failed_note', ['count' => $batch['failed']]) }}
+                                    </span>
+                                @endif
+                            </div>
                         </div>
                     </div>
                 @endforeach
@@ -242,47 +305,82 @@
             'hidden' => $activeTab !== 'selesai',
         ])
     >
-        <div class="mb-4 flex items-center justify-between gap-2">
+        {{-- Same shared-external-form shape as Job Gagal's own bulk actions (see
+             #failed-bulk-form's doc comment). --}}
+        <form method="POST" id="completed-bulk-form" data-disable-on-submit>@csrf</form>
+
+        {{-- Title-left / bulk-actions-right — same shape as every other panel (see #job-gagal's
+             own header comment); select-all sits in the row list's own header bar below, not
+             here, matching Job Gagal's select-all living in its <thead> rather than beside the
+             title. --}}
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
             <p class="font-bold text-slate-900 dark:text-white">{{ __('queue.completed_title') }}</p>
             @if ($completedBatches->isNotEmpty())
-                <form method="POST" action="{{ route('queue.clear-completed-batches') }}" data-confirm="{{ __('queue.clear_completed_confirm') }}">
-                    @csrf
-                    <button type="submit" title="{{ __('queue.clear_all') }}" aria-label="{{ __('queue.clear_all') }}" class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/40 dark:hover:text-red-300">
+                <div class="flex items-center gap-3">
+                    <button
+                        type="submit"
+                        form="completed-bulk-form"
+                        formaction="{{ route('queue.delete-batches-batch') }}"
+                        data-bulk-delete-completed-button
+                        data-confirm-template="{{ __('queue.completed_delete_selected_confirm', ['count' => ':count']) }}"
+                        disabled
+                        title="{{ __('queue.completed_delete_selected') }}"
+                        aria-label="{{ __('queue.completed_delete_selected') }}"
+                        class="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:text-red-400 dark:hover:bg-red-950/40 dark:hover:text-red-300"
+                    >
                         <x-icon name="trash" class="h-5 w-5" />
                     </button>
-                </form>
+                </div>
             @endif
         </div>
 
         @if ($completedBatches->isEmpty())
             <x-empty-state variant="inline">{{ __('queue.completed_empty') }}</x-empty-state>
         @else
+            {{-- Same "mimics a <thead>" header bar as Batch Aktif's own, with the same real
+                 column labels (see that section's own comment for why) — mirroring this row's
+                 own two pieces of info (name+status left, finished date right), plus Aksi
+                 mirroring the row's own date+Delete-button grouping, same as every real table's
+                 own Aksi column on this page. --}}
+            <div class="mb-1 flex items-center justify-between gap-2 bg-slate-50 py-2 text-sm font-semibold text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
+                <div class="flex items-center gap-3">
+                    <input type="checkbox" data-select-all-completed aria-label="{{ __('queue.select_all') }}" title="{{ __('queue.select_all') }}" class="h-4 w-4 shrink-0 cursor-pointer rounded border-black/20 text-blue-600 focus:ring-blue-500">
+                    <span>{{ __('queue.completed_col_name') }}</span>
+                </div>
+                <div class="flex shrink-0 items-center gap-3">
+                    <span>{{ __('queue.completed_col_date') }}</span>
+                    <span>{{ __('common.action') }}</span>
+                </div>
+            </div>
             <div class="divide-y divide-slate-100 dark:divide-slate-800">
                 @foreach ($completedBatches as $batch)
-                    <div class="flex flex-wrap items-center justify-between gap-3 py-3 text-sm first:pt-0 last:pb-0">
-                        <div class="min-w-0">
-                            <div class="flex items-center gap-2">
-                                <span class="font-medium">{{ $batch['name'] }}</span>
-                                @if ($batch['cancelled'])
-                                    <span class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-                                        <x-icon name="x-circle" class="h-3 w-3" />
-                                        {{ __('queue.completed_cancelled') }}
-                                    </span>
-                                @elseif ($batch['failed'] > 0)
-                                    <span class="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-400">
-                                        <x-icon name="x-circle" class="h-3 w-3" />
-                                        {{ __('queue.completed_partial') }}
-                                    </span>
-                                @else
-                                    <span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400">
-                                        <x-icon name="check-circle" class="h-3 w-3" />
-                                        {{ __('queue.completed_success') }}
-                                    </span>
-                                @endif
+                    <div class="flex flex-wrap items-center justify-between gap-3 py-2 text-sm first:pt-0 last:pb-0">
+                        <div class="flex min-w-0 items-start gap-3">
+                            <input type="checkbox" name="ids[]" value="{{ $batch['id'] }}" form="completed-bulk-form" data-completed-batch-checkbox class="mt-1 h-4 w-4 shrink-0 cursor-pointer rounded border-black/20 text-blue-600 focus:ring-blue-500">
+                            <div class="min-w-0">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-medium">{{ $batch['name'] }}</span>
+                                    @if ($batch['cancelled'])
+                                        <span class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                                            <x-icon name="x-circle" class="h-3 w-3" />
+                                            {{ __('queue.completed_cancelled') }}
+                                        </span>
+                                    @elseif ($batch['failed'] > 0)
+                                        <span class="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-950 dark:text-amber-400">
+                                            <x-icon name="x-circle" class="h-3 w-3" />
+                                            {{ __('queue.completed_partial') }}
+                                        </span>
+                                    @else
+                                        <span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400">
+                                            <x-icon name="check-circle" class="h-3 w-3" />
+                                            {{ __('queue.completed_success') }}
+                                        </span>
+                                    @endif
+                                </div>
+                                <p class="text-xs text-slate-400 dark:text-slate-500">
+                                    {{ __('queue.completed_summary', ['processed' => $batch['processed'], 'total' => $batch['total'], 'failed' => $batch['failed']]) }}
+                                </p>
                             </div>
-                            <p class="text-xs text-slate-400 dark:text-slate-500">
-                                {{ __('queue.completed_summary', ['processed' => $batch['processed'], 'total' => $batch['total'], 'failed' => $batch['failed']]) }}
-                            </p>
                         </div>
                         <div class="flex shrink-0 items-center gap-3">
                             <span class="text-xs text-slate-400 dark:text-slate-500">
@@ -290,7 +388,7 @@
                             </span>
                             <form method="POST" action="{{ route('queue.delete-batch', $batch['id']) }}" data-confirm="{{ __('queue.delete_batch_confirm') }}">
                                 @csrf
-                                <button type="submit" title="{{ __('common.delete') }}" aria-label="{{ __('common.delete') }}" class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/40 dark:hover:text-red-300">
+                                <button type="submit" title="{{ __('common.delete') }}" aria-label="{{ __('common.delete') }}" class="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/40 dark:hover:text-red-300">
                                     <x-icon name="trash" class="h-5 w-5" />
                                 </button>
                             </form>
@@ -317,7 +415,7 @@
              each override where THIS same set of checked ids actually goes via their own
              formaction — same "one form, several submitters" shape confirm-dialog.blade.php's
              own e.submitter handling already supports (see its doc comment). --}}
-        <form method="POST" id="failed-bulk-form" data-disable-on-submit></form>
+        <form method="POST" id="failed-bulk-form" data-disable-on-submit>@csrf</form>
 
         <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
             <p class="font-bold text-slate-900 dark:text-white">{{ __('queue.failed_title') }}</p>
@@ -332,7 +430,7 @@
                         disabled
                         title="{{ __('queue.retry_selected') }}"
                         aria-label="{{ __('queue.retry_selected') }}"
-                        class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-blue-600 hover:bg-blue-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:text-blue-400 dark:hover:bg-blue-950/40 dark:hover:text-blue-300"
+                        class="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-blue-600 hover:bg-blue-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:text-blue-400 dark:hover:bg-blue-950/40 dark:hover:text-blue-300"
                     >
                         <x-icon name="arrow-path" class="h-5 w-5" />
                     </button>
@@ -345,24 +443,10 @@
                         disabled
                         title="{{ __('queue.delete_selected') }}"
                         aria-label="{{ __('queue.delete_selected') }}"
-                        class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:text-red-400 dark:hover:bg-red-950/40 dark:hover:text-red-300"
+                        class="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:text-red-400 dark:hover:bg-red-950/40 dark:hover:text-red-300"
                     >
                         <x-icon name="trash" class="h-5 w-5" />
                     </button>
-                    {{-- x-circle (same glyph "Batalkan" already uses on this same page, for the
-                         same "circle fills its box the same way trash/arrow-path do" reason)
-                         rather than the bare x-mark glyph tried first — x-mark's own ink only
-                         covers the middle of its 20x20 box, so even at an identical h-5 w-5 it
-                         reads visibly smaller and sits higher than trash/arrow-path's fuller
-                         glyphs, confirmed live. A divider alone (tried before that) still left
-                         two near-identical trash icons side by side with nothing to tell them
-                         apart. --}}
-                    <form method="POST" action="{{ route('queue.clear-failed') }}" data-confirm="{{ __('queue.clear_failed_confirm') }}">
-                        @csrf
-                        <button type="submit" title="{{ __('queue.clear_all') }}" aria-label="{{ __('queue.clear_all') }}" class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/40 dark:hover:text-red-300">
-                            <x-icon name="x-circle" class="h-5 w-5" />
-                        </button>
-                    </form>
                 @endif
             </div>
         </div>
@@ -384,22 +468,22 @@
             <div class="overflow-x-auto">
                 <table class="w-full table-fixed text-left text-sm" id="failed-jobs-table">
                     <thead>
-                        <tr class="text-slate-500 dark:text-slate-400">
+                        <tr class="bg-slate-50 text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
                             <th class="w-8 py-2 pr-2">
-                                <input type="checkbox" data-select-all-failed aria-label="{{ __('queue.select_all') }}" class="h-4 w-4 rounded border-black/20 text-blue-600 focus:ring-blue-500">
+                                <input type="checkbox" data-select-all-failed aria-label="{{ __('queue.select_all') }}" title="{{ __('queue.select_all') }}" class="h-4 w-4 cursor-pointer rounded border-black/20 text-blue-600 focus:ring-blue-500">
                             </th>
-                            <th class="w-20 py-2 pr-2 font-medium">{{ __('queue.failed_queue_col') }}</th>
-                            <th class="w-36 py-2 pr-2 font-medium">{{ __('queue.failed_account_col') }}</th>
-                            <th class="w-36 py-2 pr-2 font-medium">{{ __('queue.failed_date_col') }}</th>
-                            <th class="py-2 pr-2 font-medium">{{ __('queue.failed_error_col') }}</th>
-                            <th class="w-16 py-2"></th>
+                            <th class="w-20 py-2 pr-2 font-semibold">{{ __('queue.failed_queue_col') }}</th>
+                            <th class="w-36 py-2 pr-2 font-semibold">{{ __('queue.failed_account_col') }}</th>
+                            <th class="w-36 py-2 pr-2 font-semibold">{{ __('queue.failed_date_col') }}</th>
+                            <th class="py-2 pr-2 font-semibold">{{ __('queue.failed_error_col') }}</th>
+                            <th class="w-16 py-2 text-right font-semibold">{{ __('common.action') }}</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
                         @foreach ($failedJobs as $job)
                             <tr>
                                 <td class="py-2 pr-2 align-top">
-                                    <input type="checkbox" name="ids[]" value="{{ $job['id'] }}" form="failed-bulk-form" data-failed-job-checkbox class="h-4 w-4 rounded border-black/20 text-blue-600 focus:ring-blue-500">
+                                    <input type="checkbox" name="ids[]" value="{{ $job['id'] }}" form="failed-bulk-form" data-failed-job-checkbox class="h-4 w-4 cursor-pointer rounded border-black/20 text-blue-600 focus:ring-blue-500">
                                 </td>
                                 <td class="truncate py-2 pr-2 align-top font-medium">{{ $job['queue'] }}</td>
                                 <td class="py-2 pr-2 align-top break-words">{{ $job['account'] ?? '—' }}</td>
@@ -415,7 +499,7 @@
                                                 type="submit"
                                                 title="{{ __('queue.retry') }}"
                                                 aria-label="{{ __('queue.retry') }}"
-                                                class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-blue-600 hover:bg-blue-50 hover:text-blue-700 dark:text-blue-400 dark:hover:bg-blue-950/40 dark:hover:text-blue-300"
+                                                class="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-blue-600 hover:bg-blue-50 hover:text-blue-700 dark:text-blue-400 dark:hover:bg-blue-950/40 dark:hover:text-blue-300"
                                             >
                                                 <x-icon name="arrow-path" class="h-5 w-5" />
                                             </button>
@@ -426,7 +510,7 @@
                                                 type="submit"
                                                 title="{{ __('common.delete') }}"
                                                 aria-label="{{ __('common.delete') }}"
-                                                class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/40 dark:hover:text-red-300"
+                                                class="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/40 dark:hover:text-red-300"
                                             >
                                                 <x-icon name="trash" class="h-5 w-5" />
                                             </button>
@@ -457,11 +541,12 @@
     --}}
     <script>
         (function () {
-            // batch-selesai/job-gagal deliberately excluded — they're tabs now (see their own
-            // markup comment), not always-visible sections, and Job Gagal specifically holds
+            // batch-aktif/batch-selesai/job-gagal deliberately excluded — they're tabs now (see
+            // their own markup comment), not always-visible sections, and all three now hold
             // real interactive state (bulk-select checkboxes, a possibly-open confirm dialog)
-            // that a background swap would silently wipe out from under whoever's mid-selection.
-            var sectionIds = ['fetch-per-uni', 'antrean-pending', 'batch-aktif'];
+            // that a background swap would silently wipe out (or worse, yank a form out from
+            // under an open confirm dialog) from under whoever's mid-selection.
+            var sectionIds = ['fetch-per-uni', 'antrean-pending'];
 
             function refresh() {
                 if (document.visibilityState !== 'visible') return;
@@ -484,54 +569,67 @@
         })();
     </script>
 
-    {{-- Job Gagal's checkboxes/select-all/bulk-retry-or-delete buttons — attached to the stable
-         #job-gagal element via delegation rather than to the checkboxes/buttons themselves,
-         since the poll-and-swap script above replaces #job-gagal's innerHTML every 3s (which
-         would silently drop any listener bound directly to an element the moment a refresh swaps
-         it out from under it). The wrapper div itself is never replaced, only its children, so a
-         delegated listener on it keeps working across every refresh with no re-initialization
-         needed.
+    {{-- Bulk-select checkboxes/select-all/bulk-action buttons, shared by all three tabs that
+         have them (Job Gagal's own retry-or-delete was the original; Batch Aktif's bulk-cancel
+         and Batch Selesai's bulk-delete now follow the exact same shape — one shared external
+         form + a "select all" checkbox + N per-row checkboxes referencing it via form="..." +
+         one or more submit buttons overriding where the checked ids go via their own
+         formaction). Each section wires up via initBulkSelect() below rather than three
+         near-identical copies of this same listener setup.
 
-         Both bulk buttons share one #failed-bulk-form (see its own doc comment) and so share one
-         data-confirm attribute too — since confirm-dialog.blade.php reads that off the FORM, not
-         the button that was clicked, each button's own resolved confirm text (with the current
+         Attached to each tab's own stable wrapper element (#job-gagal etc.) via delegation
+         rather than to the checkboxes/buttons themselves, since Job Tertunda's poll-and-swap
+         script above would otherwise silently drop a listener bound directly to an
+         about-to-be-replaced element — moot for these three specifically (they're excluded from
+         that poll for exactly this reason, see its own comment) but delegation costs nothing
+         extra and keeps this robust either way.
+
+         Every section's bulk buttons share one hidden form and so share one data-confirm
+         attribute too — since confirm-dialog.blade.php reads that off the FORM, not the button
+         that was clicked, each button's own resolved confirm text (with the current
          checked-count substituted in) is written onto the form at click time, just before the
          submit event fires and confirm-dialog.blade.php reads it. --}}
     <script>
         (function () {
-            var jobGagal = document.getElementById('job-gagal');
-            if (! jobGagal) return;
+            function initBulkSelect(sectionId, formId, checkboxSelector, selectAllSelector, buttonSelector) {
+                var section = document.getElementById(sectionId);
+                if (! section) return;
 
-            function checkedCount() {
-                return jobGagal.querySelectorAll('[data-failed-job-checkbox]:checked').length;
-            }
+                function checkedCount() {
+                    return section.querySelectorAll(checkboxSelector + ':checked').length;
+                }
 
-            function updateBulkButtons() {
-                var count = checkedCount();
-                jobGagal.querySelectorAll('[data-bulk-retry-button], [data-bulk-delete-button]').forEach(function (button) {
-                    button.disabled = count === 0;
+                function updateBulkButtons() {
+                    var count = checkedCount();
+                    section.querySelectorAll(buttonSelector).forEach(function (button) {
+                        button.disabled = count === 0;
+                    });
+                }
+
+                section.addEventListener('change', function (e) {
+                    if (e.target.matches(selectAllSelector)) {
+                        section.querySelectorAll(checkboxSelector).forEach(function (checkbox) {
+                            checkbox.checked = e.target.checked;
+                        });
+                        updateBulkButtons();
+                    } else if (e.target.matches(checkboxSelector)) {
+                        updateBulkButtons();
+                    }
+                });
+
+                section.addEventListener('click', function (e) {
+                    var button = e.target.closest(buttonSelector);
+                    if (! button) return;
+
+                    var form = document.getElementById(formId);
+                    var template = button.getAttribute('data-confirm-template');
+                    form.setAttribute('data-confirm', template.replace(':count', checkedCount()));
                 });
             }
 
-            jobGagal.addEventListener('change', function (e) {
-                if (e.target.matches('[data-select-all-failed]')) {
-                    jobGagal.querySelectorAll('[data-failed-job-checkbox]').forEach(function (checkbox) {
-                        checkbox.checked = e.target.checked;
-                    });
-                    updateBulkButtons();
-                } else if (e.target.matches('[data-failed-job-checkbox]')) {
-                    updateBulkButtons();
-                }
-            });
-
-            jobGagal.addEventListener('click', function (e) {
-                var button = e.target.closest('[data-bulk-retry-button], [data-bulk-delete-button]');
-                if (! button) return;
-
-                var form = document.getElementById('failed-bulk-form');
-                var template = button.getAttribute('data-confirm-template');
-                form.setAttribute('data-confirm', template.replace(':count', checkedCount()));
-            });
+            initBulkSelect('job-gagal', 'failed-bulk-form', '[data-failed-job-checkbox]', '[data-select-all-failed]', '[data-bulk-retry-button], [data-bulk-delete-button]');
+            initBulkSelect('batch-aktif', 'active-bulk-form', '[data-active-batch-checkbox]', '[data-select-all-active]', '[data-bulk-cancel-button]');
+            initBulkSelect('batch-selesai', 'completed-bulk-form', '[data-completed-batch-checkbox]', '[data-select-all-completed]', '[data-bulk-delete-completed-button]');
         })();
     </script>
 

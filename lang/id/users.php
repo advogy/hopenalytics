@@ -30,6 +30,7 @@ return [
     'sort_name_desc' => 'Nama (Z-A)',
     'sort_date_desc' => 'Tanggal Daftar (Terbaru)',
     'sort_date_asc' => 'Tanggal Daftar (Terlama)',
+    'filter_pending_verification' => 'Menunggu verifikasi email',
     'assign' => 'Tugaskan',
     'search_scope_placeholder' => 'Cari…',
     'search_scope_for' => 'Cari :level…',

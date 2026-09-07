@@ -1,4 +1,5 @@
-@extends('layouts.app')
+{{-- $modal: see admin/divisions/form.blade.php's own doc comment for the pattern. --}}
+@extends(($modal ?? false) ? 'layouts.blank' : 'layouts.app')
 
 @section('title', ($union->exists ? __('accounts.title_edit_uni') : __('accounts.title_add_uni')) . ' — ' . config('app.name'))
 
@@ -12,6 +13,7 @@
         :destroy-action="$union->exists ? route('admin.unions.destroy', $union) : null"
         :destroy-confirm="__('accounts.deactivate_uni_confirm', ['name' => $union->name])"
         :destroy-label="__('accounts.deactivate_uni')"
+        :modal="$modal ?? false"
     >
         <x-form-field name="name" :label="__('accounts.uni_name')" required :value="$union->name" />
         <x-similar-name-check :route="route('admin.unions.similar')" :exclude-id="$union->exists ? $union->id : null" />

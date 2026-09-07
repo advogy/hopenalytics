@@ -110,14 +110,14 @@ Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group
     Route::middleware('can:manage-queue')->group(function () {
         Route::get('/queue', [QueueMonitorController::class, 'index'])->name('queue.index');
         Route::post('/queue/{batch}/cancel', [QueueMonitorController::class, 'cancelBatch'])->name('queue.cancel-batch');
+        Route::post('/queue/batches/cancel-batch', [QueueMonitorController::class, 'cancelBatchesBulk'])->name('queue.cancel-batches-batch');
         Route::post('/queue/clear', [QueueMonitorController::class, 'clearQueue'])->name('queue.clear');
-        Route::post('/queue/failed/clear', [QueueMonitorController::class, 'clearFailed'])->name('queue.clear-failed');
         Route::post('/queue/failed/{id}/delete', [QueueMonitorController::class, 'deleteFailed'])->name('queue.delete-failed');
         Route::post('/queue/failed/{id}/retry', [QueueMonitorController::class, 'retryFailed'])->name('queue.retry-failed');
         Route::post('/queue/failed/retry-batch', [QueueMonitorController::class, 'retryFailedBatch'])->name('queue.retry-failed-batch');
         Route::post('/queue/failed/delete-batch', [QueueMonitorController::class, 'deleteFailedBatch'])->name('queue.delete-failed-batch');
-        Route::post('/queue/batches/clear', [QueueMonitorController::class, 'clearCompletedBatches'])->name('queue.clear-completed-batches');
         Route::post('/queue/batches/{batch}/delete', [QueueMonitorController::class, 'deleteBatch'])->name('queue.delete-batch');
+        Route::post('/queue/batches/delete-batch', [QueueMonitorController::class, 'deleteBatchesBulk'])->name('queue.delete-batches-batch');
     });
 
     Route::get('/', [ChurchDashboardController::class, 'index'])->name('churches.index');

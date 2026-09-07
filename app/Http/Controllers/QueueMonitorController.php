@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
@@ -54,13 +55,30 @@ class QueueMonitorController extends Controller
         // to itself even when the current URL's ?tab= is stale or missing — tab-switching is
         // pure client-side (see partials/tab-script.blade.php), so the URL the pager was built
         // from doesn't necessarily carry the tab the user is actually looking at.
-        $activeBatches = DB::table('job_batches')
+        $activeBatchRows = DB::table('job_batches')
             ->whereNull('finished_at')
             ->orderByDesc('created_at')
             ->paginate(20, ['*'], 'aktif_page')
             ->withQueryString()
-            ->appends(['tab' => 'aktif'])
-            ->through(function ($batch) {
+            ->appends(['tab' => 'aktif']);
+
+        $completedBatchRows = DB::table('job_batches')
+            ->whereNotNull('finished_at')
+            ->orderByDesc('finished_at')
+            ->paginate(20, ['*'], 'selesai_page')
+            ->withQueryString()
+            ->appends(['tab' => 'selesai']);
+
+        // One bulk lookup shared by both lists below, rather than a per-row Union::find() (up to
+        // 40 extra queries across both paginated pages) — see friendlyBatchName()'s own doc
+        // comment for what this is actually resolving.
+        $unionNames = Union::whereIn('id', collect([...$activeBatchRows->items(), ...$completedBatchRows->items()])
+            ->map(fn ($batch) => $this->unionIdFromBatchName($batch->name))
+            ->filter()
+            ->unique())
+            ->pluck('name', 'id');
+
+        $activeBatches = $activeBatchRows->through(function ($batch) use ($unionNames) {
                 // total_jobs - pending_jobs alone under-counts "processed" by however many
                 // accounts have already permanently failed — see
                 // ChurchRefreshController::markFinishedWhenAllJobsRan()'s own doc comment: a
@@ -72,7 +90,7 @@ class QueueMonitorController extends Controller
 
                 return [
                     'id' => $batch->id,
-                    'name' => $batch->name,
+                    'name' => $this->friendlyBatchName($batch->name, $unionNames),
                     'total' => $batch->total_jobs,
                     'processed' => $processed,
                     'failed' => $batch->failed_jobs,
@@ -96,13 +114,7 @@ class QueueMonitorController extends Controller
                 'account' => $this->failedJobAccountLabel($row->payload),
             ]);
 
-        $completedBatches = DB::table('job_batches')
-            ->whereNotNull('finished_at')
-            ->orderByDesc('finished_at')
-            ->paginate(20, ['*'], 'selesai_page')
-            ->withQueryString()
-            ->appends(['tab' => 'selesai'])
-            ->through(function ($batch) {
+        $completedBatches = $completedBatchRows->through(function ($batch) use ($unionNames) {
                 // Same under-counting gap as $activeBatches above — a completed batch that had
                 // any permanently-failed job still sits with pending_jobs stuck at the
                 // failed-job count (never decremented), so total_jobs - pending_jobs alone
@@ -111,7 +123,7 @@ class QueueMonitorController extends Controller
 
                 return [
                     'id' => $batch->id,
-                    'name' => $batch->name,
+                    'name' => $this->friendlyBatchName($batch->name, $unionNames),
                     'total' => $batch->total_jobs,
                     'processed' => $processed,
                     'failed' => $batch->failed_jobs,
@@ -221,6 +233,46 @@ class QueueMonitorController extends Controller
     }
 
     /**
+     * The Union id embedded in a per-Uni fetch batch's stored name (see ChurchRefreshController::
+     * single()'s own ->name('refresh-uni-'.$union->id) — this is the one other place that exact
+     * string shape has to stay in sync with), or null for every other batch name shape
+     * (the nationwide 'refresh-socials' batch, an email-broadcast-* batch, or anything else).
+     */
+    private function unionIdFromBatchName(string $rawName): ?int
+    {
+        return Str::startsWith($rawName, 'refresh-uni-') ? (int) Str::after($rawName, 'refresh-uni-') : null;
+    }
+
+    /**
+     * Batch Aktif/Batch Selesai used to show job_batches.name verbatim — for a per-Uni fetch
+     * that's just 'refresh-uni-12', a raw internal id with nothing telling the admin which Uni it
+     * actually was (per the user's explicit call: they want the Uni's real name there instead, to
+     * know at a glance which ones have already been fetched). $unionNames is a pre-bulk-fetched
+     * id => name map (see index()'s own comment on why this isn't a per-row Union::find() here)
+     * — an id with no matching entry (Union deleted since, or the lookup wasn't warmed with it)
+     * falls back to the raw name rather than showing nothing.
+     */
+    private function friendlyBatchName(string $rawName, Collection $unionNames): string
+    {
+        if ($rawName === 'refresh-socials') {
+            return __('queue.batch_name_nasional');
+        }
+
+        $unionId = $this->unionIdFromBatchName($rawName);
+        $unionName = $unionId !== null ? $unionNames->get($unionId) : null;
+
+        return $unionName !== null ? __('queue.batch_name_uni', ['union' => $unionName]) : $rawName;
+    }
+
+    /** friendlyBatchName()'s $unionNames map for just the one batch name — the single-cancel flash message is the only caller that doesn't already have index()'s bulk-fetched map on hand. */
+    private function unionNamesForBatchName(string $rawName): Collection
+    {
+        $unionId = $this->unionIdFromBatchName($rawName);
+
+        return $unionId !== null ? Union::where('id', $unionId)->pluck('name', 'id') : collect();
+    }
+
+    /**
      * Translates the first line of a stored failed_jobs.exception (Laravel's default
      * Throwable::__toString() shape: "ExceptionClass: message in /full/server/path:line") into
      * something a non-technical admin can actually act on — the raw form leaks server file
@@ -297,10 +349,36 @@ class QueueMonitorController extends Controller
         if ($found) {
             $found->cancel();
 
-            return back()->with('status', __('queue.batch_cancelled', ['name' => $found->name]));
+            return redirect()->route('queue.index', ['tab' => 'aktif'])
+                ->with('status', __('queue.batch_cancelled', ['name' => $this->friendlyBatchName($found->name, $this->unionNamesForBatchName($found->name))]));
         }
 
-        return back()->with('error', __('queue.batch_not_found'));
+        return redirect()->route('queue.index', ['tab' => 'aktif'])->with('error', __('queue.batch_not_found'));
+    }
+
+    /**
+     * Same as cancelBatch() above, for several batches picked via Batch Aktif's own checkboxes
+     * at once — mirrors deleteFailedBatch()'s shape (see queue.blade.php's #active-bulk-form).
+     * Bus::findBatch() returns null for an id that's already finished/doesn't exist between the
+     * page loading and this submitting, so those are silently skipped rather than erroring the
+     * whole batch of cancellations.
+     */
+    public function cancelBatchesBulk(Request $request): RedirectResponse
+    {
+        $data = $request->validate(['ids' => ['required', 'array', 'min:1'], 'ids.*' => ['string']]);
+
+        $count = 0;
+
+        foreach ($data['ids'] as $id) {
+            $found = Bus::findBatch($id);
+
+            if ($found) {
+                $found->cancel();
+                $count++;
+            }
+        }
+
+        return redirect()->route('queue.index', ['tab' => 'aktif'])->with('status', __('queue.batches_cancelled_batch', ['count' => $count]));
     }
 
     /**
@@ -324,25 +402,14 @@ class QueueMonitorController extends Controller
     }
 
     /**
-     * Delete every row from failed_jobs — these are already dead (retries
-     * exhausted), so clearing just tidies up the history, unlike clearQueue()
-     * which discards work that hasn't run yet.
-     */
-    public function clearFailed(): RedirectResponse
-    {
-        $count = DB::table('failed_jobs')->delete();
-
-        return back()->with('status', __('queue.failed_cleared', ['count' => $count]));
-    }
-
-    /**
-     * Delete a single failed_jobs row.
+     * Delete a single failed_jobs row. Redirects straight back to the Job Gagal tab (not
+     * back(), see deleteFailedBatch()'s own doc comment for why) rather than a plain back().
      */
     public function deleteFailed(int $id): RedirectResponse
     {
         DB::table('failed_jobs')->where('id', $id)->delete();
 
-        return back()->with('status', __('queue.failed_deleted'));
+        return redirect()->route('queue.index', ['tab' => 'gagal'])->with('status', __('queue.failed_deleted'));
     }
 
     /**
@@ -365,7 +432,7 @@ class QueueMonitorController extends Controller
             Artisan::call('queue:retry', ['id' => [$uuid]]);
         }
 
-        return back()->with('status', __('queue.failed_retried'));
+        return redirect()->route('queue.index', ['tab' => 'gagal'])->with('status', __('queue.failed_retried'));
     }
 
     /**
@@ -383,13 +450,19 @@ class QueueMonitorController extends Controller
             Artisan::call('queue:retry', ['id' => $uuids]);
         }
 
-        return back()->with('status', __('queue.failed_retried_batch', ['count' => count($uuids)]));
+        return redirect()->route('queue.index', ['tab' => 'gagal'])->with('status', __('queue.failed_retried_batch', ['count' => count($uuids)]));
     }
 
     /**
      * Same as deleteFailed() above, for several rows at once — shares the same checkboxes as
      * retryFailedBatch() (one submit button per action, both pointing at the one set of
      * checkboxes via their own formaction — see queue.blade.php).
+     *
+     * Every Job Gagal action redirects explicitly to ?tab=gagal instead of back() — the active
+     * tab is purely client-side (see partials/tab-script.blade.php), never reflected in the
+     * URL just from clicking the tab button, so back() (which just replays whatever URL the
+     * form was submitted from) was landing the admin back on the default Job Tertunda tab
+     * after every retry/delete instead of the Job Gagal tab they were actually working in.
      */
     public function deleteFailedBatch(Request $request): RedirectResponse
     {
@@ -397,19 +470,7 @@ class QueueMonitorController extends Controller
 
         $count = DB::table('failed_jobs')->whereIn('id', $data['ids'])->delete();
 
-        return back()->with('status', __('queue.failed_deleted_batch', ['count' => $count]));
-    }
-
-    /**
-     * Delete every completed (finished_at not null) batch's history row —
-     * these have already run to completion (or been cancelled), so this only
-     * tidies up the "Batch Selesai" list, it doesn't touch any live work.
-     */
-    public function clearCompletedBatches(): RedirectResponse
-    {
-        $count = DB::table('job_batches')->whereNotNull('finished_at')->delete();
-
-        return back()->with('status', __('queue.completed_cleared', ['count' => $count]));
+        return redirect()->route('queue.index', ['tab' => 'gagal'])->with('status', __('queue.failed_deleted_batch', ['count' => $count]));
     }
 
     /**
@@ -419,6 +480,23 @@ class QueueMonitorController extends Controller
     {
         DB::table('job_batches')->where('id', $batch)->whereNotNull('finished_at')->delete();
 
-        return back()->with('status', __('queue.completed_deleted'));
+        return redirect()->route('queue.index', ['tab' => 'selesai'])->with('status', __('queue.completed_deleted'));
+    }
+
+    /**
+     * Same as deleteBatch() above, for several rows at once via Batch Selesai's own checkboxes —
+     * mirrors deleteFailedBatch()'s shape (see queue.blade.php's #completed-bulk-form). Replaces
+     * the old standalone "Bersihkan Semua" button (unconditional, no selection needed) that used
+     * to sit next to it — per the user's explicit call, having both a select-some delete and a
+     * delete-everything action side by side was confusing; selecting everything via the header
+     * checkbox before deleting now covers that same case through the one action.
+     */
+    public function deleteBatchesBulk(Request $request): RedirectResponse
+    {
+        $data = $request->validate(['ids' => ['required', 'array', 'min:1'], 'ids.*' => ['string']]);
+
+        $count = DB::table('job_batches')->whereIn('id', $data['ids'])->whereNotNull('finished_at')->delete();
+
+        return redirect()->route('queue.index', ['tab' => 'selesai'])->with('status', __('queue.completed_deleted_batch', ['count' => $count]));
     }
 }

@@ -11,14 +11,15 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\Response;
 
 class DivisionController extends Controller
 {
     use RedirectsToAccountsTab;
 
-    public function create()
+    public function create(Request $request)
     {
-        return view('admin.divisions.form', ['division' => new Division]);
+        return view('admin.divisions.form', ['division' => new Division, 'modal' => $request->boolean('modal')]);
     }
 
     /** Advisory "did you mean" lookup for the name field — see NameSimilarity. */
@@ -35,36 +36,45 @@ class DivisionController extends Controller
         ])->values());
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): Response
     {
-        $data = $request->validate([
+        $data = $this->validateOrRespondModal($request, [
             'name' => ['required', 'string', 'max:255'],
-        ]);
+        ], 'admin.divisions.form', ['division' => new Division]);
+
+        if ($data instanceof Response) {
+            return $data;
+        }
+
         $data['slug'] = $this->uniqueSlug($data['name']);
 
         $division = Division::create($data);
 
         AuditLogger::log('division.created', $division, "Menambahkan Divisi \"{$division->name}\".");
 
-        return redirect()->route('admin.accounts.index', ['tab' => 'divisi'])->with('status', __('accounts.entity_created', ['entity' => __('common.division'), 'name' => $data['name']]));
+        return $this->respondModalOrRedirect($request, 'admin.accounts.index', ['tab' => 'divisi'], 'status', __('accounts.entity_created', ['entity' => __('common.division'), 'name' => $data['name']]));
     }
 
-    public function edit(Division $division)
+    public function edit(Request $request, Division $division)
     {
-        return view('admin.divisions.form', ['division' => $division]);
+        return view('admin.divisions.form', ['division' => $division, 'modal' => $request->boolean('modal')]);
     }
 
-    public function update(Request $request, Division $division): RedirectResponse
+    public function update(Request $request, Division $division): Response
     {
-        $data = $request->validate([
+        $data = $this->validateOrRespondModal($request, [
             'name' => ['required', 'string', 'max:255'],
-        ]);
+        ], 'admin.divisions.form', ['division' => $division]);
+
+        if ($data instanceof Response) {
+            return $data;
+        }
 
         $division->update($data);
 
         AuditLogger::log('division.updated', $division, "Memperbarui Divisi \"{$division->name}\".");
 
-        return redirect()->route('admin.accounts.index', ['tab' => 'divisi'])->with('status', __('accounts.entity_updated', ['entity' => __('common.division'), 'name' => $division->name]));
+        return $this->respondModalOrRedirect($request, 'admin.accounts.index', ['tab' => 'divisi'], 'status', __('accounts.entity_updated', ['entity' => __('common.division'), 'name' => $division->name]));
     }
 
     public function toggleActive(Request $request, Division $division): RedirectResponse

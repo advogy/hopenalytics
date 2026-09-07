@@ -19,7 +19,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Validator;
+use Symfony\Component\HttpFoundation\Response;
 
 class PersonController extends Controller
 {
@@ -166,7 +166,7 @@ class PersonController extends Controller
 
     public function create(Request $request)
     {
-        return view('people.form', ['person' => new Person, 'linkableUsers' => collect()] + $this->personOrgScopeData($request));
+        return view('people.form', ['person' => new Person, 'linkableUsers' => collect(), 'modal' => $request->boolean('modal')] + $this->personOrgScopeData($request));
     }
 
     /**
@@ -191,15 +191,19 @@ class PersonController extends Controller
         ])->values());
     }
 
-    public function store(Request $request, GeocodingService $geocoding): RedirectResponse
+    public function store(Request $request, GeocodingService $geocoding): Response
     {
-        $data = $request->validate([
+        $data = $this->validateOrRespondModal($request, [
             'name' => ['required', 'string', 'max:255'],
             'city' => ['nullable', 'string', 'max:255'],
             'country' => ['nullable', 'string', 'max:255'],
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
-        ]);
+        ], 'people.form', ['person' => new Person, 'linkableUsers' => collect()] + $this->personOrgScopeData($request));
+
+        if ($data instanceof Response) {
+            return $data;
+        }
 
         $data['latitude'] = $request->filled('latitude') ? (float) $data['latitude'] : null;
         $data['longitude'] = $request->filled('longitude') ? (float) $data['longitude'] : null;
@@ -219,7 +223,7 @@ class PersonController extends Controller
         // Straight to Kelola Akun Media Sosial rather than the (still-empty) profile page —
         // adding social accounts is always the very next thing an admin does right after
         // creating an entity, per the user's explicit call (see ChurchController::store()).
-        return redirect()->route('people.socials.index', $person)->with('status', __('entity.person_created', ['name' => $person->name]));
+        return $this->respondModalOrRedirect($request, 'people.socials.index', ['person' => $person], 'status', __('entity.person_created', ['name' => $person->name]));
     }
 
     public function edit(Request $request, Person $person)
@@ -227,32 +231,38 @@ class PersonController extends Controller
         return view('people.form', [
             'person' => $person,
             'linkableUsers' => Gate::allows('delete', $person) ? $this->linkableUsers() : collect(),
+            'modal' => $request->boolean('modal'),
         ] + $this->personOrgScopeData($request));
     }
 
-    public function update(Request $request, Person $person, GeocodingService $geocoding): RedirectResponse
+    public function update(Request $request, Person $person, GeocodingService $geocoding): Response
     {
         // A self-editing member always lands back on Profil Saya's own "Info Personal" tab —
         // both on success and on a validation failure below — rather than the read-only
         // people.show page an admin gets redirected to instead; tab switching there is
         // client-side only (see partials/tab-script.blade.php), so the browser's own "previous
-        // URL" can't be trusted to still say ?tab=personal by the time this request lands.
+        // URL" can't be trusted to still say ?tab=personal by the time this request lands. Only
+        // ever reachable with modal=true via Kelola Akun's Personal tab (see people/form.blade.php's
+        // own doc comment) — Profil Saya's self-edit has entirely separate markup, so $isOwnPerson
+        // being true here in practice only ever happens for an admin editing their own linked
+        // Person record through Kelola Akun, not the self-service flow.
         $isOwnPerson = $person->user_id === $request->user()->id;
         $redirectTarget = $isOwnPerson ? route('profile.edit', ['tab' => 'personal']) : route('people.show', $person);
 
-        $validator = Validator::make($request->all(), [
+        $data = $this->validateOrRespondModal($request, [
             'name' => ['required', 'string', 'max:255'],
             'city' => ['nullable', 'string', 'max:255'],
             'country' => ['nullable', 'string', 'max:255'],
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
-        ]);
+        ], 'people.form', [
+            'person' => $person,
+            'linkableUsers' => Gate::allows('delete', $person) ? $this->linkableUsers() : collect(),
+        ] + $this->personOrgScopeData($request), $redirectTarget);
 
-        if ($validator->fails()) {
-            return redirect($redirectTarget)->withErrors($validator)->withInput();
+        if ($data instanceof Response) {
+            return $data;
         }
-
-        $data = $validator->validated();
 
         $data['latitude'] = $request->filled('latitude') ? (float) $data['latitude'] : null;
         $data['longitude'] = $request->filled('longitude') ? (float) $data['longitude'] : null;
@@ -278,7 +288,7 @@ class PersonController extends Controller
             AuditLogger::log('person.updated', $person, "Memperbarui data Personal \"{$person->name}\".");
         }
 
-        return redirect($redirectTarget)->with('status', __('entity.person_updated', ['name' => $person->name]));
+        return $this->respondModalOrRedirectTo($request, $redirectTarget, 'status', __('entity.person_updated', ['name' => $person->name]));
     }
 
     /**

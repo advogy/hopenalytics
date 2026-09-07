@@ -1,4 +1,7 @@
-@extends('layouts.app')
+{{-- $modal (true only when fetched by Kelola Akun's edit modal — see DivisionController::edit()
+     and admin/accounts/index.blade.php's edit-modal JS) skips the full layouts.app shell, so
+     this renders as a bare fragment ready to drop straight into the modal body. --}}
+@extends(($modal ?? false) ? 'layouts.blank' : 'layouts.app')
 
 @section('title', ($division->exists ? __('accounts.title_edit_divisi') : __('accounts.title_add_divisi')) . ' — ' . config('app.name'))
 
@@ -12,6 +15,7 @@
         :destroy-action="$division->exists ? route('admin.divisions.destroy', $division) : null"
         :destroy-confirm="__('accounts.deactivate_divisi_confirm', ['name' => $division->name])"
         :destroy-label="__('accounts.deactivate_divisi')"
+        :modal="$modal ?? false"
     >
         <x-form-field name="name" :label="__('accounts.divisi_name')" required :value="$division->name" />
         <x-similar-name-check :route="route('admin.divisions.similar')" :exclude-id="$division->exists ? $division->id : null" />

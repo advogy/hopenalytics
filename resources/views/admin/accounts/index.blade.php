@@ -17,76 +17,84 @@
             <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('accounts.subtitle') }}</p>
         </div>
 
+        {{-- "Tambah ..." buttons — open the same add/edit modal below (Edit's own trigger is
+             row-actions.blade.php) instead of navigating to a separate add page. --}}
         <div class="flex flex-wrap items-center gap-3">
             @if ($visibleTabs['divisi'])
                 <div data-tab-panel="divisi">
                     @can('create', App\Models\Division::class)
-                        <a
-                            href="{{ route('admin.divisions.create') }}"
-                            class="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700"
+                        <button
+                            type="button"
+                            data-entity-modal-trigger="{{ route('admin.divisions.create') }}"
+                            class="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700"
                         >
                             {{ __('accounts.add_divisi') }}
-                        </a>
+                        </button>
                     @endcan
                 </div>
             @endif
             @if ($visibleTabs['uni'])
                 <div data-tab-panel="uni">
                     @can('create', App\Models\Union::class)
-                        <a
-                            href="{{ route('admin.unions.create') }}"
-                            class="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700"
+                        <button
+                            type="button"
+                            data-entity-modal-trigger="{{ route('admin.unions.create') }}"
+                            class="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700"
                         >
                             {{ __('accounts.add_uni') }}
-                        </a>
+                        </button>
                     @endcan
                 </div>
             @endif
             @if ($visibleTabs['daerah'])
                 <div data-tab-panel="daerah">
                     @can('create', App\Models\Conference::class)
-                        <a
-                            href="{{ route('admin.conferences.create') }}"
-                            class="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700"
+                        <button
+                            type="button"
+                            data-entity-modal-trigger="{{ route('admin.conferences.create') }}"
+                            class="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700"
                         >
                             {{ __('accounts.add_daerah') }}
-                        </a>
+                        </button>
                     @endcan
                 </div>
             @endif
             @if ($visibleTabs['gereja'])
                 <div data-tab-panel="gereja">
                     @can('create', App\Models\Church::class)
-                        <a
-                            href="{{ route('churches.create') }}"
-                            class="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700"
+                        <button
+                            type="button"
+                            data-entity-modal-trigger="{{ route('churches.create') }}"
+                            class="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700"
                         >
                             {{ __('accounts.add_gereja') }}
-                        </a>
+                        </button>
                     @endcan
                 </div>
             @endif
             @if ($visibleTabs['institusi'])
                 <div data-tab-panel="institusi">
                     @can('create', App\Models\Institution::class)
-                        <a
-                            href="{{ route('admin.institutions.create') }}"
-                            class="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700"
+                        <button
+                            type="button"
+                            data-entity-modal-trigger="{{ route('admin.institutions.create') }}"
+                            class="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700"
                         >
                             {{ __('accounts.add_institusi') }}
-                        </a>
+                        </button>
                     @endcan
                 </div>
             @endif
             @if ($visibleTabs['personal'])
                 <div data-tab-panel="personal">
                     @can('create', App\Models\Person::class)
-                        <a
-                            href="{{ route('people.create') }}"
-                            class="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700"
+                        <button
+                            type="button"
+                            data-entity-modal-trigger="{{ route('people.create') }}"
+                            class="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700"
                         >
                             {{ __('accounts.add_personal') }}
-                        </a>
+                        </button>
                     @endcan
                 </div>
             @endif
@@ -162,13 +170,13 @@
 
         <x-admin-list-card :items="$divisions" :title="__('accounts.divisi_list_title')" :subtitle="__('accounts.divisi_list_subtitle')" :search="$searchDivisi" :entity-label="__('common.division')">
             <thead>
-                <tr class="text-slate-500 dark:text-slate-400">
-                    <th class="py-2 pr-2 font-medium">#</th>
-                    <th class="py-2 pr-2 font-medium">{{ __('common.name') }}</th>
-                    <th class="py-2 pr-2 text-right font-medium">{{ __('accounts.count_uni') }}</th>
-                    <th class="py-2 pr-2 text-right font-medium">{{ __('accounts.count_users') }}</th>
-                    <th class="py-2 pr-2 font-medium">{{ __('common.status') }}</th>
-                    <th class="py-2 text-right font-medium">{{ __('common.action') }}</th>
+                <tr class="bg-slate-50 text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
+                    <th class="py-2 pr-2 font-semibold">#</th>
+                    <th class="py-2 pr-2 font-semibold">{{ __('common.name') }}</th>
+                    <th class="py-2 pr-2 text-right font-semibold">{{ __('accounts.count_uni') }}</th>
+                    <th class="py-2 pr-2 text-right font-semibold">{{ __('accounts.count_users') }}</th>
+                    <th class="py-2 pr-2 font-semibold">{{ __('common.status') }}</th>
+                    <th class="py-2 text-right font-semibold">{{ __('common.action') }}</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
@@ -246,14 +254,14 @@
 
         <x-admin-list-card :items="$unions" :title="__('accounts.uni_list_title')" :subtitle="__('accounts.uni_list_subtitle')" :search="$searchUni" :entity-label="__('common.union')">
             <thead>
-                <tr class="text-slate-500 dark:text-slate-400">
-                    <th class="py-2 pr-2 font-medium">#</th>
-                    <th class="py-2 pr-2 font-medium">{{ __('common.name') }}</th>
-                    <th class="py-2 pr-2 font-medium">{{ __('common.division') }}</th>
-                    <th class="py-2 pr-2 text-right font-medium">{{ __('accounts.count_daerah') }}</th>
-                    <th class="py-2 pr-2 text-right font-medium">{{ __('accounts.count_person') }}</th>
-                    <th class="py-2 pr-2 font-medium">{{ __('common.status') }}</th>
-                    <th class="py-2 text-right font-medium">{{ __('common.action') }}</th>
+                <tr class="bg-slate-50 text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
+                    <th class="py-2 pr-2 font-semibold">#</th>
+                    <th class="py-2 pr-2 font-semibold">{{ __('common.name') }}</th>
+                    <th class="py-2 pr-2 font-semibold">{{ __('common.division') }}</th>
+                    <th class="py-2 pr-2 text-right font-semibold">{{ __('accounts.count_daerah') }}</th>
+                    <th class="py-2 pr-2 text-right font-semibold">{{ __('accounts.count_person') }}</th>
+                    <th class="py-2 pr-2 font-semibold">{{ __('common.status') }}</th>
+                    <th class="py-2 text-right font-semibold">{{ __('common.action') }}</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
@@ -332,13 +340,13 @@
 
         <x-admin-list-card :items="$conferences" :title="__('accounts.daerah_list_title')" :subtitle="__('accounts.daerah_list_subtitle')" :search="$searchDaerah" :entity-label="__('common.conference')">
             <thead>
-                <tr class="text-slate-500 dark:text-slate-400">
-                    <th class="py-2 pr-2 font-medium">#</th>
-                    <th class="py-2 pr-2 font-medium">{{ __('common.name') }}</th>
-                    <th class="py-2 pr-2 font-medium">{{ __('common.union') }}</th>
-                    <th class="py-2 pr-2 text-right font-medium">{{ __('accounts.count_gereja') }}</th>
-                    <th class="py-2 pr-2 font-medium">{{ __('common.status') }}</th>
-                    <th class="py-2 text-right font-medium">{{ __('common.action') }}</th>
+                <tr class="bg-slate-50 text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
+                    <th class="py-2 pr-2 font-semibold">#</th>
+                    <th class="py-2 pr-2 font-semibold">{{ __('common.name') }}</th>
+                    <th class="py-2 pr-2 font-semibold">{{ __('common.union') }}</th>
+                    <th class="py-2 pr-2 text-right font-semibold">{{ __('accounts.count_gereja') }}</th>
+                    <th class="py-2 pr-2 font-semibold">{{ __('common.status') }}</th>
+                    <th class="py-2 text-right font-semibold">{{ __('common.action') }}</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
@@ -419,13 +427,13 @@
 
         <x-admin-list-card :items="$churches" :title="__('accounts.gereja_list_title')" :subtitle="__('accounts.gereja_list_subtitle')" :search="$searchGereja" :entity-label="__('common.church')">
             <thead>
-                <tr class="text-slate-500 dark:text-slate-400">
-                    <th class="py-2 pr-2 font-medium">#</th>
-                    <th class="py-2 pr-2 font-medium">{{ __('common.church') }}</th>
-                    <th class="py-2 pr-2 font-medium">{{ __('entity.city') }}</th>
-                    <th class="py-2 pr-2 font-medium">{{ __('common.conference') }}</th>
-                    <th class="py-2 pr-2 font-medium">{{ __('common.status') }}</th>
-                    <th class="py-2 text-right font-medium">{{ __('common.action') }}</th>
+                <tr class="bg-slate-50 text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
+                    <th class="py-2 pr-2 font-semibold">#</th>
+                    <th class="py-2 pr-2 font-semibold">{{ __('common.church') }}</th>
+                    <th class="py-2 pr-2 font-semibold">{{ __('entity.city') }}</th>
+                    <th class="py-2 pr-2 font-semibold">{{ __('common.conference') }}</th>
+                    <th class="py-2 pr-2 font-semibold">{{ __('common.status') }}</th>
+                    <th class="py-2 text-right font-semibold">{{ __('common.action') }}</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
@@ -511,13 +519,13 @@
 
         <x-admin-list-card :items="$institutions" :title="__('accounts.institusi_list_title')" :subtitle="__('accounts.institusi_list_subtitle')" :search="$searchInstitusi" :entity-label="__('common.institution')">
             <thead>
-                <tr class="text-slate-500 dark:text-slate-400">
-                    <th class="py-2 pr-2 font-medium">#</th>
-                    <th class="py-2 pr-2 font-medium">{{ __('common.name') }}</th>
-                    <th class="py-2 pr-2 font-medium">{{ __('accounts.region') }}</th>
-                    <th class="py-2 pr-2 text-right font-medium">{{ __('accounts.count_users') }}</th>
-                    <th class="py-2 pr-2 font-medium">{{ __('common.status') }}</th>
-                    <th class="py-2 text-right font-medium">{{ __('common.action') }}</th>
+                <tr class="bg-slate-50 text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
+                    <th class="py-2 pr-2 font-semibold">#</th>
+                    <th class="py-2 pr-2 font-semibold">{{ __('common.name') }}</th>
+                    <th class="py-2 pr-2 font-semibold">{{ __('accounts.region') }}</th>
+                    <th class="py-2 pr-2 text-right font-semibold">{{ __('accounts.count_users') }}</th>
+                    <th class="py-2 pr-2 font-semibold">{{ __('common.status') }}</th>
+                    <th class="py-2 text-right font-semibold">{{ __('common.action') }}</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
@@ -607,14 +615,14 @@
 
         <x-admin-list-card :items="$people" :title="__('accounts.personal_list_title')" :subtitle="__('accounts.personal_list_subtitle')" :search="$searchPersonal" :entity-label="__('common.personal')">
             <thead>
-                <tr class="text-slate-500 dark:text-slate-400">
-                    <th class="py-2 pr-2 font-medium">#</th>
-                    <th class="py-2 pr-2 font-medium">{{ __('common.name') }}</th>
-                    <th class="py-2 pr-2 font-medium">{{ __('entity.city') }}</th>
-                    <th class="py-2 pr-2 font-medium">{{ __('accounts.scope') }}</th>
-                    <th class="py-2 pr-2 text-right font-medium">{{ __('accounts.social_accounts') }}</th>
-                    <th class="py-2 pr-2 font-medium">{{ __('common.status') }}</th>
-                    <th class="py-2 text-right font-medium">{{ __('common.action') }}</th>
+                <tr class="bg-slate-50 text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
+                    <th class="py-2 pr-2 font-semibold">#</th>
+                    <th class="py-2 pr-2 font-semibold">{{ __('common.name') }}</th>
+                    <th class="py-2 pr-2 font-semibold">{{ __('entity.city') }}</th>
+                    <th class="py-2 pr-2 font-semibold">{{ __('accounts.scope') }}</th>
+                    <th class="py-2 pr-2 text-right font-semibold">{{ __('accounts.social_accounts') }}</th>
+                    <th class="py-2 pr-2 font-semibold">{{ __('common.status') }}</th>
+                    <th class="py-2 text-right font-semibold">{{ __('common.action') }}</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
@@ -671,4 +679,9 @@
     @endif
 
     @include('partials.tab-script', ['activeTab' => $activeTab])
+
+    {{-- Shared across every "edit via modal" page (Kelola Akun's own 6 tabs here — Divisi/Uni/
+         Daerah/Gereja/Institusi/Personal — Kelola Pengguna's own, ...) — see the partial's own
+         doc comment for the full contract. --}}
+    @include('partials.entity-edit-modal')
 @endsection

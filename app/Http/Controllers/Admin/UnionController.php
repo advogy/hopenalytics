@@ -14,6 +14,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Symfony\Component\HttpFoundation\Response;
 
 class UnionController extends Controller
 {
@@ -21,7 +22,7 @@ class UnionController extends Controller
 
     public function create(Request $request)
     {
-        return view('admin.unions.form', ['union' => new Union] + $this->divisionPickerData($request));
+        return view('admin.unions.form', ['union' => new Union, 'modal' => $request->boolean('modal')] + $this->divisionPickerData($request));
     }
 
     /** Advisory "did you mean" lookup for the name field — see NameSimilarity. */
@@ -38,9 +39,9 @@ class UnionController extends Controller
         ])->values());
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): Response
     {
-        $data = $request->validate([
+        $data = $this->validateOrRespondModal($request, [
             'name' => ['required', 'string', 'max:255'],
             'division_id' => ['nullable', 'integer', 'exists:divisions,id'],
             'coordinator_whatsapp_number' => ['nullable', 'string', 'max:32'],
@@ -49,7 +50,12 @@ class UnionController extends Controller
             'groups.*.url' => ['nullable', 'url', 'max:2048'],
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
-        ]);
+        ], 'admin.unions.form', ['union' => new Union] + $this->divisionPickerData($request));
+
+        if ($data instanceof Response) {
+            return $data;
+        }
+
         $data['latitude'] = $request->filled('latitude') ? (float) $data['latitude'] : null;
         $data['longitude'] = $request->filled('longitude') ? (float) $data['longitude'] : null;
         $data['slug'] = $this->uniqueSlug($data['name']);
@@ -64,18 +70,21 @@ class UnionController extends Controller
 
         // Straight to Kelola Akun Media Sosial rather than the accounts list — adding social
         // accounts is always the very next thing an admin does right after creating an entity,
-        // per the user's explicit call (see ChurchController::store()).
-        return redirect()->route('admin.unions.socials.index', $union)->with('status', __('accounts.entity_created', ['entity' => __('common.union'), 'name' => $data['name']]));
+        // per the user's explicit call (see ChurchController::store()). Works the same whether
+        // this came from the modal or the full page: respondModalOrRedirect() doesn't care what
+        // the target route actually is, a modal-originated create still ends up on this same
+        // Kelola Akun Media Sosial page via a real navigation once the JS follows the redirect.
+        return $this->respondModalOrRedirect($request, 'admin.unions.socials.index', ['union' => $union], 'status', __('accounts.entity_created', ['entity' => __('common.union'), 'name' => $data['name']]));
     }
 
     public function edit(Request $request, Union $union)
     {
-        return view('admin.unions.form', ['union' => $union] + $this->divisionPickerData($request));
+        return view('admin.unions.form', ['union' => $union, 'modal' => $request->boolean('modal')] + $this->divisionPickerData($request));
     }
 
-    public function update(Request $request, Union $union): RedirectResponse
+    public function update(Request $request, Union $union): Response
     {
-        $data = $request->validate([
+        $data = $this->validateOrRespondModal($request, [
             'name' => ['required', 'string', 'max:255'],
             'division_id' => ['nullable', 'integer', 'exists:divisions,id'],
             'coordinator_whatsapp_number' => ['nullable', 'string', 'max:32'],
@@ -84,7 +93,12 @@ class UnionController extends Controller
             'groups.*.url' => ['nullable', 'url', 'max:2048'],
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
-        ]);
+        ], 'admin.unions.form', ['union' => $union] + $this->divisionPickerData($request));
+
+        if ($data instanceof Response) {
+            return $data;
+        }
+
         $data['latitude'] = $request->filled('latitude') ? (float) $data['latitude'] : null;
         $data['longitude'] = $request->filled('longitude') ? (float) $data['longitude'] : null;
         $data['division_id'] = $this->resolveDivisionId($request, $union->division_id);
@@ -96,7 +110,7 @@ class UnionController extends Controller
 
         AuditLogger::log('union.updated', $union, "Memperbarui Uni \"{$union->name}\".");
 
-        return redirect()->route('admin.accounts.index', ['tab' => 'uni'])->with('status', __('accounts.entity_updated', ['entity' => __('common.union'), 'name' => $union->name]));
+        return $this->respondModalOrRedirect($request, 'admin.accounts.index', ['tab' => 'uni'], 'status', __('accounts.entity_updated', ['entity' => __('common.union'), 'name' => $union->name]));
     }
 
     /**

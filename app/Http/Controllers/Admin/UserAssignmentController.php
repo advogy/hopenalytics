@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\AdminSuggestionStatus;
 use App\Enums\UserRole;
 use App\Http\Controllers\Concerns\BuildsLeaderboards;
+use App\Http\Controllers\Concerns\HandlesModalForms;
 use App\Http\Controllers\Controller;
 use App\Models\AdminSuggestion;
 use App\Models\Church;
@@ -19,6 +20,7 @@ use App\Support\NameSimilarity;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Symfony\Component\HttpFoundation\Response;
 
 class UserAssignmentController extends Controller
 {
@@ -28,6 +30,11 @@ class UserAssignmentController extends Controller
     // of the two boxes render, regionFilterOptions() itself still narrows the actual options to
     // whatever this actor's own role can see, same as everywhere else that trait is used.
     use BuildsLeaderboards;
+
+    // edit()/update()'s own modal support — see that trait's own doc comment. Pulled in directly
+    // (not via RedirectsToAccountsTab, which this controller has no other use for) since none of
+    // its Kelola-Akun tab-redirect logic applies here.
+    use HandlesModalForms;
 
     /**
      * A scoped "manage people under me" page — the level an actor may promote into is
@@ -71,6 +78,7 @@ class UserAssignmentController extends Controller
         $sort = in_array($request->query('sort'), ['name_asc', 'name_desc', 'date_asc', 'date_desc'], true)
             ? $request->query('sort')
             : 'name_asc';
+        $pendingVerification = $request->boolean('pending_verification');
 
         // Global-level actors (superadmin/admin_global) see everyone — there's no narrower
         // "their own region" to filter by. A scoped Admin Nasional only sees unassigned members
@@ -101,6 +109,7 @@ class UserAssignmentController extends Controller
             ->when($search, fn ($q) => $q->where(
                 fn ($q2) => $q2->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%")
             ))
+            ->when($pendingVerification, fn ($q) => $q->whereNull('email_verified_at'))
             ->when($sort === 'name_asc', fn ($q) => $q->orderBy('name'))
             ->when($sort === 'name_desc', fn ($q) => $q->orderByDesc('name'))
             ->when($sort === 'date_asc', fn ($q) => $q->orderBy('created_at'))
@@ -338,6 +347,7 @@ class UserAssignmentController extends Controller
             'activeTab' => $activeTab,
             'search' => $search,
             'sort' => $sort,
+            'pendingVerification' => $pendingVerification,
             'unassigned' => $unassigned,
             'adminUsers' => $adminUsers,
             'pimpinanUsers' => $pimpinanUsers,
@@ -596,26 +606,46 @@ class UserAssignmentController extends Controller
     {
         Gate::authorize('update', $target);
 
-        $tab = in_array($request->query('tab'), ['admin', 'pemimpin', 'institusi', 'terhapus'], true)
-            ? $request->query('tab')
-            : 'unassigned';
-
-        return view('admin.users.edit', ['target' => $target, 'tab' => $tab]);
+        return view('admin.users.edit', [
+            'target' => $target,
+            'tab' => $this->resolveUsersTab($request),
+            'modal' => $request->boolean('modal'),
+        ]);
     }
 
-    public function update(Request $request, User $target): RedirectResponse
+    public function update(Request $request, User $target): Response
     {
         Gate::authorize('update', $target);
 
-        $data = $request->validate([
+        $data = $this->validateOrRespondModal($request, [
             'name' => ['required', 'string', 'max:255'],
-        ]);
+        ], 'admin.users.edit', ['target' => $target, 'tab' => $this->resolveUsersTab($request)]);
+
+        if ($data instanceof Response) {
+            return $data;
+        }
 
         $target->update($data);
 
         AuditLogger::log('user.updated', $target, "Memperbarui nama akun menjadi \"{$target->name}\".");
 
-        return $this->redirectToTab($request)->with('status', __('users.user_updated', ['name' => $target->name]));
+        // Same tab/search/sort preservation as redirectToTab() (see that method's own doc
+        // comment) — duplicated rather than reused since redirectToTab() returns a
+        // RedirectResponse outright, but a modal-originated submit needs the route/params
+        // instead so respondModalOrRedirect() can choose between that and a JSON redirect.
+        return $this->respondModalOrRedirect($request, 'admin.users.index', array_filter([
+            'tab' => $this->resolveUsersTab($request),
+            'search' => $request->input('search'),
+            'sort' => $request->input('sort'),
+        ]), 'status', __('users.user_updated', ['name' => $target->name]));
+    }
+
+    /** Shared by edit() (reading ?tab= on the GET) and update() (reading the form's own hidden tab field on submit) — see admin/users/edit.blade.php. */
+    private function resolveUsersTab(Request $request): string
+    {
+        return in_array($request->input('tab'), ['admin', 'pemimpin', 'institusi', 'terhapus'], true)
+            ? $request->input('tab')
+            : 'unassigned';
     }
 
     public function toggleActive(Request $request, User $target): RedirectResponse
@@ -662,16 +692,18 @@ class UserAssignmentController extends Controller
             ? $request->input('tab')
             : 'unassigned';
 
-        // search/sort only ever arrive here from the 'unassigned' tab's own row-actions (see
-        // that partial's own doc comment) — array_filter() drops them entirely for every other
-        // tab's action instead of appending empty query params. Without this, an action taken
-        // while the unassigned list had a search term and/or a non-default sort applied used to
-        // reset BOTH back to defaults on redirect, even though $tab itself was already correctly
-        // preserved — confirmed live via the "Kirim OTP" button losing the active sort.
+        // search/sort/pending_verification only ever arrive here from the 'unassigned' tab's own
+        // row-actions (see that partial's own doc comment) — array_filter() drops them entirely
+        // for every other tab's action instead of appending empty query params. Without this, an
+        // action taken while the unassigned list had a search term, a non-default sort, and/or
+        // the pending-verification filter applied used to reset all of them back to defaults on
+        // redirect, even though $tab itself was already correctly preserved — confirmed live via
+        // the "Kirim OTP" button losing the active sort.
         return redirect()->route('admin.users.index', array_filter([
             'tab' => $tab,
             'search' => $request->input('search'),
             'sort' => $request->input('sort'),
+            'pending_verification' => $request->input('pending_verification'),
         ]));
     }
 

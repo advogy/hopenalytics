@@ -16,9 +16,18 @@ use Illuminate\Http\Request;
  * needs reusing across 6 controller classes rather than living privately in one — and this page
  * uses per-tab-prefixed field names (search_uni vs search_daerah, etc.) plus up to two
  * region-filter ids per tab, instead of Kelola Pengguna's one shared search/sort pair.
+ *
+ * Also carries HandlesModalForms — the "edit via the shared modal instead of a separate page"
+ * helpers every one of these 6 controllers' update()/store() methods uses — purely so every
+ * existing `use RedirectsToAccountsTab;` controller keeps getting both without needing a second
+ * `use` statement each; those helpers themselves have nothing Kelola-Akun-specific in them (see
+ * that trait's own doc comment), which is why e.g. UserAssignmentController pulls in
+ * HandlesModalForms directly instead of this trait.
  */
 trait RedirectsToAccountsTab
 {
+    use HandlesModalForms;
+
     /** Each tab's own region-filter field name(s), beyond the search_{tab}/sort_{tab} pair every tab has. */
     private const ACCOUNTS_TAB_FILTER_FIELDS = [
         'divisi' => [],

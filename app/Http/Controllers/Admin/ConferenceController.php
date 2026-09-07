@@ -12,6 +12,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\Response;
 
 class ConferenceController extends Controller
 {
@@ -19,7 +20,7 @@ class ConferenceController extends Controller
 
     public function create(Request $request)
     {
-        return view('admin.conferences.form', ['conference' => new Conference] + $this->unionPickerData($request));
+        return view('admin.conferences.form', ['conference' => new Conference, 'modal' => $request->boolean('modal')] + $this->unionPickerData($request));
     }
 
     /** Advisory "did you mean" lookup for the name field — see NameSimilarity. */
@@ -40,14 +41,19 @@ class ConferenceController extends Controller
         ])->values());
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): Response
     {
-        $data = $request->validate([
+        $data = $this->validateOrRespondModal($request, [
             'name' => ['required', 'string', 'max:255'],
             'union_id' => ['required', 'integer', 'exists:unions,id'],
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
-        ]);
+        ], 'admin.conferences.form', ['conference' => new Conference] + $this->unionPickerData($request));
+
+        if ($data instanceof Response) {
+            return $data;
+        }
+
         $data['latitude'] = $request->filled('latitude') ? (float) $data['latitude'] : null;
         $data['longitude'] = $request->filled('longitude') ? (float) $data['longitude'] : null;
         $data['slug'] = $this->uniqueSlug($data['name']);
@@ -60,22 +66,27 @@ class ConferenceController extends Controller
         // Straight to Kelola Akun Media Sosial rather than the accounts list — adding social
         // accounts is always the very next thing an admin does right after creating an entity,
         // per the user's explicit call (see ChurchController::store()).
-        return redirect()->route('admin.conferences.socials.index', $conference)->with('status', __('accounts.entity_created', ['entity' => __('common.conference'), 'name' => $data['name']]));
+        return $this->respondModalOrRedirect($request, 'admin.conferences.socials.index', ['conference' => $conference], 'status', __('accounts.entity_created', ['entity' => __('common.conference'), 'name' => $data['name']]));
     }
 
     public function edit(Request $request, Conference $conference)
     {
-        return view('admin.conferences.form', ['conference' => $conference] + $this->unionPickerData($request));
+        return view('admin.conferences.form', ['conference' => $conference, 'modal' => $request->boolean('modal')] + $this->unionPickerData($request));
     }
 
-    public function update(Request $request, Conference $conference): RedirectResponse
+    public function update(Request $request, Conference $conference): Response
     {
-        $data = $request->validate([
+        $data = $this->validateOrRespondModal($request, [
             'name' => ['required', 'string', 'max:255'],
             'union_id' => ['required', 'integer', 'exists:unions,id'],
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
-        ]);
+        ], 'admin.conferences.form', ['conference' => $conference] + $this->unionPickerData($request));
+
+        if ($data instanceof Response) {
+            return $data;
+        }
+
         $data['latitude'] = $request->filled('latitude') ? (float) $data['latitude'] : null;
         $data['longitude'] = $request->filled('longitude') ? (float) $data['longitude'] : null;
         $data['union_id'] = $this->resolveUnionId($request, $conference->union_id);
@@ -84,7 +95,7 @@ class ConferenceController extends Controller
 
         AuditLogger::log('conference.updated', $conference, "Memperbarui Daerah \"{$conference->name}\".");
 
-        return redirect()->route('admin.accounts.index', ['tab' => 'daerah'])->with('status', __('accounts.entity_updated', ['entity' => __('common.conference'), 'name' => $conference->name]));
+        return $this->respondModalOrRedirect($request, 'admin.accounts.index', ['tab' => 'daerah'], 'status', __('accounts.entity_updated', ['entity' => __('common.conference'), 'name' => $conference->name]));
     }
 
     /**

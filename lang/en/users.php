@@ -30,6 +30,7 @@ return [
     'sort_name_desc' => 'Name (Z-A)',
     'sort_date_desc' => 'Registered (Newest)',
     'sort_date_asc' => 'Registered (Oldest)',
+    'filter_pending_verification' => 'Pending email verification',
     'assign' => 'Assign',
     'search_scope_placeholder' => 'Search…',
     'search_scope_for' => 'Search :level…',

@@ -48,14 +48,18 @@
             </a>
         @endisset
 
-        <a
-            href="{{ route($editRoute, $item) }}"
+        {{-- Opens the same edit form in Kelola Akun's shared modal instead of navigating to a
+             separate page — see admin/accounts/index.blade.php's edit-modal JS, which fetches
+             this URL with ?modal=1 appended. --}}
+        <button
+            type="button"
+            data-entity-modal-trigger="{{ route($editRoute, $item) }}"
             title="{{ __('common.edit') }}"
             aria-label="{{ __('common.edit') }}"
-            class="shrink-0 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+            class="shrink-0 cursor-pointer text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
         >
             <x-icon name="pencil-square" class="h-5 w-5" />
-        </a>
+        </button>
 
         <form
             method="POST"
@@ -73,7 +77,7 @@
                 type="submit"
                 title="{{ $item->is_active ? __('accounts.deactivate') : __('accounts.activate') }}"
                 aria-label="{{ $item->is_active ? __('accounts.deactivate') : __('accounts.activate') }}"
-                class="shrink-0 {{ $item->is_active ? 'text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400' : 'text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400' }}"
+                class="shrink-0 cursor-pointer {{ $item->is_active ? 'text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400' : 'text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400' }}"
             >
                 <x-icon name="{{ $item->is_active ? 'x-circle' : 'check-circle' }}" class="h-5 w-5" />
             </button>
@@ -98,7 +102,7 @@
                     type="submit"
                     title="{{ __('common.delete') }}"
                     aria-label="{{ __('common.delete') }}"
-                    class="shrink-0 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                    class="shrink-0 cursor-pointer text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                 >
                     <x-icon name="trash" class="h-5 w-5" />
                 </button>
@@ -118,7 +122,7 @@
                         type="submit"
                         title="{{ __('accounts.release_blocking_users', ['names' => $releasableUsers->pluck('name')->implode(', ')]) }}"
                         aria-label="{{ __('accounts.release_blocking_users', ['names' => $releasableUsers->pluck('name')->implode(', ')]) }}"
-                        class="shrink-0 text-amber-500 hover:text-amber-600 dark:text-amber-400 dark:hover:text-amber-300"
+                        class="shrink-0 cursor-pointer text-amber-500 hover:text-amber-600 dark:text-amber-400 dark:hover:text-amber-300"
                     >
                         <x-icon name="x-mark" class="h-5 w-5" />
                     </button>

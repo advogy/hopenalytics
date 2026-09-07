@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Concerns;
 use App\Enums\SocialPlatform;
 use App\Models\AppSetting;
 use App\Models\ChurchSocial;
+use App\Models\ChurchStat;
 use App\Models\Conference;
 use App\Models\Division;
 use App\Models\Goal;
@@ -519,7 +520,22 @@ trait BuildsLeaderboards
         // re-derives it from this total.
         $combinedSocials = $churchSocials->merge($institutionSocials)->merge($personalSocials)->merge($organizationSocials);
 
-        return collect(Goal::METRICS)->map(function ($metric) use ($combinedSocials, $isGlobal, $isScopedNasional, $isDivisi, $isUni, $unionCount, $assignedUnionCount, $divisionUnionCount, $conference, $scopeLabel) {
+        // An account's very first-ever fetch is its baseline, not progress — per the user's
+        // explicit call (mirrors growthScoreHistory()'s own "need ≥2 points before any growth
+        // shows" rule, just applied to the goal's absolute total instead of a percentage): a
+        // freshly-added account with only ONE stat row on record contributes nothing here until
+        // its second fetch lands, at which point its (now current) latest value starts counting
+        // normally. One grouped query across every candidate account, rather than a per-account
+        // ->stats()->count() inside the loop below (which would run once per account per metric).
+        $pastBaselineSocialIds = ChurchStat::query()
+            ->whereIn('church_social_id', $combinedSocials->pluck('id'))
+            ->select('church_social_id')
+            ->groupBy('church_social_id')
+            ->havingRaw('COUNT(*) >= 2')
+            ->pluck('church_social_id')
+            ->all();
+
+        return collect(Goal::METRICS)->map(function ($metric) use ($combinedSocials, $pastBaselineSocialIds, $isGlobal, $isScopedNasional, $isDivisi, $isUni, $unionCount, $assignedUnionCount, $divisionUnionCount, $conference, $scopeLabel) {
             $goal = Goal::forMetric($metric);
 
             $target = match (true) {
@@ -540,7 +556,9 @@ trait BuildsLeaderboards
             };
 
             [$filteredSocials, $fieldResolver] = $this->metricDefinition($metric, $combinedSocials);
-            $current = $filteredSocials->sum(fn ($social) => $social->latestStat?->{$fieldResolver($social)} ?? 0);
+            $current = $filteredSocials
+                ->filter(fn ($social) => in_array($social->id, $pastBaselineSocialIds, true))
+                ->sum(fn ($social) => $social->latestStat?->{$fieldResolver($social)} ?? 0);
 
             return [
                 'metric' => $metric,

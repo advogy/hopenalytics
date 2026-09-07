@@ -164,6 +164,17 @@
                         </select>
                         <x-icon name="chevron-down" class="pointer-events-none absolute top-1/2 right-3.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                     </label>
+                    <label class="flex shrink-0 cursor-pointer items-center gap-2 rounded-full border border-black/10 bg-slate-50 px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-100 dark:border-white/10 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700">
+                        <input
+                            type="checkbox"
+                            name="pending_verification"
+                            value="1"
+                            onchange="this.form.submit()"
+                            @checked($pendingVerification)
+                            class="h-4 w-4 cursor-pointer rounded border-black/20 text-blue-600 focus:ring-blue-500"
+                        >
+                        {{ __('users.filter_pending_verification') }}
+                    </label>
                 </form>
 
                 <script>
@@ -172,13 +183,13 @@
             </x-slot:beforeContent>
 
             <thead>
-                <tr class="text-slate-500 dark:text-slate-400">
-                    <th class="py-2 pr-2 font-medium">#</th>
-                    <th class="py-2 pr-2 font-medium">{{ __('users.col_user') }}</th>
-                    <th class="py-2 pr-2 font-medium">{{ __('users.col_registered_at') }}</th>
-                    <th class="py-2 pr-2 font-medium">{{ __('common.status') }}</th>
-                    <th class="py-2 pr-2 font-medium">{{ __('users.col_assign') }}</th>
-                    <th class="py-2 pr-2 font-medium">{{ __('common.action') }}</th>
+                <tr class="bg-slate-50 text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
+                    <th class="py-2 pr-2 font-semibold">#</th>
+                    <th class="py-2 pr-2 font-semibold">{{ __('users.col_user') }}</th>
+                    <th class="py-2 pr-2 font-semibold">{{ __('users.col_registered_at') }}</th>
+                    <th class="py-2 pr-2 font-semibold">{{ __('common.status') }}</th>
+                    <th class="py-2 pr-2 font-semibold">{{ __('users.col_assign') }}</th>
+                    <th class="py-2 pr-2 font-semibold">{{ __('common.action') }}</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
@@ -428,15 +439,15 @@
             :paginated="false"
         >
             <thead>
-                <tr class="text-slate-500 dark:text-slate-400">
-                    <th class="py-2 pr-2 font-medium">#</th>
-                    <th class="py-2 pr-2 font-medium">{{ __('users.col_user') }}</th>
+                <tr class="bg-slate-50 text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
+                    <th class="py-2 pr-2 font-semibold">#</th>
+                    <th class="py-2 pr-2 font-semibold">{{ __('users.col_user') }}</th>
                     @if ($canBootstrapAnyLevel)
-                        <th class="py-2 pr-2 font-medium">{{ __('users.col_role') }}</th>
-                        <th class="py-2 pr-2 font-medium">{{ __('users.col_scope') }}</th>
+                        <th class="py-2 pr-2 font-semibold">{{ __('users.col_role') }}</th>
+                        <th class="py-2 pr-2 font-semibold">{{ __('users.col_scope') }}</th>
                     @endif
-                    <th class="py-2 pr-2 font-medium">{{ __('common.status') }}</th>
-                    <th class="py-2 pr-2 font-medium">{{ __('common.action') }}</th>
+                    <th class="py-2 pr-2 font-semibold">{{ __('common.status') }}</th>
+                    <th class="py-2 pr-2 font-semibold">{{ __('common.action') }}</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
@@ -463,15 +474,15 @@
             :paginated="false"
         >
             <thead>
-                <tr class="text-slate-500 dark:text-slate-400">
-                    <th class="py-2 pr-2 font-medium">#</th>
-                    <th class="py-2 pr-2 font-medium">{{ __('users.col_user') }}</th>
+                <tr class="bg-slate-50 text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
+                    <th class="py-2 pr-2 font-semibold">#</th>
+                    <th class="py-2 pr-2 font-semibold">{{ __('users.col_user') }}</th>
                     @if ($canBootstrapAnyLevel)
-                        <th class="py-2 pr-2 font-medium">{{ __('users.col_role') }}</th>
-                        <th class="py-2 pr-2 font-medium">{{ __('users.col_scope') }}</th>
+                        <th class="py-2 pr-2 font-semibold">{{ __('users.col_role') }}</th>
+                        <th class="py-2 pr-2 font-semibold">{{ __('users.col_scope') }}</th>
                     @endif
-                    <th class="py-2 pr-2 font-medium">{{ __('common.status') }}</th>
-                    <th class="py-2 pr-2 font-medium">{{ __('common.action') }}</th>
+                    <th class="py-2 pr-2 font-semibold">{{ __('common.status') }}</th>
+                    <th class="py-2 pr-2 font-semibold">{{ __('common.action') }}</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
@@ -502,13 +513,13 @@
                 </x-slot:subtitle>
 
                 <thead>
-                    <tr class="text-slate-500 dark:text-slate-400">
-                        <th class="py-2 pr-2 font-medium">#</th>
-                        <th class="py-2 pr-2 font-medium">{{ __('users.col_user') }}</th>
-                        <th class="py-2 pr-2 font-medium">{{ __('users.col_role') }}</th>
-                        <th class="py-2 pr-2 font-medium">{{ __('common.institution') }}</th>
-                        <th class="py-2 pr-2 font-medium">{{ __('common.status') }}</th>
-                        <th class="py-2 pr-2 font-medium">{{ __('common.action') }}</th>
+                    <tr class="bg-slate-50 text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
+                        <th class="py-2 pr-2 font-semibold">#</th>
+                        <th class="py-2 pr-2 font-semibold">{{ __('users.col_user') }}</th>
+                        <th class="py-2 pr-2 font-semibold">{{ __('users.col_role') }}</th>
+                        <th class="py-2 pr-2 font-semibold">{{ __('common.institution') }}</th>
+                        <th class="py-2 pr-2 font-semibold">{{ __('common.status') }}</th>
+                        <th class="py-2 pr-2 font-semibold">{{ __('common.action') }}</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
@@ -549,13 +560,13 @@
         <div data-tab-panel="terhapus" @class(['hidden' => $activeTab !== 'terhapus'])>
             <x-admin-list-card :items="$trashedUsers" :title="__('users.trashed_title')" :subtitle="__('users.trashed_subtitle')" :empty-message="__('users.no_trashed')" :paginated="false">
                 <thead>
-                    <tr class="text-slate-500 dark:text-slate-400">
-                        <th class="py-2 pr-2 font-medium">#</th>
-                        <th class="py-2 pr-2 font-medium">{{ __('users.col_user') }}</th>
-                        <th class="py-2 pr-2 font-medium">{{ __('users.col_role') }}</th>
-                        <th class="py-2 pr-2 font-medium">{{ __('users.col_scope') }}</th>
-                        <th class="py-2 pr-2 font-medium">{{ __('users.col_deleted_at') }}</th>
-                        <th class="py-2 text-right font-medium">{{ __('common.action') }}</th>
+                    <tr class="bg-slate-50 text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
+                        <th class="py-2 pr-2 font-semibold">#</th>
+                        <th class="py-2 pr-2 font-semibold">{{ __('users.col_user') }}</th>
+                        <th class="py-2 pr-2 font-semibold">{{ __('users.col_role') }}</th>
+                        <th class="py-2 pr-2 font-semibold">{{ __('users.col_scope') }}</th>
+                        <th class="py-2 pr-2 font-semibold">{{ __('users.col_deleted_at') }}</th>
+                        <th class="py-2 text-right font-semibold">{{ __('common.action') }}</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
@@ -608,9 +619,14 @@
         </div>
     @endif
 
-    @if ($groupedAdminUsers !== null || $groupedPimpinanUsers !== null)
+    @if ($groupedAdminUsers !== null || $groupedPimpinanUsers !== null || $noAdminTotal > 0)
         @include('partials.analytics-group-toggle', ['expandGroupsByDefault' => true])
     @endif
 
     @include('partials.tab-script', ['activeTab' => $activeTab])
+
+    {{-- Opens row-actions.blade.php's own Edit icon into this instead of navigating to a
+         separate page — see the partial's own doc comment for the full contract (same one
+         Kelola Akun's own edit modal uses). --}}
+    @include('partials.entity-edit-modal')
 @endsection
