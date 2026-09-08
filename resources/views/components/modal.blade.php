@@ -35,11 +35,22 @@
 @once
     <style>
         dialog[data-app-modal] {
+            /* Centered via inset:0 + margin:auto (the same mechanism a <dialog>'s own default
+               UA styles already center it with) rather than the more common
+               top/left:50% + transform:translate(-50%,-50%) trick — a transform on this
+               element would make IT the containing block for every position:fixed descendant
+               inside it (per the CSS spec: a transformed ancestor always becomes the containing
+               block for fixed/absolute descendants), which broke
+               partials/searchable-select.blade.php's own position:fixed dropdown the moment a
+               form with a Uni/Daerah searchable-select (Tambah/Edit Gereja, Institusi, ...)
+               was shown inside this modal — its left/top are computed from
+               getBoundingClientRect() (viewport-relative) but were being applied against the
+               dialog's own box instead, throwing the list off to the side. inset+margin:auto
+               centers without ever creating a new containing block, so that widget (and any
+               other position:fixed content) keeps resolving against the real viewport. */
             position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            margin: 0;
+            inset: 0;
+            margin: auto;
             padding: 0;
             border: none;
             border-radius: 1rem;

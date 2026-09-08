@@ -110,7 +110,7 @@
                                         <a href="{{ route('profile.edit') }}" class="flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
                                             <span class="flex items-center gap-2">
                                                 <x-icon name="user" class="h-4 w-4 shrink-0 text-slate-400" />
-                                                Profil Saya
+                                                {{ __('nav.my_profile') }}
                                             </span>
                                             <x-role-badge :role="auth()->user()->role" />
                                         </a>
@@ -121,7 +121,7 @@
                                                  coordinates or growth data yet. --}}
                                             <a href="{{ route('churches.show', auth()->user()->church) }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
                                                 <x-icon name="building-office" class="h-4 w-4 shrink-0 text-slate-400" />
-                                                Gereja Saya
+                                                {{ __('nav.my_church') }}
                                             </a>
                                         @endif
                                         @if (auth()->user()->division && auth()->user()->can('update', auth()->user()->division))
@@ -133,7 +133,7 @@
                                                  pimpinan_divisi. --}}
                                             <a href="{{ route('admin.divisions.socials.index', auth()->user()->division) }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
                                                 <x-icon name="building-office" class="h-4 w-4 shrink-0 text-slate-400" />
-                                                Divisi Saya
+                                                {{ __('nav.my_division') }}
                                             </a>
                                         @endif
                                         @if (auth()->user()->union && auth()->user()->can('update', auth()->user()->union))
@@ -144,13 +144,13 @@
                                                  being set) keeps this from dead-ending for pimpinan_uni. --}}
                                             <a href="{{ route('admin.unions.socials.index', auth()->user()->union) }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
                                                 <x-icon name="building-office" class="h-4 w-4 shrink-0 text-slate-400" />
-                                                Uni Saya
+                                                {{ __('nav.my_union') }}
                                             </a>
                                         @endif
                                         @if (auth()->user()->conference && auth()->user()->can('update', auth()->user()->conference))
                                             <a href="{{ route('admin.conferences.socials.index', auth()->user()->conference) }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
                                                 <x-icon name="building-office" class="h-4 w-4 shrink-0 text-slate-400" />
-                                                Daerah Saya
+                                                {{ __('nav.my_conference') }}
                                             </a>
                                         @endif
                                         @if (auth()->user()->institution)
@@ -159,7 +159,7 @@
                                                  should see it too — just read-only, same as churches.show. --}}
                                             <a href="{{ route('institutions.show', auth()->user()->institution) }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
                                                 <x-icon name="building-office" class="h-4 w-4 shrink-0 text-slate-400" />
-                                                Institusi Saya
+                                                {{ __('nav.my_institution') }}
                                             </a>
                                         @endif
 
@@ -293,38 +293,38 @@
                                 <a href="{{ route('profile.edit') }}" class="flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
                                     <span class="flex items-center gap-2">
                                         <x-icon name="user" class="h-4 w-4 shrink-0 text-slate-400" />
-                                        Profil Saya
+                                        {{ __('nav.my_profile') }}
                                     </span>
                                     <x-role-badge :role="auth()->user()->role" />
                                 </a>
                                 @if (auth()->user()->church_id)
                                     <a href="{{ route('churches.show', auth()->user()->church) }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
                                         <x-icon name="building-office" class="h-4 w-4 shrink-0 text-slate-400" />
-                                        Gereja Saya
+                                        {{ __('nav.my_church') }}
                                     </a>
                                 @endif
                                 @if (auth()->user()->division && auth()->user()->can('update', auth()->user()->division))
                                     <a href="{{ route('admin.divisions.socials.index', auth()->user()->division) }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
                                         <x-icon name="building-office" class="h-4 w-4 shrink-0 text-slate-400" />
-                                        Divisi Saya
+                                        {{ __('nav.my_division') }}
                                     </a>
                                 @endif
                                 @if (auth()->user()->union && auth()->user()->can('update', auth()->user()->union))
                                     <a href="{{ route('admin.unions.socials.index', auth()->user()->union) }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
                                         <x-icon name="building-office" class="h-4 w-4 shrink-0 text-slate-400" />
-                                        Uni Saya
+                                        {{ __('nav.my_union') }}
                                     </a>
                                 @endif
                                 @if (auth()->user()->conference && auth()->user()->can('update', auth()->user()->conference))
                                     <a href="{{ route('admin.conferences.socials.index', auth()->user()->conference) }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
                                         <x-icon name="building-office" class="h-4 w-4 shrink-0 text-slate-400" />
-                                        Daerah Saya
+                                        {{ __('nav.my_conference') }}
                                     </a>
                                 @endif
                                 @if (auth()->user()->institution)
                                     <a href="{{ route('institutions.show', auth()->user()->institution) }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
                                         <x-icon name="building-office" class="h-4 w-4 shrink-0 text-slate-400" />
-                                        Institusi Saya
+                                        {{ __('nav.my_institution') }}
                                     </a>
                                 @endif
 
