@@ -270,22 +270,22 @@
              each other's relative extremes the way the dot map's tab does. --}}
         <div id="church-map-region-legend" class="mb-3 hidden flex-wrap gap-x-4 gap-y-1.5">
             <span class="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
-                <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-sm" style="background:#065f46"></span> &ge; 10%
+                <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-sm" style="background:#065f46"></span> &ge; 15%
             </span>
             <span class="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
-                <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-sm" style="background:#16a34a"></span> 3% – 10%
+                <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-sm" style="background:#16a34a"></span> 5% – 15%
             </span>
             <span class="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
-                <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-sm" style="background:#86efac"></span> 0% – 3%
+                <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-sm" style="background:#86efac"></span> 0% – 5%
             </span>
             <span class="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
-                <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-sm" style="background:#fecaca"></span> -3% – 0%
+                <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-sm" style="background:#fecaca"></span> -5% – 0%
             </span>
             <span class="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
-                <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-sm" style="background:#dc2626"></span> -10% – -3%
+                <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-sm" style="background:#dc2626"></span> -15% – -5%
             </span>
             <span class="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
-                <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-sm" style="background:#7f1d1d"></span> &le; -10%
+                <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-sm" style="background:#7f1d1d"></span> &le; -15%
             </span>
             <span class="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
                 <span class="inline-block h-2.5 w-2.5 shrink-0 rounded-sm border border-slate-300 dark:border-slate-600" style="background:#e2e8f0"></span>
@@ -458,7 +458,23 @@
                         return shades[index];
                     }
 
-                    var markers = items.map(function (item) {
+                    // Drawn gray (no data) first, green next, red last — Leaflet's SVG renderer
+                    // paints vector layers in the order they're added, later = on top, so this
+                    // ordering (not z-index, circleMarker has none) is what actually keeps a red
+                    // dot visible instead of buried under a gray/green one it happens to overlap,
+                    // per the user's explicit call. Array.prototype.sort is stable, so within
+                    // each color tier the original relative order (and hence popup/marker
+                    // identity) is otherwise untouched.
+                    function layerPriority(item) {
+                        if (item.growthScore === null || item.growthScore === undefined) return 0;
+                        return item.growthScore > 0 ? 1 : 2;
+                    }
+
+                    var orderedItems = items.slice().sort(function (a, b) {
+                        return layerPriority(a) - layerPriority(b);
+                    });
+
+                    var markers = orderedItems.map(function (item) {
                         var hasGrowth = item.growthScore !== null && item.growthScore !== undefined;
 
                         var popup = '<p class="font-semibold">' + item.name + '</p>' +
@@ -469,8 +485,11 @@
                             '<a href="' + item.url + '" class="text-xs text-blue-600">' + mapI18n.viewDetail + '</a>' +
                             (item.editUrl ? ' &middot; <a href="' + item.editUrl + '" class="text-xs text-blue-600">' + mapI18n.editCoordinatesLabel + '</a>' : '');
 
+                        // Smaller than the original 5 (which overlapped too easily for churches
+                        // close together, e.g. within the same city) but nudged back up from an
+                        // initial 3, which read as too small — per the user's own follow-up call.
                         return L.circleMarker([item.lat, item.lng], {
-                            radius: 5, color: '#ffffff', weight: 1,
+                            radius: 4, color: '#ffffff', weight: 1,
                             fillColor: shadeFor(item), fillOpacity: 0.9,
                         }).bindPopup(popup);
                     });
@@ -490,11 +509,11 @@
                 // dot map) — a choropleth's whole point is a stable scale to compare regions
                 // against, matching the legend's own always-the-same ranges.
                 var REGION_GROWTH_BUCKETS = [
-                    { min: 5, color: '#065f46' },
-                    { min: 1, color: '#16a34a' },
+                    { min: 15, color: '#065f46' },
+                    { min: 5, color: '#16a34a' },
                     { min: 0, color: '#86efac' },
-                    { min: -1, color: '#fecaca' },
-                    { min: -5, color: '#dc2626' },
+                    { min: -5, color: '#fecaca' },
+                    { min: -15, color: '#dc2626' },
                     { min: -Infinity, color: '#7f1d1d' },
                 ];
                 var REGION_NO_DATA_COLOR = '#e2e8f0';
