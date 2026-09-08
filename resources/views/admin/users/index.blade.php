@@ -70,7 +70,14 @@
         @endif
     </x-tab-bar>
 
-    <div data-tab-panel="all" @class(['hidden' => $activeTab !== 'all'])>
+    <div id="semua-user" data-tab-panel="all" @class(['hidden' => $activeTab !== 'all'])>
+        {{-- Same shared external-form shape as Monitoring Antrean's own bulk actions (see
+             partials/bulk-select.blade.php) — checkboxes below reference this purely via
+             form="all-bulk-form" since they can't nest inside it (each row's own Edit/Ganti
+             Wilayah/Cabut/etc. are already their own form/button), and the two bulk buttons each
+             override where this same set of checked ids goes via their own formaction. --}}
+        <form method="POST" id="all-bulk-form" data-disable-on-submit>@csrf</form>
+
         <div class="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <x-stat-card
                 icon="users"
@@ -159,6 +166,49 @@
         <div class="rounded-2xl border border-black/5 bg-white shadow-sm dark:border-white/5 dark:bg-slate-900">
             <div class="flex flex-wrap items-center justify-between gap-3 px-6 py-4">
                 <h2 class="text-lg font-bold text-slate-900 dark:text-white">{{ __('users.all_title') }}</h2>
+                @if ($allUsers->isNotEmpty())
+                    <div class="flex items-center gap-3">
+                        <button
+                            type="submit"
+                            form="all-bulk-form"
+                            formaction="{{ route('admin.users.resend-otp-bulk') }}"
+                            data-bulk-resend-otp-button
+                            data-confirm-template="{{ __('users.resend_otp_selected_confirm', ['count' => ':count']) }}"
+                            disabled
+                            title="{{ __('users.resend_otp_selected') }}"
+                            aria-label="{{ __('users.resend_otp_selected') }}"
+                            class="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-blue-600 hover:bg-blue-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:text-blue-400 dark:hover:bg-blue-950/40 dark:hover:text-blue-300"
+                        >
+                            <x-icon name="arrow-path" class="h-5 w-5" />
+                        </button>
+                        <button
+                            type="submit"
+                            form="all-bulk-form"
+                            formaction="{{ route('admin.users.deactivate-bulk') }}"
+                            data-bulk-deactivate-button
+                            data-confirm-template="{{ __('users.deactivate_selected_confirm', ['count' => ':count']) }}"
+                            disabled
+                            title="{{ __('users.deactivate_selected') }}"
+                            aria-label="{{ __('users.deactivate_selected') }}"
+                            class="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:text-red-400 dark:hover:bg-red-950/40 dark:hover:text-red-300"
+                        >
+                            <x-icon name="x-circle" class="h-5 w-5" />
+                        </button>
+                        <button
+                            type="submit"
+                            form="all-bulk-form"
+                            formaction="{{ route('admin.users.destroy-bulk') }}"
+                            data-bulk-delete-button
+                            data-confirm-template="{{ __('users.delete_selected_confirm', ['count' => ':count']) }}"
+                            disabled
+                            title="{{ __('users.delete_selected') }}"
+                            aria-label="{{ __('users.delete_selected') }}"
+                            class="inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:text-red-400 dark:hover:bg-red-950/40 dark:hover:text-red-300"
+                        >
+                            <x-icon name="trash" class="h-5 w-5" />
+                        </button>
+                    </div>
+                @endif
             </div>
 
             @if ($allUsers->isEmpty())
@@ -170,6 +220,9 @@
                 <table class="w-full text-left text-sm">
             <thead>
                 <tr class="bg-slate-50 text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
+                    <th class="w-8 px-4 py-2.5">
+                        <input type="checkbox" data-select-all-all-users aria-label="{{ __('users.select_all') }}" title="{{ __('users.select_all') }}" class="h-4 w-4 cursor-pointer rounded border-black/20 text-blue-600 focus:ring-blue-500">
+                    </th>
                     <th class="px-4 py-2.5 font-semibold">#</th>
                     <th class="px-4 py-2.5 font-semibold">{{ __('users.col_user') }}</th>
                     <th class="px-4 py-2.5 font-semibold">{{ __('users.col_registered_at') }}</th>
@@ -181,6 +234,9 @@
             <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
                 @foreach ($allUsers as $user)
                     <tr>
+                        <td class="px-4 py-2.5">
+                            <input type="checkbox" name="ids[]" value="{{ $user->id }}" form="all-bulk-form" data-all-user-checkbox class="h-4 w-4 cursor-pointer rounded border-black/20 text-blue-600 focus:ring-blue-500">
+                        </td>
                         <td class="px-4 py-2.5 text-slate-400 dark:text-slate-500">{{ $allUsers->firstItem() + $loop->index }}</td>
                         <td class="px-4 py-2.5">
                             @include('admin.users.partials.name-email', ['user' => $user, 'showVerification' => true])
@@ -568,6 +624,11 @@
                 });
             })();
         </script>
+
+        @include('partials.bulk-select')
+        <script>
+            window.initBulkSelect('semua-user', 'all-bulk-form', '[data-all-user-checkbox]', '[data-select-all-all-users]', '[data-bulk-resend-otp-button], [data-bulk-deactivate-button], [data-bulk-delete-button]');
+        </script>
     </div>
 
     @if ($canReviewSuggestions)
@@ -585,7 +646,7 @@
              list, per the user's explicit call — same filter model as "Semua User" (search +
              role + sort), plus a Uni -> Daerah cascading region filter (same partial "Belum Ada
              Admin" already uses) since every row here has a real region, unlike "Semua User". --}}
-        <x-filter-card :clear-url="($staffSearch !== '' || $staffRole !== 'all' || $staffSelectedUnionId || $staffSelectedConferenceId || $staffSort !== 'name_asc') ? route('admin.users.index', ['tab' => 'admin']) : null">
+        <x-filter-card :clear-url="($staffSearch !== '' || $staffRole !== 'all' || $staffSelectedUnionId || $staffSelectedConferenceId || $staffSelectedInstitutionId || $staffSort !== 'name_asc') ? route('admin.users.index', ['tab' => 'admin']) : null">
             <form method="GET" id="staff-filter-form" class="flex flex-wrap items-center gap-3">
                 <input type="hidden" name="tab" data-tab-hidden-field value="{{ $activeTab }}">
                 <label class="relative block w-full max-w-sm flex-1">
@@ -624,6 +685,25 @@
                     'unionFieldName' => 'staff_union_id',
                     'conferenceFieldName' => 'staff_conference_id',
                 ])
+
+                @if ($canManageInstitutions)
+                    {{-- Institusi sits outside the Divisi/Uni/Daerah/Gereja tree entirely (no
+                         Union tie at all), so it gets its own separate filter rather than folding
+                         into the Uni/Daerah cascade above. --}}
+                    <label class="relative min-w-[200px]">
+                        <select
+                            name="staff_institution_id"
+                            onchange="this.form.submit()"
+                            class="w-full appearance-none rounded-full border border-black/10 bg-slate-50 py-2.5 pr-10 pl-4 text-sm font-medium text-slate-700 shadow-sm focus:border-blue-500 focus:bg-white focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:text-slate-200"
+                        >
+                            <option value="" @selected(! $staffSelectedInstitutionId)>{{ __('users.filter_institution_all') }}</option>
+                            @foreach ($staffInstitutionOptions as $institutionOption)
+                                <option value="{{ $institutionOption->id }}" @selected((string) $staffSelectedInstitutionId === (string) $institutionOption->id)>{{ $institutionOption->name }}</option>
+                            @endforeach
+                        </select>
+                        <x-icon name="chevron-down" class="pointer-events-none absolute top-1/2 right-3.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                    </label>
+                @endif
 
                 <label class="relative min-w-[200px]">
                     <select

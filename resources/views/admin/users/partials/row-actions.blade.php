@@ -28,17 +28,18 @@
         </button>
 
         @can('releaseRegion', $user)
-            @if ($user->division_id || $user->union_id || $user->conference_id || $user->church_id)
+            @if ($user->division_id || $user->union_id || $user->conference_id || $user->church_id || $user->institution_id)
                 @php
-                    $hasScopedActiveRole = $user->role !== null && in_array($user->role->level(), ['divisi', 'uni', 'daerah', 'gereja'], true);
+                    $hasScopedActiveRole = $user->role !== null && in_array($user->role->level(), ['divisi', 'uni', 'daerah', 'gereja', 'institusi'], true);
                 @endphp
                 @if ($hasScopedActiveRole)
-                    {{-- An active Admin/Pimpinan Divisi/Uni/Daerah/Gereja — "Ganti Wilayah" opens
-                         the modal form for swapping their region for a different one of the same
-                         level (see UserAssignmentController::editRegion()'s own doc comment),
-                         rather than only offering a destructive clear-then-reassign-from-scratch
-                         round trip. Its own "Tidak ada" option still covers the old release-only
-                         behavior for whoever wants that instead. --}}
+                    {{-- An active Admin/Pimpinan Divisi/Uni/Daerah/Gereja/Institusi — "Ganti
+                         Wilayah" opens the modal form for swapping their region for a different
+                         one of the same level (see UserAssignmentController::editRegion()'s own
+                         doc comment), rather than only offering a destructive
+                         clear-then-reassign-from-scratch round trip. Its own "Tidak ada" option
+                         still covers the old release-only behavior for whoever wants that
+                         instead. --}}
                     <button
                         type="button"
                         data-entity-modal-trigger="{{ route('admin.users.change-region.edit', ['target' => $user, 'tab' => $tab]) }}"

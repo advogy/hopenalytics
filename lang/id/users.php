@@ -27,7 +27,7 @@ return [
     'no_admin_group_empty' => 'Semua sudah punya admin.',
     'no_admin_hint' => 'Untuk menugaskan admin, cari orangnya di tab "Semua User" lalu pakai tombol "Jadikan Admin / Pimpinan".',
 
-    'search_placeholder' => 'Cari nama atau email…',
+    'search_placeholder' => 'Cari nama, email, atau wilayah…',
     'col_user' => 'Pengguna',
     'col_registered_at' => 'Tanggal Daftar',
     'sort_name_asc' => 'Nama (A-Z)',
@@ -38,6 +38,7 @@ return [
     'sort_date_asc' => 'Tanggal Daftar (Terlama)',
     'filter_verification_all' => 'Semua Akun',
     'filter_role_all' => 'Semua Peran',
+    'filter_institution_all' => 'Semua Institusi',
     'col_role_scope' => 'Peran & Wilayah',
     'promote_action' => 'Jadikan Admin / Pimpinan',
     'promote_modal_title' => 'Jadikan Admin / Pimpinan',
@@ -83,6 +84,14 @@ return [
     'verified' => 'Terverifikasi',
     'pending_verification' => 'Menunggu Verifikasi',
 
+    'select_all' => 'Pilih semua',
+    'deactivate_selected' => 'Non-Aktifkan Terpilih',
+    'deactivate_selected_confirm' => 'Non-aktifkan :count akun yang dipilih?',
+    'delete_selected' => 'Hapus Terpilih',
+    'delete_selected_confirm' => 'Hapus :count akun yang dipilih? Tindakan ini tidak bisa dibatalkan.',
+    'resend_otp_selected' => 'Kirim Ulang OTP Terpilih',
+    'resend_otp_selected_confirm' => 'Kirim ulang OTP ke :count akun yang dipilih?',
+
     // Flash messages.
     'assigned' => '":name" berhasil ditugaskan.',
     'role_revoked' => 'Peran ":name" telah dicabut.',
@@ -97,4 +106,8 @@ return [
     'user_status_changed' => '":name" telah :status.',
     'otp_resent_to' => 'Kode OTP baru telah dikirim ke :email.',
     'otp_resend_failed' => 'Kode OTP dibuat, tapi email ke :email gagal terkirim saat ini. Coba lagi dalam beberapa saat.',
+    'deactivated_bulk' => ':count akun berhasil dinonaktifkan.',
+    'deleted_bulk' => ':count akun berhasil dihapus.',
+    'otp_resent_bulk' => ':count dari :total OTP berhasil dikirim ulang.',
+    'otp_resend_bulk_none' => 'Tidak ada akun terpilih yang masih menunggu verifikasi.',
 ];

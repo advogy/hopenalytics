@@ -571,66 +571,20 @@
 
     {{-- Bulk-select checkboxes/select-all/bulk-action buttons, shared by all three tabs that
          have them (Job Gagal's own retry-or-delete was the original; Batch Aktif's bulk-cancel
-         and Batch Selesai's bulk-delete now follow the exact same shape — one shared external
-         form + a "select all" checkbox + N per-row checkboxes referencing it via form="..." +
-         one or more submit buttons overriding where the checked ids go via their own
-         formaction). Each section wires up via initBulkSelect() below rather than three
-         near-identical copies of this same listener setup.
-
-         Attached to each tab's own stable wrapper element (#job-gagal etc.) via delegation
-         rather than to the checkboxes/buttons themselves, since Job Tertunda's poll-and-swap
-         script above would otherwise silently drop a listener bound directly to an
-         about-to-be-replaced element — moot for these three specifically (they're excluded from
-         that poll for exactly this reason, see its own comment) but delegation costs nothing
-         extra and keeps this robust either way.
-
-         Every section's bulk buttons share one hidden form and so share one data-confirm
-         attribute too — since confirm-dialog.blade.php reads that off the FORM, not the button
-         that was clicked, each button's own resolved confirm text (with the current
-         checked-count substituted in) is written onto the form at click time, just before the
-         submit event fires and confirm-dialog.blade.php reads it. --}}
+         and Batch Selesai's bulk-delete now follow the exact same shape). window.initBulkSelect()
+         itself now lives in partials/bulk-select.blade.php (extracted once Kelola Pengguna's own
+         "Semua User" tab needed the identical pattern a second time) — attached to each tab's own
+         stable wrapper element (#job-gagal etc.) via delegation rather than to the
+         checkboxes/buttons themselves, since Job Tertunda's poll-and-swap script above would
+         otherwise silently drop a listener bound directly to an about-to-be-replaced element —
+         moot for these three specifically (they're excluded from that poll for exactly this
+         reason, see its own comment) but delegation costs nothing extra and keeps this robust
+         either way. --}}
+    @include('partials.bulk-select')
     <script>
-        (function () {
-            function initBulkSelect(sectionId, formId, checkboxSelector, selectAllSelector, buttonSelector) {
-                var section = document.getElementById(sectionId);
-                if (! section) return;
-
-                function checkedCount() {
-                    return section.querySelectorAll(checkboxSelector + ':checked').length;
-                }
-
-                function updateBulkButtons() {
-                    var count = checkedCount();
-                    section.querySelectorAll(buttonSelector).forEach(function (button) {
-                        button.disabled = count === 0;
-                    });
-                }
-
-                section.addEventListener('change', function (e) {
-                    if (e.target.matches(selectAllSelector)) {
-                        section.querySelectorAll(checkboxSelector).forEach(function (checkbox) {
-                            checkbox.checked = e.target.checked;
-                        });
-                        updateBulkButtons();
-                    } else if (e.target.matches(checkboxSelector)) {
-                        updateBulkButtons();
-                    }
-                });
-
-                section.addEventListener('click', function (e) {
-                    var button = e.target.closest(buttonSelector);
-                    if (! button) return;
-
-                    var form = document.getElementById(formId);
-                    var template = button.getAttribute('data-confirm-template');
-                    form.setAttribute('data-confirm', template.replace(':count', checkedCount()));
-                });
-            }
-
-            initBulkSelect('job-gagal', 'failed-bulk-form', '[data-failed-job-checkbox]', '[data-select-all-failed]', '[data-bulk-retry-button], [data-bulk-delete-button]');
-            initBulkSelect('batch-aktif', 'active-bulk-form', '[data-active-batch-checkbox]', '[data-select-all-active]', '[data-bulk-cancel-button]');
-            initBulkSelect('batch-selesai', 'completed-bulk-form', '[data-completed-batch-checkbox]', '[data-select-all-completed]', '[data-bulk-delete-completed-button]');
-        })();
+        window.initBulkSelect('job-gagal', 'failed-bulk-form', '[data-failed-job-checkbox]', '[data-select-all-failed]', '[data-bulk-retry-button], [data-bulk-delete-button]');
+        window.initBulkSelect('batch-aktif', 'active-bulk-form', '[data-active-batch-checkbox]', '[data-select-all-active]', '[data-bulk-cancel-button]');
+        window.initBulkSelect('batch-selesai', 'completed-bulk-form', '[data-completed-batch-checkbox]', '[data-select-all-completed]', '[data-bulk-delete-completed-button]');
     </script>
 
     @include('partials.tab-script', ['activeTab' => $activeTab])

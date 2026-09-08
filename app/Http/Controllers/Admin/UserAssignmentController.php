@@ -126,8 +126,18 @@ class UserAssignmentController extends Controller
             // index.blade.php's @php block) — every relation that closure might reach through,
             // matching $trashedUsers' own eager-load list above.
             ->with(['division', 'union.division', 'conference.union', 'church.conference', 'institution', 'assignedUnions'])
+            // Also matches the name of whichever region is directly set on the row (division/
+            // union/conference/church/institution — never a parent/grandparent of that, e.g. a
+            // Gereja admin's own Daerah name isn't searched, just their Gereja's) — per the
+            // user's explicit call ("ketik 'Cawang' untuk cari admin gereja itu").
             ->when($allSearch, fn ($q) => $q->where(
-                fn ($q2) => $q2->where('name', 'like', "%{$allSearch}%")->orWhere('email', 'like', "%{$allSearch}%")
+                fn ($q2) => $q2->where('name', 'like', "%{$allSearch}%")
+                    ->orWhere('email', 'like', "%{$allSearch}%")
+                    ->orWhereHas('division', fn ($q3) => $q3->where('name', 'like', "%{$allSearch}%"))
+                    ->orWhereHas('union', fn ($q3) => $q3->where('name', 'like', "%{$allSearch}%"))
+                    ->orWhereHas('conference', fn ($q3) => $q3->where('name', 'like', "%{$allSearch}%"))
+                    ->orWhereHas('church', fn ($q3) => $q3->where('name', 'like', "%{$allSearch}%"))
+                    ->orWhereHas('institution', fn ($q3) => $q3->where('name', 'like', "%{$allSearch}%"))
             ))
             ->when($allVerification === 'pending', fn ($q) => $q->whereNull('email_verified_at'))
             ->when($allVerification === 'verified', fn ($q) => $q->whereNotNull('email_verified_at'))
@@ -201,6 +211,15 @@ class UserAssignmentController extends Controller
         $staffSelectedUnionId = $request->query('staff_union_id');
         $staffSelectedConferenceId = $request->query('staff_conference_id');
         [$staffUnionOptions, $staffConferenceOptions] = $this->regionFilterOptions($staffSelectedUnionId);
+        // Institusi sits outside the Divisi/Uni/Daerah/Gereja tree entirely (no Union tie at all
+        // — see index()'s own "Institusi" comment further down), so it gets its own separate
+        // filter rather than folding into the Uni/Daerah cascade above; only ever meaningful for
+        // a $canManageInstitutions actor, matching every other institution-related gate on this
+        // page.
+        $staffSelectedInstitutionId = $request->query('staff_institution_id');
+        $staffInstitutionOptions = $canManageInstitutions
+            ? Institution::where('is_active', true)->orderBy('name')->get()
+            : collect();
 
         // Same region-scoping (applyAllUsersScope()) and self-exclusion as "Semua User" — see
         // that query's own doc comment above — narrowed to role-assigned, non-SuperAdmin
@@ -223,7 +242,8 @@ class UserAssignmentController extends Controller
             ->when($staffSelectedConferenceId, fn ($q) => $q->where(
                 fn ($q2) => $q2->where('conference_id', $staffSelectedConferenceId)
                     ->orWhereHas('church', fn ($q3) => $q3->where('conference_id', $staffSelectedConferenceId))
-            ));
+            ))
+            ->when($staffSelectedInstitutionId, fn ($q) => $q->where('institution_id', $staffSelectedInstitutionId));
 
         $staffUsersTotal = (clone $staffUsersBase)->count();
 
@@ -231,8 +251,16 @@ class UserAssignmentController extends Controller
             // Eager-loaded for the "Peran & Wilayah" column's own $scopeDisplayFor() lookup, same
             // as "Semua User"'s own copy of this eager-load list above.
             ->with(['division', 'union.division', 'conference.union', 'church.conference', 'institution', 'assignedUnions'])
+            // See "Semua User"'s own copy of this same search above for why only the row's own
+            // direct region (never a parent/grandparent of it) is matched.
             ->when($staffSearch, fn ($q) => $q->where(
-                fn ($q2) => $q2->where('name', 'like', "%{$staffSearch}%")->orWhere('email', 'like', "%{$staffSearch}%")
+                fn ($q2) => $q2->where('name', 'like', "%{$staffSearch}%")
+                    ->orWhere('email', 'like', "%{$staffSearch}%")
+                    ->orWhereHas('division', fn ($q3) => $q3->where('name', 'like', "%{$staffSearch}%"))
+                    ->orWhereHas('union', fn ($q3) => $q3->where('name', 'like', "%{$staffSearch}%"))
+                    ->orWhereHas('conference', fn ($q3) => $q3->where('name', 'like', "%{$staffSearch}%"))
+                    ->orWhereHas('church', fn ($q3) => $q3->where('name', 'like', "%{$staffSearch}%"))
+                    ->orWhereHas('institution', fn ($q3) => $q3->where('name', 'like', "%{$staffSearch}%"))
             ))
             ->when($staffSort === 'name_asc', fn ($q) => $q->orderBy('name'))
             ->when($staffSort === 'name_desc', fn ($q) => $q->orderByDesc('name'))
@@ -448,6 +476,8 @@ class UserAssignmentController extends Controller
             'staffSelectedConferenceId' => $staffSelectedConferenceId,
             'staffUnionOptions' => $staffUnionOptions,
             'staffConferenceOptions' => $staffConferenceOptions,
+            'staffSelectedInstitutionId' => $staffSelectedInstitutionId,
+            'staffInstitutionOptions' => $staffInstitutionOptions,
             'roles' => $roles,
             'scopeDataByLevel' => $scopeDataByLevel,
             'canManageInstitutions' => $canManageInstitutions,
@@ -637,13 +667,13 @@ class UserAssignmentController extends Controller
 
     /**
      * "Ganti Wilayah" — the modal form for swapping an already role-assigned Admin/Pimpinan
-     * Divisi/Uni/Daerah/Gereja's region for a different one of the same level, without going
-     * through releaseRegion() (clear) followed by a separate re-promote via "Semua User"'s own
-     * "Jadikan Admin / Pimpinan" modal (which also meant hunting the now-unassigned member back
-     * down in that tab first). Only offered
-     * for a role at one of those 4 levels — see row-actions.blade.php's own guard, which still
-     * falls back to the plain release-only form (releaseRegion() above) for a role === null
-     * target, since that scenario has no "level" here to pick a same-level replacement from.
+     * Divisi/Uni/Daerah/Gereja/Institusi's region for a different one of the same level, without
+     * going through releaseRegion() (clear) followed by a separate re-promote via "Semua User"'s
+     * own "Jadikan Admin / Pimpinan" modal (which also meant hunting the now-unassigned member
+     * back down in that tab first). Only offered for a role at one of those 5 levels — see
+     * row-actions.blade.php's own guard, which still falls back to the plain release-only form
+     * (releaseRegion() above) for a role === null target, since that scenario has no "level"
+     * here to pick a same-level replacement from.
      *
      * Reuses the exact same [data-entity-modal-trigger]/[data-modal-ajax-form] contract as
      * edit()/update() above (see partials/entity-edit-modal.blade.php) — fetched as a fragment,
@@ -654,7 +684,7 @@ class UserAssignmentController extends Controller
         Gate::authorize('releaseRegion', $target);
 
         $level = $target->role?->level();
-        abort_unless(in_array($level, ['divisi', 'uni', 'daerah', 'gereja'], true), 404);
+        abort_unless(in_array($level, ['divisi', 'uni', 'daerah', 'gereja', 'institusi'], true), 404);
 
         $actor = $request->user();
 
@@ -668,18 +698,21 @@ class UserAssignmentController extends Controller
                 'uni' => __('common.union'),
                 'daerah' => __('common.conference'),
                 'gereja' => __('common.church'),
+                'institusi' => __('common.institution'),
             },
             'currentRegionName' => match ($level) {
                 'divisi' => $target->division?->name,
                 'uni' => $target->union?->name,
                 'daerah' => $target->conference?->name,
                 'gereja' => $target->church?->name,
+                'institusi' => $target->institution?->name,
             },
             'currentScopeId' => match ($level) {
                 'divisi' => $target->division_id,
                 'uni' => $target->union_id,
                 'daerah' => $target->conference_id,
                 'gereja' => $target->church_id,
+                'institusi' => $target->institution_id,
             },
             'scopeOptions' => $this->regionScopeOptionsForLevel($actor, $level),
         ]);
@@ -688,7 +721,7 @@ class UserAssignmentController extends Controller
     public function updateRegion(Request $request, User $target): Response
     {
         $level = $target->role?->level();
-        abort_unless(in_array($level, ['divisi', 'uni', 'daerah', 'gereja'], true), 404);
+        abort_unless(in_array($level, ['divisi', 'uni', 'daerah', 'gereja', 'institusi'], true), 404);
 
         $data = $request->validate(['scope_id' => ['nullable', 'string']]);
         $scopeId = ($data['scope_id'] ?? '') !== '' ? (int) $data['scope_id'] : null;
@@ -710,6 +743,7 @@ class UserAssignmentController extends Controller
             'uni' => $target->union?->name,
             'daerah' => $target->conference?->name,
             'gereja' => $target->church?->name,
+            'institusi' => $target->institution?->name,
         };
 
         $scopeColumn = match ($level) {
@@ -717,10 +751,15 @@ class UserAssignmentController extends Controller
             'uni' => 'union_id',
             'daerah' => 'conference_id',
             'gereja' => 'church_id',
+            'institusi' => 'institution_id',
         };
 
+        // Every scope column cleared, not just the 4 in the Divisi/Uni/Daerah/Gereja chain —
+        // institution_id included too now that Institusi is one of the levels this covers, so
+        // $scopeColumn is always the only one left set afterward regardless of which level this
+        // target sits at.
         $target->update(array_merge(
-            ['division_id' => null, 'union_id' => null, 'conference_id' => null, 'church_id' => null],
+            ['division_id' => null, 'union_id' => null, 'conference_id' => null, 'church_id' => null, 'institution_id' => null],
             [$scopeColumn => $scopeId]
         ));
 
@@ -729,6 +768,7 @@ class UserAssignmentController extends Controller
             'uni' => Union::find($scopeId)?->name,
             'daerah' => Conference::find($scopeId)?->name,
             'gereja' => Church::find($scopeId)?->name,
+            'institusi' => Institution::find($scopeId)?->name,
         };
 
         AuditLogger::log(
@@ -780,6 +820,12 @@ class UserAssignmentController extends Controller
                 ))
                 ->orderBy('name')->get()
                 ->map(fn ($c) => ['id' => $c->id, 'label' => "{$c->name} ({$c->conference?->name})"])->values()->all(),
+            // Unscoped by $assignedUnionIds — Institusi sits outside the Divisi/Uni/Daerah/Gereja
+            // tree entirely (no Union tie at all), matching index()'s own
+            // $scopeDataByLevel['institusi'] and the Institusi tab's own always-unscoped
+            // institutionAdmins/institutionPimpinan queries.
+            'institusi' => Institution::where('is_active', true)->orderBy('name')->get()
+                ->map(fn ($i) => ['id' => $i->id, 'label' => $i->name])->values()->all(),
             default => [],
         };
     }
@@ -833,6 +879,99 @@ class UserAssignmentController extends Controller
         AuditLogger::log('user.deleted', $target, "Menghapus akun \"{$target->name}\".");
 
         return $this->redirectToTab($request)->with('status', __('users.user_deleted', ['name' => $target->name]));
+    }
+
+    /**
+     * "Semua User"'s own bulk "Non-Aktifkan Terpilih" — same shared external-form + select-all
+     * checkbox pattern as Monitoring Antrean's Job Gagal/Batch Aktif/Batch Selesai (see
+     * partials/bulk-select.blade.php). Every target authorized up front, in one pass, before any
+     * row is actually touched — one target failing toggleActive (e.g. it's the actor's own row,
+     * already excluded from this tab's own list but not a route param this endpoint can't be hit
+     * with directly) aborts the whole batch rather than leaving it half-applied, same as
+     * releaseRegionBulk()'s own shape above.
+     */
+    public function deactivateBulk(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'ids' => ['required', 'array'],
+            'ids.*' => ['integer'],
+        ]);
+
+        $targets = User::whereIn('id', $data['ids'])->get();
+
+        foreach ($targets as $target) {
+            Gate::authorize('toggleActive', $target);
+        }
+
+        User::whereIn('id', $targets->pluck('id'))->update(['is_active' => false]);
+
+        foreach ($targets as $target) {
+            AuditLogger::log('user.deactivated', $target, "Menonaktifkan akun \"{$target->name}\" (aksi massal).");
+        }
+
+        return $this->redirectToTab($request)->with('status', __('users.deactivated_bulk', ['count' => $targets->count()]));
+    }
+
+    /** "Semua User"'s own bulk "Hapus Terpilih" — see deactivateBulk()'s own doc comment above for the shared shape. */
+    public function destroyBulk(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'ids' => ['required', 'array'],
+            'ids.*' => ['integer'],
+        ]);
+
+        $targets = User::whereIn('id', $data['ids'])->get();
+
+        foreach ($targets as $target) {
+            Gate::authorize('delete', $target);
+        }
+
+        $count = $targets->count();
+
+        foreach ($targets as $target) {
+            AuditLogger::log('user.deleted', $target, "Menghapus akun \"{$target->name}\" (aksi massal).");
+            $target->delete();
+        }
+
+        return $this->redirectToTab($request)->with('status', __('users.deleted_bulk', ['count' => $count]));
+    }
+
+    /**
+     * "Semua User"'s own bulk "Kirim Ulang OTP" — see deactivateBulk()'s own doc comment above
+     * for the shared bulk-select shape. Silently drops any already-verified id from the
+     * selection (rather than aborting the whole batch on one, the way the singular resendOtp()
+     * above rejects a single already-verified target with its own 422) since a broad
+     * "select all" click plausibly catches some verified accounts too — that's an expected,
+     * harmless mismatch here, not a mistake worth failing the batch over. Synchronous per
+     * account, same as the singular action (no queue) — fine at this list's realistic scale, but
+     * a genuinely large selection would be slow to send this way.
+     */
+    public function resendOtpBulk(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'ids' => ['required', 'array'],
+            'ids.*' => ['integer'],
+        ]);
+
+        $targets = User::whereIn('id', $data['ids'])->whereNull('email_verified_at')->get();
+
+        foreach ($targets as $target) {
+            Gate::authorize('resendOtp', $target);
+        }
+
+        if ($targets->isEmpty()) {
+            return $this->redirectToTab($request)->with('status', __('users.otp_resend_bulk_none'));
+        }
+
+        $sentCount = 0;
+
+        foreach ($targets as $target) {
+            if ($target->sendVerificationOtp()) {
+                $sentCount++;
+            }
+        }
+
+        return $this->redirectToTab($request)->with('status', __('users.otp_resent_bulk', ['count' => $sentCount, 'total' => $targets->count()]));
     }
 
     public function restore(User $target): RedirectResponse

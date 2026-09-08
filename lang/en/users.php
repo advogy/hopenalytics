@@ -27,7 +27,7 @@ return [
     'no_admin_group_empty' => 'Everything already has an admin.',
     'no_admin_hint' => 'To assign an admin, find the person on the "All Users" tab and use the "Make Admin / Leader" button.',
 
-    'search_placeholder' => 'Search name or email…',
+    'search_placeholder' => 'Search name, email, or region…',
     'col_user' => 'User',
     'col_registered_at' => 'Registered On',
     'sort_name_asc' => 'Name (A-Z)',
@@ -38,6 +38,7 @@ return [
     'sort_date_asc' => 'Registered (Oldest)',
     'filter_verification_all' => 'All Accounts',
     'filter_role_all' => 'All Roles',
+    'filter_institution_all' => 'All Institutions',
     'col_role_scope' => 'Role & Region',
     'promote_action' => 'Make Admin / Leader',
     'promote_modal_title' => 'Make Admin / Leader',
@@ -83,6 +84,14 @@ return [
     'verified' => 'Verified',
     'pending_verification' => 'Pending Verification',
 
+    'select_all' => 'Select all',
+    'deactivate_selected' => 'Deactivate Selected',
+    'deactivate_selected_confirm' => 'Deactivate :count selected account(s)?',
+    'delete_selected' => 'Delete Selected',
+    'delete_selected_confirm' => 'Delete :count selected account(s)? This action cannot be undone.',
+    'resend_otp_selected' => 'Resend OTP to Selected',
+    'resend_otp_selected_confirm' => 'Resend the OTP to :count selected account(s)?',
+
     // Flash messages.
     'assigned' => '":name" was assigned successfully.',
     'role_revoked' => 'The role for ":name" has been revoked.',
@@ -97,4 +106,8 @@ return [
     'user_status_changed' => '":name" has been :status.',
     'otp_resent_to' => 'A new OTP code has been sent to :email.',
     'otp_resend_failed' => 'The OTP code was generated, but the email to :email failed to send right now. Please try again in a moment.',
+    'deactivated_bulk' => ':count account(s) deactivated successfully.',
+    'deleted_bulk' => ':count account(s) deleted successfully.',
+    'otp_resent_bulk' => ':count of :total OTP(s) resent successfully.',
+    'otp_resend_bulk_none' => 'None of the selected accounts are still pending verification.',
 ];

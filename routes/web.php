@@ -336,6 +336,9 @@ Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group
         Route::post('/{target}/toggle-active', [UserAssignmentController::class, 'toggleActive'])->name('toggle-active');
         Route::post('/{target}/resend-otp', [UserAssignmentController::class, 'resendOtp'])->name('resend-otp');
         Route::delete('/{target}', [UserAssignmentController::class, 'destroy'])->name('destroy');
+        Route::post('/deactivate-bulk', [UserAssignmentController::class, 'deactivateBulk'])->name('deactivate-bulk');
+        Route::post('/destroy-bulk', [UserAssignmentController::class, 'destroyBulk'])->name('destroy-bulk');
+        Route::post('/resend-otp-bulk', [UserAssignmentController::class, 'resendOtpBulk'])->name('resend-otp-bulk');
     });
 
     Route::middleware('can:manage-deleted-users')->prefix('admin/users')->name('admin.users.')->group(function () {
