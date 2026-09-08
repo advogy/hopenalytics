@@ -211,23 +211,17 @@ class UserAssignmentController extends Controller
         $staffSelectedUnionId = $request->query('staff_union_id');
         $staffSelectedConferenceId = $request->query('staff_conference_id');
         [$staffUnionOptions, $staffConferenceOptions] = $this->regionFilterOptions($staffSelectedUnionId);
-        // Institusi sits outside the Divisi/Uni/Daerah/Gereja tree entirely (no Union tie at all
-        // — see index()'s own "Institusi" comment further down), so it gets its own separate
-        // filter rather than folding into the Uni/Daerah cascade above; only ever meaningful for
-        // a $canManageInstitutions actor, matching every other institution-related gate on this
-        // page.
-        $staffSelectedInstitutionId = $request->query('staff_institution_id');
-        $staffInstitutionOptions = $canManageInstitutions
-            ? Institution::where('is_active', true)->orderBy('name')->get()
-            : collect();
 
         // Same region-scoping (applyAllUsersScope()) and self-exclusion as "Semua User" — see
         // that query's own doc comment above — narrowed to role-assigned, non-SuperAdmin
         // accounts only, plus this tab's own union_id/conference_id filter. The union/conference
         // check walks the same relation chains proven correct elsewhere in this controller
         // (union_id directly for a Uni-level account, conference.union_id for a Daerah-level
-        // one, church.conference.union_id for a Gereja-level one) rather than a new, unverified
-        // shape.
+        // one, church.conference.union_id for a Gereja-level one) — institution.union_id/
+        // institution.conference_id added to both per the user's own correction: Institusi does
+        // sit under Uni/Daerah after all (the institutions table itself carries both columns),
+        // so its own separate filter dropdown was redundant — this same Uni/Daerah cascade
+        // already covers it once that relation is walked too.
         $staffUsersBase = User::query()
             ->whereNotNull('role')
             ->where('role', '!=', UserRole::SuperAdmin->value)
@@ -238,12 +232,13 @@ class UserAssignmentController extends Controller
                 fn ($q2) => $q2->where('union_id', $staffSelectedUnionId)
                     ->orWhereHas('conference', fn ($q3) => $q3->where('union_id', $staffSelectedUnionId))
                     ->orWhereHas('church.conference', fn ($q3) => $q3->where('union_id', $staffSelectedUnionId))
+                    ->orWhereHas('institution', fn ($q3) => $q3->where('union_id', $staffSelectedUnionId))
             ))
             ->when($staffSelectedConferenceId, fn ($q) => $q->where(
                 fn ($q2) => $q2->where('conference_id', $staffSelectedConferenceId)
                     ->orWhereHas('church', fn ($q3) => $q3->where('conference_id', $staffSelectedConferenceId))
-            ))
-            ->when($staffSelectedInstitutionId, fn ($q) => $q->where('institution_id', $staffSelectedInstitutionId));
+                    ->orWhereHas('institution', fn ($q3) => $q3->where('conference_id', $staffSelectedConferenceId))
+            ));
 
         $staffUsersTotal = (clone $staffUsersBase)->count();
 
@@ -476,8 +471,6 @@ class UserAssignmentController extends Controller
             'staffSelectedConferenceId' => $staffSelectedConferenceId,
             'staffUnionOptions' => $staffUnionOptions,
             'staffConferenceOptions' => $staffConferenceOptions,
-            'staffSelectedInstitutionId' => $staffSelectedInstitutionId,
-            'staffInstitutionOptions' => $staffInstitutionOptions,
             'roles' => $roles,
             'scopeDataByLevel' => $scopeDataByLevel,
             'canManageInstitutions' => $canManageInstitutions,

@@ -38,7 +38,6 @@ return [
     'sort_date_asc' => 'Registered (Oldest)',
     'filter_verification_all' => 'All Accounts',
     'filter_role_all' => 'All Roles',
-    'filter_institution_all' => 'All Institutions',
     'col_role_scope' => 'Role & Region',
     'promote_action' => 'Make Admin / Leader',
     'promote_modal_title' => 'Make Admin / Leader',

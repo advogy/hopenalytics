@@ -38,7 +38,6 @@ return [
     'sort_date_asc' => 'Tanggal Daftar (Terlama)',
     'filter_verification_all' => 'Semua Akun',
     'filter_role_all' => 'Semua Peran',
-    'filter_institution_all' => 'Semua Institusi',
     'col_role_scope' => 'Peran & Wilayah',
     'promote_action' => 'Jadikan Admin / Pimpinan',
     'promote_modal_title' => 'Jadikan Admin / Pimpinan',

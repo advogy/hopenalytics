@@ -646,7 +646,7 @@
              list, per the user's explicit call — same filter model as "Semua User" (search +
              role + sort), plus a Uni -> Daerah cascading region filter (same partial "Belum Ada
              Admin" already uses) since every row here has a real region, unlike "Semua User". --}}
-        <x-filter-card :clear-url="($staffSearch !== '' || $staffRole !== 'all' || $staffSelectedUnionId || $staffSelectedConferenceId || $staffSelectedInstitutionId || $staffSort !== 'name_asc') ? route('admin.users.index', ['tab' => 'admin']) : null">
+        <x-filter-card :clear-url="($staffSearch !== '' || $staffRole !== 'all' || $staffSelectedUnionId || $staffSelectedConferenceId || $staffSort !== 'name_asc') ? route('admin.users.index', ['tab' => 'admin']) : null">
             <form method="GET" id="staff-filter-form" class="flex flex-wrap items-center gap-3">
                 <input type="hidden" name="tab" data-tab-hidden-field value="{{ $activeTab }}">
                 <label class="relative block w-full max-w-sm flex-1">
@@ -685,25 +685,6 @@
                     'unionFieldName' => 'staff_union_id',
                     'conferenceFieldName' => 'staff_conference_id',
                 ])
-
-                @if ($canManageInstitutions)
-                    {{-- Institusi sits outside the Divisi/Uni/Daerah/Gereja tree entirely (no
-                         Union tie at all), so it gets its own separate filter rather than folding
-                         into the Uni/Daerah cascade above. --}}
-                    <label class="relative min-w-[200px]">
-                        <select
-                            name="staff_institution_id"
-                            onchange="this.form.submit()"
-                            class="w-full appearance-none rounded-full border border-black/10 bg-slate-50 py-2.5 pr-10 pl-4 text-sm font-medium text-slate-700 shadow-sm focus:border-blue-500 focus:bg-white focus:outline-none dark:border-white/10 dark:bg-slate-800 dark:text-slate-200"
-                        >
-                            <option value="" @selected(! $staffSelectedInstitutionId)>{{ __('users.filter_institution_all') }}</option>
-                            @foreach ($staffInstitutionOptions as $institutionOption)
-                                <option value="{{ $institutionOption->id }}" @selected((string) $staffSelectedInstitutionId === (string) $institutionOption->id)>{{ $institutionOption->name }}</option>
-                            @endforeach
-                        </select>
-                        <x-icon name="chevron-down" class="pointer-events-none absolute top-1/2 right-3.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-                    </label>
-                @endif
 
                 <label class="relative min-w-[200px]">
                     <select
