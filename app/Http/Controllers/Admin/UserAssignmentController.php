@@ -74,47 +74,70 @@ class UserAssignmentController extends Controller
 
         abort_if($targetLevel === null, 403);
 
-        $search = trim((string) $request->query('search'));
-        $sort = in_array($request->query('sort'), ['name_asc', 'name_desc', 'date_asc', 'date_desc'], true)
-            ? $request->query('sort')
-            : 'name_asc';
-        $pendingVerification = $request->boolean('pending_verification');
+        // "Semua User" tab's own filter/sort state — kept the all_* prefix (mirroring Kelola
+        // Akun's own per-tab search_uni/search_daerah/etc. convention) even though this is now
+        // the only filterable tab on the page, so a future second tab can't collide with it.
+        $allSearch = trim((string) $request->query('all_search'));
+        $allSort = in_array($request->query('all_sort'), ['name_asc', 'name_desc', 'date_asc', 'date_desc'], true)
+            ? $request->query('all_sort')
+            : 'date_desc';
+        $allVerification = in_array($request->query('all_verification'), ['pending', 'verified'], true)
+            ? $request->query('all_verification')
+            : 'all';
+        // 'all' | 'unassigned' (role === null) | one of UserRole's own values — validated
+        // against every role that exists, not just the ones $allRoleOptions below actually
+        // offers, so a stale/manually-edited URL from before a permission change (or a
+        // link shared by a more broadly-scoped admin) degrades to "no filter" instead of a
+        // silently-wrong empty result.
+        $allRoleValues = array_map(fn (UserRole $r) => $r->value, UserRole::cases());
+        $allRole = $request->query('all_role') === 'unassigned' || in_array($request->query('all_role'), $allRoleValues, true)
+            ? $request->query('all_role')
+            : 'all';
 
-        // Global-level actors (superadmin/admin_global) see everyone — there's no narrower
-        // "their own region" to filter by. A scoped Admin Nasional only sees unassigned members
-        // who self-reported a union within their own assigned set. Admin Uni/Daerah only see
-        // members who self-reported (or were previously assigned) a union/conference matching
-        // their own, via the "Lengkapi Profil" step / Wilayah section (see
-        // CompleteProfileController) — anyone who skipped it stays invisible to regional admins
-        // until they fill it in. The report itself lives on the member's own linked Person (not
-        // the User row — see CompleteProfileController::store()), so every branch below reaches
-        // through that relation; a Person may report a bare union_id OR a conference_id (never
-        // both — see PersonController::resolveOrgScope()), so matching "does this person fall
-        // under Union X" always checks both, mirroring Person::scopeVisibleTo()'s own shape.
-        $unassigned = User::query()
-            ->whereNull('role')
-            ->when(
-                $targetLevel === 'divisi' && $actor->role === UserRole::AdminNasional,
-                fn ($q) => $q->whereHas('person', fn ($q2) => $q2
-                    ->whereIn('union_id', $assignedUnionIds)
-                    ->orWhereHas('conference', fn ($q3) => $q3->whereIn('union_id', $assignedUnionIds)))
-            )
-            ->when($targetLevel === 'uni', fn ($q) => $q->whereHas('person', fn ($q2) => $q2
-                ->whereHas('union', fn ($q3) => $q3->where('division_id', $actor->division_id))
-                ->orWhereHas('conference.union', fn ($q3) => $q3->where('division_id', $actor->division_id))))
-            ->when($targetLevel === 'daerah', fn ($q) => $q->whereHas('person', fn ($q2) => $q2
-                ->where('union_id', $actor->union_id)
-                ->orWhereHas('conference', fn ($q3) => $q3->where('union_id', $actor->union_id))))
-            ->when($targetLevel === 'gereja', fn ($q) => $q->whereHas('person', fn ($q2) => $q2->where('conference_id', $actor->conference_id)))
-            ->when($search, fn ($q) => $q->where(
-                fn ($q2) => $q2->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%")
+        // "Semua User" — every registered user (any role, or none yet), scoped to the same
+        // region reach as every other tab on this page rather than left wide open: a global
+        // actor (SuperAdmin/Admin Global, or an unrestricted Admin Nasional) sees everyone, a
+        // scoped Admin Nasional sees their own assigned Unions' subtree, and an Admin
+        // Divisi/Uni/Daerah sees their own subtree — see applyAllUsersScope() for the actual
+        // relation chains: a Person-based check for role=null members (who self-report their
+        // union/conference via "Lengkapi Profil" rather than having it on their own User row —
+        // see CompleteProfileController) and a relation-based check for role-assigned ones
+        // combined into one condition there.
+        $allUsersBase = User::query()
+            // Every row-action here is already excluded for the actor's own row (see
+            // row-actions.blade.php's own auth()->user()->is($user) guard) — leaving the row
+            // itself in the list only ever showed a "this is you" placeholder where actions
+            // would go, so it's dropped outright instead per the user's explicit call.
+            ->whereKeyNot($actor->id)
+            ->when(! $isGlobalAccess, fn ($q) => $this->applyAllUsersScope($q, $actor, $targetLevel, $assignedUnionIds, $canManageInstitutions));
+
+        $allUsersTotal = (clone $allUsersBase)->count();
+        // Same scope as $allUsersTotal above (the actor's own full reach, independent of
+        // whatever filter happens to be currently applied) — a row of stat cards next to it, per
+        // the user's explicit call.
+        $allUsersUnverifiedTotal = (clone $allUsersBase)->whereNull('email_verified_at')->count();
+        // The old "Belum Ditugaskan" tab's own headline number, now surfaced as a stat card here
+        // instead of its own tab (see the region-scoped query it used to run — role === null +
+        // this same scope, still exactly what applyAllUsersScope() covers for these users too).
+        $allUsersUnassignedTotal = (clone $allUsersBase)->whereNull('role')->count();
+
+        $allUsers = (clone $allUsersBase)
+            // Eager-loaded for the "Peran & Wilayah" column's own $scopeDisplayFor() lookup (see
+            // index.blade.php's @php block) — every relation that closure might reach through,
+            // matching $trashedUsers' own eager-load list above.
+            ->with(['division', 'union.division', 'conference.union', 'church.conference', 'institution', 'assignedUnions'])
+            ->when($allSearch, fn ($q) => $q->where(
+                fn ($q2) => $q2->where('name', 'like', "%{$allSearch}%")->orWhere('email', 'like', "%{$allSearch}%")
             ))
-            ->when($pendingVerification, fn ($q) => $q->whereNull('email_verified_at'))
-            ->when($sort === 'name_asc', fn ($q) => $q->orderBy('name'))
-            ->when($sort === 'name_desc', fn ($q) => $q->orderByDesc('name'))
-            ->when($sort === 'date_asc', fn ($q) => $q->orderBy('created_at'))
-            ->when($sort === 'date_desc', fn ($q) => $q->orderByDesc('created_at'))
-            ->paginate(25)
+            ->when($allVerification === 'pending', fn ($q) => $q->whereNull('email_verified_at'))
+            ->when($allVerification === 'verified', fn ($q) => $q->whereNotNull('email_verified_at'))
+            ->when($allRole === 'unassigned', fn ($q) => $q->whereNull('role'))
+            ->when($allRole !== 'all' && $allRole !== 'unassigned', fn ($q) => $q->where('role', $allRole))
+            ->when($allSort === 'name_asc', fn ($q) => $q->orderBy('name'))
+            ->when($allSort === 'name_desc', fn ($q) => $q->orderByDesc('name'))
+            ->when($allSort === 'date_asc', fn ($q) => $q->orderBy('created_at'))
+            ->when($allSort === 'date_desc', fn ($q) => $q->orderByDesc('created_at'))
+            ->paginate(50, ['*'], 'all_page')
             // withQueryString() alone only preserves whatever 'tab' happened to already be in
             // the CURRENT url — which is nothing at all on this tab's own default landing state
             // (it's the fallback, never written into the query string), and can even be a
@@ -122,56 +145,117 @@ class UserAssignmentController extends Controller
             // touch the url) and then clicked this table's own pagination link. Explicitly
             // appending 'tab' after withQueryString() overrides just that one key so this tab's
             // own pager always points back to itself, regardless of what the url said before —
-            // confirmed live: without this a "Belum Ditugaskan" page-2 click could land back on
-            // whichever tab's query string was last written (e.g. Saran Admin's own).
+            // confirmed live: without this a page-2 click could land back on whichever tab's
+            // query string was last written (e.g. Saran Admin's own).
             ->withQueryString()
-            ->appends(['tab' => 'unassigned']);
+            ->appends(['tab' => 'all']);
 
-        if ($canBootstrapAnyLevel) {
-            $adminRoleValues = array_map(fn ($level) => $this->adminRoleForLevel($level)->value, $bootstrapLevels);
-            $pimpinanRoleValues = array_map(fn ($level) => $this->pimpinanRoleForLevel($level)->value, $bootstrapLevels);
-
-            $scopeRelations = ['division', 'union.division', 'conference.union', 'church.conference.union', 'assignedUnions'];
-
-            // Unrestricted for SuperAdmin/Admin Global ($assignedUnionIds === null). A scoped
-            // Admin Nasional only sees admin/pimpinan accounts whose own scope (directly, or via
-            // their Daerah/Gereja parent) falls inside their assigned Union set — otherwise
-            // they'd see (though never be able to act on, per UserPolicy::manageable()) accounts
-            // belonging to Unions outside their remit.
-            $bootstrapUsersQuery = fn (array $roleValues) => User::whereIn('role', $roleValues)
-                ->when($assignedUnionIds !== null, fn ($q) => $q->where(
-                    fn ($q2) => $q2->whereIn('union_id', $assignedUnionIds)
-                        ->orWhereHas('conference', fn ($q3) => $q3->whereIn('union_id', $assignedUnionIds))
-                        ->orWhereHas('church.conference', fn ($q3) => $q3->whereIn('union_id', $assignedUnionIds))
-                ))
-                ->with($scopeRelations);
-
-            $adminUsers = $bootstrapUsersQuery($adminRoleValues)->orderBy('name')->get();
-            $pimpinanUsers = $bootstrapUsersQuery($pimpinanRoleValues)->orderBy('name')->get();
-        } else {
-            $adminRole = $this->adminRoleForLevel($targetLevel);
-            $pimpinanRole = $this->pimpinanRoleForLevel($targetLevel);
-
-            $adminUsers = $this->assignedUsersQuery($actor, $targetLevel, [$adminRole->value])->orderBy('name')->get();
-            $pimpinanUsers = $this->assignedUsersQuery($actor, $targetLevel, [$pimpinanRole->value])->orderBy('name')->get();
-        }
-
-        $institutionAdmins = $canManageInstitutions
-            ? User::where('role', UserRole::AdminInstitusi->value)->with('institution')->orderBy('name')->get()
-            : collect();
-        $institutionPimpinan = $canManageInstitutions
-            ? User::where('role', UserRole::PimpinanInstitusi->value)->with('institution')->orderBy('name')->get()
-            : collect();
         $institutionOptions = $canManageInstitutions
             ? Institution::where('is_active', true)->orderBy('name')->get()
             : collect();
 
-        // The role dropdown on "Belum Ditugaskan" and the scope options it reveals per role
-        // (see resources/views/partials/region-fields.blade.php's sibling assign form) —
-        // merged here so institusi is just two more options rather than a separate flow.
+        // The role dropdown on "Semua User"'s own "Jadikan Admin / Pimpinan" modal (see
+        // index.blade.php's #promote-modal) and the scope options it reveals per role — merged
+        // here so institusi is just two more options rather than a separate flow.
         $roles = $canBootstrapAnyLevel
             ? collect($bootstrapLevels)->flatMap(fn ($level) => [$this->adminRoleForLevel($level), $this->pimpinanRoleForLevel($level)])->all()
             : $this->rolesForLevel($targetLevel);
+
+        // "Semua User" tab's own role FILTER options — deliberately not $roles above (which is
+        // "what this actor may promote someone INTO", one level below their own — see that
+        // variable's own comment) but "every role this actor can actually SEE" in that tab's own
+        // list: their own level's admin/pimpinan pair too (applyAllUsersScope() already surfaces
+        // peer-level accounts within the actor's own region, e.g. a fellow Admin Uni in the same
+        // Divisi — see its 'uni' branch), plus everything below it down to Gereja, per the user's
+        // explicit call ("kalau di admin uni, muncul ... uni, daerah, dan seterusnya yg ada
+        // dibawahnya"). A canBootstrapAnyLevel actor's reach already spans everything
+        // applyAllUsersScope() would ever return for them, so the full role list stays
+        // unrestricted for those rather than narrowed to $bootstrapLevels only.
+        $allRoleOptions = $canBootstrapAnyLevel
+            ? UserRole::cases()
+            : collect(['divisi', 'uni', 'daerah', 'gereja'])
+                ->skipUntil(fn ($level) => $level === $actor->role?->level())
+                ->flatMap(fn ($level) => $this->rolesForLevel($level))
+                ->all();
+
+        // "Daftar Admin & Pimpinan" — the merged Admin/Pemimpin/Institusi tabs, per the user's
+        // explicit call ("gabung tab Daftar Admin, Daftar Pimpinan, Institusi"). Same filter
+        // model as "Semua User" (search + role + sort — see $allRoleOptions above, reused
+        // directly here minus SuperAdmin, who was never part of any of the 3 merged tabs to
+        // begin with), plus a Uni -> Daerah cascading region filter (regionFilterOptions(),
+        // already used the same way by "Belum Ada Admin") since this tab is specifically about
+        // regionally-scoped staff — unlike "Semua User", which spans every account including
+        // ones with no region at all.
+        $staffSearch = trim((string) $request->query('staff_search'));
+        // No date_asc/date_desc here (unlike "Semua User"'s own sort) — this tab doesn't show a
+        // "Tanggal Daftar" column at all, per the user's explicit call. region_asc/region_desc
+        // (see the query below) sorts by whichever Wilayah name each row's own level actually
+        // has — one option that works across the mixed levels this list holds, rather than a
+        // separate "sort by Uni"/"sort by Daerah"/... option per level, per the user's own pick.
+        $staffSort = in_array($request->query('staff_sort'), ['name_asc', 'name_desc', 'region_asc', 'region_desc'], true)
+            ? $request->query('staff_sort')
+            : 'name_asc';
+        $staffRoleOptions = collect($allRoleOptions)->reject(fn (UserRole $r) => $r === UserRole::SuperAdmin)->values();
+        $staffRoleValues = $staffRoleOptions->map(fn (UserRole $r) => $r->value)->all();
+        $staffRole = in_array($request->query('staff_role'), $staffRoleValues, true) ? $request->query('staff_role') : 'all';
+        $staffSelectedUnionId = $request->query('staff_union_id');
+        $staffSelectedConferenceId = $request->query('staff_conference_id');
+        [$staffUnionOptions, $staffConferenceOptions] = $this->regionFilterOptions($staffSelectedUnionId);
+
+        // Same region-scoping (applyAllUsersScope()) and self-exclusion as "Semua User" — see
+        // that query's own doc comment above — narrowed to role-assigned, non-SuperAdmin
+        // accounts only, plus this tab's own union_id/conference_id filter. The union/conference
+        // check walks the same relation chains proven correct elsewhere in this controller
+        // (union_id directly for a Uni-level account, conference.union_id for a Daerah-level
+        // one, church.conference.union_id for a Gereja-level one) rather than a new, unverified
+        // shape.
+        $staffUsersBase = User::query()
+            ->whereNotNull('role')
+            ->where('role', '!=', UserRole::SuperAdmin->value)
+            ->whereKeyNot($actor->id)
+            ->when(! $isGlobalAccess, fn ($q) => $this->applyAllUsersScope($q, $actor, $targetLevel, $assignedUnionIds, $canManageInstitutions))
+            ->when($staffRole !== 'all', fn ($q) => $q->where('role', $staffRole))
+            ->when($staffSelectedUnionId, fn ($q) => $q->where(
+                fn ($q2) => $q2->where('union_id', $staffSelectedUnionId)
+                    ->orWhereHas('conference', fn ($q3) => $q3->where('union_id', $staffSelectedUnionId))
+                    ->orWhereHas('church.conference', fn ($q3) => $q3->where('union_id', $staffSelectedUnionId))
+            ))
+            ->when($staffSelectedConferenceId, fn ($q) => $q->where(
+                fn ($q2) => $q2->where('conference_id', $staffSelectedConferenceId)
+                    ->orWhereHas('church', fn ($q3) => $q3->where('conference_id', $staffSelectedConferenceId))
+            ));
+
+        $staffUsersTotal = (clone $staffUsersBase)->count();
+
+        $staffUsers = (clone $staffUsersBase)
+            // Eager-loaded for the "Peran & Wilayah" column's own $scopeDisplayFor() lookup, same
+            // as "Semua User"'s own copy of this eager-load list above.
+            ->with(['division', 'union.division', 'conference.union', 'church.conference', 'institution', 'assignedUnions'])
+            ->when($staffSearch, fn ($q) => $q->where(
+                fn ($q2) => $q2->where('name', 'like', "%{$staffSearch}%")->orWhere('email', 'like', "%{$staffSearch}%")
+            ))
+            ->when($staffSort === 'name_asc', fn ($q) => $q->orderBy('name'))
+            ->when($staffSort === 'name_desc', fn ($q) => $q->orderByDesc('name'))
+            // "Wilayah" itself lives on a different table depending on each row's own level
+            // (division_id -> divisions.name for a Divisi admin, union_id -> unions.name for a
+            // Uni admin, and so on) — a correlated subquery per column, COALESCE'd together,
+            // reads whichever one is actually set on that row without needing a join (which
+            // would risk an ambiguous "id"/"name" column against every whereHas() above already
+            // scoping this same query).
+            ->when(in_array($staffSort, ['region_asc', 'region_desc'], true), fn ($q) => $q->orderByRaw(
+                'COALESCE('
+                    .'(SELECT name FROM divisions WHERE divisions.id = users.division_id), '
+                    .'(SELECT name FROM unions WHERE unions.id = users.union_id), '
+                    .'(SELECT name FROM conferences WHERE conferences.id = users.conference_id), '
+                    .'(SELECT name FROM churches WHERE churches.id = users.church_id), '
+                    .'(SELECT name FROM institutions WHERE institutions.id = users.institution_id)'
+                .') '.($staffSort === 'region_desc' ? 'DESC' : 'ASC')
+            ))
+            ->paginate(50, ['*'], 'staff_page')
+            // See the 'all' paginator's own comment above — same reasoning, applies here
+            // identically.
+            ->withQueryString()
+            ->appends(['tab' => 'admin']);
 
         $scopeDataByLevel = [];
 
@@ -253,7 +337,7 @@ class UserAssignmentController extends Controller
                 ->with(['user', 'person', 'conference.union'])
                 ->orderBy('created_at')
                 ->paginate(20, ['*'], 'saran_page')
-                // See the 'unassigned' paginator's own comment above — same reasoning, this tab's
+                // See the 'all' paginator's own comment above — same reasoning, this tab's
                 // pager must always point back to 'saran' regardless of whatever 'tab' the url
                 // happened to carry before this link was generated.
                 ->withQueryString()
@@ -332,7 +416,7 @@ class UserAssignmentController extends Controller
                 ->orderBy('name')->get(['id', 'name', 'slug'])
             : collect();
 
-        $activeTab = in_array($request->query('tab'), ['admin', 'pemimpin', 'institusi', 'terhapus', 'saran', 'belum-admin'], true) ? $request->query('tab') : 'unassigned';
+        $activeTab = in_array($request->query('tab'), ['admin', 'terhapus', 'saran', 'belum-admin'], true) ? $request->query('tab') : 'all';
 
         // Soft-deleted (destroy()'d) users still physically exist and can silently block a
         // restrictOnDelete FK elsewhere (Union/Conference/Church/Institution) — this is where
@@ -345,17 +429,28 @@ class UserAssignmentController extends Controller
         return view('admin.users.index', [
             'targetLevel' => $targetLevel,
             'activeTab' => $activeTab,
-            'search' => $search,
-            'sort' => $sort,
-            'pendingVerification' => $pendingVerification,
-            'unassigned' => $unassigned,
-            'adminUsers' => $adminUsers,
-            'pimpinanUsers' => $pimpinanUsers,
+            'allUsers' => $allUsers,
+            'allUsersTotal' => $allUsersTotal,
+            'allUsersUnverifiedTotal' => $allUsersUnverifiedTotal,
+            'allUsersUnassignedTotal' => $allUsersUnassignedTotal,
+            'allSearch' => $allSearch,
+            'allSort' => $allSort,
+            'allVerification' => $allVerification,
+            'allRole' => $allRole,
+            'allRoleOptions' => $allRoleOptions,
+            'staffUsers' => $staffUsers,
+            'staffUsersTotal' => $staffUsersTotal,
+            'staffSearch' => $staffSearch,
+            'staffSort' => $staffSort,
+            'staffRole' => $staffRole,
+            'staffRoleOptions' => $staffRoleOptions,
+            'staffSelectedUnionId' => $staffSelectedUnionId,
+            'staffSelectedConferenceId' => $staffSelectedConferenceId,
+            'staffUnionOptions' => $staffUnionOptions,
+            'staffConferenceOptions' => $staffConferenceOptions,
             'roles' => $roles,
             'scopeDataByLevel' => $scopeDataByLevel,
             'canManageInstitutions' => $canManageInstitutions,
-            'institutionAdmins' => $institutionAdmins,
-            'institutionPimpinan' => $institutionPimpinan,
             'institutionOptions' => $institutionOptions,
             'isSuperAdmin' => $isSuperAdmin,
             'canBootstrapAnyLevel' => $canBootstrapAnyLevel,
@@ -444,8 +539,17 @@ class UserAssignmentController extends Controller
             "Menugaskan \"{$target->name}\" sebagai {$newRole->label()}".($scopeLabel ? " ({$scopeLabel})" : '').'.'
         );
 
-        return redirect()->route('admin.users.index', ['tab' => 'unassigned'])
-            ->with('status', __('users.assigned', ['name' => $target->name]));
+        // Only ever called from "Semua User"'s own "Jadikan Admin / Pimpinan" modal now (see
+        // row-actions' own trigger and the static #promote-modal in index.blade.php), so
+        // resolveUsersTab()'s 'all' fallback plus the all_* params below carry the actor's
+        // filter state back the same way every other action on this page already does.
+        return redirect()->route('admin.users.index', array_filter([
+            'tab' => $this->resolveUsersTab($request),
+            'all_search' => $request->input('all_search'),
+            'all_sort' => $request->input('all_sort'),
+            'all_verification' => $request->input('all_verification') !== 'all' ? $request->input('all_verification') : null,
+            'all_role' => $request->input('all_role') !== 'all' ? $request->input('all_role') : null,
+        ]))->with('status', __('users.assigned', ['name' => $target->name]));
     }
 
     public function revoke(Request $request, User $target): RedirectResponse
@@ -471,10 +575,22 @@ class UserAssignmentController extends Controller
 
         AuditLogger::log('user.revoked', $target, "Mencabut peran {$oldRole->label()} dari \"{$target->name}\".");
 
-        $tab = $wasInstitusi ? 'institusi' : ($wasReadOnly ? 'pemimpin' : 'admin');
+        // Historically always derived from the role being revoked, since the only existing
+        // caller (user-row.blade.php's own "Cabut" button, in the Admin/Pemimpin/Institusi
+        // tabs) never sent a 'tab' field at all — that fallback stays exactly as-is. "Semua
+        // User"'s own Cabut button (see index.blade.php, next to row-actions) sends tab=all
+        // explicitly, so it lands back there instead, same as every other action on this page.
+        $tab = $request->input('tab') === 'all'
+            ? 'all'
+            : ($wasInstitusi ? 'institusi' : ($wasReadOnly ? 'pemimpin' : 'admin'));
 
-        return redirect()->route('admin.users.index', ['tab' => $tab])
-            ->with('status', __('users.role_revoked', ['name' => $target->name]));
+        return redirect()->route('admin.users.index', array_filter([
+            'tab' => $tab,
+            'all_search' => $request->input('all_search'),
+            'all_sort' => $request->input('all_sort'),
+            'all_verification' => $request->input('all_verification') !== 'all' ? $request->input('all_verification') : null,
+            'all_role' => $request->input('all_role') !== 'all' ? $request->input('all_role') : null,
+        ]))->with('status', __('users.role_revoked', ['name' => $target->name]));
     }
 
     /**
@@ -520,9 +636,158 @@ class UserAssignmentController extends Controller
     }
 
     /**
+     * "Ganti Wilayah" — the modal form for swapping an already role-assigned Admin/Pimpinan
+     * Divisi/Uni/Daerah/Gereja's region for a different one of the same level, without going
+     * through releaseRegion() (clear) followed by a separate re-promote via "Semua User"'s own
+     * "Jadikan Admin / Pimpinan" modal (which also meant hunting the now-unassigned member back
+     * down in that tab first). Only offered
+     * for a role at one of those 4 levels — see row-actions.blade.php's own guard, which still
+     * falls back to the plain release-only form (releaseRegion() above) for a role === null
+     * target, since that scenario has no "level" here to pick a same-level replacement from.
+     *
+     * Reuses the exact same [data-entity-modal-trigger]/[data-modal-ajax-form] contract as
+     * edit()/update() above (see partials/entity-edit-modal.blade.php) — fetched as a fragment,
+     * dropped into Kelola Pengguna's shared modal.
+     */
+    public function editRegion(Request $request, User $target)
+    {
+        Gate::authorize('releaseRegion', $target);
+
+        $level = $target->role?->level();
+        abort_unless(in_array($level, ['divisi', 'uni', 'daerah', 'gereja'], true), 404);
+
+        $actor = $request->user();
+
+        return view('admin.users.change-region', [
+            'target' => $target,
+            'tab' => $this->resolveUsersTab($request),
+            'modal' => $request->boolean('modal'),
+            'level' => $level,
+            'levelLabel' => match ($level) {
+                'divisi' => __('common.division'),
+                'uni' => __('common.union'),
+                'daerah' => __('common.conference'),
+                'gereja' => __('common.church'),
+            },
+            'currentRegionName' => match ($level) {
+                'divisi' => $target->division?->name,
+                'uni' => $target->union?->name,
+                'daerah' => $target->conference?->name,
+                'gereja' => $target->church?->name,
+            },
+            'currentScopeId' => match ($level) {
+                'divisi' => $target->division_id,
+                'uni' => $target->union_id,
+                'daerah' => $target->conference_id,
+                'gereja' => $target->church_id,
+            },
+            'scopeOptions' => $this->regionScopeOptionsForLevel($actor, $level),
+        ]);
+    }
+
+    public function updateRegion(Request $request, User $target): Response
+    {
+        $level = $target->role?->level();
+        abort_unless(in_array($level, ['divisi', 'uni', 'daerah', 'gereja'], true), 404);
+
+        $data = $request->validate(['scope_id' => ['nullable', 'string']]);
+        $scopeId = ($data['scope_id'] ?? '') !== '' ? (int) $data['scope_id'] : null;
+
+        // Choosing "Tidak ada" (an empty scope_id) is really releaseRegion()'s own action —
+        // authorize it the same way that already does, rather than promote()'s (which requires
+        // a real, existing scope and would reject a null one outright). Choosing an actual
+        // region re-uses promote()'s own policy check unchanged, so the new region is held to
+        // exactly the same "does this fall within the actor's own reach" rule a normal
+        // assignment would be.
+        if ($scopeId === null) {
+            Gate::authorize('releaseRegion', $target);
+        } else {
+            Gate::authorize('promote', [$target, $target->role, $scopeId]);
+        }
+
+        $oldRegionName = match ($level) {
+            'divisi' => $target->division?->name,
+            'uni' => $target->union?->name,
+            'daerah' => $target->conference?->name,
+            'gereja' => $target->church?->name,
+        };
+
+        $scopeColumn = match ($level) {
+            'divisi' => 'division_id',
+            'uni' => 'union_id',
+            'daerah' => 'conference_id',
+            'gereja' => 'church_id',
+        };
+
+        $target->update(array_merge(
+            ['division_id' => null, 'union_id' => null, 'conference_id' => null, 'church_id' => null],
+            [$scopeColumn => $scopeId]
+        ));
+
+        $newRegionName = match ($level) {
+            'divisi' => Division::find($scopeId)?->name,
+            'uni' => Union::find($scopeId)?->name,
+            'daerah' => Conference::find($scopeId)?->name,
+            'gereja' => Church::find($scopeId)?->name,
+        };
+
+        AuditLogger::log(
+            'user.region_changed',
+            $target,
+            $newRegionName !== null
+                ? "Mengganti wilayah \"{$target->name}\" dari \"{$oldRegionName}\" menjadi \"{$newRegionName}\"."
+                : "Melepas wilayah \"{$oldRegionName}\" dari \"{$target->name}\"."
+        );
+
+        $message = $newRegionName !== null
+            ? __('users.region_changed', ['name' => $target->name, 'region' => $newRegionName])
+            : __('users.region_released', ['name' => $target->name]);
+
+        return $this->respondModalOrRedirect($request, 'admin.users.index', ['tab' => $this->resolveUsersTab($request)], 'status', $message);
+    }
+
+    /**
+     * Mirrors index()'s own $scopeDataByLevel-building for a single, already-known level
+     * (index() builds one per level it might need up front; this only ever needs the one
+     * level a specific target already sits at) — same canBootstrapAnyLevel vs. scoped-actor
+     * branching, same relations, so a scoped actor never sees (and never has authorized, per
+     * promote()'s own policy check on submit) a region outside their own reach here either.
+     */
+    private function regionScopeOptionsForLevel(User $actor, string $level): array
+    {
+        $isGlobalAccess = $actor->role?->hasGlobalAccess() ?? false;
+        $canBootstrapAnyLevel = $isGlobalAccess || $actor->role === UserRole::AdminNasional;
+        $assignedUnionIds = $actor->role === UserRole::AdminNasional ? $actor->assignedUnionIds() : null;
+
+        if (! $canBootstrapAnyLevel) {
+            return $this->scopeOptions($actor, $level)->map(fn ($o) => ['id' => $o->id, 'label' => $o->name])->values()->all();
+        }
+
+        return match ($level) {
+            'divisi' => Division::where('is_active', true)->orderBy('name')->get()
+                ->map(fn ($d) => ['id' => $d->id, 'label' => $d->name])->values()->all(),
+            'uni' => Union::where('is_active', true)
+                ->when($assignedUnionIds !== null, fn ($q) => $q->whereIn('id', $assignedUnionIds))
+                ->orderBy('name')->get()
+                ->map(fn ($u) => ['id' => $u->id, 'label' => $u->name])->values()->all(),
+            'daerah' => Conference::with('union')->where('is_active', true)
+                ->when($assignedUnionIds !== null, fn ($q) => $q->whereIn('union_id', $assignedUnionIds))
+                ->orderBy('name')->get()
+                ->map(fn ($c) => ['id' => $c->id, 'label' => "{$c->name} ({$c->union->name})"])->values()->all(),
+            'gereja' => Church::with('conference')->where('is_active', true)
+                ->when($assignedUnionIds !== null, fn ($q) => $q->whereHas(
+                    'conference', fn ($q2) => $q2->whereIn('union_id', $assignedUnionIds)
+                ))
+                ->orderBy('name')->get()
+                ->map(fn ($c) => ['id' => $c->id, 'label' => "{$c->name} ({$c->conference?->name})"])->values()->all(),
+            default => [],
+        };
+    }
+
+    /**
      * The other half of the "kenapa gereja ini tidak bisa dihapus" loop: Kelola Akun's blocked-
      * delete tooltip (see AccountController::index()) already names the blocking user(s), but
-     * hunting them down in Kelola Pengguna's easy-to-miss "Belum Ditugaskan" tab one at a time
+     * hunting them down in Kelola Pengguna's "Semua User" tab one at a time (filtered by role)
      * was still the only way to actually clear them. This does the same union_id/conference_id/
      * church_id release as releaseRegion() above — on both the User row and, since every target
      * here is role === null, their linked Person's own self-reported region too (see
@@ -629,23 +894,25 @@ class UserAssignmentController extends Controller
 
         AuditLogger::log('user.updated', $target, "Memperbarui nama akun menjadi \"{$target->name}\".");
 
-        // Same tab/search/sort preservation as redirectToTab() (see that method's own doc
-        // comment) — duplicated rather than reused since redirectToTab() returns a
-        // RedirectResponse outright, but a modal-originated submit needs the route/params
-        // instead so respondModalOrRedirect() can choose between that and a JSON redirect.
+        // Same tab/filter preservation as redirectToTab() (see that method's own doc comment) —
+        // duplicated rather than reused since redirectToTab() returns a RedirectResponse
+        // outright, but a modal-originated submit needs the route/params instead so
+        // respondModalOrRedirect() can choose between that and a JSON redirect.
         return $this->respondModalOrRedirect($request, 'admin.users.index', array_filter([
             'tab' => $this->resolveUsersTab($request),
-            'search' => $request->input('search'),
-            'sort' => $request->input('sort'),
+            'all_search' => $request->input('all_search'),
+            'all_sort' => $request->input('all_sort'),
+            'all_verification' => $request->input('all_verification') !== 'all' ? $request->input('all_verification') : null,
+            'all_role' => $request->input('all_role') !== 'all' ? $request->input('all_role') : null,
         ]), 'status', __('users.user_updated', ['name' => $target->name]));
     }
 
     /** Shared by edit() (reading ?tab= on the GET) and update() (reading the form's own hidden tab field on submit) — see admin/users/edit.blade.php. */
     private function resolveUsersTab(Request $request): string
     {
-        return in_array($request->input('tab'), ['admin', 'pemimpin', 'institusi', 'terhapus'], true)
+        return in_array($request->input('tab'), ['admin', 'terhapus'], true)
             ? $request->input('tab')
-            : 'unassigned';
+            : 'all';
     }
 
     public function toggleActive(Request $request, User $target): RedirectResponse
@@ -688,41 +955,107 @@ class UserAssignmentController extends Controller
      */
     private function redirectToTab(Request $request): RedirectResponse
     {
-        $tab = in_array($request->input('tab'), ['admin', 'pemimpin', 'institusi', 'terhapus'], true)
+        $tab = in_array($request->input('tab'), ['admin', 'terhapus'], true)
             ? $request->input('tab')
-            : 'unassigned';
+            : 'all';
 
-        // search/sort/pending_verification only ever arrive here from the 'unassigned' tab's own
-        // row-actions (see that partial's own doc comment) — array_filter() drops them entirely
-        // for every other tab's action instead of appending empty query params. Without this, an
-        // action taken while the unassigned list had a search term, a non-default sort, and/or
-        // the pending-verification filter applied used to reset all of them back to defaults on
-        // redirect, even though $tab itself was already correctly preserved — confirmed live via
-        // the "Kirim OTP" button losing the active sort.
+        // all_search/all_sort/all_verification/all_role only ever arrive here from "Semua
+        // User"'s own row-actions (see that partial's own doc comment) — array_filter() drops
+        // them entirely for every other tab's action instead of appending empty query params.
+        // Without this, an action taken while that tab's list had a search term, a non-default
+        // sort, and/or a verification/role filter applied used to reset all of them back to
+        // defaults on redirect, even though $tab itself was already correctly preserved —
+        // confirmed live via the "Kirim OTP" button losing the active sort. all_verification/
+        // all_role's own default is the string 'all' rather than false, so those two are dropped
+        // explicitly rather than via array_filter() alone (which only strips falsy values, and
+        // 'all' isn't one).
         return redirect()->route('admin.users.index', array_filter([
             'tab' => $tab,
-            'search' => $request->input('search'),
-            'sort' => $request->input('sort'),
-            'pending_verification' => $request->input('pending_verification'),
+            'all_search' => $request->input('all_search'),
+            'all_sort' => $request->input('all_sort'),
+            'all_verification' => $request->input('all_verification') !== 'all' ? $request->input('all_verification') : null,
+            'all_role' => $request->input('all_role') !== 'all' ? $request->input('all_role') : null,
         ]));
     }
 
-    private function assignedUsersQuery(User $actor, string $targetLevel, array $roleValues)
+    /**
+     * "Semua User" and "Daftar Admin & Pimpinan"'s shared region scope — every user (role=null
+     * or any role) whose own region falls within the actor's reach. Institution accounts sit
+     * outside the Divisi/Uni/Daerah/Gereja tree entirely (no Union tie at all — see index()'s
+     * own "Institusi" comment above), so they're included unconditionally whenever
+     * $canManageInstitutions is true rather than a narrower rule nothing else on this page
+     * follows.
+     *
+     * Every relation walked below (union, conference, church, conference.union,
+     * church.conference(.union), person, person.union, person.conference(.union),
+     * assignedUnions) is one already proven correct elsewhere in this controller — a
+     * Person-based reach for role=null users combined with a relation-based reach for
+     * role-assigned ones, rather than hand-rolling a new, unverified shape.
+     */
+    private function applyAllUsersScope($query, User $actor, string $targetLevel, ?array $assignedUnionIds, bool $canManageInstitutions)
     {
-        return match ($targetLevel) {
-            'nasional' => User::query()->whereIn('role', $roleValues),
-            'divisi' => User::query()->whereIn('role', $roleValues),
-            // Tightened to the actor's own Division — this arm's caller is now Admin Divisi
-            // (targetLevel === 'uni' is their own promotesToLevel()), not Admin Nasional as
-            // before Divisi existed, so it's no longer left unfiltered.
-            'uni' => User::query()->whereIn('role', $roleValues)
-                ->whereHas('union', fn ($q) => $q->where('division_id', $actor->division_id)),
-            'daerah' => User::query()->whereIn('role', $roleValues)
-                ->whereHas('conference', fn ($q) => $q->where('union_id', $actor->union_id)),
-            'gereja' => User::query()->whereIn('role', $roleValues)
-                ->whereHas('church', fn ($q) => $q->where('conference_id', $actor->conference_id)),
-            default => User::query()->whereRaw('1 = 0'),
-        };
+        return $query->where(function ($q) use ($actor, $targetLevel, $assignedUnionIds, $canManageInstitutions) {
+            $matchedAnyClause = false;
+
+            if ($canManageInstitutions) {
+                $matchedAnyClause = true;
+                $q->orWhereIn('role', [UserRole::AdminInstitusi->value, UserRole::PimpinanInstitusi->value]);
+            }
+
+            if ($assignedUnionIds !== null) {
+                // Scoped Admin Nasional — their own assigned Union set, same reach as the
+                // bootstrap branches above (union_id/conference/church.conference directly on the
+                // User row for role-assigned accounts, assignedUnions for a Nasional-level one,
+                // person/person.conference for role=null members).
+                $matchedAnyClause = true;
+                $q->orWhere(fn ($q2) => $q2
+                    ->whereIn('union_id', $assignedUnionIds)
+                    ->orWhereHas('conference', fn ($q3) => $q3->whereIn('union_id', $assignedUnionIds))
+                    ->orWhereHas('church.conference', fn ($q3) => $q3->whereIn('union_id', $assignedUnionIds))
+                    ->orWhereHas('assignedUnions', fn ($q3) => $q3->whereIn('unions.id', $assignedUnionIds))
+                    ->orWhereHas('person', fn ($q3) => $q3
+                        ->whereIn('union_id', $assignedUnionIds)
+                        ->orWhereHas('conference', fn ($q4) => $q4->whereIn('union_id', $assignedUnionIds))));
+            }
+
+            if ($targetLevel === 'uni') {
+                $matchedAnyClause = true;
+                $q->orWhere(fn ($q2) => $q2
+                    ->whereHas('union', fn ($q3) => $q3->where('division_id', $actor->division_id))
+                    ->orWhereHas('conference.union', fn ($q3) => $q3->where('division_id', $actor->division_id))
+                    ->orWhereHas('church.conference.union', fn ($q3) => $q3->where('division_id', $actor->division_id))
+                    ->orWhereHas('person', fn ($q3) => $q3
+                        ->whereHas('union', fn ($q4) => $q4->where('division_id', $actor->division_id))
+                        ->orWhereHas('conference.union', fn ($q4) => $q4->where('division_id', $actor->division_id))));
+            }
+
+            if ($targetLevel === 'daerah') {
+                $matchedAnyClause = true;
+                $q->orWhere(fn ($q2) => $q2
+                    ->where('union_id', $actor->union_id)
+                    ->orWhereHas('conference', fn ($q3) => $q3->where('union_id', $actor->union_id))
+                    ->orWhereHas('church.conference', fn ($q3) => $q3->where('union_id', $actor->union_id))
+                    ->orWhereHas('person', fn ($q3) => $q3
+                        ->where('union_id', $actor->union_id)
+                        ->orWhereHas('conference', fn ($q4) => $q4->where('union_id', $actor->union_id))));
+            }
+
+            if ($targetLevel === 'gereja') {
+                $matchedAnyClause = true;
+                $q->orWhere(fn ($q2) => $q2
+                    ->where('conference_id', $actor->conference_id)
+                    ->orWhereHas('church', fn ($q3) => $q3->where('conference_id', $actor->conference_id))
+                    ->orWhereHas('person', fn ($q3) => $q3->where('conference_id', $actor->conference_id)));
+            }
+
+            // No clause ever matched (shouldn't happen — every non-global actor reaching this
+            // point has a $targetLevel of uni/daerah/gereja, or is a scoped Admin Nasional with
+            // $assignedUnionIds set) — fail closed rather than silently falling through to an
+            // unscoped WHERE that would show everyone.
+            if (! $matchedAnyClause) {
+                $q->whereRaw('1 = 0');
+            }
+        });
     }
 
     private function scopeOptions(User $actor, string $targetLevel)

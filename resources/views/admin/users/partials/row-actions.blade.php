@@ -1,8 +1,8 @@
 {{--
-    Expects: $user, $tab (which tab panel this row lives in — unassigned/admin/pemimpin/
-    institusi — so the controller can redirect back to the same tab instead of whatever tab
-    happened to be in the URL when the page was first loaded; tab-switching here is client-side
-    only, see partials/tab-script.blade.php, so the URL never reflects the tab actually visible).
+    Expects: $user, $tab (which tab panel this row lives in — all/admin/pemimpin/institusi — so
+    the controller can redirect back to the same tab instead of whatever tab happened to be in
+    the URL when the page was first loaded; tab-switching here is client-side only, see
+    partials/tab-script.blade.php, so the URL never reflects the tab actually visible).
 
     Every action below is excluded for one's own row by UserPolicy::manageable() (you can't
     edit/deactivate/delete/resend-OTP yourself from here) — so when $user is the viewer
@@ -31,36 +31,61 @@
             @if ($user->division_id || $user->union_id || $user->conference_id || $user->church_id)
                 @php
                     $hasScopedActiveRole = $user->role !== null && in_array($user->role->level(), ['divisi', 'uni', 'daerah', 'gereja'], true);
-                    $releaseRegionConfirm = $hasScopedActiveRole
-                        ? __('users.release_region_confirm_active_role', ['name' => $user->name, 'role' => $user->role->label()])
-                        : __('users.release_region_confirm', ['name' => $user->name]);
                 @endphp
-                <form method="POST" action="{{ route('admin.users.release-region', $user) }}" data-confirm="{{ $releaseRegionConfirm }}">
-                    @csrf
-                    <input type="hidden" name="tab" value="{{ $tab }}">
-                    {{-- $search/$sort/$pendingVerification: only ever passed for the
-                         'unassigned' tab (its own filter state — see index.blade.php's own
-                         include call). Without these, every action below used to bounce back to
-                         a blank, unfiltered/unsorted unassigned list regardless of what was
-                         actually showing, since redirectToTab() only ever preserved $tab. --}}
-                    @isset($search)
-                        <input type="hidden" name="search" value="{{ $search }}">
-                    @endisset
-                    @isset($sort)
-                        <input type="hidden" name="sort" value="{{ $sort }}">
-                    @endisset
-                    @if (($pendingVerification ?? false))
-                        <input type="hidden" name="pending_verification" value="1">
-                    @endif
+                @if ($hasScopedActiveRole)
+                    {{-- An active Admin/Pimpinan Divisi/Uni/Daerah/Gereja — "Ganti Wilayah" opens
+                         the modal form for swapping their region for a different one of the same
+                         level (see UserAssignmentController::editRegion()'s own doc comment),
+                         rather than only offering a destructive clear-then-reassign-from-scratch
+                         round trip. Its own "Tidak ada" option still covers the old release-only
+                         behavior for whoever wants that instead. --}}
                     <button
-                        type="submit"
-                        title="{{ __('users.release_region') }}"
-                        aria-label="{{ __('users.release_region') }}"
-                        class="shrink-0 text-slate-500 hover:text-amber-600 dark:text-slate-400 dark:hover:text-amber-400"
+                        type="button"
+                        data-entity-modal-trigger="{{ route('admin.users.change-region.edit', ['target' => $user, 'tab' => $tab]) }}"
+                        title="{{ __('users.change_region') }}"
+                        aria-label="{{ __('users.change_region') }}"
+                        class="shrink-0 cursor-pointer text-slate-500 hover:text-purple-600 dark:text-slate-400 dark:hover:text-purple-400"
                     >
-                        <x-icon name="x-mark" class="h-5 w-5" />
+                        <x-icon name="globe-alt" class="h-5 w-5" />
                     </button>
-                </form>
+                @else
+                    {{-- role === null: the bogus self-report this cleans up lives on the linked
+                         Person (see releaseRegion()'s own doc comment) — there's no "level" here
+                         to offer a same-level replacement from, so this stays release-only. --}}
+                    <form method="POST" action="{{ route('admin.users.release-region', $user) }}" data-confirm="{{ __('users.release_region_confirm', ['name' => $user->name]) }}">
+                        @csrf
+                        <input type="hidden" name="tab" value="{{ $tab }}">
+                        {{-- $allSearch/$allSort/$allVerification/$allRole: only ever passed for
+                             "Semua User" (its own filter state — see index.blade.php's own
+                             include call). Without these, every action below used to bounce back
+                             to a blank, unfiltered/unsorted list regardless of what was actually
+                             showing, since redirectToTab() only ever preserved $tab. --}}
+                        @isset($allSearch)
+                            <input type="hidden" name="all_search" value="{{ $allSearch }}">
+                        @endisset
+                        @isset($allSort)
+                            <input type="hidden" name="all_sort" value="{{ $allSort }}">
+                        @endisset
+                        @isset($allVerification)
+                            @if ($allVerification !== 'all')
+                                <input type="hidden" name="all_verification" value="{{ $allVerification }}">
+                            @endif
+                        @endisset
+                        @isset($allRole)
+                            @if ($allRole !== 'all')
+                                <input type="hidden" name="all_role" value="{{ $allRole }}">
+                            @endif
+                        @endisset
+                        <button
+                            type="submit"
+                            title="{{ __('users.release_region') }}"
+                            aria-label="{{ __('users.release_region') }}"
+                            class="shrink-0 text-slate-500 hover:text-amber-600 dark:text-slate-400 dark:hover:text-amber-400"
+                        >
+                            <x-icon name="x-mark" class="h-5 w-5" />
+                        </button>
+                    </form>
+                @endif
             @endif
         @endcan
 
@@ -68,16 +93,23 @@
             <form method="POST" action="{{ route('admin.users.resend-otp', $user) }}" data-disable-on-submit>
                 @csrf
                 <input type="hidden" name="tab" value="{{ $tab }}">
-            {{-- $search/$sort/$pendingVerification — see the release-region form above for why these are here. --}}
-            @isset($search)
-                <input type="hidden" name="search" value="{{ $search }}">
-            @endisset
-            @isset($sort)
-                <input type="hidden" name="sort" value="{{ $sort }}">
-            @endisset
-            @if (($pendingVerification ?? false))
-                <input type="hidden" name="pending_verification" value="1">
-            @endif
+                {{-- $allSearch/$allSort/$allVerification/$allRole — see the release-region form above for why these are here. --}}
+                @isset($allSearch)
+                    <input type="hidden" name="all_search" value="{{ $allSearch }}">
+                @endisset
+                @isset($allSort)
+                    <input type="hidden" name="all_sort" value="{{ $allSort }}">
+                @endisset
+                @isset($allVerification)
+                    @if ($allVerification !== 'all')
+                        <input type="hidden" name="all_verification" value="{{ $allVerification }}">
+                    @endif
+                @endisset
+                @isset($allRole)
+                    @if ($allRole !== 'all')
+                        <input type="hidden" name="all_role" value="{{ $allRole }}">
+                    @endif
+                @endisset
                 <button
                     type="submit"
                     title="{{ __('users.resend_otp') }}"
@@ -96,16 +128,23 @@
         >
             @csrf
             <input type="hidden" name="tab" value="{{ $tab }}">
-            {{-- $search/$sort/$pendingVerification — see the release-region form above for why these are here. --}}
-            @isset($search)
-                <input type="hidden" name="search" value="{{ $search }}">
+            {{-- $allSearch/$allSort/$allVerification/$allRole — see the release-region form above for why these are here. --}}
+            @isset($allSearch)
+                <input type="hidden" name="all_search" value="{{ $allSearch }}">
             @endisset
-            @isset($sort)
-                <input type="hidden" name="sort" value="{{ $sort }}">
+            @isset($allSort)
+                <input type="hidden" name="all_sort" value="{{ $allSort }}">
             @endisset
-            @if (($pendingVerification ?? false))
-                <input type="hidden" name="pending_verification" value="1">
-            @endif
+            @isset($allVerification)
+                @if ($allVerification !== 'all')
+                    <input type="hidden" name="all_verification" value="{{ $allVerification }}">
+                @endif
+            @endisset
+            @isset($allRole)
+                @if ($allRole !== 'all')
+                    <input type="hidden" name="all_role" value="{{ $allRole }}">
+                @endif
+            @endisset
             <button
                 type="submit"
                 title="{{ $user->is_active ? __('accounts.deactivate') : __('accounts.activate') }}"
@@ -124,16 +163,23 @@
             @csrf
             @method('DELETE')
             <input type="hidden" name="tab" value="{{ $tab }}">
-            {{-- $search/$sort/$pendingVerification — see the release-region form above for why these are here. --}}
-            @isset($search)
-                <input type="hidden" name="search" value="{{ $search }}">
+            {{-- $allSearch/$allSort/$allVerification/$allRole — see the release-region form above for why these are here. --}}
+            @isset($allSearch)
+                <input type="hidden" name="all_search" value="{{ $allSearch }}">
             @endisset
-            @isset($sort)
-                <input type="hidden" name="sort" value="{{ $sort }}">
+            @isset($allSort)
+                <input type="hidden" name="all_sort" value="{{ $allSort }}">
             @endisset
-            @if (($pendingVerification ?? false))
-                <input type="hidden" name="pending_verification" value="1">
-            @endif
+            @isset($allVerification)
+                @if ($allVerification !== 'all')
+                    <input type="hidden" name="all_verification" value="{{ $allVerification }}">
+                @endif
+            @endisset
+            @isset($allRole)
+                @if ($allRole !== 'all')
+                    <input type="hidden" name="all_role" value="{{ $allRole }}">
+                @endif
+            @endisset
             <button
                 type="submit"
                 title="{{ __('common.delete') }}"

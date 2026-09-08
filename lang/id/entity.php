@@ -14,7 +14,7 @@ return [
     'dashboard_add_social_nudge' => 'Anda belum menambahkan akun media sosial. Tambahkan dari Profil Saya → Media Sosial.',
     'dashboard_region_growth_title' => 'Pertumbuhan Wilayah Anda',
     'dashboard_goal_title' => 'Tujuan Bersama',
-    'dashboard_personal_account_reminder' => 'Akun Anda adalah akun personal, jadi Anda bisa menginput akun media sosial pribadi Anda sendiri. Untuk dapat menginput akun media sosial gereja, silakan hubungi admin Konferens/Misi Anda agar dijadikan admin gereja.',
+    'dashboard_personal_account_reminder' => 'Akun Anda adalah akun personal, jadi Anda bisa menginput akun media sosial pribadi Anda sendiri. Untuk dapat menginput akun media sosial gereja, silakan hubungi admin Daerah/Misi Anda agar dijadikan admin gereja.',
 
     'status_auto' => 'Otomatis',
     'status_failed' => 'Gagal',
@@ -87,7 +87,7 @@ return [
     'country' => 'Negara',
     'country_optional' => '(opsional)',
     'country_placeholder' => 'Contoh: Indonesia',
-    'conference' => 'Daerah / Konferens',
+    'conference' => 'Daerah',
     'conference_unassigned' => 'Belum ditugaskan ke Daerah manapun',
     'person_org_scope_label' => 'Wilayah Uni/Daerah',
     'person_org_scope_hint' => 'Opsional — kosongkan Daerah untuk level Uni saja, atau kosongkan keduanya untuk personal independen (tidak terikat wilayah).',
