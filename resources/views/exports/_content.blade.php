@@ -41,6 +41,7 @@
         <table class="w-full text-left text-sm">
             <thead class="bg-slate-50 dark:bg-slate-800/60">
                 <tr>
+                    <th class="whitespace-nowrap px-4 py-3 font-medium text-slate-500 dark:text-slate-400">{{ __('export.col_no') }}</th>
                     @foreach ($dataset['headers'] as $header)
                         <th class="whitespace-nowrap px-4 py-3 font-medium text-slate-500 dark:text-slate-400">{{ $header }}</th>
                     @endforeach
@@ -49,6 +50,7 @@
             <tbody class="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-900">
                 @foreach ($dataset['rows'] as $row)
                     <tr>
+                        <td class="whitespace-nowrap px-4 py-2.5 tabular-nums">{{ $loop->iteration }}</td>
                         @foreach ($row as $cell)
                             <td class="whitespace-nowrap px-4 py-2.5 tabular-nums">{{ $cell }}</td>
                         @endforeach
@@ -58,6 +60,7 @@
             @if (! empty($dataset['totals']))
                 <tfoot class="border-t-2 border-black/5 bg-slate-50 dark:border-white/5 dark:bg-slate-800/60">
                     <tr>
+                        <td class="whitespace-nowrap px-4 py-2.5 font-bold tabular-nums"></td>
                         @foreach ($dataset['totals'] as $cell)
                             <td class="whitespace-nowrap px-4 py-2.5 font-bold tabular-nums">{{ $cell }}</td>
                         @endforeach

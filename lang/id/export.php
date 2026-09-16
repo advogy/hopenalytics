@@ -12,6 +12,7 @@ return [
     'format_word' => 'Word',
     'format_excel' => 'Excel',
     'no_data' => 'Tidak ada data untuk diekspor.',
+    'col_no' => 'No',
     'metric_reach' => 'Followers/Subscribers',
     'growth_prefix' => 'Pertumbuhan :title',
     'sorted_by_current_value' => 'Diurutkan berdasarkan nilai saat ini',

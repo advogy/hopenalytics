@@ -9,6 +9,7 @@ return [
     'format_word' => 'Word',
     'format_excel' => 'Excel',
     'no_data' => 'No data to export.',
+    'col_no' => 'No.',
     'metric_reach' => 'Followers/Subscribers',
     'growth_prefix' => 'Growth :title',
     'sorted_by_current_value' => 'Sorted by current value',

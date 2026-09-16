@@ -236,7 +236,7 @@ class ExportController extends Controller
 
         $dataset = $this->analyticsDatasetInstitution($institutionId, $platform);
 
-        $downloadUrl = route('export.institution-analytics.download', array_filter(['format' => 'pdf', 'institution_id' => $institutionId, 'platform' => $platform]));
+        $downloadUrl = route('export.institution-analytics.download', array_filter(array_merge(['format' => 'pdf', 'institution_id' => $institutionId, 'platform' => $platform], $this->analyticsRegionParams())));
 
         return $this->preview($dataset, $downloadUrl);
     }
@@ -342,7 +342,7 @@ class ExportController extends Controller
 
         $dataset = $this->analyticsDatasetOrganization($organizationKey, $platform);
 
-        $downloadUrl = route('export.organization-analytics.download', array_filter(['format' => 'pdf', 'organization_id' => $organizationKey, 'platform' => $platform]));
+        $downloadUrl = route('export.organization-analytics.download', array_filter(array_merge(['format' => 'pdf', 'organization_id' => $organizationKey, 'platform' => $platform], $this->analyticsRegionParams())));
 
         return $this->preview($dataset, $downloadUrl);
     }
@@ -597,7 +597,7 @@ class ExportController extends Controller
 
         $dataset = $this->analyticsDataset($churchId, $platform, $category);
 
-        $downloadUrl = route('export.analytics.download', array_filter(['format' => 'pdf', 'church_id' => $churchId, 'platform' => $platform, 'category' => $category]));
+        $downloadUrl = route('export.analytics.download', array_filter(array_merge(['format' => 'pdf', 'church_id' => $churchId, 'platform' => $platform, 'category' => $category], $this->analyticsRegionParams())));
 
         return $this->preview($dataset, $downloadUrl);
     }
@@ -620,7 +620,7 @@ class ExportController extends Controller
 
         $dataset = $this->analyticsDatasetPersonal($personId, $platform);
 
-        $downloadUrl = route('export.personal-analytics.download', array_filter(['format' => 'pdf', 'person_id' => $personId, 'platform' => $platform]));
+        $downloadUrl = route('export.personal-analytics.download', array_filter(array_merge(['format' => 'pdf', 'person_id' => $personId, 'platform' => $platform], $this->analyticsRegionParams())));
 
         return $this->preview($dataset, $downloadUrl);
     }
@@ -687,6 +687,22 @@ class ExportController extends Controller
     private function applyRegionFilterToEntities(Collection $entities, string $scope): Collection
     {
         return $this->regionFilterFor($scope)($entities, fn ($entity) => $entity);
+    }
+
+    /**
+     * The Uni/Daerah filter that regionFilterFor() below reads straight off the request, carried
+     * into the "Download PDF/Word/Excel" links of every analyticsPreview() variant (gereja/
+     * personal/institusi/organisasi) — same reasoning as directoryRequestParams()/
+     * hashtagRequestParams(): those links are plain hrefs to a separate download request, so
+     * union_id/conference_id must be forwarded explicitly or the download silently reverts to the
+     * unfiltered/nationwide dataset the moment it's clicked.
+     */
+    private function analyticsRegionParams(): array
+    {
+        return array_filter([
+            'union_id' => request()->query('union_id'),
+            'conference_id' => request()->query('conference_id'),
+        ]);
     }
 
     /** @return \Closure(Collection, \Closure): Collection */
