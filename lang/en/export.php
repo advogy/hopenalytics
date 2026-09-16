@@ -10,6 +10,8 @@ return [
     'format_excel' => 'Excel',
     'no_data' => 'No data to export.',
     'col_no' => 'No.',
+    'mode_summary' => 'Summary',
+    'mode_full' => 'Full',
     'metric_reach' => 'Followers/Subscribers',
     'growth_prefix' => 'Growth :title',
     'sorted_by_current_value' => 'Sorted by current value',

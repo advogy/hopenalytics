@@ -7,8 +7,8 @@
         body { font-family: Helvetica, Arial, sans-serif; color: #0f172a; font-size: 11px; }
         h1 { font-size: 18px; margin: 0 0 4px 0; }
         p.subtitle { color: #64748b; margin: 0 0 16px 0; }
-        table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-        th, td { border: 1px solid #e2e8f0; padding: 6px 8px; text-align: left; }
+        table { width: 100%; border-collapse: collapse; margin-top: 12px; table-layout: fixed; }
+        th, td { border: 1px solid #e2e8f0; padding: 6px 8px; text-align: left; word-wrap: break-word; overflow-wrap: anywhere; word-break: break-word; }
         th { background: #f1f5f9; font-weight: bold; }
         tr:nth-child(even) td { background: #f8fafc; }
         tfoot td { background: #f1f5f9; font-weight: bold; border-top: 2px solid #cbd5e1; }

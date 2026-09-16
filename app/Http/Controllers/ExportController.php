@@ -417,25 +417,38 @@ class ExportController extends Controller
     public function hashtagPreview()
     {
         $params = $this->hashtagRequestParams();
-        $dataset = $this->hashtagDataset($params['hashtag'] ?? null, $params['platform'] ?? null);
+        $mode = ($params['mode'] ?? null) === 'summary' ? 'summary' : 'full';
+
+        $dataset = $mode === 'summary'
+            ? $this->hashtagSummaryDataset($params['platform'] ?? null)
+            : $this->hashtagDataset($params['hashtag'] ?? null, $params['platform'] ?? null);
 
         $downloadUrl = route('export.hashtag.download', array_merge(['format' => 'pdf'], $params));
 
-        return $this->preview($dataset, $downloadUrl);
+        return $this->preview($dataset, $downloadUrl, $this->hashtagModeOptions($mode, $params));
     }
 
     public function hashtagDownload(string $format): BinaryFileResponse|Response
     {
         $params = $this->hashtagRequestParams();
+        $mode = ($params['mode'] ?? null) === 'summary' ? 'summary' : 'full';
 
-        return $this->download($this->hashtagDataset($params['hashtag'] ?? null, $params['platform'] ?? null), $format, 'perbandingan-hastag');
+        $dataset = $mode === 'summary'
+            ? $this->hashtagSummaryDataset($params['platform'] ?? null)
+            : $this->hashtagDataset($params['hashtag'] ?? null, $params['platform'] ?? null);
+
+        $filenameBase = $mode === 'summary' ? 'ringkasan-hastag' : 'perbandingan-hastag';
+
+        return $this->download($dataset, $format, $filenameBase);
     }
 
     /**
-     * Every filter Perbandingan Hastag's own filter card offers — hashtag, platform, and the
-     * Uni/Daerah region filter (see BuildsLeaderboards::applyHashtagRegionFilter()) — collected
-     * once so hashtagPreview()'s "Download PDF/Word/Excel" links carry all of them forward into
-     * hashtagDownload()'s own separate request, same reasoning as directoryRequestParams() above.
+     * Every filter Perbandingan Hastag's own filter card offers — hashtag, platform, the
+     * Uni/Daerah region filter (see BuildsLeaderboards::applyHashtagRegionFilter()), and the
+     * Ringkasan/Full mode toggle — collected once so hashtagPreview()'s "Download PDF/Word/
+     * Excel" links carry all of them forward into hashtagDownload()'s own separate request,
+     * same reasoning as directoryRequestParams() above. `mode` is omitted when it's the
+     * default ('full') so a plain/legacy export URL keeps behaving exactly as before.
      */
     private function hashtagRequestParams(): array
     {
@@ -444,6 +457,7 @@ class ExportController extends Controller
             'platform' => request()->query('platform'),
             'union_id' => request()->query('union_id'),
             'conference_id' => request()->query('conference_id'),
+            'mode' => request()->query('mode') === 'summary' ? 'summary' : null,
         ]);
     }
 
@@ -1481,6 +1495,97 @@ class ExportController extends Controller
     }
 
     /**
+     * The "Ringkasan" export mode — mirrors the "Total Post per Hastag" pivot table on the live
+     * Hastag tab (ChurchDashboardController::hashtagComparisonData() lines ~1827-1849): one row
+     * per active hashtag, one column per enabled platform, plus a Total column (the per-row sum)
+     * and a grand-total footer row (via the shared addTotalsRow() every export already gets).
+     * Deliberately ignores a specific-hashtag filter, same as the live pivot table does — that
+     * table is always "every hashtag compared side by side," never narrowed to one row.
+     */
+    private function hashtagSummaryDataset(?string $selectedPlatform): array
+    {
+        $platforms = $selectedPlatform ? [$selectedPlatform] : AppSetting::current()->enabledPlatformValues();
+
+        $user = auth()->user();
+        $isUniView = $this->isUniView();
+        $selectedUnionId = $isUniView ? (string) $user->union_id : request()->query('union_id');
+        $selectedConferenceId = request()->query('conference_id');
+
+        if (! $selectedUnionId && ! $selectedConferenceId) {
+            [$selectedUnionId, $selectedConferenceId] = $this->defaultHashtagRegionScope();
+        }
+
+        $noPersonalRegion = $user->role === null && ! $selectedUnionId && ! $selectedConferenceId;
+
+        $hashtags = Hashtag::where('is_active', true)->orderBy('tag')->get();
+
+        $countsByHashtag = HashtagPost::query()
+            ->when($selectedPlatform, fn ($q) => $q->where('platform', $selectedPlatform))
+            ->tap(fn ($q) => $noPersonalRegion ? $q->whereRaw('1 = 0') : $this->applyHashtagRegionFilter($q, $selectedUnionId, $selectedConferenceId))
+            ->selectRaw('hashtag_id, platform, COUNT(*) as total')
+            ->groupBy('hashtag_id', 'platform')
+            ->get()
+            ->groupBy('hashtag_id');
+
+        $rows = $hashtags->map(function ($hashtag) use ($countsByHashtag, $platforms) {
+            $countsForHashtag = $countsByHashtag->get($hashtag->id, collect())->keyBy('platform');
+            $counts = collect($platforms)->map(fn ($platform) => (int) ($countsForHashtag[$platform]->total ?? 0));
+
+            return array_merge(
+                [$hashtag->display_tag],
+                $counts->map(fn ($count) => number_format($count))->values()->all(),
+                [number_format($counts->sum())]
+            );
+        })->all();
+
+        $subtitle = $selectedPlatform
+            ? __('export.directory_subtitle_with_platform', ['platform' => $this->platformLabels[$selectedPlatform], 'scope' => __('hashtag.all_hashtags')])
+            : __('export.directory_subtitle_no_platform', ['scope' => __('hashtag.all_hashtags')]);
+
+        $headers = array_merge(
+            [__('hashtag.col_tag')],
+            collect($platforms)->map(fn ($platform) => $this->platformLabels[$platform] ?? $platform)->all(),
+            [__('export.total_row_label')]
+        );
+
+        return [
+            'title' => __('hashtag.comparison_title'),
+            'subtitle' => $subtitle,
+            'headers' => $headers,
+            'rows' => $rows,
+        ];
+    }
+
+    /**
+     * The two "Ringkasan" / "Full" pills rendered above the Hastag export's preview table —
+     * these are plain [data-export-trigger] links, so clicking one just re-runs the same
+     * fetch-into-modal flow (see layouts/app.blade.php's export-dialog script) with `mode`
+     * flipped; no dedicated JS needed. hashtag/hashtag_id is dropped for the summary link since
+     * hashtagSummaryDataset() ignores it (see that method's own doc comment) — carrying it
+     * forward would misleadingly suggest the summary table is scoped to one hashtag when it
+     * never is.
+     */
+    private function hashtagModeOptions(string $currentMode, array $params): array
+    {
+        $sharedParams = collect($params)->except(['mode', 'hashtag'])->all();
+
+        return [
+            [
+                'key' => 'summary',
+                'label' => __('export.mode_summary'),
+                'url' => route('export.hashtag.preview', array_merge($sharedParams, ['mode' => 'summary'])),
+                'active' => $currentMode === 'summary',
+            ],
+            [
+                'key' => 'full',
+                'label' => __('export.mode_full'),
+                'url' => route('export.hashtag.preview', collect($params)->except('mode')->all()),
+                'active' => $currentMode === 'full',
+            ],
+        ];
+    }
+
+    /**
      * The identical is_auto_fetch/last_fetch_status → label logic repeated 3 times across
      * churchDataset()/personDataset()/institutionDataset() — same reasoning as the other shared
      * helpers above. 'success' has no existing UI-wide label to reuse (entity.status_auto means
@@ -2151,7 +2256,12 @@ class ExportController extends Controller
         return ($cell === '' || $cell === '—' || $cell === '-') ? 0 : (int) str_replace(',', '', $cell);
     }
 
-    private function preview(array $dataset, string $pdfDownloadUrl)
+    /**
+     * $modeOptions is only ever passed by hashtagPreview() today (the Ringkasan/Full pills) —
+     * null for every other export, which is why _content.blade.php/preview.blade.php only
+     * render the pill row when it's present.
+     */
+    private function preview(array $dataset, string $pdfDownloadUrl, ?array $modeOptions = null)
     {
         $dataset = $this->addTotalsRow($dataset);
 
@@ -2161,6 +2271,7 @@ class ExportController extends Controller
             'pdfDownloadUrl' => $pdfDownloadUrl,
             'wordDownloadUrl' => str_replace('/pdf', '/word', $pdfDownloadUrl),
             'excelDownloadUrl' => str_replace('/pdf', '/excel', $pdfDownloadUrl),
+            'modeOptions' => $modeOptions,
         ];
 
         // The export button loads this fragment into a modal via fetch; a direct visit gets the full page.
@@ -2203,7 +2314,13 @@ class ExportController extends Controller
      */
     private function downloadPdf(array $dataset, string $footer, string $filename): Response
     {
-        $pdf = Pdf::loadView('exports.pdf', ['dataset' => $dataset]);
+        // A4 portrait gives a ~515px-wide printable area (612 - 2*40px margin) — fine for the
+        // typical 3-5 column export, but a table with more columns than that needs landscape's
+        // extra width just to keep each column legible once table-layout:fixed (see exports/pdf
+        // .blade.php) divides that width evenly across all of them.
+        $orientation = count($dataset['headers']) >= 6 ? 'landscape' : 'portrait';
+
+        $pdf = Pdf::loadView('exports.pdf', ['dataset' => $dataset])->setPaper('a4', $orientation);
         $pdf->render();
 
         $pdf->getDomPDF()->getCanvas()->page_script(function ($pageNumber, $pageCount, $canvas, $fontMetrics) use ($footer) {

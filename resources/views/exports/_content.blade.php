@@ -1,6 +1,19 @@
 <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
     <div class="min-w-0 flex-1">
         <h2 class="text-xl font-semibold tracking-tight">{{ $dataset['title'] }}</h2>
+
+        @if (! empty($modeOptions))
+            <div class="mt-2 inline-flex rounded-lg border border-black/5 bg-slate-50 p-1 dark:border-white/5 dark:bg-slate-800/60">
+                @foreach ($modeOptions as $option)
+                    <a
+                        href="{{ $option['url'] }}"
+                        data-export-trigger
+                        class="rounded-md px-3 py-1 text-xs font-medium transition {{ $option['active'] ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200' }}"
+                    >{{ $option['label'] }}</a>
+                @endforeach
+            </div>
+        @endif
+
         @if ($dataset['subtitle'])
             <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ $dataset['subtitle'] }}</p>
         @endif
