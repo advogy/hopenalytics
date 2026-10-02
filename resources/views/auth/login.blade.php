@@ -10,7 +10,7 @@
         {{ __('auth.login_subtitle') }}
     </p>
 
-    <form method="POST" action="{{ route('login.attempt') }}">
+    <form method="POST" action="{{ route('login.attempt') }}" data-disable-on-submit>
         @csrf
 
         <x-form-field name="email" type="email" :label="__('auth.email')" required :value="old('email')" />
@@ -22,7 +22,10 @@
             </a>
         </p>
 
-        <button type="submit" class="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700">
+        {{-- Spinner only shows once disabled — partials.disable-on-submit disables the button
+             (and spins its icon) on submit, so Enter/click gets a visible in-progress cue. --}}
+        <button type="submit" class="group flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70">
+            <x-icon name="arrow-path" class="hidden h-4 w-4 group-disabled:block" />
             {{ __('auth.login_button') }}
         </button>
     </form>
