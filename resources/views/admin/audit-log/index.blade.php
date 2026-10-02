@@ -25,6 +25,8 @@
     </x-tab-bar>
 
     <div data-tab-panel="aksi">
+        <p class="mb-4 text-sm text-slate-500 dark:text-slate-400">{{ __('audit.retention_note', ['months' => $auditRetentionMonths]) }}</p>
+
         <div class="mb-6 rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/5 dark:bg-slate-900">
             <h2 class="mb-4 text-lg font-bold text-slate-900 dark:text-white">{{ __('common.filter') }}</h2>
             <form method="GET" class="flex flex-wrap items-center gap-3">
@@ -55,11 +57,18 @@
                     <x-icon name="chevron-down" class="pointer-events-none absolute top-1/2 right-3.5 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                 </label>
 
+                <label class="relative flex items-center gap-1.5 rounded-full border border-black/10 bg-slate-50 py-2 pr-3 pl-9 shadow-sm transition hover:bg-slate-100 dark:border-white/10 dark:bg-slate-800 dark:hover:bg-slate-700" title="{{ __('audit.date_range_hint') }}">
+                    <x-icon name="calendar" class="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input type="date" name="date_from" value="{{ $dateFrom }}" max="{{ now()->toDateString() }}" onchange="this.form.submit()" aria-label="{{ __('audit.date_from') }}" class="border-0 bg-transparent p-0 text-sm font-medium text-slate-700 focus:ring-0 dark:text-slate-200">
+                    <span class="text-sm text-slate-400">–</span>
+                    <input type="date" name="date_to" value="{{ $dateTo }}" max="{{ now()->toDateString() }}" onchange="this.form.submit()" aria-label="{{ __('audit.date_to') }}" class="border-0 bg-transparent p-0 text-sm font-medium text-slate-700 focus:ring-0 dark:text-slate-200">
+                </label>
+
                 <button type="submit" class="rounded-full bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700">
                     {{ __('common.search') }}
                 </button>
 
-                @if ($search || $subjectType)
+                @if ($search || $subjectType || $dateFrom || $dateTo)
                     <a href="{{ route('admin.audit-log.index', ['tab' => 'aksi']) }}" class="text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
                         {{ __('common.reset_filter') }}
                     </a>
@@ -71,7 +80,7 @@
             @if ($logs->isEmpty())
                 <div class="p-12 text-center">
                     <p class="text-slate-500 dark:text-slate-400">
-                        {{ ($search || $subjectType) ? __('audit.no_match') : __('audit.no_logs_yet') }}
+                        {{ ($search || $subjectType || $dateFrom || $dateTo) ? __('audit.no_match') : __('audit.no_logs_yet') }}
                     </p>
                 </div>
             @else
@@ -79,6 +88,7 @@
                     <table class="w-full text-left text-sm">
                         <thead class="bg-slate-50 dark:bg-slate-800/60">
                             <tr>
+                                <th class="px-4 py-3 font-medium text-slate-500 dark:text-slate-400">#</th>
                                 <th class="px-4 py-3 font-medium text-slate-500 dark:text-slate-400">{{ __('audit.col_time') }}</th>
                                 <th class="px-4 py-3 font-medium text-slate-500 dark:text-slate-400">{{ __('audit.col_actor') }}</th>
                                 <th class="px-4 py-3 font-medium text-slate-500 dark:text-slate-400">{{ __('audit.col_description') }}</th>
@@ -88,6 +98,7 @@
                         <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
                             @foreach ($logs as $log)
                                 <tr class="align-top">
+                                    <td class="px-4 py-3 text-slate-400 dark:text-slate-500">{{ $logs->firstItem() + $loop->index }}</td>
                                     <td class="whitespace-nowrap px-4 py-3 text-slate-500 dark:text-slate-400">
                                         {{ $log->created_at->translatedFormat('d M Y H:i') }}
                                     </td>
@@ -121,7 +132,7 @@
     </div>
 
     <div data-tab-panel="login">
-        <p class="mb-4 text-sm text-slate-500 dark:text-slate-400">{{ __('audit.login_subtitle') }}</p>
+        <p class="mb-4 text-sm text-slate-500 dark:text-slate-400">{{ __('audit.login_subtitle') }} {{ __('audit.retention_note', ['months' => $loginRetentionMonths]) }}</p>
 
         <div class="mb-6 rounded-2xl border border-black/5 bg-white p-6 shadow-sm dark:border-white/5 dark:bg-slate-900">
             <h2 class="mb-4 text-lg font-bold text-slate-900 dark:text-white">{{ __('common.filter') }}</h2>
@@ -139,11 +150,18 @@
                     >
                 </label>
 
+                <label class="relative flex items-center gap-1.5 rounded-full border border-black/10 bg-slate-50 py-2 pr-3 pl-9 shadow-sm transition hover:bg-slate-100 dark:border-white/10 dark:bg-slate-800 dark:hover:bg-slate-700" title="{{ __('audit.date_range_hint') }}">
+                    <x-icon name="calendar" class="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input type="date" name="login_date_from" value="{{ $loginDateFrom }}" max="{{ now()->toDateString() }}" onchange="this.form.submit()" aria-label="{{ __('audit.date_from') }}" class="border-0 bg-transparent p-0 text-sm font-medium text-slate-700 focus:ring-0 dark:text-slate-200">
+                    <span class="text-sm text-slate-400">–</span>
+                    <input type="date" name="login_date_to" value="{{ $loginDateTo }}" max="{{ now()->toDateString() }}" onchange="this.form.submit()" aria-label="{{ __('audit.date_to') }}" class="border-0 bg-transparent p-0 text-sm font-medium text-slate-700 focus:ring-0 dark:text-slate-200">
+                </label>
+
                 <button type="submit" class="rounded-full bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700">
                     {{ __('common.search') }}
                 </button>
 
-                @if ($loginSearch)
+                @if ($loginSearch || $loginDateFrom || $loginDateTo)
                     <a href="{{ route('admin.audit-log.index', ['tab' => 'login']) }}" class="text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
                         {{ __('common.reset_filter') }}
                     </a>
@@ -155,7 +173,7 @@
             @if ($loginLogs->isEmpty())
                 <div class="p-12 text-center">
                     <p class="text-slate-500 dark:text-slate-400">
-                        {{ $loginSearch ? __('audit.no_login_match') : __('audit.no_login_logs_yet') }}
+                        {{ ($loginSearch || $loginDateFrom || $loginDateTo) ? __('audit.no_login_match') : __('audit.no_login_logs_yet') }}
                     </p>
                 </div>
             @else
@@ -163,6 +181,7 @@
                     <table class="w-full text-left text-sm">
                         <thead class="bg-slate-50 dark:bg-slate-800/60">
                             <tr>
+                                <th class="px-4 py-3 font-medium text-slate-500 dark:text-slate-400">#</th>
                                 <th class="px-4 py-3 font-medium text-slate-500 dark:text-slate-400">{{ __('audit.col_user') }}</th>
                                 <th class="px-4 py-3 font-medium text-slate-500 dark:text-slate-400">{{ __('audit.col_ip') }}</th>
                                 <th class="px-4 py-3 font-medium text-slate-500 dark:text-slate-400">{{ __('audit.col_login_at') }}</th>
@@ -173,6 +192,7 @@
                         <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
                             @foreach ($loginLogs as $loginLog)
                                 <tr class="align-top">
+                                    <td class="px-4 py-3 text-slate-400 dark:text-slate-500">{{ $loginLogs->firstItem() + $loop->index }}</td>
                                     <td class="px-4 py-3 font-medium">
                                         {{ $loginLog->user?->name ?? __('audit.deleted_user') }}
                                     </td>

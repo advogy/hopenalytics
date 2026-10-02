@@ -2,12 +2,19 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Prunable;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
 
 class LoginLog extends Model
 {
+    use Prunable;
+
+    /** Entries older than this are deleted daily by `model:prune` (see routes/console.php). */
+    public const RETENTION_MONTHS = 6;
+
     const UPDATED_AT = null;
 
     protected $fillable = ['user_id', 'ip_address', 'user_agent', 'logged_out_at'];
@@ -15,6 +22,11 @@ class LoginLog extends Model
     protected $casts = [
         'logged_out_at' => 'datetime',
     ];
+
+    public function prunable(): Builder
+    {
+        return static::where('created_at', '<', now()->subMonths(self::RETENTION_MONTHS));
+    }
 
     public function user(): BelongsTo
     {

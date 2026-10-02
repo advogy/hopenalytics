@@ -27,4 +27,9 @@ return [
     'no_login_match' => 'Tidak ada riwayat login yang cocok.',
     'no_login_logs_yet' => 'Belum ada riwayat login.',
     'deleted_user' => 'Pengguna terhapus',
+
+    'date_from' => 'Dari tanggal',
+    'date_to' => 'Sampai tanggal',
+    'date_range_hint' => 'Saring berdasarkan rentang tanggal',
+    'retention_note' => 'Entri lebih dari :months bulan dihapus otomatis.',
 ];

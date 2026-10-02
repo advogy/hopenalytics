@@ -15,6 +15,8 @@ class AuditLogController extends Controller
 
         $search = trim((string) $request->query('search'));
         $subjectType = trim((string) $request->query('subject_type'));
+        $dateFrom = $this->validDateOrNull($request->query('date_from'));
+        $dateTo = $this->validDateOrNull($request->query('date_to'));
 
         $logs = AuditLog::query()
             ->when($search, fn ($q) => $q->where(fn ($q2) => $q2
@@ -23,6 +25,8 @@ class AuditLogController extends Controller
                 ->orWhere('description', 'like', "%{$search}%"),
             ))
             ->when($subjectType, fn ($q) => $q->where('subject_type', $subjectType))
+            ->when($dateFrom, fn ($q) => $q->where('created_at', '>=', $dateFrom.' 00:00:00'))
+            ->when($dateTo, fn ($q) => $q->where('created_at', '<=', $dateTo.' 23:59:59'))
             ->orderByDesc('created_at')
             ->paginate(30)
             ->withQueryString();
@@ -35,6 +39,8 @@ class AuditLogController extends Controller
         $logs->appends(['tab' => 'aksi']);
 
         $loginSearch = trim((string) $request->query('login_search'));
+        $loginDateFrom = $this->validDateOrNull($request->query('login_date_from'));
+        $loginDateTo = $this->validDateOrNull($request->query('login_date_to'));
 
         // A distinct page-name ('login_page' instead of the default 'page') keeps this
         // paginator's links independent of the audit-log table's own — both tabs render in the
@@ -46,6 +52,8 @@ class AuditLogController extends Controller
                 ->where('name', 'like', "%{$loginSearch}%")
                 ->orWhere('email', 'like', "%{$loginSearch}%"),
             ))
+            ->when($loginDateFrom, fn ($q) => $q->where('created_at', '>=', $loginDateFrom.' 00:00:00'))
+            ->when($loginDateTo, fn ($q) => $q->where('created_at', '<=', $loginDateTo.' 23:59:59'))
             ->orderByDesc('created_at')
             ->paginate(30, ['*'], 'login_page')
             ->withQueryString();
@@ -57,8 +65,20 @@ class AuditLogController extends Controller
             'logs' => $logs,
             'search' => $search,
             'subjectType' => $subjectType,
+            'dateFrom' => $dateFrom,
+            'dateTo' => $dateTo,
             'loginLogs' => $loginLogs,
             'loginSearch' => $loginSearch,
+            'loginDateFrom' => $loginDateFrom,
+            'loginDateTo' => $loginDateTo,
+            'auditRetentionMonths' => AuditLog::RETENTION_MONTHS,
+            'loginRetentionMonths' => LoginLog::RETENTION_MONTHS,
         ]);
+    }
+
+    /** A Y-m-d date from the query string, or null for anything blank/malformed. */
+    private function validDateOrNull(mixed $date): ?string
+    {
+        return is_string($date) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) && strtotime($date) !== false ? $date : null;
     }
 }

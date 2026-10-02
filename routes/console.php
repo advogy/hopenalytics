@@ -1,6 +1,8 @@
 <?php
 
 use App\Models\AppSetting;
+use App\Models\AuditLog;
+use App\Models\LoginLog;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -39,5 +41,14 @@ if (Schema::hasTable('app_settings')) {
 // so it can't overlap and pile up.
 Schedule::command('queue:work --stop-when-empty --tries=3 --max-time=50')
     ->everyMinute()
+    ->withoutOverlapping()
+    ->onOneServer();
+
+// Retention for the Log Audit page's two tables — see AuditLog/LoginLog::RETENTION_MONTHS
+// (1 year of actions, 6 months of logins, per the user's explicit call). Rides on the same
+// cron-triggered `schedule:run` as everything above.
+Schedule::command('model:prune', ['--model' => [AuditLog::class, LoginLog::class]])
+    ->dailyAt('02:00')
+    ->timezone('Asia/Jakarta')
     ->withoutOverlapping()
     ->onOneServer();

@@ -27,4 +27,9 @@ return [
     'no_login_match' => 'No matching login history.',
     'no_login_logs_yet' => 'No login history yet.',
     'deleted_user' => 'Deleted user',
+
+    'date_from' => 'From date',
+    'date_to' => 'To date',
+    'date_range_hint' => 'Filter by date range',
+    'retention_note' => 'Entries older than :months months are deleted automatically.',
 ];
