@@ -38,6 +38,7 @@
     </style>
 </head>
 <body class="h-screen overflow-hidden bg-[#f8f4ec] font-sans text-slate-900 antialiased dark:bg-[#0b1728] dark:text-white">
+    @include('partials.platform-icon-sprite')
     <div class="mx-auto flex h-screen max-w-7xl flex-col px-6 py-6">
         <div class="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-black/5 bg-white px-6 py-4 dark:border-white/5 dark:bg-[#0f1e33]">
             <div class="flex items-center gap-3">

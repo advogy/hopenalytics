@@ -87,7 +87,9 @@ class ChurchSocial extends Model
 
     public function latestStat(): HasOne
     {
-        return $this->hasOne(ChurchStat::class)->latestOfMany('recorded_at');
+        // Skips raw_payload (see ChurchStat::SUMMARY_COLUMNS) — this is eager-loaded for every
+        // account on the dashboard/analytics pages, which only ever read the count columns.
+        return $this->hasOne(ChurchStat::class)->latestOfMany('recorded_at')->select(ChurchStat::summaryColumns());
     }
 
     /**

@@ -930,15 +930,72 @@ trait BuildsLeaderboards
     }
 
     /**
+     * Per-request cache of each account's two most recent stat snapshots (newest first), keyed
+     * by church_social_id — what every week-over-week delta/growth calculation below diffs.
+     * These used to be fetched with one $social->stats()->limit(2) query per account, repeated
+     * once per metric and again in every helper, which added up to ~17k queries (~4s) on the
+     * Ringkasan dashboard for a global viewer.
+     *
+     * @var array<int, \Illuminate\Database\Eloquent\Collection>
+     */
+    private array $latestTwoStatsCache = [];
+
+    /**
+     * Batch-loads the latest two stat snapshots for every given account not already cached, in
+     * one window-function query per chunk instead of one query per account.
+     */
+    protected function primeLatestTwoStats(Collection $socials): void
+    {
+        $missingIds = $socials->pluck('id')
+            ->reject(fn ($id) => array_key_exists($id, $this->latestTwoStatsCache))
+            ->unique()
+            ->values();
+
+        foreach ($missingIds->chunk(1000) as $chunk) {
+            // Ranked on the (church_social_id, recorded_at) index alone, then only the winning
+            // rows are fetched — and without raw_payload (see ChurchStat::SUMMARY_COLUMNS),
+            // which would otherwise be read for every snapshot of every account.
+            $ranked = ChurchStat::query()
+                ->select('id')
+                ->selectRaw('ROW_NUMBER() OVER (PARTITION BY church_social_id ORDER BY recorded_at DESC, id DESC) as stat_rank')
+                ->whereIn('church_social_id', $chunk->all());
+
+            $statsBySocial = ChurchStat::query()
+                ->select(ChurchStat::summaryColumns())
+                ->joinSub($ranked, 'ranked', 'ranked.id', '=', 'church_stats.id')
+                ->where('ranked.stat_rank', '<=', 2)
+                ->orderBy('church_stats.church_social_id')
+                ->orderBy('ranked.stat_rank')
+                ->get()
+                ->groupBy('church_social_id');
+
+            foreach ($chunk as $id) {
+                $this->latestTwoStatsCache[$id] = ($statsBySocial->get($id) ?? (new ChurchStat)->newCollection())->values();
+            }
+        }
+    }
+
+    protected function latestTwoStats(ChurchSocial $social): Collection
+    {
+        if (! array_key_exists($social->id, $this->latestTwoStatsCache)) {
+            $this->primeLatestTwoStats(collect([$social]));
+        }
+
+        return $this->latestTwoStatsCache[$social->id];
+    }
+
+    /**
      * Rank socials by the given field — 'delta' (week-over-week growth, default) or
      * 'value' (current value), highest first.
      */
     protected function buildLeaderboard(Collection $socials, callable $fieldResolver, ?int $limit, string $sortBy = 'delta'): Collection
     {
+        $this->primeLatestTwoStats($socials);
+
         $ranked = $socials
             ->map(function (ChurchSocial $social) use ($fieldResolver) {
                 $field = $fieldResolver($social);
-                $stats = $social->stats()->limit(2)->get();
+                $stats = $this->latestTwoStats($social);
 
                 if ($stats->count() < 2) {
                     return null;
@@ -968,6 +1025,7 @@ trait BuildsLeaderboards
     protected function metricComparisonRows(string $metric, ?string $platform, string $sortBy = 'delta', ?string $category = null): Collection
     {
         [$socials, $fieldResolver] = $this->metricDefinition($metric, $this->activeSocials(category: $category));
+        $this->primeLatestTwoStats($socials);
 
         // "semua" means every applicable platform combined — no filtering, same as passing null.
         if ($platform && $platform !== 'semua') {
@@ -984,7 +1042,7 @@ trait BuildsLeaderboards
 
                 foreach ($churchSocials as $social) {
                     $field = $fieldResolver($social);
-                    $stats = $social->stats()->limit(2)->get();
+                    $stats = $this->latestTwoStats($social);
                     $currentTotal += $stats->get(0)?->{$field} ?? 0;
 
                     if ($stats->count() >= 2) {
@@ -1014,6 +1072,7 @@ trait BuildsLeaderboards
     protected function metricComparisonRowsPersonal(string $metric, ?string $platform, string $sortBy = 'delta'): Collection
     {
         [$socials, $fieldResolver] = $this->metricDefinition($metric, $this->activeSocialsPersonal());
+        $this->primeLatestTwoStats($socials);
 
         if ($platform && $platform !== 'semua') {
             $socials = $socials->where('platform', SocialPlatform::from($platform));
@@ -1029,7 +1088,7 @@ trait BuildsLeaderboards
 
                 foreach ($personSocials as $social) {
                     $field = $fieldResolver($social);
-                    $stats = $social->stats()->limit(2)->get();
+                    $stats = $this->latestTwoStats($social);
                     $currentTotal += $stats->get(0)?->{$field} ?? 0;
 
                     if ($stats->count() >= 2) {
@@ -1060,6 +1119,7 @@ trait BuildsLeaderboards
     protected function metricComparisonRowsInstitution(string $metric, ?string $platform, string $sortBy = 'delta'): Collection
     {
         [$socials, $fieldResolver] = $this->metricDefinition($metric, $this->activeSocialsInstitution());
+        $this->primeLatestTwoStats($socials);
 
         if ($platform && $platform !== 'semua') {
             $socials = $socials->where('platform', SocialPlatform::from($platform));
@@ -1075,7 +1135,7 @@ trait BuildsLeaderboards
 
                 foreach ($institutionSocials as $social) {
                     $field = $fieldResolver($social);
-                    $stats = $social->stats()->limit(2)->get();
+                    $stats = $this->latestTwoStats($social);
                     $currentTotal += $stats->get(0)?->{$field} ?? 0;
 
                     if ($stats->count() >= 2) {
@@ -1107,6 +1167,7 @@ trait BuildsLeaderboards
     protected function metricComparisonRowsOrganization(string $metric, ?string $platform, string $sortBy = 'delta'): Collection
     {
         [$socials, $fieldResolver] = $this->metricDefinition($metric, $this->activeSocialsOrganization());
+        $this->primeLatestTwoStats($socials);
 
         if ($platform && $platform !== 'semua') {
             $socials = $socials->where('platform', SocialPlatform::from($platform));
@@ -1127,7 +1188,7 @@ trait BuildsLeaderboards
 
                 foreach ($orgSocials as $social) {
                     $field = $fieldResolver($social);
-                    $stats = $social->stats()->limit(2)->get();
+                    $stats = $this->latestTwoStats($social);
                     $currentTotal += $stats->get(0)?->{$field} ?? 0;
 
                     if ($stats->count() >= 2) {
@@ -1250,6 +1311,7 @@ trait BuildsLeaderboards
     protected function growthScoreRows(bool $scoped = true, ?string $category = null, bool $applyCeiling = false): Collection
     {
         $activeSocials = $this->activeSocials($scoped, $category, $applyCeiling);
+        $this->primeLatestTwoStats($activeSocials);
         $metrics = AppSetting::filterEnabledMetricKeys(['reach', 'views', 'likes', 'posts', 'comments', 'shares']);
 
         $percentBySocial = [];
@@ -1259,7 +1321,7 @@ trait BuildsLeaderboards
 
             foreach ($socials as $social) {
                 $field = $fieldResolver($social);
-                $stats = $social->stats()->limit(2)->get();
+                $stats = $this->latestTwoStats($social);
 
                 if ($stats->count() < 2) {
                     continue;
@@ -1314,6 +1376,8 @@ trait BuildsLeaderboards
      */
     protected function growthScoreRowsByPlatform(Collection $activeSocials): Collection
     {
+        $this->primeLatestTwoStats($activeSocials);
+
         $metrics = AppSetting::filterEnabledMetricKeys(['reach', 'views', 'likes', 'posts', 'comments', 'shares']);
 
         $percentsByPlatform = [];
@@ -1323,7 +1387,7 @@ trait BuildsLeaderboards
 
             foreach ($socials as $social) {
                 $field = $fieldResolver($social);
-                $stats = $social->stats()->limit(2)->get();
+                $stats = $this->latestTwoStats($social);
 
                 if ($stats->count() < 2) {
                     continue;
@@ -1370,6 +1434,7 @@ trait BuildsLeaderboards
     protected function growthScoreRowsPersonal(bool $scoped = true, bool $applyCeiling = false): Collection
     {
         $activeSocials = $this->activeSocialsPersonal($scoped, $applyCeiling);
+        $this->primeLatestTwoStats($activeSocials);
         $metrics = AppSetting::filterEnabledMetricKeys(['reach', 'views', 'likes', 'posts', 'comments', 'shares']);
 
         $percentBySocial = [];
@@ -1379,7 +1444,7 @@ trait BuildsLeaderboards
 
             foreach ($socials as $social) {
                 $field = $fieldResolver($social);
-                $stats = $social->stats()->limit(2)->get();
+                $stats = $this->latestTwoStats($social);
 
                 if ($stats->count() < 2) {
                     continue;
@@ -1434,6 +1499,7 @@ trait BuildsLeaderboards
     protected function growthScoreRowsInstitution(bool $scoped = true, bool $applyCeiling = false): Collection
     {
         $activeSocials = $this->activeSocialsInstitution($scoped, $applyCeiling);
+        $this->primeLatestTwoStats($activeSocials);
         $metrics = AppSetting::filterEnabledMetricKeys(['reach', 'views', 'likes', 'posts', 'comments', 'shares']);
 
         $percentBySocial = [];
@@ -1443,7 +1509,7 @@ trait BuildsLeaderboards
 
             foreach ($socials as $social) {
                 $field = $fieldResolver($social);
-                $stats = $social->stats()->limit(2)->get();
+                $stats = $this->latestTwoStats($social);
 
                 if ($stats->count() < 2) {
                     continue;
@@ -1501,6 +1567,7 @@ trait BuildsLeaderboards
     protected function growthScoreRowsOrganization(bool $scoped = true, bool $applyCeiling = false): Collection
     {
         $activeSocials = $this->activeSocialsOrganization($scoped, $applyCeiling);
+        $this->primeLatestTwoStats($activeSocials);
         $metrics = AppSetting::filterEnabledMetricKeys(['reach', 'views', 'likes', 'posts', 'comments', 'shares']);
 
         $percentBySocial = [];
@@ -1510,7 +1577,7 @@ trait BuildsLeaderboards
 
             foreach ($socials as $social) {
                 $field = $fieldResolver($social);
-                $stats = $social->stats()->limit(2)->get();
+                $stats = $this->latestTwoStats($social);
 
                 if ($stats->count() < 2) {
                     continue;

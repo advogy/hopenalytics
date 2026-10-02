@@ -50,6 +50,7 @@
         </style>
     </head>
     <body class="flex min-h-screen flex-col bg-[#f8f4ec] font-sans text-slate-900 antialiased dark:bg-[#16130f] dark:text-slate-100">
+        @include('partials.platform-icon-sprite')
         <header class="sticky top-0 z-10 border-b border-black/5 bg-[#f8f4ec]/80 backdrop-blur-md dark:border-white/5 dark:bg-[#16130f]/80">
             <div class="mx-auto max-w-6xl px-4 sm:px-6">
                 <div class="flex items-center justify-between py-2">

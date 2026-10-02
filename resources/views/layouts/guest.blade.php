@@ -25,6 +25,7 @@
         @include('partials.searchable-select')
     </head>
     <body class="flex min-h-screen flex-col items-center justify-center bg-[#f8f4ec] px-4 py-8 font-sans text-slate-900 antialiased dark:bg-[#16130f] dark:text-slate-100">
+        @include('partials.platform-icon-sprite')
         @php $wide = $wide ?? false; @endphp
         <div class="w-full {{ $wide ? 'max-w-4xl' : 'max-w-sm' }}">
             <a href="{{ route('churches.index') }}" class="mb-8 flex items-center justify-center gap-3 whitespace-nowrap">
