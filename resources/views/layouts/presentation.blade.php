@@ -2,8 +2,8 @@
     Shared shell for the two big-screen "Presentasi" pages (Total Reach / Weekly Growth) — a
     standalone HTML document (not layouts.app: no nav/sidebar, full-bleed, auto-refreshing).
     Children set $rowView (the row partial, via @php before @extends) and the title/headerStat/
-    headerLinks/sidebarExtra sections; $rows/$totalEntities/$totalSocials/$scope come from the
-    controller as before.
+    headerLinks/sidebarExtra sections; $rows/$totalEntities/$totalSocials/$scope/$filter come from
+    the controller.
 --}}
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
@@ -29,6 +29,8 @@
     <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600,700" rel="stylesheet" />
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+    @include('partials.searchable-select')
 
     <style>
         #rank-list::-webkit-scrollbar { display: none; }
@@ -71,6 +73,47 @@
                     <p class="mb-1 text-5xl font-bold tabular-nums">{{ $totalSocials }}</p>
                     <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('presentation.connected_socials') }}</p>
                 </div>
+                {{-- Uni/Daerah filter (see ChurchDashboardController::presentationRegionFilter()) —
+                     the same type-to-search Uni → Daerah cascade Analitik & Grafik's own region
+                     filter uses (partials/searchable-select), auto-submitted on pick so it works
+                     with a single click on a big screen; the 90s meta refresh above re-requests
+                     the same URL, so the chosen filter survives every refresh. --}}
+                <form method="GET" id="presentation-filter" class="space-y-3 rounded-2xl border border-black/5 bg-white p-4 dark:border-white/5 dark:bg-[#0f1e33]">
+                    <div class="flex items-center justify-between">
+                        <p class="text-sm font-semibold">{{ __('presentation.filter_title') }}</p>
+                        @if ($filter['isActive'])
+                            <a href="{{ url()->current() }}" class="text-xs font-medium text-blue-600 hover:underline dark:text-blue-400">{{ __('presentation.filter_reset') }}</a>
+                        @endif
+                    </div>
+                    <div class="relative" data-searchable-select data-presentation-union>
+                        <x-icon name="globe-alt" class="pointer-events-none absolute top-1/2 left-3 z-10 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                        <input type="hidden" name="union_id" data-searchable-select-value value="{{ $filter['selectedUnionId'] }}">
+                        <input
+                            type="text"
+                            data-searchable-select-search
+                            autocomplete="off"
+                            placeholder="{{ __('entity.search_uni_placeholder') }}"
+                            aria-label="{{ __('entity.search_uni_placeholder') }}"
+                            class="w-full rounded-lg border py-2 pr-9 pl-9 text-sm transition {{ $filter['selectedUnionId'] ? 'border-blue-600 bg-blue-50 text-blue-900 dark:border-blue-500 dark:bg-blue-950/40 dark:text-blue-200' : 'border-black/10 bg-white text-slate-700 dark:border-white/10 dark:bg-[#0b1728] dark:text-slate-200' }}"
+                        >
+                        <x-icon name="chevron-down" class="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                        <ul data-searchable-select-list class="absolute left-0 top-full z-20 mt-1 hidden max-h-52 w-full overflow-y-auto rounded-lg border border-black/10 bg-white p-1 text-sm shadow-lg dark:border-white/10 dark:bg-slate-800"></ul>
+                    </div>
+                    <div class="relative" data-searchable-select data-presentation-conference>
+                        <x-icon name="globe-alt" class="pointer-events-none absolute top-1/2 left-3 z-10 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                        <input type="hidden" name="conference_id" data-searchable-select-value value="{{ $filter['selectedConferenceId'] }}">
+                        <input
+                            type="text"
+                            data-searchable-select-search
+                            autocomplete="off"
+                            placeholder="{{ __('entity.search_daerah_placeholder') }}"
+                            aria-label="{{ __('entity.search_daerah_placeholder') }}"
+                            class="w-full rounded-lg border py-2 pr-9 pl-9 text-sm transition {{ $filter['selectedConferenceId'] ? 'border-blue-600 bg-blue-50 text-blue-900 dark:border-blue-500 dark:bg-blue-950/40 dark:text-blue-200' : 'border-black/10 bg-white text-slate-700 dark:border-white/10 dark:bg-[#0b1728] dark:text-slate-200' }}"
+                        >
+                        <x-icon name="chevron-down" class="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                        <ul data-searchable-select-list class="absolute left-0 top-full z-20 mt-1 hidden max-h-52 w-full overflow-y-auto rounded-lg border border-black/10 bg-white p-1 text-sm shadow-lg dark:border-white/10 dark:bg-slate-800"></ul>
+                    </div>
+                </form>
                 @yield('sidebarExtra')
                 <div class="rounded-2xl border border-black/5 bg-white p-4 text-sm text-slate-500 dark:border-white/5 dark:bg-[#0f1e33] dark:text-slate-400">
                     {{ __('presentation.data_as_of', ['date' => now('Asia/Jakarta')->translatedFormat('d M Y H:i')]) }}
@@ -93,6 +136,33 @@
     </div>
 
     <script>
+        (function () {
+            var form = document.getElementById('presentation-filter');
+            if (! form) return;
+
+            window.initUnionConferenceCascade({
+                unionSelector: '[data-presentation-union]',
+                conferenceSelector: '[data-presentation-conference]',
+                unions: @json($filter['unionOptions']->map(fn ($u) => ['id' => $u->id, 'label' => $u->name])->values()),
+                conferences: @json($filter['conferenceOptions']->map(fn ($c) => ['id' => $c->id, 'union_id' => $c->union_id, 'label' => $c->name])->values()),
+                unionPlaceholder: @json(__('entity.search_uni_placeholder')),
+                conferencePlaceholder: @json(__('entity.search_daerah_placeholder')),
+                conferenceWaitingPlaceholder: @json(__('accounts.waiting_for_uni')),
+                // Only a real pick submits — the engine also fires onChange('') on every
+                // keystroke while typing (see partials/analytics-region-filter's own note).
+                onChange: function (value) {
+                    if (! value) return;
+                    // Drop empty params so the URL stays clean (?union_id=3, not ?union_id=3&conference_id=).
+                    form.querySelectorAll('[data-searchable-select-value]').forEach(function (field) {
+                        field.disabled = field.value === '';
+                    });
+                    form.submit();
+                },
+            });
+        })();
+    </script>
+
+    <script>
         document.getElementById('theme-toggle').addEventListener('click', function () {
             var isDark = document.documentElement.classList.toggle('dark');
             localStorage.setItem('theme', isDark ? 'dark' : 'light');
@@ -110,8 +180,16 @@
                 return setOne.offsetHeight + 8;
             }
 
+            // The duplicate set only exists to make the auto-scroll loop seamless — when the
+            // whole list already fits on screen there's no scrolling, so showing it would just
+            // list every row twice.
+            var setTwo = document.getElementById('rank-set-2');
+
             function tick() {
-                if (setOne.offsetHeight > list.clientHeight) {
+                var overflows = setOne.offsetHeight > list.clientHeight;
+                if (setTwo) setTwo.classList.toggle('hidden', ! overflows);
+
+                if (overflows) {
                     list.scrollTop += 0.6;
 
                     var height = loopHeight();

@@ -58,19 +58,19 @@ class QueueMonitorController extends Controller
         $activeBatchRows = DB::table('job_batches')
             ->whereNull('finished_at')
             ->orderByDesc('created_at')
-            ->paginate(20, ['*'], 'aktif_page')
+            ->paginate(50, ['*'], 'aktif_page')
             ->withQueryString()
             ->appends(['tab' => 'aktif']);
 
         $completedBatchRows = DB::table('job_batches')
             ->whereNotNull('finished_at')
             ->orderByDesc('finished_at')
-            ->paginate(20, ['*'], 'selesai_page')
+            ->paginate(50, ['*'], 'selesai_page')
             ->withQueryString()
             ->appends(['tab' => 'selesai']);
 
         // One bulk lookup shared by both lists below, rather than a per-row Union::find() (up to
-        // 40 extra queries across both paginated pages) — see friendlyBatchName()'s own doc
+        // 100 extra queries across both paginated pages) — see friendlyBatchName()'s own doc
         // comment for what this is actually resolving.
         $unionNames = Union::whereIn('id', collect([...$activeBatchRows->items(), ...$completedBatchRows->items()])
             ->map(fn ($batch) => $this->unionIdFromBatchName($batch->name))
@@ -103,7 +103,7 @@ class QueueMonitorController extends Controller
 
         $failedJobs = DB::table('failed_jobs')
             ->orderByDesc('failed_at')
-            ->paginate(30, ['*'], 'failed_page')
+            ->paginate(50, ['*'], 'failed_page')
             ->withQueryString()
             ->appends(['tab' => 'gagal'])
             ->through(fn ($row) => [

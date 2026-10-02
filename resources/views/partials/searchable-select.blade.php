@@ -66,8 +66,13 @@
 
         // A fixed-position dropdown doesn't move with the page the way an absolutely-positioned
         // one naturally would — closing on any scroll (the table's own horizontal one included,
-        // since it bubbles) avoids it drifting away from the input it belongs to.
-        function closeListOnScroll() {
+        // since it bubbles) avoids it drifting away from the input it belongs to. Only a scroll
+        // of the page itself or of a container actually holding this input counts — an
+        // unrelated scroller elsewhere (e.g. the Presentasi page's continuously auto-scrolling
+        // ranking list) can't move the input, and used to close the list the instant it opened.
+        function closeListOnScroll(e) {
+            var scroller = e && e.target;
+            if (scroller && scroller !== document && scroller.contains && ! scroller.contains(searchInput)) return;
             closeList();
         }
 

@@ -1512,17 +1512,21 @@ class ChurchDashboardController extends Controller
         ]);
     }
 
-    public function presentation()
+    public function presentation(Request $request)
     {
         $countField = ['youtube' => 'subscribers_count', 'instagram' => 'followers_count', 'tiktok' => 'followers_count', 'facebook' => 'followers_count', 'x' => 'followers_count', 'threads' => 'followers_count'];
         $enabledPlatforms = AppSetting::current()->enabledPlatformValues();
+        $filter = $this->presentationRegionFilter($request);
 
         // Public presentation page — always shows general data, never scoped to whoever
-        // (if anyone) happens to be logged in while it's displayed.
+        // (if anyone) happens to be logged in while it's displayed. The Uni/Daerah filter is
+        // the viewer's own explicit choice (left panel), not a login-derived scope.
         $churches = Church::query()
             ->where('is_active', true)
             ->with(['socials' => fn ($q) => $q->where('is_active', true)->with('latestStat'), 'conference.union'])
-            ->get();
+            ->get()
+            ->filter($filter['matches'])
+            ->values();
 
         $rows = $churches->map(function ($church) use ($countField, $enabledPlatforms) {
             $byPlatform = collect($enabledPlatforms)->mapWithKeys(
@@ -1546,13 +1550,18 @@ class ChurchDashboardController extends Controller
             'totalEntities' => $churches->count(),
             'totalSocials' => $churches->flatMap->socials->count(),
             'totalReach' => $rows->sum('total'),
+            'filter' => $filter,
         ]);
     }
 
-    public function presentationGrowth()
+    public function presentationGrowth(Request $request)
     {
+        $filter = $this->presentationRegionFilter($request);
+
         // Public presentation page — always unscoped, see presentation() above.
-        $churches = Church::query()->where('is_active', true)->get();
+        $churches = Church::query()->where('is_active', true)->with('conference')->get()
+            ->filter($filter['matches'])
+            ->values();
 
         $scores = $this->growthScoreRows(scoped: false)->keyBy(fn ($row) => $row['church']->id);
 
@@ -1574,21 +1583,29 @@ class ChurchDashboardController extends Controller
             'scope' => ComparisonScope::church(),
             'rows' => $rows,
             'totalEntities' => $churches->count(),
-            'totalSocials' => $this->activeSocials(scoped: false)->count(),
+            'totalSocials' => $this->activeSocials(scoped: false)->filter(fn ($social) => $social->church && $filter['matches']($social->church))->count(),
             'avgScore' => $scoredRows->isNotEmpty() ? round($scoredRows->avg('score'), 2) : null,
+            'filter' => $filter,
         ]);
     }
 
-    public function personalPresentation()
+    public function personalPresentation(Request $request)
     {
         $countField = ['youtube' => 'subscribers_count', 'instagram' => 'followers_count', 'tiktok' => 'followers_count', 'facebook' => 'followers_count', 'x' => 'followers_count', 'threads' => 'followers_count'];
         $enabledPlatforms = AppSetting::current()->enabledPlatformValues();
+        $filter = $this->presentationRegionFilter($request);
 
-        // Public presentation page — always unscoped, see presentation() above.
+        // Public presentation page — always unscoped, see presentation() above. Only people with
+        // at least one active social account that has actually been fetched (has a stat row) —
+        // per the user's explicit call: someone with no account, or with accounts registered but
+        // never successfully fetched, would just sit at 0 in the ranking with nothing to show.
         $people = Person::query()
             ->where('is_active', true)
+            ->whereHas('socials', fn ($q) => $q->where('is_active', true)->has('stats'))
             ->with(['socials' => fn ($q) => $q->where('is_active', true)->with('latestStat'), 'conference.union', 'union'])
-            ->get();
+            ->get()
+            ->filter($filter['matches'])
+            ->values();
 
         $rows = $people->map(function ($person) use ($countField, $enabledPlatforms) {
             $byPlatform = collect($enabledPlatforms)->mapWithKeys(
@@ -1612,13 +1629,21 @@ class ChurchDashboardController extends Controller
             'totalEntities' => $people->count(),
             'totalSocials' => $people->flatMap->socials->count(),
             'totalReach' => $rows->sum('total'),
+            'filter' => $filter,
         ]);
     }
 
-    public function personalPresentationGrowth()
+    public function personalPresentationGrowth(Request $request)
     {
-        // Public presentation page — always unscoped, see presentation() above.
-        $people = Person::query()->where('is_active', true)->get();
+        $filter = $this->presentationRegionFilter($request);
+
+        // Public presentation page — always unscoped, see presentation() above. Same "only
+        // people with a fetched, active social account" rule as personalPresentation().
+        $people = Person::query()->where('is_active', true)
+            ->whereHas('socials', fn ($q) => $q->where('is_active', true)->has('stats'))
+            ->with('conference')->get()
+            ->filter($filter['matches'])
+            ->values();
 
         $scores = $this->growthScoreRowsPersonal(scoped: false)->keyBy(fn ($row) => $row['person']->id);
 
@@ -1640,9 +1665,46 @@ class ChurchDashboardController extends Controller
             'scope' => ComparisonScope::personal(),
             'rows' => $rows,
             'totalEntities' => $people->count(),
-            'totalSocials' => $this->activeSocialsPersonal(scoped: false)->count(),
+            'totalSocials' => $this->activeSocialsPersonal(scoped: false)->filter(fn ($social) => $social->person && $filter['matches']($social->person))->count(),
             'avgScore' => $scoredRows->isNotEmpty() ? round($scoredRows->avg('score'), 2) : null,
+            'filter' => $filter,
         ]);
+    }
+
+    /**
+     * Uni/Daerah filter for the four public Presentasi pages' left panel (per the user's explicit
+     * call). These pages need no login, so regionFilterOptions() (built around the logged-in
+     * user's own level) can't be reused — options here are simply every active Uni/Daerah,
+     * matching how these pages already show unscoped data to everyone. The match itself reuses
+     * matchesRegionFilter(), the same rule Analitik & Grafik's own filter applies. A Daerah that
+     * doesn't belong to the picked Uni (stale URL after switching Uni) is dropped rather than
+     * yielding an empty list. 'query' is carried onto the header links so switching between
+     * Total Jangkauan / Pertumbuhan / Gereja / Personal keeps the same filter.
+     */
+    private function presentationRegionFilter(Request $request): array
+    {
+        $unionOptions = Union::where('is_active', true)->orderBy('name')->get(['id', 'name']);
+        $selectedUnionId = $unionOptions->contains('id', (int) $request->query('union_id')) ? (string) $request->query('union_id') : null;
+
+        // Every active Daerah, each carrying its union_id — the searchable Uni → Daerah cascade
+        // narrows this client-side as a Uni is picked.
+        $conferenceOptions = Conference::where('is_active', true)->orderBy('name')->get(['id', 'name', 'union_id']);
+        $selectedConference = $conferenceOptions->firstWhere('id', (int) $request->query('conference_id'));
+        $selectedConferenceId = $selectedConference && (! $selectedUnionId || (string) $selectedConference->union_id === $selectedUnionId)
+            ? (string) $selectedConference->id
+            : null;
+
+        $query = array_filter(['union_id' => $selectedUnionId, 'conference_id' => $selectedConferenceId]);
+
+        return [
+            'unionOptions' => $unionOptions,
+            'conferenceOptions' => $conferenceOptions,
+            'selectedUnionId' => $selectedUnionId,
+            'selectedConferenceId' => $selectedConferenceId,
+            'isActive' => $query !== [],
+            'query' => $query !== [] ? '?'.http_build_query($query) : '',
+            'matches' => $this->matchesRegionFilter($selectedUnionId, $selectedConferenceId),
+        ];
     }
 
     public function platformComparison(Request $request, string $platform = 'semua')

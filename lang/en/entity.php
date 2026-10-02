@@ -38,6 +38,8 @@ return [
     'metric_likes' => 'likes',
     'no_stats_yet' => 'No statistics yet.',
     'history_heading' => ':platform History',
+    'history_section_title' => 'Social Media History',
+    'history_section_subtitle' => 'Last 30 records per account, newest first.',
 
     'growth_score_title' => 'Weekly Growth Score',
     'growth_score_subtitle' => 'Composite score trend over recent weeks.',

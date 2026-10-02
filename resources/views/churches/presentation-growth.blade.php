@@ -16,10 +16,10 @@
 @endsection
 
 @section('headerLinks')
-    <a href="{{ $scope->presentationUrl() }}" title="{{ __('presentation.total_reach_icon_title') }}" class="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white">
+    <a href="{{ $scope->presentationUrl() . $filter['query'] }}" title="{{ __('presentation.total_reach_icon_title') }}" class="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white">
         <x-icon name="globe-alt" class="h-4.5 w-4.5" />
     </a>
-    <a href="{{ $scope->other()->presentationGrowthUrl() }}" title="{{ $scope->other()->labelCap() }}" class="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white">
+    <a href="{{ $scope->other()->presentationGrowthUrl() . $filter['query'] }}" title="{{ $scope->other()->labelCap() }}" class="inline-flex h-9 w-9 items-center justify-center rounded-full text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-white">
         <x-icon :name="$scope->other()->icon()" class="h-4.5 w-4.5" />
     </a>
 @endsection

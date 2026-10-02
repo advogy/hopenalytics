@@ -10,5 +10,10 @@ return [
     'growth_icon_title' => 'Pertumbuhan',
     'total_reach_icon_title' => 'Total Jangkauan',
     'avg_weekly_growth_score' => 'Rata-rata Skor Pertumbuhan Mingguan',
+    'filter_title' => 'Filter',
+    'filter_all_unions' => 'Semua Uni',
+    'filter_all_conferences' => 'Semua Daerah',
+    'filter_reset' => 'Reset',
+    'filter_apply' => 'Terapkan',
     'score_explanation' => 'Skor = rata-rata pertumbuhan persentase (followers/subscribers, views, likes, post) dari akun media sosial masing-masing :noun, agar :noun dengan akun kecil maupun besar dinilai secara adil.',
 ];

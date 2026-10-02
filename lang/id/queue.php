@@ -72,6 +72,8 @@ return [
     'retry_failed_confirm' => 'Coba jalankan ulang job ini?',
     'retry' => 'Coba Lagi',
     'select_all' => 'Pilih semua',
+    'selected_count' => ':count dipilih',
+    'clear_selection' => 'Batal pilih',
     'retry_selected' => 'Coba Lagi Terpilih',
     'retry_selected_confirm' => 'Coba jalankan ulang :count job terpilih?',
     'retry_selected_none' => 'Pilih minimal satu job terlebih dahulu.',

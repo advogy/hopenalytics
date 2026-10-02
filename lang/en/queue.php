@@ -72,6 +72,8 @@ return [
     'retry_failed_confirm' => 'Retry this job?',
     'retry' => 'Retry',
     'select_all' => 'Select all',
+    'selected_count' => ':count selected',
+    'clear_selection' => 'Clear selection',
     'retry_selected' => 'Retry Selected',
     'retry_selected_confirm' => 'Retry :count selected job(s)?',
     'retry_selected_none' => 'Select at least one job first.',

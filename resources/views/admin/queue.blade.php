@@ -214,6 +214,11 @@
             <p class="font-bold text-slate-900 dark:text-white">{{ __('queue.batches_title') }}</p>
             @if ($activeBatches->isNotEmpty())
                 <div class="flex items-center gap-3">
+                    <span data-bulk-selection-info class="hidden text-xs text-slate-500 dark:text-slate-400">
+                        <span data-bulk-selection-count data-template="{{ __('queue.selected_count', ['count' => ':count']) }}"></span>
+                        &middot;
+                        <button type="button" data-bulk-clear-selection class="cursor-pointer font-medium text-blue-600 hover:underline dark:text-blue-400">{{ __('queue.clear_selection') }}</button>
+                    </span>
                     <button
                         type="submit"
                         form="active-bulk-form"
@@ -317,6 +322,11 @@
             <p class="font-bold text-slate-900 dark:text-white">{{ __('queue.completed_title') }}</p>
             @if ($completedBatches->isNotEmpty())
                 <div class="flex items-center gap-3">
+                    <span data-bulk-selection-info class="hidden text-xs text-slate-500 dark:text-slate-400">
+                        <span data-bulk-selection-count data-template="{{ __('queue.selected_count', ['count' => ':count']) }}"></span>
+                        &middot;
+                        <button type="button" data-bulk-clear-selection class="cursor-pointer font-medium text-blue-600 hover:underline dark:text-blue-400">{{ __('queue.clear_selection') }}</button>
+                    </span>
                     <button
                         type="submit"
                         form="completed-bulk-form"
@@ -421,6 +431,11 @@
             <p class="font-bold text-slate-900 dark:text-white">{{ __('queue.failed_title') }}</p>
             <div class="flex items-center gap-3">
                 @if ($failedJobs->isNotEmpty())
+                    <span data-bulk-selection-info class="hidden text-xs text-slate-500 dark:text-slate-400">
+                        <span data-bulk-selection-count data-template="{{ __('queue.selected_count', ['count' => ':count']) }}"></span>
+                        &middot;
+                        <button type="button" data-bulk-clear-selection class="cursor-pointer font-medium text-blue-600 hover:underline dark:text-blue-400">{{ __('queue.clear_selection') }}</button>
+                    </span>
                     <button
                         type="submit"
                         form="failed-bulk-form"
@@ -579,12 +594,13 @@
          otherwise silently drop a listener bound directly to an about-to-be-replaced element —
          moot for these three specifically (they're excluded from that poll for exactly this
          reason, see its own comment) but delegation costs nothing extra and keeps this robust
-         either way. --}}
+         either way. { persist: true } keeps each tab's selection across its own pagination (see
+         that partial's own doc comment). --}}
     @include('partials.bulk-select')
     <script>
-        window.initBulkSelect('job-gagal', 'failed-bulk-form', '[data-failed-job-checkbox]', '[data-select-all-failed]', '[data-bulk-retry-button], [data-bulk-delete-button]');
-        window.initBulkSelect('batch-aktif', 'active-bulk-form', '[data-active-batch-checkbox]', '[data-select-all-active]', '[data-bulk-cancel-button]');
-        window.initBulkSelect('batch-selesai', 'completed-bulk-form', '[data-completed-batch-checkbox]', '[data-select-all-completed]', '[data-bulk-delete-completed-button]');
+        window.initBulkSelect('job-gagal', 'failed-bulk-form', '[data-failed-job-checkbox]', '[data-select-all-failed]', '[data-bulk-retry-button], [data-bulk-delete-button]', { persist: true });
+        window.initBulkSelect('batch-aktif', 'active-bulk-form', '[data-active-batch-checkbox]', '[data-select-all-active]', '[data-bulk-cancel-button]', { persist: true });
+        window.initBulkSelect('batch-selesai', 'completed-bulk-form', '[data-completed-batch-checkbox]', '[data-select-all-completed]', '[data-bulk-delete-completed-button]', { persist: true });
     </script>
 
     @include('partials.tab-script', ['activeTab' => $activeTab])

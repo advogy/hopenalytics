@@ -40,6 +40,8 @@ return [
     'metric_likes' => 'likes',
     'no_stats_yet' => 'Belum ada data statistik.',
     'history_heading' => 'Riwayat :platform',
+    'history_section_title' => 'Riwayat Media Sosial',
+    'history_section_subtitle' => '30 pencatatan terakhir per akun, terbaru di atas.',
 
     'growth_score_title' => 'Skor Pertumbuhan Mingguan',
     'growth_score_subtitle' => 'Tren skor komposit beberapa minggu terakhir.',
