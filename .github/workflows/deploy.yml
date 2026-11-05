@@ -73,8 +73,11 @@ jobs:
           DIR="${{ secrets.HOSTINGER_FTP_SERVER_DIR }}"
           DIR="${DIR#./}"
           DIR="${DIR%/}"
+          # The server's certificate names hstgr.io, not the address in HOSTINGER_FTP_HOST,
+          # so it's checked against that name while connecting to the same server.
           curl -sS --fail --ssl-reqd -T deploy-payload.zip \
-            "ftp://${{ secrets.HOSTINGER_FTP_HOST }}/$DIR/deploy-payload.zip" \
+            --connect-to "hstgr.io:21:${{ secrets.HOSTINGER_FTP_HOST }}:21" \
+            "ftp://hstgr.io/$DIR/deploy-payload.zip" \
             --user "${{ secrets.HOSTINGER_FTP_USERNAME }}:${{ secrets.HOSTINGER_FTP_PASSWORD }}"
 
       - name: Trigger extract + migrate on the server
