@@ -87,7 +87,7 @@ class BrandController extends Controller
                 'required', 'string', 'max:255',
                 Rule::unique('brands', 'domain')->ignore($brand),
             ],
-            'logo' => ['nullable', 'image', 'mimes:png,jpg,jpeg,svg,webp', 'max:2048'],
+            'logo' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp', 'max:2048'],
         ], [], ['domain' => 'domain']);
     }
 
