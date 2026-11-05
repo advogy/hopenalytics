@@ -67,12 +67,13 @@ jobs:
             -x "public/storage/*" -x "public/hot"
           ls -lh deploy-payload.zip
 
-      - name: Upload deploy-payload.zip over FTP
+      # --ssl-reqd: the password goes over TLS or the upload doesn't happen.
+      - name: Upload deploy-payload.zip over FTPS
         run: |
           DIR="${{ secrets.HOSTINGER_FTP_SERVER_DIR }}"
           DIR="${DIR#./}"
           DIR="${DIR%/}"
-          curl -sS -T deploy-payload.zip \
+          curl -sS --fail --ssl-reqd -T deploy-payload.zip \
             "ftp://${{ secrets.HOSTINGER_FTP_HOST }}/$DIR/deploy-payload.zip" \
             --user "${{ secrets.HOSTINGER_FTP_USERNAME }}:${{ secrets.HOSTINGER_FTP_PASSWORD }}"
 
