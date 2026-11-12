@@ -2,12 +2,12 @@
 
 use App\Http\Controllers\Admin\AccountController;
 use App\Http\Controllers\Admin\AdminSuggestionController;
-use App\Http\Controllers\Admin\EmailBroadcastController;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\BrandController;
 use App\Http\Controllers\Admin\BulkDataImportController;
 use App\Http\Controllers\Admin\ConferenceController;
 use App\Http\Controllers\Admin\DivisionController;
+use App\Http\Controllers\Admin\EmailBroadcastController;
 use App\Http\Controllers\Admin\HashtagController;
 use App\Http\Controllers\Admin\InstitutionController;
 use App\Http\Controllers\Admin\OrganizationSocialController;
@@ -35,6 +35,7 @@ use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SocialStatController;
 use App\Http\Middleware\NoCacheFormPage;
 use App\Http\Middleware\RedirectUnassignedMembers;
+use App\Http\Middleware\VerifyDeployToken;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/locale/{locale}', [LocaleController::class, 'switch'])->name('locale.switch');
@@ -43,7 +44,7 @@ Route::get('/locale/{locale}', [LocaleController::class, 'switch'])->name('local
 // App\Http\Middleware\VerifyDeployToken. throttle on top of the token check as defense in depth.
 Route::post('/deploy/run', [DeployController::class, 'run'])
     ->name('deploy.run')
-    ->middleware(['throttle:6,1', \App\Http\Middleware\VerifyDeployToken::class]);
+    ->middleware(['throttle:6,1', VerifyDeployToken::class]);
 
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.attempt')->middleware('throttle:login');
@@ -94,7 +95,7 @@ Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group
 
     Route::get('/lengkapi-profil', [CompleteProfileController::class, 'show'])->name('profile.complete');
     Route::post('/lengkapi-profil', [CompleteProfileController::class, 'store'])->name('profile.complete.store');
-    Route::post('/lengkapi-profil/skip', [CompleteProfileController::class, 'skip'])->name('profile.complete.skip');
+    Route::post('/lengkapi-profil/selesai', [CompleteProfileController::class, 'finish'])->name('profile.complete.finish');
 
     Route::get('/pilih-personal', [LinkPersonController::class, 'show'])->name('link-person');
     Route::post('/pilih-personal', [LinkPersonController::class, 'store'])->name('link-person.store');

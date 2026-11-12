@@ -6,6 +6,7 @@ use App\Enums\SocialPlatform;
 use App\Models\AppSetting;
 use App\Models\ChurchSocial;
 use App\Models\Person;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -33,6 +34,14 @@ class PersonSocialController extends Controller
     {
         $data = $this->validated($request, $person->id);
         $social = $this->createOrReactivate($person, $data);
+
+        // "Save & Continue" on the last step of the new-member wizard (auth/complete-profile):
+        // saving the account also finishes the wizard, same as CompleteProfileController::finish().
+        if ($request->input('from') === 'onboarding' && $person->user_id === $request->user()->id) {
+            $request->user()->forceFill(['profile_step_completed_at' => now()])->save();
+
+            return redirect()->route('akun-saya')->with('status', __('auth.onboarding_done', ['app' => config('app.name')]));
+        }
 
         // Deliberately no immediate fetch dispatch here — see ChurchSocialController::store()'s
         // comment for why.
@@ -79,7 +88,7 @@ class PersonSocialController extends Controller
 
         try {
             return $person->socials()->create($data);
-        } catch (\Illuminate\Database\UniqueConstraintViolationException) {
+        } catch (UniqueConstraintViolationException) {
             $racedRow = $person->socials()
                 ->where('platform', $data['platform'])->where('category', $data['category'])
                 ->where('handle', $data['handle'])
@@ -134,7 +143,9 @@ class PersonSocialController extends Controller
         ]);
 
         $data['handle'] = ltrim($data['handle'], '@');
-        $data['is_auto_fetch'] = $request->boolean('is_auto_fetch');
+        // Only admins choose auto-fetch vs manual entry (the form hides it from members, see
+        // components/social-form); a member's own new account is always auto-fetched.
+        $data['is_auto_fetch'] = $request->user()->role !== null ? $request->boolean('is_auto_fetch') : true;
         $data['category'] = 'personal';
         unset($data['consent']);
         $data['consent_at'] = now();

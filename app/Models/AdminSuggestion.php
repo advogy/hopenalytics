@@ -8,6 +8,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
+ * wants_admin = false: the member only asked for the church to be added (they belong to it but
+ * don't run it). Approving that creates the Church and links their Person to it, with no
+ * promotion. wants_admin = true is the original meaning described below.
+ *
  * A member's claim, made by typing a not-yet-existing Gereja name during Lengkapi Profil (or
  * later, Profil Saya's Wilayah section — see FindsOrCreatesChurch::findExistingChurchOrSuggestAdmin()),
  * that they should become that new church's admin — held for review rather than auto-creating
@@ -19,13 +23,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class AdminSuggestion extends Model
 {
     protected $fillable = [
-        'user_id', 'person_id', 'conference_id', 'church_name',
+        'user_id', 'person_id', 'conference_id', 'church_name', 'wants_admin',
         'status', 'reviewed_by', 'reviewed_at', 'rejection_reason', 'resulting_church_id',
     ];
 
     protected $casts = [
         'status' => AdminSuggestionStatus::class,
         'reviewed_at' => 'datetime',
+        'wants_admin' => 'boolean',
     ];
 
     public function user(): BelongsTo

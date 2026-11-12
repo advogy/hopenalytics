@@ -1,6 +1,7 @@
 {{--
     "Saran Admin" tab — one row per pending AdminSuggestion (a member typed a not-yet-existing
-    Gereja name during Lengkapi Profil/Profil Saya and is claiming to be its admin). Expects
+    Gereja name during Lengkapi Profil/Profil Saya — either asking to be its admin, or, when
+    wants_admin is false, only asking for it to be added). Expects
     $pendingSuggestions (a paginator, each row's user/person/conference.union eager-loaded, plus
     a ->similarChurches collection UserAssignmentController::index() attaches per row — see its
     own doc comment) and $canReviewSuggestions.
@@ -16,6 +17,7 @@
             <th class="py-2 pr-2 font-semibold">#</th>
             <th class="py-2 pr-2 font-semibold">{{ __('admin_suggestions.col_requester') }}</th>
             <th class="py-2 pr-2 font-semibold">{{ __('admin_suggestions.col_church_name') }}</th>
+            <th class="py-2 pr-2 font-semibold">{{ __('admin_suggestions.col_type') }}</th>
             <th class="py-2 pr-2 font-semibold">{{ __('common.conference') }}</th>
             <th class="py-2 pr-2 font-semibold">{{ __('admin_suggestions.col_submitted_at') }}</th>
             <th class="py-2 text-right font-semibold">{{ __('common.action') }}</th>
@@ -31,6 +33,13 @@
                 <td class="py-2 pr-2">
                     <div class="font-medium text-slate-900 dark:text-white">{{ $suggestion->church_name }}</div>
                 </td>
+                <td class="py-2 pr-2">
+                    @if ($suggestion->wants_admin)
+                        <span class="inline-flex whitespace-nowrap rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-300">{{ __('admin_suggestions.type_admin') }}</span>
+                    @else
+                        <span class="inline-flex whitespace-nowrap rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">{{ __('admin_suggestions.type_member') }}</span>
+                    @endif
+                </td>
                 <td class="py-2 pr-2 text-slate-500 dark:text-slate-400">
                     {{ $suggestion->conference->name }} ({{ $suggestion->conference->union->name }})
                 </td>
@@ -42,7 +51,7 @@
                         <form
                             method="POST"
                             action="{{ route('admin.admin-suggestions.approve', $suggestion) }}"
-                            data-confirm="{{ __('admin_suggestions.approve_confirm', ['name' => $suggestion->user->name, 'church' => $suggestion->church_name]) }}"
+                            data-confirm="{{ __($suggestion->wants_admin ? 'admin_suggestions.approve_confirm' : 'admin_suggestions.approve_confirm_member', ['name' => $suggestion->user->name, 'church' => $suggestion->church_name]) }}"
                             data-disable-on-submit
                         >
                             @csrf
@@ -83,7 +92,7 @@
                      width instead of stacking narrow-and-tall. --}}
                 <tr>
                     <td></td>
-                    <td colspan="4" class="pb-2 pr-2">
+                    <td colspan="5" class="pb-2 pr-2">
                         <details class="rounded-lg border border-amber-200 bg-amber-50 open:pb-2 dark:border-amber-900 dark:bg-amber-950">
                             <summary class="cursor-pointer select-none px-2 py-1.5 text-xs font-medium text-amber-800 dark:text-amber-300">
                                 {{ __('admin_suggestions.similar_warning', ['count' => $suggestion->similarChurches->count()]) }}

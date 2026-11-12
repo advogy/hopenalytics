@@ -2,6 +2,7 @@
 
 return [
     'directory' => 'Account Directory',
+    'dashboard' => 'Dashboard',
     'analytics' => 'Analytics & Charts',
     'presentation' => 'Presentation',
     'about' => 'About',

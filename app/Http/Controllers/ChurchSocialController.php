@@ -6,6 +6,7 @@ use App\Enums\SocialPlatform;
 use App\Models\AppSetting;
 use App\Models\Church;
 use App\Models\ChurchSocial;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -186,7 +187,7 @@ class ChurchSocialController extends Controller
 
         try {
             return $church->socials()->create($data);
-        } catch (\Illuminate\Database\UniqueConstraintViolationException) {
+        } catch (UniqueConstraintViolationException) {
             $racedRow = $church->socials()
                 ->where('platform', $data['platform'])->where('category', $data['category'])
                 ->where('handle', $data['handle'])
@@ -341,6 +342,13 @@ class ChurchSocialController extends Controller
 
         $data['handle'] = ltrim($data['handle'], '@');
         $data['is_auto_fetch'] = $request->boolean('is_auto_fetch');
+
+        // Only admins choose auto-fetch vs manual entry (the form hides it from members, see
+        // components/social-form). A member only reaches this to edit their own personal
+        // account, so leave whatever an admin set untouched.
+        if ($request->user()->role === null) {
+            unset($data['is_auto_fetch']);
+        }
 
         if ($personal) {
             $data['category'] = 'personal';

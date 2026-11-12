@@ -2,6 +2,7 @@
 
 return [
     'directory' => 'Direktori Akun',
+    'dashboard' => 'Dashboard',
     'analytics' => 'Analitik & Grafik',
     'presentation' => 'Presentasi',
     'about' => 'Tentang',

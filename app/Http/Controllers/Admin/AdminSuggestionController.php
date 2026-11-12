@@ -53,15 +53,19 @@ class AdminSuggestionController extends Controller
         $church = DB::transaction(function () use ($suggestion, $actor) {
             $church = $this->findOrCreateChurch($suggestion->conference_id, $suggestion->church_name);
 
-            $suggestion->user->update([
-                'role' => UserRole::AdminGereja,
-                'division_id' => null,
-                'union_id' => null,
-                'conference_id' => null,
-                'church_id' => $church->id,
-                'institution_id' => null,
-            ]);
-            $suggestion->user->assignedUnions()->sync([]);
+            // Only a member who ticked "I'm this church's admin" is promoted; otherwise the
+            // church is just added and their Person linked to it below.
+            if ($suggestion->wants_admin) {
+                $suggestion->user->update([
+                    'role' => UserRole::AdminGereja,
+                    'division_id' => null,
+                    'union_id' => null,
+                    'conference_id' => null,
+                    'church_id' => $church->id,
+                    'institution_id' => null,
+                ]);
+                $suggestion->user->assignedUnions()->sync([]);
+            }
 
             $suggestion->person->update(['union_id' => null, 'conference_id' => null, 'church_id' => $church->id]);
 
@@ -74,6 +78,17 @@ class AdminSuggestionController extends Controller
 
             return $church;
         });
+
+        if (! $suggestion->wants_admin) {
+            AuditLogger::log(
+                'admin_suggestion.approved',
+                $suggestion->user,
+                "Menyetujui usulan gereja baru \"{$church->name}\" ({$suggestion->conference->name}) dari \"{$suggestion->user->name}\" sebagai anggota, tanpa menjadikannya admin."
+            );
+
+            return redirect()->route('admin.users.index', ['tab' => 'saran'])
+                ->with('status', __('admin_suggestions.approved_member', ['name' => $suggestion->user->name, 'church' => $church->name]));
+        }
 
         // Sent only here, after the transaction has actually committed — never on reject (see
         // that method) and never if the transaction above rolled back, so the requester is only

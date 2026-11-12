@@ -342,17 +342,13 @@ class PersonController extends Controller
                 ? ['union_id' => null, 'conference_id' => $submittedConferenceId, 'church_id' => $currentChurchId]
                 : ['union_id' => $user->union_id, 'conference_id' => null, 'church_id' => $currentChurchId],
             'divisi' => match (true) {
-                $submittedConferenceId && Conference::whereKey($submittedConferenceId)->whereHas('union', fn ($q) => $q->where('division_id', $user->division_id))->exists()
-                    => ['union_id' => null, 'conference_id' => $submittedConferenceId, 'church_id' => $currentChurchId],
-                $submittedUnionId && Union::whereKey($submittedUnionId)->where('division_id', $user->division_id)->exists()
-                    => ['union_id' => $submittedUnionId, 'conference_id' => null, 'church_id' => $currentChurchId],
+                $submittedConferenceId && Conference::whereKey($submittedConferenceId)->whereHas('union', fn ($q) => $q->where('division_id', $user->division_id))->exists() => ['union_id' => null, 'conference_id' => $submittedConferenceId, 'church_id' => $currentChurchId],
+                $submittedUnionId && Union::whereKey($submittedUnionId)->where('division_id', $user->division_id)->exists() => ['union_id' => $submittedUnionId, 'conference_id' => null, 'church_id' => $currentChurchId],
                 default => ['union_id' => $currentUnionId, 'conference_id' => $currentConferenceId, 'church_id' => $currentChurchId],
             },
             'nasional' => match (true) {
-                $submittedConferenceId && Conference::whereKey($submittedConferenceId)->whereIn('union_id', $user->assignedUnionIds())->exists()
-                    => ['union_id' => null, 'conference_id' => $submittedConferenceId, 'church_id' => $currentChurchId],
-                $submittedUnionId && in_array($submittedUnionId, $user->assignedUnionIds(), true)
-                    => ['union_id' => $submittedUnionId, 'conference_id' => null, 'church_id' => $currentChurchId],
+                $submittedConferenceId && Conference::whereKey($submittedConferenceId)->whereIn('union_id', $user->assignedUnionIds())->exists() => ['union_id' => null, 'conference_id' => $submittedConferenceId, 'church_id' => $currentChurchId],
+                $submittedUnionId && in_array($submittedUnionId, $user->assignedUnionIds(), true) => ['union_id' => $submittedUnionId, 'conference_id' => null, 'church_id' => $currentChurchId],
                 default => ['union_id' => $currentUnionId, 'conference_id' => $currentConferenceId, 'church_id' => $currentChurchId],
             },
             default => $submittedUnionId || $submittedConferenceId
@@ -392,7 +388,7 @@ class PersonController extends Controller
         // $currentChurchId below unchanged — a pending suggestion doesn't clear whatever church
         // this Person already had linked; that only changes once the suggestion is reviewed.
         $church = $request->filled('church_name')
-            ? $this->findExistingChurchOrSuggestAdmin($request->user(), $conference->id, (string) $request->input('church_name'))
+            ? $this->findExistingChurchOrSuggestAdmin($request->user(), $conference->id, (string) $request->input('church_name'), $request->boolean('church_is_admin'))
             : null;
 
         return ['union_id' => null, 'conference_id' => $conference->id, 'church_id' => $church?->id ?? $currentChurchId];

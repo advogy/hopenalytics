@@ -112,6 +112,10 @@
         </div>
     @endif
 
+    {{-- Admins only: whether an account is fetched automatically or entered by hand is their
+         call. The server ignores this field for members (see PersonSocialController and
+         ChurchSocialController's validated()). --}}
+    @if (auth()->user()?->role !== null)
     <div class="mb-6 flex items-center gap-2">
         <input
             type="checkbox" id="is_auto_fetch" name="is_auto_fetch" value="1"
@@ -123,4 +127,5 @@
             <span class="block text-xs text-slate-400">{{ __('entity.auto_fetch_hint_'.$hintSuffix) }}</span>
         </label>
     </div>
+    @endif
 </x-entity-crud-form>

@@ -71,9 +71,24 @@
 
 @if ($socialsWithHistory->isNotEmpty())
     <div id="{{ $historyTabsId }}" class="mt-8 rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
-        <div class="mb-4">
-            <h2 class="font-medium">{{ __('entity.history_section_title') }}</h2>
-            <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('entity.history_section_subtitle') }}</p>
+        <div class="mb-4 flex items-start justify-between gap-3">
+            <div class="min-w-0">
+                <h2 class="font-medium">{{ __('entity.history_section_title') }}</h2>
+                <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('entity.history_section_subtitle') }}</p>
+            </div>
+
+            {{-- One button per account, only the active tab's shown (the tab script below swaps
+                 them). Only for whoever can also manage that account, per the user's explicit
+                 call — a tab whose account they can't manage simply shows none. --}}
+            @foreach ($socialsWithHistory as $social)
+                @can('update', $social)
+                    <div data-history-export="{{ $social->id }}" @class(['shrink-0', 'hidden' => ! $loop->first])>
+                        <x-export-button :url="route('export.social-history.preview', $social)" :title="__('entity.export_history_title')" class="!px-3 !py-1.5">
+                            {{ __('entity.export_history_button') }}
+                        </x-export-button>
+                    </div>
+                @endcan
+            @endforeach
         </div>
 
         @if ($socialsWithHistory->count() > 1)
@@ -135,6 +150,9 @@
                         button.setAttribute('aria-selected', isActive ? 'true' : 'false');
                         activeClasses.forEach(function (c) { button.classList.toggle(c, isActive); });
                         inactiveClasses.forEach(function (c) { button.classList.toggle(c, ! isActive); });
+                    });
+                    root.querySelectorAll('[data-history-export]').forEach(function (button) {
+                        button.classList.toggle('hidden', button.getAttribute('data-history-export') !== key);
                     });
                     root.querySelectorAll('[data-history-panel]').forEach(function (panel) {
                         panel.classList.toggle('hidden', panel.getAttribute('data-history-panel') !== key);

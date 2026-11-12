@@ -83,6 +83,17 @@
     @error('church_name')
         <p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ $message }}</p>
     @enderror
+
+    {{-- Shown only while the typed name isn't one of the chosen Daerah's churches (see the
+         script below). Without it, a new name is just a request to add the church; with it,
+         it's also a request to become its admin (see FindsOrCreatesChurch). --}}
+    <div class="mt-3 hidden items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-900 dark:bg-amber-950/40" data-region-church-admin>
+        <input type="checkbox" id="church_is_admin" name="church_is_admin" value="1" @checked(old('church_is_admin')) class="mt-0.5 h-4 w-4 rounded border-black/20 text-blue-600 focus:ring-blue-500">
+        <label for="church_is_admin" class="text-sm">
+            {{ __('entity.church_is_admin_label') }}
+            <span class="block text-xs text-slate-500 dark:text-slate-400">{{ __('entity.church_is_admin_hint') }}</span>
+        </label>
+    </div>
 </div>
 
 <script>
@@ -96,11 +107,28 @@
         var churchWrapper = document.querySelector('[data-region-church]');
         var conferenceSearch = conferenceWrapper.querySelector('[data-searchable-select-search]');
         var churchSearch = churchWrapper.querySelector('[data-searchable-select-search]');
+        var churchAdminBox = document.querySelector('[data-region-church-admin]');
+        var churchAdminInput = document.getElementById('church_is_admin');
+        var currentConferenceId = null;
 
-        var churchCtl = window.initSearchableSelect(churchWrapper, { allowCreate: true });
+        // A typed name that isn't one of the chosen Daerah's churches is a new one.
+        function syncChurchAdminBox(name) {
+            var known = (churchesByConference[currentConferenceId] || []).some(function (c) {
+                return c.label.toLowerCase() === String(name || '').trim().toLowerCase();
+            });
+            var isNew = !! currentConferenceId && !! String(name || '').trim() && ! known;
+
+            churchAdminBox.classList.toggle('hidden', ! isNew);
+            churchAdminBox.classList.toggle('flex', isNew);
+            if (! isNew) churchAdminInput.checked = false;
+        }
+
+        var churchCtl = window.initSearchableSelect(churchWrapper, { allowCreate: true, onChange: syncChurchAdminBox });
 
         var conferenceCtl = window.initSearchableSelect(conferenceWrapper, {
             onChange: function (conferenceId) {
+                currentConferenceId = conferenceId || null;
+                syncChurchAdminBox('');
                 if (! conferenceId) {
                     churchSearch.disabled = true;
                     churchCtl.setOptions([], i18n.waitingForDaerah);
@@ -113,6 +141,8 @@
 
         var unionCtl = window.initSearchableSelect(unionWrapper, {
             onChange: function (unionId) {
+                currentConferenceId = null;
+                syncChurchAdminBox('');
                 if (! unionId) {
                     conferenceSearch.disabled = true;
                     conferenceCtl.setOptions([], i18n.waitingForUni);
@@ -137,6 +167,7 @@
 
         @if ($selectedConferenceId)
             conferenceCtl.preset({{ $selectedConferenceId }}, @json($selectedConferenceName));
+            currentConferenceId = {{ $selectedConferenceId }};
             churchCtl.setOptions(churchesByConference[{{ $selectedConferenceId }}] || [], i18n.searchOrCreateChurch);
             churchSearch.disabled = false;
         @endif
@@ -144,5 +175,10 @@
         @if ($selectedChurchName)
             churchCtl.preset(@json($selectedChurchName), @json($selectedChurchName));
         @endif
+
+        // Restore the box after a validation error (old input) or when reopening the form.
+        var keepChecked = churchAdminInput.checked;
+        syncChurchAdminBox(churchWrapper.querySelector('[data-searchable-select-value]').value);
+        if (! churchAdminBox.classList.contains('hidden')) churchAdminInput.checked = keepChecked;
     })();
 </script>

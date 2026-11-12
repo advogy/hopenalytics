@@ -16,7 +16,7 @@
         <x-form-field name="name" :label="__('auth.name')" required :value="old('name')" />
         <x-form-field name="email" type="email" :label="__('auth.email')" required :value="old('email')" />
         <x-form-field name="password" type="password" :label="__('auth.password')" required />
-        <x-form-field name="password_confirmation" type="password" :label="__('auth.password')" required />
+        <x-form-field name="password_confirmation" type="password" :label="__('auth.password_confirmation')" required />
 
         <button type="submit" class="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70">
             {{ __('auth.register_button') }}

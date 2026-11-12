@@ -22,7 +22,7 @@ class RedirectUnassignedMembers
         'about',
         'profile.complete',
         'profile.complete.store',
-        'profile.complete.skip',
+        'profile.complete.finish',
         'link-person',
         'link-person.store',
         'churches.directory',

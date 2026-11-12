@@ -6,6 +6,7 @@ use App\Enums\AdminSuggestionStatus;
 use App\Models\AdminSuggestion;
 use App\Models\Church;
 use App\Models\User;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Str;
 
 /**
@@ -18,6 +19,9 @@ use Illuminate\Support\Str;
 trait FindsOrCreatesChurch
 {
     /**
+     * $wantsAdmin comes from the "I'm this church's admin" checkbox in partials/region-fields;
+     * without it a new name is only a request to add the church (see AdminSuggestion).
+     *
      * The member-facing entry point (used by both callers above) — an EXISTING church name
      * (case-insensitive, so "GMAHK Kelapa Gading" and "gmahk kelapa gading" both resolve to the
      * same row) links normally, same as always. A genuinely NEW name never creates the Church
@@ -33,7 +37,7 @@ trait FindsOrCreatesChurch
      * (editing Lengkapi Profil/Wilayah again before it's been reviewed) rather than piling up a
      * duplicate row — a previously rejected or approved one is untouched history, never reused.
      */
-    private function findExistingChurchOrSuggestAdmin(User $user, int $conferenceId, string $name): ?Church
+    private function findExistingChurchOrSuggestAdmin(User $user, int $conferenceId, string $name, bool $wantsAdmin = false): ?Church
     {
         $existing = Church::where('conference_id', $conferenceId)
             ->whereRaw('LOWER(name) = ?', [Str::lower(trim($name))])
@@ -46,13 +50,14 @@ trait FindsOrCreatesChurch
         $pending = AdminSuggestion::where('user_id', $user->id)->where('status', AdminSuggestionStatus::Pending)->first();
 
         if ($pending) {
-            $pending->update(['conference_id' => $conferenceId, 'church_name' => trim($name)]);
+            $pending->update(['conference_id' => $conferenceId, 'church_name' => trim($name), 'wants_admin' => $wantsAdmin]);
         } else {
             AdminSuggestion::create([
                 'user_id' => $user->id,
                 'person_id' => $user->person->id,
                 'conference_id' => $conferenceId,
                 'church_name' => trim($name),
+                'wants_admin' => $wantsAdmin,
                 'status' => AdminSuggestionStatus::Pending,
             ]);
         }
@@ -96,7 +101,7 @@ trait FindsOrCreatesChurch
                     'slug' => $slug,
                     'is_active' => true,
                 ]);
-            } catch (\Illuminate\Database\UniqueConstraintViolationException) {
+            } catch (UniqueConstraintViolationException) {
                 // Another request created a church with this exact slug between our check
                 // above and this insert (e.g. two people completing profiles for the same
                 // new church at once) — recompute against the now-current state and retry.

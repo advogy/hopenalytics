@@ -52,6 +52,26 @@
     <body class="flex min-h-screen flex-col bg-[#f8f4ec] font-sans text-slate-900 antialiased dark:bg-[#16130f] dark:text-slate-100">
         @include('partials.platform-icon-sprite')
         <header class="sticky top-0 z-10 border-b border-black/5 bg-[#f8f4ec]/80 backdrop-blur-md dark:border-white/5 dark:bg-[#16130f]/80">
+            @php
+                // Members have their own dashboard (MyAccountController); every admin level's is
+                // the main church dashboard.
+                $dashboardRoute = auth()->user()?->role === null ? 'akun-saya' : 'churches.index';
+
+                // Which top-menu item the current page belongs to — sub-pages light up their
+                // section too (e.g. a leaderboard or platform comparison counts as Analitik).
+                $navActive = [
+                    'dashboard' => request()->routeIs($dashboardRoute),
+                    'directory' => request()->routeIs('churches.directory'),
+                    'analytics' => request()->routeIs(
+                        'churches.analytics',
+                        'churches.needs-attention',
+                        '*.metric-comparison',
+                        '*.leaderboard',
+                        '*.platform-comparison',
+                        '*.hashtag-comparison',
+                    ),
+                ];
+            @endphp
             <div class="mx-auto max-w-6xl px-4 sm:px-6">
                 <div class="flex items-center justify-between py-2">
                     <a href="{{ route('churches.index') }}" class="flex items-center gap-2.5">
@@ -61,13 +81,18 @@
 
                     <div class="flex items-center gap-2 sm:gap-4">
                         <div class="hidden items-center gap-4 lg:flex">
+                            @auth
+                                <a href="{{ route($dashboardRoute) }}" @if ($navActive['dashboard']) aria-current="page" @endif @class(['text-sm hover:text-blue-600 dark:hover:text-blue-400', 'font-medium text-blue-600 dark:text-blue-400' => $navActive['dashboard'], 'text-slate-500 dark:text-slate-400' => ! $navActive['dashboard']])>
+                                    {{ __('nav.dashboard') }}
+                                </a>
+                            @endauth
                             @can('view-directory')
-                                <a href="{{ route('churches.directory') }}" class="text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
+                                <a href="{{ route('churches.directory') }}" @if ($navActive['directory']) aria-current="page" @endif @class(['text-sm hover:text-blue-600 dark:hover:text-blue-400', 'font-medium text-blue-600 dark:text-blue-400' => $navActive['directory'], 'text-slate-500 dark:text-slate-400' => ! $navActive['directory']])>
                                     {{ __('nav.directory') }}
                                 </a>
                             @endcan
                             @can('view-analytics')
-                                <a href="{{ route('churches.analytics') }}" class="text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
+                                <a href="{{ route('churches.analytics') }}" @if ($navActive['analytics']) aria-current="page" @endif @class(['text-sm hover:text-blue-600 dark:hover:text-blue-400', 'font-medium text-blue-600 dark:text-blue-400' => $navActive['analytics'], 'text-slate-500 dark:text-slate-400' => ! $navActive['analytics']])>
                                     {{ __('nav.analytics') }}
                                 </a>
                             @endcan
@@ -272,13 +297,18 @@
 
                 <div id="mobile-menu" class="hidden overflow-y-auto overscroll-contain border-t border-black/5 pb-4 lg:hidden dark:border-white/5">
                     <div class="flex flex-col gap-1 pt-3">
+                        @auth
+                            <a href="{{ route($dashboardRoute) }}" @if ($navActive['dashboard']) aria-current="page" @endif @class(['rounded-lg px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800', 'font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40' => $navActive['dashboard'], 'text-slate-600 dark:text-slate-300' => ! $navActive['dashboard']])>
+                                {{ __('nav.dashboard') }}
+                            </a>
+                        @endauth
                         @can('view-directory')
-                            <a href="{{ route('churches.directory') }}" class="rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                            <a href="{{ route('churches.directory') }}" @if ($navActive['directory']) aria-current="page" @endif @class(['rounded-lg px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800', 'font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40' => $navActive['directory'], 'text-slate-600 dark:text-slate-300' => ! $navActive['directory']])>
                                 {{ __('nav.directory') }}
                             </a>
                         @endcan
                         @can('view-analytics')
-                            <a href="{{ route('churches.analytics') }}" class="rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+                            <a href="{{ route('churches.analytics') }}" @if ($navActive['analytics']) aria-current="page" @endif @class(['rounded-lg px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800', 'font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40' => $navActive['analytics'], 'text-slate-600 dark:text-slate-300' => ! $navActive['analytics']])>
                                 {{ __('nav.analytics') }}
                             </a>
                         @endcan

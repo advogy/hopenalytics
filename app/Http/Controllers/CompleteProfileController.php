@@ -23,13 +23,12 @@ class CompleteProfileController extends Controller
      * either auto-created or linked to an existing admin-made record (see
      * RegisterController::verifyOtp() / LinkPersonController::store()).
      *
-     * Skippable; a skip leaves the Person's union_id/conference_id/church_id null, which is
-     * exactly the "nasional" (unscoped, nasional-admins-only) visibility bucket — but it can
-     * always be completed later from the Wilayah section folded into Profil Saya's "Info
-     * Personal" tab (see ProfileController::edit()), which posts to the same store() below.
-     * Also skipped automatically — profile_step_completed_at backfilled without asking again —
-     * when the linked Person already reports a region, e.g. an admin pre-created it with one
-     * already set before this member ever registered.
+     * A two-step wizard (?langkah=1|2): step 1 asks for the region, step 2 lets the member add
+     * their personal social accounts (posted to PersonSocialController::store(), which sends
+     * them back here). Both steps are skippable; skipping step 1 leaves the Person's
+     * union_id/conference_id/church_id null, which is exactly the "nasional" (unscoped,
+     * nasional-admins-only) visibility bucket. Either can be completed later from Profil Saya.
+     * profile_step_completed_at is set only by finish(), so the wizard isn't shown again.
      */
     public function show(Request $request)
     {
@@ -39,17 +38,38 @@ class CompleteProfileController extends Controller
             return redirect()->route('akun-saya');
         }
 
-        if ($user->person && ($user->person->union_id || $user->person->conference_id)) {
-            $user->forceFill(['profile_step_completed_at' => now()])->save();
+        // Two steps, both skippable: 1 = Wilayah (region), 2 = personal social accounts.
+        // A Person that already reports a region (e.g. an admin pre-created it with one)
+        // starts on step 2 instead of being asked again.
+        $person = $user->person;
+        $hasRegion = $person && ($person->union_id || $person->conference_id);
+        $step = (int) $request->query('langkah', $hasRegion ? 2 : 1);
+        $step = $step === 2 && $person ? 2 : 1;
 
-            return redirect()->route('akun-saya');
+        $socials = $person
+            ? $person->socials()->where('is_active', true)->orderBy('platform')->get()
+            : collect();
+
+        $data = [
+            'step' => $step,
+            'person' => $person,
+            'hasRegion' => $hasRegion,
+            'socials' => $socials,
+        ];
+
+        if ($step === 1) {
+            $data += [
+                'unions' => Union::where('is_active', true)->orderBy('name')->get(),
+                'conferences' => Conference::where('is_active', true)->orderBy('name')->get(['id', 'union_id', 'name']),
+                'churches' => Church::where('is_active', true)->orderBy('name')->get(['id', 'conference_id', 'name']),
+                // Pre-fills step 1 when the member comes back to it from step 2.
+                'selectedConferenceId' => $person?->conference_id,
+                'selectedUnionId' => $person?->conference?->union_id ?? $person?->union_id,
+                'selectedChurchName' => $person?->church?->name,
+            ];
         }
 
-        return view('auth.complete-profile', [
-            'unions' => Union::where('is_active', true)->orderBy('name')->get(),
-            'conferences' => Conference::where('is_active', true)->orderBy('name')->get(['id', 'union_id', 'name']),
-            'churches' => Church::where('is_active', true)->orderBy('name')->get(['id', 'conference_id', 'name']),
-        ]);
+        return view('auth.complete-profile', $data);
     }
 
     public function store(Request $request): RedirectResponse
@@ -71,7 +91,7 @@ class CompleteProfileController extends Controller
         $conference = Conference::findOrFail($data['conference_id']);
         abort_if($conference->union_id !== (int) $data['union_id'], 422);
 
-        $church = $this->findExistingChurchOrSuggestAdmin($user, $conference->id, $data['church_name']);
+        $church = $this->findExistingChurchOrSuggestAdmin($user, $conference->id, $data['church_name'], $request->boolean('church_is_admin'));
 
         // Every role === null member reaching this endpoint already has a linked Person (see
         // this class's own doc comment above) — union_id stays null here, matching
@@ -85,22 +105,25 @@ class CompleteProfileController extends Controller
             'church_id' => $church?->id,
         ]);
 
-        $user->forceFill(['profile_step_completed_at' => now()])->save();
-
-        // The Wilayah fields now live folded into the "Info Personal" tab — see
-        // profile/edit.blade.php.
-        return redirect()->route('profile.edit', ['tab' => 'personal'])->with(
+        // Not marked complete yet — step 2 (social accounts) comes next; finish() closes the
+        // wizard once the member is done with it or skips it.
+        return redirect()->route('profile.complete', ['langkah' => 2])->with(
             'status',
-            $church === null ? __('entity.admin_suggestion_pending', ['name' => trim($data['church_name'])]) : __('entity.profile_completed')
+            match (true) {
+                $church !== null => __('entity.profile_completed'),
+                $request->boolean('church_is_admin') => __('entity.admin_suggestion_pending', ['name' => trim($data['church_name'])]),
+                default => __('entity.church_suggestion_pending', ['name' => trim($data['church_name'])]),
+            }
         );
     }
 
-    public function skip(Request $request): RedirectResponse
+    /** Ends the wizard from step 2, whether the member added accounts there or skipped it. */
+    public function finish(Request $request): RedirectResponse
     {
         abort_if($request->user()->role !== null, 403);
 
         $request->user()->forceFill(['profile_step_completed_at' => now()])->save();
 
-        return redirect()->route('akun-saya');
+        return redirect()->route('akun-saya')->with('status', __('auth.onboarding_done', ['app' => config('app.name')]));
     }
 }
