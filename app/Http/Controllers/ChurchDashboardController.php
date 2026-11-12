@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\SocialPlatform;
+use App\Http\Controllers\Concerns\BuildsCombinedGrowth;
 use App\Http\Controllers\Concerns\BuildsLeaderboards;
 use App\Models\AppSetting;
 use App\Models\Church;
@@ -13,10 +14,12 @@ use App\Models\Division;
 use App\Models\Hashtag;
 use App\Models\HashtagPost;
 use App\Models\Institution;
+use App\Models\MembershipPeriod;
 use App\Models\Person;
 use App\Models\Union;
 use App\Services\GeoBoundaryMatcher;
 use App\Support\ComparisonScope;
+use App\Support\MemberEngagement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -24,7 +27,7 @@ use Illuminate\Support\Facades\DB;
 
 class ChurchDashboardController extends Controller
 {
-    use BuildsLeaderboards;
+    use BuildsCombinedGrowth, BuildsLeaderboards;
 
     public function index()
     {
@@ -165,6 +168,36 @@ class ChurchDashboardController extends Controller
         $topGrowthScores = $allGrowthScores->take(5)->map($mapScoreRow);
         $bottomGrowthScores = $allGrowthScores->sortBy('score')->take(5)->values()->map($mapScoreRow);
 
+        // The dashboard's three growth rankings, per the user's explicit call:
+        //  - Gereja: churches, on the church's own accounts (above)
+        //  - Personal: people, on their own personal accounts — the same ranking as Analitik &
+        //    Grafik's Personal tab, scoped the same way as the rest of this dashboard
+        //  - Gabungan: churches, on the church's accounts plus its members' personal accounts
+        //    (see BuildsCombinedGrowth)
+        $churchesById = $churches->keyBy('id');
+        $combinedGrowthRows = $this->combinedGrowthScores('church', $churches->pluck('id'))
+            ->filter(fn ($row) => $row['score'] !== null)
+            ->map(fn ($row, $id) => [
+                'entity' => $churchesById[$id],
+                'score' => $row['score'],
+                'metrics' => $row['metrics'],
+                'accountCount' => $row['ownCount'] + $row['personalCount'],
+            ]);
+
+        $personalGrowthRows = $this->growthScoreRowsPersonal(applyCeiling: true)
+            ->filter(fn ($row) => $row['score'] !== null)
+            ->map(fn ($row) => [
+                'entity' => $row['person'],
+                'score' => $row['score'],
+                'metrics' => $row['metrics'],
+                'accountCount' => $row['accountCount'],
+            ]);
+
+        $topCombinedGrowth = $combinedGrowthRows->sortByDesc('score')->take(5)->values();
+        $bottomCombinedGrowth = $combinedGrowthRows->sortBy('score')->take(5)->values();
+        $topPersonalGrowth = $personalGrowthRows->sortByDesc('score')->take(5)->values();
+        $bottomPersonalGrowth = $personalGrowthRows->sortBy('score')->take(5)->values();
+
         // growthScoreRowsByPlatform() only returns a row for a platform that has at least one
         // account with 2+ weekly stat snapshots to diff — Facebook accounts frequently don't
         // have that yet, so it silently drops out instead of showing up with "no data". Backfill
@@ -188,9 +221,14 @@ class ChurchDashboardController extends Controller
         // Union/Conference-owned ("Organisasi") accounts, scoped to the viewer's own region —
         // shared by the Goal card and Distribution Channels below so their totals stay in sync
         // with each other, per the user's explicit call.
-        $organizationSocials = $this->activeSocialsOrganization(applyCeiling: true);
+        $organizationSocials = $this->activeSocialsOrganization(applyCeiling: true)->loadMissing('latestStat'); // read per account by the goal cards below
 
         $goalRows = $this->goalProgressRows($allSocials, $institutionSocials, $personalSocials, $organizationSocials);
+
+        // One-line member engagement summary under the goal cards; the full breakdown is on
+        // the Tujuan page (MemberEngagementController).
+        $engagementPeriod = auth()->user()->can('view-member-engagement') ? MembershipPeriod::current() : null;
+        $engagementSummary = $engagementPeriod ? MemberEngagement::summaryFor(auth()->user(), $engagementPeriod) : null;
 
         // Distribution Channels widget — church+personal+institution+organisasi, matching the
         // Goal card's "current" total above. Always one row per platform, in
@@ -220,30 +258,25 @@ class ChurchDashboardController extends Controller
         // single church.
         $scopeUser = auth()->user();
         $scopeConference = $scopeUser->conference ?? $scopeUser->church?->conference;
+        // Every Daerah a gereja-level user's churches sit in (usually one, see User::assignedChurchIds()).
+        $scopeConferenceNames = $scopeUser->conference
+            ? $scopeUser->conference->name
+            : Conference::query()->whereIn('id', $scopeUser->assignedChurchConferenceIds())->orderBy('name')->pluck('name')->implode(', ');
         $regionScopeLabel = match (true) {
             // A plain member (role === null) is scoped no wider than their own Daerah/Uni here
             // too now (see analyticsChurchScope()) — labeling it "Global" while $allSocials etc.
             // actually only cover their own Wilayah would be misleading, so this mirrors that
             // same personalConferenceId()/personalUnionId() fallback instead of the old
             // unconditional Global label.
-            $scopeUser->role === null && $this->personalConferenceId()
-                => ['level' => __('goals.level_daerah'), 'value' => $scopeUser->person?->conference?->name ?? '—'],
-            $scopeUser->role === null && $this->personalUnionId()
-                => ['level' => __('goals.level_uni'), 'value' => $scopeUser->person?->union?->name ?? '—'],
-            $scopeUser->role === null
-                => ['level' => __('goals.level_daerah'), 'value' => '—'],
-            ($scopeUser->role?->hasGlobalAccess() ?? false) || $scopeUser->role?->level() === 'global'
-                => ['level' => __('goals.level_global'), 'value' => null],
-            $scopeUser->role?->level() === 'nasional'
-                => ['level' => __('goals.level_nasional'), 'value' => $scopeUser->assignedUnions()->pluck('name')->implode(', ') ?: '—'],
-            $scopeUser->role?->level() === 'divisi'
-                => ['level' => __('goals.level_divisi'), 'value' => $scopeUser->division?->name ?? '—'],
-            $scopeUser->role?->level() === 'uni'
-                => ['level' => __('goals.level_uni'), 'value' => $scopeUser->union?->name ?? '—'],
-            $scopeUser->role?->level() === 'daerah' || $isGerejaLevel
-                => ['level' => __('goals.level_daerah'), 'value' => $scopeConference?->name ?? '—'],
-            $scopeUser->role?->level() === 'institusi'
-                => ['level' => __('dashboard.level_institusi'), 'value' => $scopeUser->institution?->name ?? '—'],
+            $scopeUser->role === null && $this->personalConferenceId() => ['level' => __('goals.level_daerah'), 'value' => $scopeUser->person?->conference?->name ?? '—'],
+            $scopeUser->role === null && $this->personalUnionId() => ['level' => __('goals.level_uni'), 'value' => $scopeUser->person?->union?->name ?? '—'],
+            $scopeUser->role === null => ['level' => __('goals.level_daerah'), 'value' => '—'],
+            ($scopeUser->role?->hasGlobalAccess() ?? false) || $scopeUser->role?->level() === 'global' => ['level' => __('goals.level_global'), 'value' => null],
+            $scopeUser->role?->level() === 'nasional' => ['level' => __('goals.level_nasional'), 'value' => $scopeUser->assignedUnions()->pluck('name')->implode(', ') ?: '—'],
+            $scopeUser->role?->level() === 'divisi' => ['level' => __('goals.level_divisi'), 'value' => $scopeUser->division?->name ?? '—'],
+            $scopeUser->role?->level() === 'uni' => ['level' => __('goals.level_uni'), 'value' => $scopeUser->union?->name ?? '—'],
+            $scopeUser->role?->level() === 'daerah' || $isGerejaLevel => ['level' => __('goals.level_daerah'), 'value' => $scopeConferenceNames ?: ($scopeConference?->name ?? '—')],
+            $scopeUser->role?->level() === 'institusi' => ['level' => __('dashboard.level_institusi'), 'value' => $scopeUser->institution?->name ?? '—'],
             default => ['level' => __('goals.level_global'), 'value' => null],
         };
 
@@ -355,9 +388,15 @@ class ChurchDashboardController extends Controller
             'unmappedInstitutionsCount' => $unmappedInstitutionsCount,
             'topGrowthScores' => $topGrowthScores,
             'bottomGrowthScores' => $bottomGrowthScores,
+            'topCombinedGrowth' => $topCombinedGrowth,
+            'bottomCombinedGrowth' => $bottomCombinedGrowth,
+            'topPersonalGrowth' => $topPersonalGrowth,
+            'bottomPersonalGrowth' => $bottomPersonalGrowth,
             'platformScoreRows' => $platformScoreRows,
             'platformLabels' => $platformLabels,
             'goalRows' => $goalRows,
+            'engagementPeriod' => $engagementPeriod,
+            'engagementSummary' => $engagementSummary,
             'distributionChannels' => $distributionChannels,
             'regionScopeLabel' => $regionScopeLabel,
             'totalSocialAccounts' => $totalSocialAccounts,
@@ -2096,6 +2135,7 @@ class ChurchDashboardController extends Controller
             'scoreBreakdown' => $growthScore['breakdown'],
             'scoreSampleCount' => $growthScore['sampleCount'],
             'scoreSampleSum' => $growthScore['sampleSum'],
+            'combinedGrowth' => $this->combinedGrowthDetail('church', $church->id),
             'ownStats' => $ownStats,
         ]);
     }
@@ -2156,6 +2196,7 @@ class ChurchDashboardController extends Controller
 
         return view('organizations.show', [
             'organization' => $union,
+            'combinedGrowth' => $this->combinedGrowthDetail('union', $union->id),
             'history' => $history,
             'scoreHistory' => $growthScore['history'],
             'scoreMetrics' => $growthScore['metrics'],
@@ -2178,6 +2219,7 @@ class ChurchDashboardController extends Controller
 
         return view('organizations.show', [
             'organization' => $conference,
+            'combinedGrowth' => $this->combinedGrowthDetail('conference', $conference->id),
             'history' => $history,
             'scoreHistory' => $growthScore['history'],
             'scoreMetrics' => $growthScore['metrics'],
@@ -2200,6 +2242,7 @@ class ChurchDashboardController extends Controller
 
         return view('organizations.show', [
             'organization' => $division,
+            'combinedGrowth' => $this->combinedGrowthDetail('division', $division->id),
             'history' => $history,
             'scoreHistory' => $growthScore['history'],
             'scoreMetrics' => $growthScore['metrics'],

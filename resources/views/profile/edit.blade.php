@@ -24,13 +24,13 @@
     @endif
 
     <x-tab-bar>
-        <x-tab-button tab-key="username">{{ __('entity.profile_tab_username') }}</x-tab-button>
-        <x-tab-button tab-key="password">{{ __('auth.password') }}</x-tab-button>
+        <x-tab-button tab-key="username" :note="__('tabs.profile_username')">{{ __('entity.profile_tab_username') }}</x-tab-button>
+        <x-tab-button tab-key="password" :note="__('tabs.profile_password')">{{ __('auth.password') }}</x-tab-button>
         @if ($person)
-            <x-tab-button tab-key="personal">{{ __('entity.profile_tab_personal') }}</x-tab-button>
+            <x-tab-button tab-key="personal" :note="__('tabs.profile_personal')">{{ __('entity.profile_tab_personal') }}</x-tab-button>
         @endif
         @if ($person)
-            <x-tab-button tab-key="sosial">{{ __('entity.profile_tab_sosial') }}</x-tab-button>
+            <x-tab-button tab-key="sosial" :note="__('tabs.profile_sosial')">{{ __('entity.profile_tab_sosial') }}</x-tab-button>
         @endif
     </x-tab-bar>
 

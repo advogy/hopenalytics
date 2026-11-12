@@ -3,9 +3,11 @@
 @section('title', __('brands.title') . ' — ' . config('app.name'))
 
 @section('content')
+    <x-hub-header hub="settings" />
+
     <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-            <h1 class="mb-1 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{{ __('brands.title') }}</h1>
+            <h2 class="mb-1 text-xl font-bold tracking-tight text-slate-900 dark:text-white">{{ __('brands.title') }}</h2>
             <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('brands.subtitle') }}</p>
         </div>
         <a

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Concerns\BuildsLeaderboards;
 use App\Models\AppSetting;
 use App\Models\Church;
+use App\Models\ChurchMembership;
 use App\Models\ChurchSocial;
 use App\Models\Conference;
 use App\Models\Division;
@@ -13,13 +14,17 @@ use App\Models\HashtagPost;
 use App\Models\Institution;
 use App\Models\Person;
 use App\Models\Union;
+use App\Support\MemberEngagement;
+use App\Support\MembershipTargetList;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Response;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpWord\IOFactory as WordIOFactory;
 use PhpOffice\PhpWord\PhpWord;
@@ -39,9 +44,16 @@ class ExportController extends Controller
     // can't call __().
     private array $categoryLabels;
 
+    /**
+     * The most rows a PDF export renders. DomPDF needs roughly 0.2 GB per 1,000 rows even with
+     * the table split into chunks (see exports/pdf.blade.php) and runs out of memory well before
+     * 3,000 — longer exports offer Excel/Word only, which have no such limit.
+     */
+    private const PDF_MAX_ROWS = 1500;
+
     private array $countField = ['youtube' => 'subscribers_count', 'instagram' => 'followers_count', 'tiktok' => 'followers_count', 'facebook' => 'followers_count', 'x' => 'followers_count', 'threads' => 'followers_count'];
 
-    private array $postField = ['youtube' => 'videos_count', 'instagram' => 'posts_count', 'tiktok' => 'posts_count', 'facebook' => 'recent_posts_count', 'x' => 'posts_count', 'threads' => 'recent_posts_count'];
+    private array $postField = ['youtube' => 'videos_count', 'instagram' => 'posts_count', 'tiktok' => 'posts_count', 'facebook' => 'posts_count', 'x' => 'posts_count', 'threads' => 'posts_count'];
 
     // Instagram/TikTok are recent-sample view counts (last ~10-12 posts/videos), not a lifetime
     // total like YouTube's views_count. Facebook, X, and Threads have no view-count field
@@ -412,6 +424,52 @@ class ExportController extends Controller
             'union_id' => request()->query('union_id'),
             'conference_id' => request()->query('conference_id'),
         ]);
+    }
+
+    /** Keterlibatan Anggota on the Tujuan page, as currently filtered, drilled into and sorted. */
+    public function engagementPreview()
+    {
+        return $this->preview($this->engagementDataset(), route('export.engagement.download', ['format' => 'pdf'] + $this->engagementParams()));
+    }
+
+    public function engagementDownload(string $format): BinaryFileResponse|Response
+    {
+        return $this->download($this->engagementDataset(), $format, 'keterlibatan-anggota');
+    }
+
+    /** Tujuan → Anggota & Target, as filtered, grouped and sorted on the page. */
+    public function membershipTargetPreview()
+    {
+        $params = array_filter(request()->only(['periode', 'ringkas', 'uni', 'daerah', 'cari', 'urut', 'arah']));
+
+        return $this->preview($this->membershipTargetDataset(), route('export.membership-target.download', ['format' => 'pdf'] + $params));
+    }
+
+    public function membershipTargetDownload(string $format): BinaryFileResponse|Response
+    {
+        return $this->download($this->membershipTargetDataset(), $format, 'anggota-dan-target');
+    }
+
+    /** Every membership figure (all dates and statuses) for the churches in the uploader's region. */
+    public function membershipPreview()
+    {
+        return $this->preview($this->membershipDataset(pendingOnly: false), route('export.membership.download', ['format' => 'pdf']));
+    }
+
+    public function membershipDownload(string $format): BinaryFileResponse|Response
+    {
+        return $this->download($this->membershipDataset(pendingOnly: false), $format, 'data-anggota-gereja');
+    }
+
+    /** The figures waiting for the Union admin's confirmation. */
+    public function membershipPendingPreview()
+    {
+        return $this->preview($this->membershipDataset(pendingOnly: true), route('export.membership-pending.download', ['format' => 'pdf']));
+    }
+
+    public function membershipPendingDownload(string $format): BinaryFileResponse|Response
+    {
+        return $this->download($this->membershipDataset(pendingOnly: true), $format, 'konfirmasi-data-anggota');
     }
 
     public function hashtagPreview()
@@ -1639,7 +1697,7 @@ class ExportController extends Controller
                 $social->display_handle,
                 $latest ? number_format($latest->{$field} ?? 0) : '—',
                 $latest ? number_format($latest->following_count ?? 0) : '—',
-                $latest ? number_format($latest->posts_count ?? $latest->videos_count ?? $latest->recent_posts_count ?? 0) : '—',
+                $latest ? number_format($latest->{$this->postField[$social->platform->value] ?? 'posts_count'} ?? 0) : '—',
                 $latest && $latest->{$viewsField} ? number_format($latest->{$viewsField}) : '—',
                 $latest && $latest->likes_count ? number_format($latest->likes_count) : '—',
                 $this->fetchStatusLabel($social),
@@ -1668,7 +1726,7 @@ class ExportController extends Controller
                 $social->display_handle,
                 $latest ? number_format($latest->{$field} ?? 0) : '—',
                 $latest ? number_format($latest->following_count ?? 0) : '—',
-                $latest ? number_format($latest->posts_count ?? $latest->videos_count ?? $latest->recent_posts_count ?? 0) : '—',
+                $latest ? number_format($latest->{$this->postField[$social->platform->value] ?? 'posts_count'} ?? 0) : '—',
                 $latest && $latest->{$viewsField} ? number_format($latest->{$viewsField}) : '—',
                 $latest && $latest->likes_count ? number_format($latest->likes_count) : '—',
                 $this->fetchStatusLabel($social),
@@ -1697,7 +1755,7 @@ class ExportController extends Controller
                 $social->display_handle,
                 $latest ? number_format($latest->{$field} ?? 0) : '—',
                 $latest ? number_format($latest->following_count ?? 0) : '—',
-                $latest ? number_format($latest->posts_count ?? $latest->videos_count ?? $latest->recent_posts_count ?? 0) : '—',
+                $latest ? number_format($latest->{$this->postField[$social->platform->value] ?? 'posts_count'} ?? 0) : '—',
                 $latest && $latest->{$viewsField} ? number_format($latest->{$viewsField}) : '—',
                 $latest && $latest->likes_count ? number_format($latest->likes_count) : '—',
                 $this->fetchStatusLabel($social),
@@ -1718,24 +1776,40 @@ class ExportController extends Controller
         $field = $this->countField[$social->platform->value];
         $viewsField = $this->viewsField[$social->platform->value] ?? 'views_count';
 
-        $rows = $social->stats()->orderByDesc('recorded_at')->get()->map(fn ($stat) => [
+        $stats = $social->stats()->orderByDesc('recorded_at')->get();
+        $values = fn ($stat) => [
+            $stat->{$field},
+            $stat->following_count,
+            $stat->{$this->postField[$social->platform->value] ?? 'posts_count'},
+            $stat->{$viewsField} ?: null,
+            $stat->likes_count ?: null,
+        ];
+
+        $rows = $stats->map(fn ($stat) => [
             $stat->recorded_at->translatedFormat('d M Y'),
-            number_format($stat->{$field} ?? 0),
-            number_format($stat->following_count ?? 0),
-            number_format($stat->posts_count ?? $stat->videos_count ?? $stat->recent_posts_count ?? 0),
-            $stat->{$viewsField} ? number_format($stat->{$viewsField}) : '—',
-            $stat->likes_count ? number_format($stat->likes_count) : '—',
+            ...array_map(fn ($v) => $v === null ? '—' : number_format($v), $values($stat)),
         ])->all();
+
+        // One row per date for this SAME account, so a sum down a column means nothing; the
+        // footer shows the change from the oldest to the newest snapshot instead.
+        $change = null;
+        if ($stats->count() >= 2) {
+            $change = [__('export.change_row_label', ['count' => number_format($stats->count())])];
+            // Per column, the newest and oldest snapshots that actually have a value — a manual
+            // entry and an automatic fetch can each leave different fields empty.
+            $columns = $stats->map($values);
+            foreach (array_keys($columns->first()) as $i) {
+                $filled = $columns->pluck($i)->filter(fn ($v) => $v !== null)->values();
+                $change[] = $filled->count() < 2 ? '—' : (($filled->first() - $filled->last() > 0 ? '+' : '').number_format($filled->first() - $filled->last()));
+            }
+        }
 
         return [
             'title' => __('export.history_title', ['handle' => $social->display_handle]),
             'subtitle' => "{$this->platformLabels[$social->platform->value]} — {$owner->name}",
             'headers' => [__('export.col_date'), __('export.col_followers_subs'), __('common.metric_following'), __('export.col_post_video'), __('common.metric_views'), __('common.metric_likes')],
             'rows' => $rows,
-            // One row per date for this SAME account — see addTotalsRow()'s own doc comment for
-            // why a bottom Total row would be actively misleading here (repeated snapshots of a
-            // running total, not distinct entities to sum together).
-            'suppressTotals' => true,
+            'totals' => $change,
         ];
     }
 
@@ -2141,6 +2215,216 @@ class ExportController extends Controller
         ];
     }
 
+    private function membershipTargetDataset(): array
+    {
+        $list = MembershipTargetList::build(request(), auth()->user());
+        $period = $list['period'];
+
+        if ($period === null) {
+            return ['title' => __('goals.tab_members'), 'subtitle' => __('engagement.no_period'), 'headers' => [__('engagement.col_church')], 'rows' => [], 'suppressTotals' => true];
+        }
+
+        $group = $list['group'];
+        $number = fn ($value) => $value === null ? '—' : number_format($value);
+        $date = fn ($value) => $value ? Carbon::parse($value)->translatedFormat('d M Y') : '—';
+
+        $headers = match ($group) {
+            'daerah' => [__('engagement.col_conference'), __('engagement.col_union'), __('engagement.col_churches_with_data')],
+            'uni' => [__('engagement.col_union'), __('engagement.col_churches_with_data')],
+            default => [__('engagement.col_church'), __('engagement.col_conference'), __('engagement.col_union')],
+        };
+        $headers = [...$headers, __('engagement.col_members'), $group === 'gereja' ? __('engagement.col_as_of') : __('goals.members_latest_as_of'), __('goals.members_target_col', ['percent' => $period->target_percent + 0])];
+
+        $rows = $list['rows']->map(fn ($row) => [
+            ...match ($group) {
+                'daerah' => [$row['name'], $row['union'] ?? '—', "{$row['filled']} / {$row['churches']}"],
+                'uni' => [$row['name'], "{$row['filled']} / {$row['churches']}"],
+                default => [$row['name'], $row['conference'] ?? '—', $row['union'] ?? '—'],
+            },
+            $row['members'] === null ? __('engagement.not_filled') : number_format($row['members']),
+            $date($row['as_of']),
+            $number($row['target']),
+        ])->all();
+
+        $t = $list['totals'];
+        $totals = array_fill(0, count($headers), '');
+        $totals[0] = __('export.total_row_label_count', ['count' => number_format($t['rows'])]);
+        $totals[count($headers) - 4] = $group === 'gereja' ? '' : number_format($t['filled']).' / '.number_format($t['churches']);
+        $totals[count($headers) - 3] = $number($t['members']);
+        $totals[count($headers) - 1] = $number($t['target']);
+
+        return [
+            'title' => __('goals.tab_members'),
+            'subtitle' => __('goals.members_export_subtitle', [
+                'period' => $period->name,
+                'percent' => $period->target_percent + 0,
+                'group' => __('goals.members_group_'.$group),
+            ]),
+            'summary' => [
+                ['label' => __('engagement.col_churches_with_data'), 'value' => number_format($t['filled']).' / '.number_format($t['churches'])],
+                ['label' => __('engagement.col_members'), 'value' => $number($t['members'])],
+                ['label' => __('engagement.col_target'), 'value' => $number($t['target'])],
+            ],
+            'headers' => $headers,
+            'rows' => $rows,
+            'totals' => $rows === [] ? null : $totals,
+        ];
+    }
+
+    /** Puts the row count into a totals row's first cell ("Jakarta Conference (65 baris)"). */
+    private function withRowCount(array $totals, int $count): array
+    {
+        $totals[0] = __('export.total_named_count', ['name' => $totals[0], 'count' => number_format($count)]);
+
+        return $totals;
+    }
+
+    private function engagementParams(): array
+    {
+        return array_filter(request()->only(['periode', 'ukuran', 'uni', 'daerah', 'urut', 'arah']));
+    }
+
+    /**
+     * The same table MemberEngagementController shows (engagementTable()), so the export always
+     * matches the page: same period, measure, drill-down level and sort.
+     */
+    private function engagementDataset(): array
+    {
+        $table = app(MemberEngagementController::class)->engagementTable(request());
+        $period = $table['period'];
+
+        if ($period === null) {
+            return ['title' => __('engagement.title'), 'subtitle' => __('engagement.no_period'), 'headers' => [__('engagement.col_union')], 'rows' => [], 'suppressTotals' => true];
+        }
+
+        $isChurchLevel = $table['regionLabel'] === __('engagement.col_church');
+        $number = fn ($value) => $value === null ? '—' : number_format($value);
+        $percent = fn ($value) => $value === null ? '—' : $value.'%';
+        $growth = fn ($value) => $value === null ? '—' : ($value > 0 ? '+' : '').number_format($value, 1).'%'; // as on the page
+
+        $format = fn (array $row) => array_values(array_filter([
+            $row['name'],
+            $number($row['members']),
+            $isChurchLevel ? false : (isset($row['churches']) ? "{$row['filled']} / {$row['churches']}" : '—'),
+            $number($row['target']),
+            $number($row['active']),
+            $percent($row['active_percent']),
+            $percent($row['progress_percent']),
+            $growth($row['growth']['score'] ?? null),
+            isset($row['growth']) ? number_format($row['growth']['ownCount']) : '—',
+            isset($row['growth']) ? number_format($row['growth']['personalCount']) : '—',
+        ], fn ($cell) => $cell !== false));
+
+        $headers = array_values(array_filter([
+            $table['regionLabel'],
+            __('engagement.col_members'),
+            $isChurchLevel ? false : __('engagement.col_churches_with_data'),
+            __('engagement.col_target'),
+            __('engagement.col_active'),
+            __('engagement.col_active_percent'),
+            __('engagement.col_progress'),
+            __('engagement.col_growth'),
+            __('engagement.col_growth_own_accounts'),
+            __('engagement.col_growth_personal_accounts'),
+        ]));
+
+        $scope = collect($table['breadcrumbs'])->pluck('label')->implode(' › ');
+
+        return [
+            'title' => __('engagement.title'),
+            'subtitle' => __('engagement.export_subtitle', [
+                'period' => $period->name,
+                'from' => $period->starts_on->translatedFormat('d M Y'),
+                'to' => $period->ends_on->translatedFormat('d M Y'),
+                'percent' => $period->target_percent + 0,
+                'measure' => __('engagement.measure_'.$table['measure']),
+            ]).($scope !== '' ? ' · '.$scope : ''),
+            'headers' => $headers,
+            'rows' => $table['rows']->map($format)->all(),
+            'totals' => $table['totalRow'] ? $this->withRowCount($format($table['totalRow']), count($table['rows'])) : null,
+        ];
+    }
+
+    /**
+     * Church membership figures in the viewer's region, oldest Uni/Daerah/church order first and
+     * newest figure first within a church. Never totalled: a church appears once per date, so
+     * summing down the column would count the same members several times.
+     */
+    private function membershipDataset(bool $pendingOnly): array
+    {
+        $memberships = ChurchMembership::query()
+            ->whereIn('church_id', Church::query()->visibleTo(auth()->user())->select('id'))
+            ->when($pendingOnly, fn ($q) => $q->where('status', ChurchMembership::PENDING))
+            ->with(['church:id,name,conference_id', 'church.conference:id,name,union_id', 'church.conference.union:id,name', 'uploader:id,name', 'reviewer:id,name'])
+            ->get()
+            ->sortBy([
+                fn ($a, $b) => [$a->church->conference?->union?->name, $a->church->conference?->name, $a->church->name] <=> [$b->church->conference?->union?->name, $b->church->conference?->name, $b->church->name],
+                fn ($a, $b) => $b->as_of <=> $a->as_of,
+            ]);
+
+        // Pending figures are compared with the last confirmed figure dated before each one.
+        $previous = $pendingOnly ? MemberEngagement::previousConfirmed($memberships) : collect();
+
+        $rows = $memberships->map(fn (ChurchMembership $m) => array_values(array_filter([
+            $m->church->conference?->union?->name ?? '—',
+            $m->church->conference?->name ?? '—',
+            $m->church->name,
+            $m->as_of->translatedFormat('d M Y'),
+            number_format($m->members_count),
+            $pendingOnly
+                ? ($previous->has($m->id) ? number_format($previous[$m->id]->members_count).' ('.$previous[$m->id]->as_of->translatedFormat('d M Y').')' : '—')
+                : __('engagement.status_'.$m->status),
+            $m->uploader?->name ?? '—',
+            $pendingOnly ? false : ($m->reviewer?->name ?? '—'),
+        ], fn ($cell) => $cell !== false)))->values()->all();
+
+        $headers = array_values(array_filter([
+            __('engagement.col_union'),
+            __('engagement.col_conference'),
+            __('engagement.col_church'),
+            __('engagement.col_as_of'),
+            $pendingOnly ? __('engagement.col_new') : __('engagement.col_members'),
+            $pendingOnly ? __('engagement.col_previous') : __('engagement.col_status'),
+            __('engagement.col_uploaded_by'),
+            $pendingOnly ? false : __('engagement.col_reviewed_by'),
+        ]));
+
+        // A church can appear once per date, so the member column isn't summed down. Pending:
+        // each church's newest pending figure and its previous confirmed one. All figures: each
+        // church's latest confirmed figure — the membership that actually counts.
+        $churchCount = $memberships->pluck('church_id')->unique()->count();
+        $newestPending = $memberships->sortByDesc('as_of')->unique('church_id');
+        $membersTotal = $pendingOnly
+            ? $newestPending->sum('members_count')
+            : MemberEngagement::latestConfirmed(churchIds: $memberships->pluck('church_id')->unique())->sum('members_count');
+
+        $totals = array_fill(0, count($headers), '');
+        $totals[0] = __('export.total_row_label_count', ['count' => number_format(count($rows))]);
+        $totals[2] = __('engagement.export_churches_count', ['count' => number_format($churchCount)]);
+        $totals[4] = number_format($membersTotal);
+
+        if ($pendingOnly) {
+            $totals[5] = number_format($newestPending->sum(fn ($m) => $previous->get($m->id)?->members_count ?? 0));
+        }
+
+        $statusCounts = $memberships->countBy('status');
+
+        return [
+            'title' => $pendingOnly ? __('engagement.confirm_title') : __('engagement.export_membership_title'),
+            'subtitle' => __('engagement.export_membership_subtitle', ['count' => number_format(count($rows))]),
+            'summary' => array_values(array_filter([
+                ['label' => __('engagement.col_churches'), 'value' => number_format($churchCount)],
+                ['label' => $pendingOnly ? __('engagement.col_new') : __('engagement.export_members_latest'), 'value' => number_format($membersTotal)],
+                $pendingOnly ? null : ['label' => __('engagement.status_confirmed'), 'value' => number_format($statusCounts[ChurchMembership::CONFIRMED] ?? 0)],
+                ['label' => __('engagement.status_pending'), 'value' => number_format($statusCounts[ChurchMembership::PENDING] ?? 0)],
+                $pendingOnly ? null : ['label' => __('engagement.status_rejected'), 'value' => number_format($statusCounts[ChurchMembership::REJECTED] ?? 0)],
+            ])),
+            'headers' => $headers,
+            'rows' => $rows,
+            'totals' => $rows === [] ? null : $totals,
+        ];
+    }
+
     /**
      * A "Total" row auto-appended to the bottom of any export table that has at least one
      * summable numeric column — per the user's explicit call, for every export with a list
@@ -2160,9 +2444,14 @@ class ExportController extends Controller
         // total into a meaningless number, not an actual total of anything. Every other
         // dataset in this file is one row per distinct entity (church/person/post/etc.), where
         // summing down a numeric column is a real grand total.
-        $dataset['totals'] = ($dataset['suppressTotals'] ?? false)
-            ? null
-            : $this->buildTotalsRow($dataset['headers'], $dataset['rows']);
+        // A dataset can also bring its own totals row (engagementDataset(): a region's total
+        // isn't the sum of its rows' percentages, and its active count includes members who
+        // chose no church).
+        $dataset['totals'] = match (true) {
+            $dataset['suppressTotals'] ?? false => null,
+            array_key_exists('totals', $dataset) => $dataset['totals'],
+            default => $this->buildTotalsRow($dataset['headers'], $dataset['rows']),
+        };
 
         return $dataset;
     }
@@ -2175,11 +2464,13 @@ class ExportController extends Controller
      */
     private function buildTotalsRow(array $headers, array $rows): ?array
     {
-        $summableColumns = $this->summableColumnIndexes($headers, $rows);
-
-        if ($summableColumns === []) {
+        if ($rows === []) {
             return null;
         }
+
+        // Even with nothing to sum (Direktori's name/handle listing), the row still says how
+        // many rows there are — per the user's explicit call that every export shows a total.
+        $summableColumns = $this->summableColumnIndexes($headers, $rows);
 
         $totals = array_fill(0, count($headers), '');
         $labelPlaced = false;
@@ -2192,7 +2483,7 @@ class ExportController extends Controller
                 // The first non-summable column reads "Total" (usually the entity name/label
                 // column) — every other non-summable column between it and the next summable
                 // one stays blank, same as a normal table footer.
-                $totals[$column] = __('export.total_row_label');
+                $totals[$column] = __('export.total_row_label_count', ['count' => number_format(count($rows))]);
                 $labelPlaced = true;
             }
         }
@@ -2268,7 +2559,8 @@ class ExportController extends Controller
         $data = [
             'dataset' => $dataset,
             'footer' => $this->footerText(),
-            'pdfDownloadUrl' => $pdfDownloadUrl,
+            'pdfDownloadUrl' => count($dataset['rows']) > self::PDF_MAX_ROWS ? null : $pdfDownloadUrl,
+            'pdfMaxRows' => self::PDF_MAX_ROWS,
             'wordDownloadUrl' => str_replace('/pdf', '/word', $pdfDownloadUrl),
             'excelDownloadUrl' => str_replace('/pdf', '/excel', $pdfDownloadUrl),
             'modeOptions' => $modeOptions,
@@ -2285,6 +2577,10 @@ class ExportController extends Controller
         $dataset = $this->addTotalsRow($dataset);
         $footer = $this->footerText();
         $filenameBase = Str::slug(config('app.name')).'_'.$filenameBase.'_'.Carbon::now('Asia/Jakarta')->format('Y-m-d');
+
+        if ($format === 'pdf' && count($dataset['rows']) > self::PDF_MAX_ROWS) {
+            return response(__('export.pdf_too_large', ['max' => number_format(self::PDF_MAX_ROWS)]), 422);
+        }
 
         return match ($format) {
             'pdf' => $this->downloadPdf($dataset, $footer, "{$filenameBase}.pdf"),
@@ -2382,6 +2678,14 @@ class ExportController extends Controller
             $table->addCell($columnWidth, ['bgColor' => 'f1f5f9'])->addText($header, ['bold' => true, 'size' => 9]);
         }
 
+        // The same totals row at the top as at the bottom, for long tables.
+        if (! empty($dataset['totals'])) {
+            $table->addRow();
+            foreach ($dataset['totals'] as $cell) {
+                $table->addCell($columnWidth, ['bgColor' => 'f1f5f9'])->addText((string) $cell, ['bold' => true, 'size' => 9]);
+            }
+        }
+
         foreach ($dataset['rows'] as $row) {
             $table->addRow();
             foreach ($row as $cell) {
@@ -2421,25 +2725,36 @@ class ExportController extends Controller
             $headerRow = count($dataset['summary']) + 2;
         }
 
-        $sheet->fromArray($dataset['headers'], null, "A{$headerRow}");
-        $sheet->fromArray($dataset['rows'], null, 'A'.($headerRow + 1));
+        $lastColumn = Coordinate::stringFromColumnIndex(count($dataset['headers']));
 
-        $lastColumn = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(count($dataset['headers']));
+        $sheet->fromArray($dataset['headers'], null, "A{$headerRow}");
         $sheet->getStyle("A{$headerRow}:{$lastColumn}{$headerRow}")->getFont()->setBold(true);
 
-        $lastDataRow = $headerRow + count($dataset['rows']);
+        // The same totals row at the top as at the bottom, for long tables.
+        $firstDataRow = $headerRow + 1;
+        if (! empty($dataset['totals'])) {
+            $sheet->fromArray($dataset['totals'], null, "A{$firstDataRow}");
+            $sheet->getStyle("A{$firstDataRow}:{$lastColumn}{$firstDataRow}")->getFont()->setBold(true);
+            $sheet->getStyle("A{$firstDataRow}:{$lastColumn}{$firstDataRow}")->getFill()
+                ->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('F1F5F9');
+            $firstDataRow++;
+        }
+
+        $sheet->fromArray($dataset['rows'], null, "A{$firstDataRow}");
+
+        $lastDataRow = $firstDataRow - 1 + count($dataset['rows']);
 
         if (! empty($dataset['totals'])) {
             $totalsRow = $lastDataRow + 1;
             $sheet->fromArray($dataset['totals'], null, "A{$totalsRow}");
             $sheet->getStyle("A{$totalsRow}:{$lastColumn}{$totalsRow}")->getFont()->setBold(true);
             $sheet->getStyle("A{$totalsRow}:{$lastColumn}{$totalsRow}")->getFill()
-                ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('F1F5F9');
+                ->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('F1F5F9');
             $lastDataRow = $totalsRow;
         }
 
-        foreach (range('A', $lastColumn) as $column) {
-            $sheet->getColumnDimension($column)->setAutoSize(true);
+        for ($i = 1; $i <= count($dataset['headers']); $i++) {
+            $sheet->getColumnDimension(Coordinate::stringFromColumnIndex($i))->setAutoSize(true);
         }
 
         $footerRow = $lastDataRow + 2;

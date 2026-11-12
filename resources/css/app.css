@@ -12,6 +12,17 @@
         'Segoe UI Symbol', 'Noto Color Emoji';
 
     /*
+     * Body text half a size up, per the user's explicit call (a full size up was too much):
+     * text-sm (used for nearly all normal text) 14px -> 15px, and text-xs (small print, hints,
+     * badges) 12px -> 13px. Headings (text-lg and up) keep Tailwind's sizes so they still
+     * stand out above the body text.
+     */
+    --text-xs: 0.8125rem;
+    --text-xs--line-height: calc(1.125 / 0.8125);
+    --text-sm: 0.9375rem;
+    --text-sm--line-height: calc(1.375 / 0.9375);
+
+    /*
      * Brand palette from the Hopenalytics mark (sunrise disc + growth line) — replaces
      * Tailwind's default blue/violet scales outright rather than introducing new color
      * names, so every existing `text-blue-600`, `bg-blue-700`, `from-blue-500 to-violet-600`

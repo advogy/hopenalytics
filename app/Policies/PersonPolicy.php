@@ -29,7 +29,7 @@ class PersonPolicy
         }
 
         if ($user->role->level() === 'gereja') {
-            return $person->conference_id === $user->church?->conference_id;
+            return in_array($person->conference_id, $user->assignedChurchConferenceIds(), true);
         }
 
         return Person::whereKey($person->id)->visibleTo($user)->exists();

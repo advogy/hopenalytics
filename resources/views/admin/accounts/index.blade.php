@@ -130,23 +130,27 @@
 
     <x-tab-bar>
         @if ($visibleTabs['divisi'])
-            <x-tab-button tab-key="divisi">{{ __('common.division') }}</x-tab-button>
+            <x-tab-button tab-key="divisi" :note="__('tabs.accounts_divisi')">{{ __('common.division') }}</x-tab-button>
         @endif
         @if ($visibleTabs['uni'])
-            <x-tab-button tab-key="uni">{{ __('common.union') }}</x-tab-button>
+            <x-tab-button tab-key="uni" :note="__('tabs.accounts_uni')">{{ __('common.union') }}</x-tab-button>
         @endif
         @if ($visibleTabs['daerah'])
-            <x-tab-button tab-key="daerah">{{ __('common.conference') }}</x-tab-button>
+            <x-tab-button tab-key="daerah" :note="__('tabs.accounts_daerah')">{{ __('common.conference') }}</x-tab-button>
         @endif
         @if ($visibleTabs['gereja'])
-            <x-tab-button tab-key="gereja">{{ __('common.church') }}</x-tab-button>
+            <x-tab-button tab-key="gereja" :note="__('tabs.accounts_gereja')">{{ __('common.church') }}</x-tab-button>
         @endif
         @if ($visibleTabs['institusi'])
-            <x-tab-button tab-key="institusi">{{ __('common.institution') }}</x-tab-button>
+            <x-tab-button tab-key="institusi" :note="__('tabs.accounts_institusi')">{{ __('common.institution') }}</x-tab-button>
         @endif
         @if ($visibleTabs['personal'])
-            <x-tab-button tab-key="personal">{{ __('common.personal') }}</x-tab-button>
+            <x-tab-button tab-key="personal" :note="__('tabs.accounts_personal')">{{ __('common.personal') }}</x-tab-button>
         @endif
+        {{-- Impor Massal is its own page, grouped here (see App\Support\AdminHubs). --}}
+        @can('manage-hierarchy')
+            <x-tab-link :href="route('admin.bulk-import.index')">{{ __('nav.bulk_import') }}</x-tab-link>
+        @endcan
     </x-tab-bar>
 
     @if ($visibleTabs['divisi'])

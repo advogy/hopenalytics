@@ -25,6 +25,11 @@ use App\Http\Controllers\ForgotPasswordController;
 use App\Http\Controllers\GoalController;
 use App\Http\Controllers\LinkPersonController;
 use App\Http\Controllers\LocaleController;
+use App\Http\Controllers\MemberEngagementController;
+use App\Http\Controllers\MembershipConfirmationController;
+use App\Http\Controllers\MembershipImportController;
+use App\Http\Controllers\MembershipPeriodController;
+use App\Http\Controllers\MembershipTargetController;
 use App\Http\Controllers\MyAccountController;
 use App\Http\Controllers\PersonController;
 use App\Http\Controllers\PersonSocialController;
@@ -157,8 +162,43 @@ Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group
     });
 
     Route::middleware('can:manage-goals')->group(function () {
-        Route::get('/tujuan', [GoalController::class, 'edit'])->name('goals.edit');
-        Route::put('/tujuan', [GoalController::class, 'update'])->name('goals.update');
+        Route::get('/tujuan/atur', [GoalController::class, 'edit'])->name('goals.edit');
+        Route::put('/tujuan/atur', [GoalController::class, 'update'])->name('goals.update');
+
+        Route::get('/tujuan/periode', [MembershipPeriodController::class, 'index'])->name('engagement.periods.index');
+        Route::post('/tujuan/periode', [MembershipPeriodController::class, 'store'])->name('engagement.periods.store');
+        Route::put('/tujuan/periode/{period}', [MembershipPeriodController::class, 'update'])->name('engagement.periods.update');
+        Route::delete('/tujuan/periode/{period}', [MembershipPeriodController::class, 'destroy'])->name('engagement.periods.destroy');
+    });
+
+    // The full Tujuan page (metric goals + member engagement); the dashboard shows a summary.
+    Route::get('/tujuan', [MemberEngagementController::class, 'index'])->name('goals.index')->middleware('can:view-goals');
+
+    // One group per gate, each holding a feature's page and its exports.
+    Route::middleware('can:view-member-engagement')->group(function () {
+        Route::get('/tujuan/anggota-target', [MembershipTargetController::class, 'index'])->name('goals.members');
+
+        Route::get('/export/keterlibatan/preview', [ExportController::class, 'engagementPreview'])->name('export.engagement.preview');
+        Route::get('/export/keterlibatan/{format}', [ExportController::class, 'engagementDownload'])->name('export.engagement.download');
+        Route::get('/export/anggota-target/preview', [ExportController::class, 'membershipTargetPreview'])->name('export.membership-target.preview');
+        Route::get('/export/anggota-target/{format}', [ExportController::class, 'membershipTargetDownload'])->name('export.membership-target.download');
+    });
+
+    Route::middleware('can:upload-membership')->group(function () {
+        Route::get('/tujuan/data-anggota', [MembershipImportController::class, 'index'])->name('engagement.import.index');
+        Route::get('/tujuan/data-anggota/template', [MembershipImportController::class, 'template'])->name('engagement.import.template');
+        Route::post('/tujuan/data-anggota', [MembershipImportController::class, 'import'])->name('engagement.import.store');
+
+        Route::get('/export/data-anggota/preview', [ExportController::class, 'membershipPreview'])->name('export.membership.preview');
+        Route::get('/export/data-anggota/{format}', [ExportController::class, 'membershipDownload'])->name('export.membership.download');
+    });
+
+    Route::middleware('can:confirm-membership')->group(function () {
+        Route::get('/tujuan/konfirmasi-anggota', [MembershipConfirmationController::class, 'index'])->name('engagement.confirm.index');
+        Route::put('/tujuan/konfirmasi-anggota', [MembershipConfirmationController::class, 'update'])->name('engagement.confirm.update');
+
+        Route::get('/export/konfirmasi-anggota/preview', [ExportController::class, 'membershipPendingPreview'])->name('export.membership-pending.preview');
+        Route::get('/export/konfirmasi-anggota/{format}', [ExportController::class, 'membershipPendingDownload'])->name('export.membership-pending.download');
     });
 
     // throttle:3,60 on store() specifically — a nationwide/division-wide send is heavy enough
@@ -334,6 +374,9 @@ Route::middleware(['auth', 'verified', RedirectUnassignedMembers::class])->group
         Route::post('/release-region-bulk', [UserAssignmentController::class, 'releaseRegionBulk'])->name('release-region-bulk');
         Route::get('/{target}/change-region', [UserAssignmentController::class, 'editRegion'])->name('change-region.edit');
         Route::post('/{target}/change-region', [UserAssignmentController::class, 'updateRegion'])->name('change-region.update');
+        Route::get('/{target}/churches', [UserAssignmentController::class, 'editChurches'])->name('churches.edit');
+        Route::post('/{target}/churches', [UserAssignmentController::class, 'addChurch'])->name('churches.add');
+        Route::delete('/{target}/churches/{church}', [UserAssignmentController::class, 'removeChurch'])->name('churches.remove');
         Route::post('/{target}/toggle-active', [UserAssignmentController::class, 'toggleActive'])->name('toggle-active');
         Route::post('/{target}/resend-otp', [UserAssignmentController::class, 'resendOtp'])->name('resend-otp');
         Route::delete('/{target}', [UserAssignmentController::class, 'destroy'])->name('destroy');

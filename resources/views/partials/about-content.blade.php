@@ -131,6 +131,10 @@
                 <p class="font-medium text-slate-900 dark:text-white">{{ __('about.score_accounts_title') }}</p>
                 <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('about.score_accounts_desc') }}</p>
             </div>
+            <div>
+                <p class="font-medium text-slate-900 dark:text-white">{{ __('about.score_combined_title') }}</p>
+                <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('about.score_combined_desc') }}</p>
+            </div>
         </div>
     </div>
 @endif

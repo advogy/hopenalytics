@@ -66,7 +66,7 @@ class Church extends Model
                 'conference', fn (Builder $q) => $q->where('union_id', $user->union_id)
             ),
             $user->role->level() === 'daerah' => $query->where('conference_id', $user->conference_id),
-            $user->role->level() === 'gereja' => $query->where('id', $user->church_id),
+            $user->role->level() === 'gereja' => $query->whereIn('id', $user->assignedChurchIds()),
             // institusi has no reachable Churches at all — Institution isn't nested in this
             // chain (see UserRole::level()).
             default => $query->whereRaw('1 = 0'),

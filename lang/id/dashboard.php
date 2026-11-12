@@ -84,4 +84,12 @@ return [
     'owner_type_institusi' => 'Institusi',
     'owner_type_personal' => 'Personal',
     'platform_reach' => 'Jangkauan: :value dari :total',
+    'growth_mode_label' => 'Dasar perhitungan pertumbuhan',
+    'growth_mode_own' => 'Gereja',
+    'growth_mode_combined' => 'Gabungan',
+    'top_growth_combined_subtitle' => 'Pertumbuhan akun gereja ditambah akun personal jemaatnya, setiap akun berbobot sama.',
+    'bottom_growth_combined_subtitle' => 'Gereja dengan pertumbuhan gabungan (gereja + personal) terendah minggu ini.',
+    'growth_mode_personal' => 'Personal',
+    'top_growth_personal_subtitle' => 'Akun personal dengan pertumbuhan tertinggi minggu ini, dari akun media sosial pribadinya.',
+    'bottom_growth_personal_subtitle' => 'Akun personal dengan pertumbuhan terendah minggu ini.',
 ];

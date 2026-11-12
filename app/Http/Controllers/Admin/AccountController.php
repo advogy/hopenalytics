@@ -368,7 +368,7 @@ class AccountController extends Controller
      * everything. Which rows show up within a visible tab is a separate concern, handled by
      * visibleTo()/manageableBy() on each query above.
      */
-    private function visibleTabsFor(User $user): array
+    public static function visibleTabsFor(User $user): array
     {
         $level = ($user->role?->hasGlobalAccess() ?? false) ? 'nasional' : $user->role?->level();
 

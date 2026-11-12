@@ -1,6 +1,8 @@
 @php
     $countField = ['youtube' => 'subscribers_count', 'instagram' => 'followers_count', 'tiktok' => 'followers_count', 'facebook' => 'followers_count', 'x' => 'followers_count', 'threads' => 'followers_count'];
-    $postField = ['youtube' => 'videos_count', 'instagram' => 'posts_count', 'tiktok' => 'posts_count', 'facebook' => 'recent_posts_count', 'x' => 'posts_count', 'threads' => 'recent_posts_count'];
+    // Facebook/Threads: posts_count, the manually entered total — their recent_posts_count is
+    // only the automatic fetch's sample (at most 10), see BuildsLeaderboards::metricDefinition().
+    $postField = ['youtube' => 'videos_count', 'instagram' => 'posts_count', 'tiktok' => 'posts_count', 'facebook' => 'posts_count', 'x' => 'posts_count', 'threads' => 'posts_count'];
     // Instagram/TikTok are recent-sample view counts (last ~10-12 posts/videos), not a lifetime
     // total like YouTube's views_count — Facebook, X, and Threads have no view-count field at
     // all, so they fall through to 'views_count' via the ?? below, which is always null on
@@ -307,11 +309,11 @@
     @endif
 
     <x-tab-bar>
-        <x-tab-button tab-key="organisasi">{{ __('comparison.organization_label') }}</x-tab-button>
-        <x-tab-button tab-key="gereja">{{ __('common.church') }}</x-tab-button>
-        <x-tab-button tab-key="institusi">{{ __('common.institution') }}</x-tab-button>
-        <x-tab-button tab-key="personal">{{ __('common.personal') }}</x-tab-button>
-        <x-tab-button tab-key="hastag">{{ __('hashtag.tab_label') }}</x-tab-button>
+        <x-tab-button tab-key="organisasi" :note="__('tabs.analytics_organisasi')">{{ __('comparison.organization_label') }}</x-tab-button>
+        <x-tab-button tab-key="gereja" :note="__('tabs.analytics_gereja')">{{ __('common.church') }}</x-tab-button>
+        <x-tab-button tab-key="institusi" :note="__('tabs.analytics_institusi')">{{ __('common.institution') }}</x-tab-button>
+        <x-tab-button tab-key="personal" :note="__('tabs.analytics_personal')">{{ __('common.personal') }}</x-tab-button>
+        <x-tab-button tab-key="hastag" :note="__('tabs.analytics_hastag')">{{ __('hashtag.tab_label') }}</x-tab-button>
     </x-tab-bar>
 
     {{-- ===================== TAB: ORGANISASI ===================== --}}

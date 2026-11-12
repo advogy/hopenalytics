@@ -19,6 +19,7 @@ use App\Support\AuditLogger;
 use App\Support\NameSimilarity;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -125,7 +126,7 @@ class UserAssignmentController extends Controller
             // Eager-loaded for the "Peran & Wilayah" column's own $scopeDisplayFor() lookup (see
             // index.blade.php's @php block) — every relation that closure might reach through,
             // matching $trashedUsers' own eager-load list above.
-            ->with(['division', 'union.division', 'conference.union', 'church.conference', 'institution', 'assignedUnions'])
+            ->with(['division', 'union.division', 'conference.union', 'church.conference', 'institution', 'assignedUnions', 'additionalChurches:id,name'])
             // Also matches the name of whichever region is directly set on the row (division/
             // union/conference/church/institution — never a parent/grandparent of that, e.g. a
             // Gereja admin's own Daerah name isn't searched, just their Gereja's) — per the
@@ -245,7 +246,7 @@ class UserAssignmentController extends Controller
         $staffUsers = (clone $staffUsersBase)
             // Eager-loaded for the "Peran & Wilayah" column's own $scopeDisplayFor() lookup, same
             // as "Semua User"'s own copy of this eager-load list above.
-            ->with(['division', 'union.division', 'conference.union', 'church.conference', 'institution', 'assignedUnions'])
+            ->with(['division', 'union.division', 'conference.union', 'church.conference', 'institution', 'assignedUnions', 'additionalChurches:id,name'])
             // See "Semua User"'s own copy of this same search above for why only the row's own
             // direct region (never a parent/grandparent of it) is matched.
             ->when($staffSearch, fn ($q) => $q->where(
@@ -780,6 +781,67 @@ class UserAssignmentController extends Controller
     }
 
     /**
+     * "Gereja yang dikelola" — the churches an Admin/Pimpinan Gereja manages: their main church
+     * (church_id, changed through Ganti Wilayah) plus any extra ones, for someone serving at more
+     * than one church (see User::additionalChurches()).
+     */
+    public function editChurches(Request $request, User $target)
+    {
+        abort_unless($target->role?->level() === 'gereja' && $target->church_id, 404);
+        Gate::authorize('releaseRegion', $target);
+
+        $assigned = $target->assignedChurchIds();
+        $churches = Church::query()->whereIn('id', $assigned)->with('conference:id,name')->get()
+            ->sortBy(fn (Church $c) => [$c->id === $target->church_id ? 0 : 1, $c->name])->values();
+
+        return view('admin.users.churches', [
+            'target' => $target,
+            'tab' => $this->resolveUsersTab($request),
+            'modal' => $request->boolean('modal'),
+            'churches' => $churches,
+            'scopeOptions' => collect($this->regionScopeOptionsForLevel($request->user(), 'gereja'))
+                ->reject(fn ($option) => in_array((int) $option['id'], $assigned, true))->values()->all(),
+        ]);
+    }
+
+    public function addChurch(Request $request, User $target): Response
+    {
+        abort_unless($target->role?->level() === 'gereja' && $target->church_id, 404);
+
+        $churchId = (int) $request->validate(['church_id' => ['required', 'integer']])['church_id'];
+
+        // The same "is this church within the actor's reach" rule as a normal assignment.
+        Gate::authorize('promote', [$target, $target->role, $churchId]);
+
+        $church = Church::findOrFail($churchId);
+
+        if (! in_array($churchId, $target->assignedChurchIds(), true)) {
+            $target->additionalChurches()->syncWithoutDetaching([$churchId]);
+            $target->forgetAssignedChurches();
+            AuditLogger::log('user.church_added', $target, "Menambahkan gereja \"{$church->name}\" ke gereja yang dikelola \"{$target->name}\".");
+        }
+
+        return $this->respondModalOrRedirect($request, 'admin.users.index', ['tab' => $this->resolveUsersTab($request)], 'status',
+            __('users.church_added', ['name' => $target->name, 'church' => $church->name]));
+    }
+
+    public function removeChurch(Request $request, User $target, Church $church): Response
+    {
+        abort_unless($target->role?->level() === 'gereja', 404);
+        // The main church is changed or released through Ganti Wilayah instead.
+        abort_if($church->id === $target->church_id, 422);
+
+        Gate::authorize('promote', [$target, $target->role, $church->id]);
+
+        $target->additionalChurches()->detach($church->id);
+        $target->forgetAssignedChurches();
+        AuditLogger::log('user.church_removed', $target, "Melepas gereja \"{$church->name}\" dari gereja yang dikelola \"{$target->name}\".");
+
+        return $this->respondModalOrRedirect($request, 'admin.users.index', ['tab' => $this->resolveUsersTab($request)], 'status',
+            __('users.church_removed', ['name' => $target->name, 'church' => $church->name]));
+    }
+
+    /**
      * Mirrors index()'s own $scopeDataByLevel-building for a single, already-known level
      * (index() builds one per level it might need up front; this only ever needs the one
      * level a specific target already sits at) — same canBootstrapAnyLevel vs. scoped-actor
@@ -852,6 +914,8 @@ class UserAssignmentController extends Controller
         $names = $targets->pluck('name')->implode(', ');
 
         User::whereIn('id', $targets->pluck('id'))->update(['division_id' => null, 'union_id' => null, 'conference_id' => null, 'church_id' => null]);
+        // A query-builder update skips User's saved hook, which normally drops extra churches.
+        DB::table('admin_gereja_churches')->whereIn('user_id', $targets->pluck('id'))->delete();
         Person::whereIn('user_id', $targets->pluck('id'))->update(['union_id' => null, 'conference_id' => null, 'church_id' => null]);
 
         foreach ($targets as $target) {

@@ -43,10 +43,10 @@
     </div>
 
     <x-tab-bar>
-        <x-tab-button tab-key="organisasi">{{ __('comparison.organization_label') }}</x-tab-button>
-        <x-tab-button tab-key="gereja">{{ __('common.church') }}</x-tab-button>
-        <x-tab-button tab-key="institusi">{{ __('common.institution') }}</x-tab-button>
-        <x-tab-button tab-key="personal">{{ __('common.personal') }}</x-tab-button>
+        <x-tab-button tab-key="organisasi" :note="__('tabs.directory_organisasi')">{{ __('comparison.organization_label') }}</x-tab-button>
+        <x-tab-button tab-key="gereja" :note="__('tabs.directory_gereja')">{{ __('common.church') }}</x-tab-button>
+        <x-tab-button tab-key="institusi" :note="__('tabs.directory_institusi')">{{ __('common.institution') }}</x-tab-button>
+        <x-tab-button tab-key="personal" :note="__('tabs.directory_personal')">{{ __('common.personal') }}</x-tab-button>
     </x-tab-bar>
 
     <x-filter-card :clear-url="$hasDirectoryFilters ? route('churches.directory', ['tab' => $activeTab]) : null">

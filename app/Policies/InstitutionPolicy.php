@@ -27,16 +27,16 @@ class InstitutionPolicy
         }
 
         if ($user->role->level() === 'gereja') {
-            $conferenceId = $user->church?->conference_id;
-            $unionId = $user->church?->conference?->union_id;
+            $conferenceIds = $user->assignedChurchConferenceIds();
+            $unionIds = $user->assignedChurchUnionIds();
 
             return Institution::whereKey($institution->id)
-                ->where(function ($q) use ($conferenceId, $unionId) {
+                ->where(function ($q) use ($conferenceIds, $unionIds) {
                     $q->where(fn ($q2) => $q2->whereNull('union_id')->whereNull('conference_id'))
-                        ->when($unionId, fn ($q2) => $q2->orWhere(
-                            fn ($q3) => $q3->where('union_id', $unionId)->whereNull('conference_id')
+                        ->when($unionIds, fn ($q2) => $q2->orWhere(
+                            fn ($q3) => $q3->whereIn('union_id', $unionIds)->whereNull('conference_id')
                         ))
-                        ->when($conferenceId, fn ($q2) => $q2->orWhere('conference_id', $conferenceId));
+                        ->when($conferenceIds, fn ($q2) => $q2->orWhereIn('conference_id', $conferenceIds));
                 })
                 ->exists();
         }

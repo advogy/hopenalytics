@@ -2,6 +2,9 @@
     The shared tail of every entity "show" page (churches/institutions/organizations/people): empty
     state, growth-score summary, the social-account-card grid, then a history table per account.
 
+    - combinedGrowth: optional BuildsCombinedGrowth::combinedGrowthDetail() result — adds the
+      combined (organisation + personal) growth card under the regular one. combinedOwnLabel
+      names the organisation half ("Akun gereja", "Akun Daerah & gereja", ...).
     - categories: optional ['gereja' => label, 'umum' => label]-style map — only churches.show uses
       this, to split the account-card grid into headed sections and pass a category label into each
       history table. Omit for entities with no category concept (institution/organization/person).
@@ -17,6 +20,8 @@
     'anchored' => false,
     'showRecentContent' => true,
     'categories' => null,
+    'combinedGrowth' => null,
+    'combinedOwnLabel' => null,
 ])
 
 @php
@@ -36,6 +41,25 @@
         :score-sample-sum="$scoreSampleSum"
         :anchored="$anchored"
     />
+@endif
+
+@if ($combinedGrowth !== null && ($combinedGrowth['ownCount'] + $combinedGrowth['personalCount']) > 0)
+    <x-growth-score-summary
+        :title="__('entity.combined_growth_title')"
+        :subtitle="__('entity.combined_growth_subtitle')"
+        :score-history="$combinedGrowth['history']"
+        :score-metrics="$combinedGrowth['metrics']"
+        :score-breakdown="$combinedGrowth['breakdown']"
+        :score-sample-count="$combinedGrowth['sampleCount']"
+        :score-sample-sum="$combinedGrowth['sampleSum']"
+        :parts="[
+            ['label' => $combinedOwnLabel ?? __('entity.combined_growth_own'), 'score' => $combinedGrowth['own'], 'count' => $combinedGrowth['ownCount']],
+            ['label' => __('entity.combined_growth_personal'), 'score' => $combinedGrowth['personal'], 'count' => $combinedGrowth['personalCount']],
+        ]"
+    />
+@endif
+
+@if ($socials->isNotEmpty())
 
     @if ($categories !== null)
         @php $socialsByCategory = $socials->groupBy(fn ($social) => $social->category->value); @endphp

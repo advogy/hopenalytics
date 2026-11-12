@@ -18,9 +18,9 @@
         'youtube' => ['views_count' => 'Views', 'videos_count' => 'Videos'],
         'instagram' => ['recent_reels_views' => 'Views', 'recent_reels_count' => 'Reels', 'following_count' => 'Following', 'posts_count' => 'Posts'],
         'tiktok' => ['recent_video_plays' => 'Views', 'recent_video_count' => 'Videos', 'recent_video_shares' => 'Shares', 'following_count' => 'Following', 'likes_count' => 'Likes', 'posts_count' => 'Posts'],
-        'facebook' => ['following_count' => 'Following', 'recent_posts_count' => 'Posts', 'recent_posts_likes' => 'Likes', 'recent_posts_shares' => 'Shares'],
+        'facebook' => ['following_count' => 'Following', 'posts_count' => 'Posts', 'recent_posts_count' => 'Recent posts', 'recent_posts_likes' => 'Likes', 'recent_posts_shares' => 'Shares'],
         'x' => ['following_count' => 'Following', 'posts_count' => 'Posts'],
-        'threads' => ['recent_posts_count' => 'Posts'],
+        'threads' => ['posts_count' => 'Posts', 'recent_posts_count' => 'Recent posts'],
     ];
     // manageRoute(), not showRoute() — this is an admin-only management view (see docblock
     // above), so "back" should return to where the account is managed (same place

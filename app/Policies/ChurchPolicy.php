@@ -22,7 +22,8 @@ class ChurchPolicy
         }
 
         if ($user->role->level() === 'gereja') {
-            return $church->conference_id === $user->church?->conference_id;
+            // The Daerah of any church they manage (see User::assignedChurchIds()).
+            return in_array($church->conference_id, $user->assignedChurchConferenceIds(), true);
         }
 
         return Church::whereKey($church->id)->visibleTo($user)->exists();
@@ -55,7 +56,7 @@ class ChurchPolicy
     public function export(User $user, Church $church): bool
     {
         if ($user->role?->level() === 'gereja') {
-            return $church->id === $user->church_id;
+            return in_array($church->id, $user->assignedChurchIds(), true);
         }
 
         return $this->view($user, $church);

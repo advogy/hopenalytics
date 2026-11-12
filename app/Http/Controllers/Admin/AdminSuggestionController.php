@@ -55,7 +55,12 @@ class AdminSuggestionController extends Controller
 
             // Only a member who ticked "I'm this church's admin" is promoted; otherwise the
             // church is just added and their Person linked to it below.
-            if ($suggestion->wants_admin) {
+            if ($suggestion->wants_admin && $suggestion->user->role === UserRole::AdminGereja
+                && $suggestion->user->church_id && $suggestion->user->church_id !== $church->id) {
+                // Already an Admin Gereja elsewhere: this church is added to the ones they
+                // manage rather than replacing it (see User::additionalChurches()).
+                $suggestion->user->additionalChurches()->syncWithoutDetaching([$church->id]);
+            } elseif ($suggestion->wants_admin) {
                 $suggestion->user->update([
                     'role' => UserRole::AdminGereja,
                     'division_id' => null,

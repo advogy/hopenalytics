@@ -197,4 +197,10 @@ return [
     'profile_cancel_email_change' => 'Cancel',
     'profile_own_socials_subtitle' => 'Your personal social media accounts.',
     'verify_new_email_title' => 'Verify New Email',
+    'combined_growth_title' => 'Combined Growth',
+    'combined_growth_subtitle' => 'Organisation accounts plus the personal accounts of members within it. Every account weighs the same.',
+    'combined_growth_own' => 'Organisation accounts',
+    'combined_growth_own_church' => 'Church accounts',
+    'combined_growth_own_region' => 'Region & church accounts',
+    'combined_growth_personal' => 'Members\' personal accounts',
 ];

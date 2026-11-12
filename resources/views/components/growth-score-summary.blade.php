@@ -17,7 +17,10 @@
      $scoreBreakdown/$scoreSampleCount/$scoreSampleSum are the underlying per-account samples
      behind $scoreMetrics — the info button opens a dialog walking through the full calculation,
      account by account, down to the final average, so nothing about the score is a black box. --}}
-@props(['scoreHistory' => [], 'scoreMetrics' => [], 'scoreBreakdown' => [], 'scoreSampleCount' => 0, 'scoreSampleSum' => 0, 'anchored' => false])
+{{-- $title/$subtitle override the default heading; $parts adds a row under it splitting the
+     score into its organisation and personal halves (the combined growth card, see
+     BuildsCombinedGrowth), each as ['label' => ..., 'score' => ?float, 'count' => int]. --}}
+@props(['scoreHistory' => [], 'scoreMetrics' => [], 'scoreBreakdown' => [], 'scoreSampleCount' => 0, 'scoreSampleSum' => 0, 'anchored' => false, 'title' => null, 'subtitle' => null, 'parts' => []])
 
 @php
     $metricLabels = \App\Models\AppSetting::filterEnabledMetrics(['reach' => __('common.metric_reach_short'), 'views' => __('common.metric_views'), 'likes' => __('common.metric_likes'), 'posts' => __('common.metric_posts'), 'comments' => __('common.metric_comments'), 'shares' => __('common.metric_shares')]);
@@ -29,14 +32,14 @@
     class="mb-8 rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900 {{ $anchored ? 'scroll-mt-20' : '' }}"
 >
     @if (empty($scoreHistory))
-        <p class="font-bold text-slate-900 dark:text-white">{{ __('entity.growth_score_title') }}</p>
+        <p class="font-bold text-slate-900 dark:text-white">{{ $title ?? __('entity.growth_score_title') }}</p>
         <p class="mt-1 text-sm text-slate-400 dark:text-slate-500">{{ __('entity.growth_score_no_data') }}</p>
     @else
         @php $currentScore = end($scoreHistory); @endphp
         <div class="flex flex-wrap items-center justify-between gap-4">
             <div>
                 <p class="flex items-center gap-1.5 font-bold text-slate-900 dark:text-white">
-                    {{ __('entity.growth_score_title') }}
+                    {{ $title ?? __('entity.growth_score_title') }}
                     <button
                         type="button"
                         data-growth-score-detail-trigger="{{ $dialogId }}"
@@ -47,7 +50,7 @@
                         <x-icon name="information-circle" class="h-4 w-4" />
                     </button>
                 </p>
-                <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('entity.growth_score_subtitle') }}</p>
+                <p class="text-sm text-slate-500 dark:text-slate-400">{{ $subtitle ?? __('entity.growth_score_subtitle') }}</p>
             </div>
             <div class="flex shrink-0 items-center gap-4">
                 <x-sparkline :values="$scoreHistory" class="h-8 w-28" />
@@ -61,6 +64,26 @@
                 </button>
             </div>
         </div>
+
+        @if ($parts !== [])
+            <div class="mt-4 grid grid-cols-1 gap-3 border-t border-slate-100 pt-4 text-sm sm:grid-cols-2 dark:border-slate-800">
+                @foreach ($parts as $part)
+                    <div class="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2 dark:bg-slate-800/60">
+                        <span class="text-slate-500 dark:text-slate-400">
+                            {{ $part['label'] }}
+                            <span class="block text-xs text-slate-400 dark:text-slate-500">{{ __('comparison.accounts_count', ['count' => $part['count']]) }}</span>
+                        </span>
+                        @if ($part['score'] === null)
+                            <span class="text-slate-300 dark:text-slate-600">&ndash;</span>
+                        @else
+                            <span class="font-semibold tabular-nums {{ $part['score'] > 0 ? 'text-emerald-600 dark:text-emerald-400' : ($part['score'] < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-400 dark:text-slate-500') }}">
+                                {{ $part['score'] > 0 ? '+' : '' }}{{ number_format($part['score'], 1) }}%
+                            </span>
+                        @endif
+                    </div>
+                @endforeach
+            </div>
+        @endif
 
         @if (! empty(array_filter($scoreMetrics, fn ($v) => $v !== null)))
             <div class="mt-4 flex flex-wrap items-center justify-between gap-x-5 gap-y-2 border-t border-slate-100 pt-4 text-sm dark:border-slate-800">

@@ -6,6 +6,7 @@ use App\Enums\UserRole;
 use App\Models\AppSetting;
 use App\Models\LoginLog;
 use App\Models\User;
+use App\Support\TextOnlyValueBinder;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -15,6 +16,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
+use PhpOffice\PhpSpreadsheet\Cell\Cell;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -31,6 +33,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Spreadsheet text starting with "=" stays text, never a formula — see TextOnlyValueBinder.
+        Cell::setValueBinder(new TextOnlyValueBinder);
+
         // DB-stored credentials (set via Pengaturan → Apify & Auto-Fetch, see
         // SettingsController) take priority over their .env counterparts — these are the one
         // and only read path ApifyClient/YouTubeStatsFetcher fall back to
@@ -114,6 +119,21 @@ class AppServiceProvider extends ServiceProvider
         // Daerah chain for the dashboard's Goal widget) is nasional-level only, same threshold
         // as manage-queue/manage-settings above.
         Gate::define('manage-goals', fn (User $user) => $user->role?->hasGlobalAccess() ?? false);
+
+        // The full Tujuan page: every admin/Pimpinan role, the same people whose dashboard shows
+        // the goal summary. Its Keterlibatan Anggota section has its own gate just below.
+        Gate::define('view-goals', fn (User $user) => $user->role !== null);
+
+        // Keterlibatan Anggota: admins and Pimpinan from Daerah level up see their own region's
+        // comparison. Membership per church is uploaded by Admin Divisi and confirmed by Admin
+        // Uni, per the user's explicit call; global admins can do both as a fallback. Periods
+        // and the target share are manage-goals above.
+        Gate::define('view-member-engagement', fn (User $user) => $user->role !== null
+            && in_array($user->role->level(), [null, 'global', 'nasional', 'divisi', 'uni', 'daerah'], true));
+        Gate::define('upload-membership', fn (User $user) => $user->role === UserRole::AdminDivisi
+            || ($user->role?->hasGlobalAccess() ?? false));
+        Gate::define('confirm-membership', fn (User $user) => $user->role === UserRole::AdminUni
+            || ($user->role?->hasGlobalAccess() ?? false));
 
         // Fetching fresh data spends paid Apify credits per call regardless of scope
         // (decision #3), so both single and bulk refresh are nasional-level only.

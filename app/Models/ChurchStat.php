@@ -16,7 +16,7 @@ class ChurchStat extends Model
         'recent_reels_count', 'recent_reels_views', 'recent_reels_comments',
         'recent_video_count', 'recent_video_plays', 'recent_video_shares', 'recent_video_comments',
         'recent_posts_count', 'recent_posts_likes', 'recent_posts_shares', 'recent_posts_comments',
-        'raw_payload',
+        'latest_post_at', 'raw_payload',
     ];
 
     /**
@@ -40,6 +40,7 @@ class ChurchStat extends Model
 
     protected $casts = [
         'recorded_at' => 'date',
+        'latest_post_at' => 'datetime',
         'raw_payload' => 'array',
     ];
 

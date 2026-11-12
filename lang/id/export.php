@@ -55,4 +55,8 @@ return [
     'downloaded_footer' => 'Diunduh dari Hopenalytics pada :datetime WIB',
     'downloaded_footer_by' => ' oleh :name',
     'sheet_title' => 'Data',
+    'total_row_label_count' => 'Total (:count baris)',
+    'total_named_count' => ':name (:count baris)',
+    'change_row_label' => 'Perubahan (:count data)',
+    'pdf_too_large' => 'PDF hanya untuk maksimal :max baris. Unduh Excel atau Word, atau persempit filternya.',
 ];

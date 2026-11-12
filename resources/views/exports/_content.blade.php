@@ -18,6 +18,9 @@
             <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ $dataset['subtitle'] }}</p>
         @endif
         <p class="mt-1 text-xs text-slate-400 dark:text-slate-500">{{ __('export.preview_row_count', ['count' => count($dataset['rows'])]) }}</p>
+        @unless ($pdfDownloadUrl)
+            <p class="mt-1 text-xs text-amber-600 dark:text-amber-400">{{ __('export.pdf_too_large', ['max' => number_format($pdfMaxRows)]) }}</p>
+        @endunless
 
         @if (! empty($dataset['summary']))
             <div class="mt-3 flex flex-wrap gap-2">
@@ -32,10 +35,18 @@
     </div>
 
     <div class="flex shrink-0 items-center gap-2">
-        <a href="{{ $pdfDownloadUrl }}" title="{{ __('export.download_pdf') }}" class="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-red-700">
-            <x-icon name="arrow-down-tray" class="h-3.5 w-3.5" />
-            {{ __('export.format_pdf') }}
-        </a>
+        @if ($pdfDownloadUrl)
+            <a href="{{ $pdfDownloadUrl }}" title="{{ __('export.download_pdf') }}" class="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-red-700">
+                <x-icon name="arrow-down-tray" class="h-3.5 w-3.5" />
+                {{ __('export.format_pdf') }}
+            </a>
+        @else
+            {{-- Too long for PDF (ExportController::PDF_MAX_ROWS); Excel and Word still work. --}}
+            <span title="{{ __('export.pdf_too_large', ['max' => number_format($pdfMaxRows)]) }}" class="inline-flex cursor-not-allowed items-center gap-1.5 rounded-lg bg-slate-200 px-3 py-2 text-xs font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                <x-icon name="arrow-down-tray" class="h-3.5 w-3.5" />
+                {{ __('export.format_pdf') }}
+            </span>
+        @endif
         <a href="{{ $wordDownloadUrl }}" title="{{ __('export.download_word') }}" class="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-blue-700">
             <x-icon name="arrow-down-tray" class="h-3.5 w-3.5" />
             {{ __('export.format_word') }}
@@ -61,6 +72,15 @@
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-900">
+                {{-- The same totals as the footer, at the top too — long tables scroll far. --}}
+                @if (! empty($dataset['totals']))
+                    <tr data-totals-top class="border-b-2 border-black/5 bg-slate-50 dark:border-white/5 dark:bg-slate-800/60">
+                        <td class="whitespace-nowrap px-4 py-2.5 font-bold tabular-nums"></td>
+                        @foreach ($dataset['totals'] as $cell)
+                            <td class="whitespace-nowrap px-4 py-2.5 font-bold tabular-nums">{{ $cell }}</td>
+                        @endforeach
+                    </tr>
+                @endif
                 @foreach ($dataset['rows'] as $row)
                     <tr>
                         <td class="whitespace-nowrap px-4 py-2.5 tabular-nums">{{ $loop->iteration }}</td>

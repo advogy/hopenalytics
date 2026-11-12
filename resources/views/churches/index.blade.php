@@ -42,7 +42,15 @@
 
     @if ($goalRows->isNotEmpty())
         <div class="mb-8">
-            <h2 class="mb-3 text-lg font-bold text-slate-900 dark:text-white">{{ __('goals.section_title') }}</h2>
+            {{-- A summary: the full breakdown is on the Tujuan page. --}}
+            <div class="mb-3 flex items-center justify-between gap-3">
+                <h2 class="text-lg font-bold text-slate-900 dark:text-white">{{ __('goals.section_title') }}</h2>
+                @can('view-goals')
+                    <a href="{{ route('goals.index') }}" class="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400">
+                        {{ __('goals.see_all') }} &rarr;
+                    </a>
+                @endcan
+            </div>
             <div class="grid grid-cols-1 gap-4">
                 @foreach ($goalRows as $row)
                     <x-goal-card
@@ -53,6 +61,35 @@
                         :percent="$row['percent']"
                     />
                 @endforeach
+
+                @if ($engagementSummary)
+                    @php $engagementProgress = $engagementSummary['progress_percent']; @endphp
+                    <a href="{{ route('goals.index') }}#keterlibatan" class="block min-w-0 rounded-2xl border border-black/5 bg-white p-5 shadow-sm transition hover:border-blue-200 dark:border-white/5 dark:bg-slate-900 dark:hover:border-blue-900">
+                        <div class="flex items-center gap-4">
+                            <span class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 shadow-sm dark:bg-emerald-950/50 dark:text-emerald-300">
+                                <x-icon name="users" class="h-5 w-5" />
+                            </span>
+                            <div class="min-w-0 flex-1">
+                                <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('goals.engagement_summary', ['period' => $engagementPeriod->name]) }}</p>
+                                @if ($engagementSummary['members'] === null)
+                                    <p class="text-sm font-medium text-slate-700 dark:text-slate-200">{{ __('goals.engagement_summary_unfilled') }}</p>
+                                @else
+                                    <p class="text-sm font-medium text-slate-700 dark:text-slate-200">
+                                        {{ __('goals.engagement_summary_line', [
+                                            'active' => number_format($engagementSummary['active']),
+                                            'target' => number_format($engagementSummary['target']),
+                                            'percent' => $engagementSummary['active_percent'],
+                                            'members' => number_format($engagementSummary['members']),
+                                        ]) }}
+                                    </p>
+                                @endif
+                            </div>
+                            @if ($engagementProgress !== null)
+                                <span @class(['shrink-0 text-2xl font-bold tabular-nums', 'text-emerald-600 dark:text-emerald-400' => $engagementProgress >= 100, 'text-slate-900 dark:text-white' => $engagementProgress < 100])>{{ $engagementProgress }}%</span>
+                            @endif
+                        </div>
+                    </a>
+                @endif
             </div>
         </div>
     @endif
@@ -69,21 +106,62 @@
         />
     </div>
 
-    <div id="top-pertumbuhan" class="mb-8 grid gap-6 scroll-mt-20 lg:grid-cols-2">
-        <x-growth-score-card
-            :title="__('dashboard.top_growth_title')"
-            :subtitle="__('dashboard.top_growth_subtitle', ['metrics' => strtolower(implode(', ', \App\Models\AppSetting::current()->enabledMetricLabels()))])"
-            :rows="$topGrowthScores"
-            :view-all-url="route('churches.metric-comparison')"
-            :show-metrics="false"
-        />
-        <x-growth-score-card
-            :title="__('dashboard.bottom_growth_title')"
-            :subtitle="__('dashboard.bottom_growth_subtitle')"
-            :rows="$bottomGrowthScores"
-            :view-all-url="route('churches.metric-comparison')"
-            :show-metrics="false"
-        />
+    {{-- Top 5/Bottom 5 on the church's own accounts, or combined with its members' personal
+         accounts (see BuildsCombinedGrowth). Both are rendered; the buttons switch between them. --}}
+    <div id="top-pertumbuhan" class="mb-8 scroll-mt-20" data-growth-mode-root>
+        <div class="mb-3 inline-flex rounded-lg border border-black/10 bg-white p-0.5 text-sm shadow-sm dark:border-white/10 dark:bg-slate-900" role="group" aria-label="{{ __('dashboard.growth_mode_label') }}">
+            @foreach (['own' => __('dashboard.growth_mode_own'), 'personal' => __('dashboard.growth_mode_personal'), 'combined' => __('dashboard.growth_mode_combined')] as $mode => $label)
+                <button
+                    type="button"
+                    data-growth-mode="{{ $mode }}"
+                    aria-pressed="{{ $mode === 'own' ? 'true' : 'false' }}"
+                    class="rounded-md px-3 py-1.5 font-medium text-slate-500 transition aria-pressed:bg-blue-600 aria-pressed:text-white dark:text-slate-400"
+                >{{ $label }}</button>
+            @endforeach
+        </div>
+
+        @foreach (['own' => [$topGrowthScores, $bottomGrowthScores], 'personal' => [$topPersonalGrowth, $bottomPersonalGrowth], 'combined' => [$topCombinedGrowth, $bottomCombinedGrowth]] as $mode => [$topRows, $bottomRows])
+            <div data-growth-mode-panel="{{ $mode }}" @class(['grid gap-6 lg:grid-cols-2', 'hidden' => $mode !== 'own'])>
+                <x-growth-score-card
+                    :title="__('dashboard.top_growth_title')"
+                    :subtitle="match ($mode) {
+                        'own' => __('dashboard.top_growth_subtitle', ['metrics' => strtolower(implode(', ', \App\Models\AppSetting::current()->enabledMetricLabels()))]),
+                        'personal' => __('dashboard.top_growth_personal_subtitle'),
+                        default => __('dashboard.top_growth_combined_subtitle'),
+                    }"
+                    :rows="$topRows"
+                    :view-all-url="route('churches.metric-comparison')"
+                    :show-metrics="false"
+                />
+                <x-growth-score-card
+                    :title="__('dashboard.bottom_growth_title')"
+                    :subtitle="match ($mode) {
+                        'own' => __('dashboard.bottom_growth_subtitle'),
+                        'personal' => __('dashboard.bottom_growth_personal_subtitle'),
+                        default => __('dashboard.bottom_growth_combined_subtitle'),
+                    }"
+                    :rows="$bottomRows"
+                    :view-all-url="route('churches.metric-comparison')"
+                    :show-metrics="false"
+                />
+            </div>
+        @endforeach
+
+        <script>
+            (function () {
+                var root = document.querySelector('[data-growth-mode-root]');
+                var buttons = root.querySelectorAll('[data-growth-mode]');
+
+                buttons.forEach(function (button) {
+                    button.addEventListener('click', function () {
+                        buttons.forEach(function (b) { b.setAttribute('aria-pressed', b === button ? 'true' : 'false'); });
+                        root.querySelectorAll('[data-growth-mode-panel]').forEach(function (panel) {
+                            panel.classList.toggle('hidden', panel.dataset.growthModePanel !== button.dataset.growthMode);
+                        });
+                    });
+                });
+            })();
+        </script>
     </div>
 
     <h2 class="mb-3 text-lg font-bold text-slate-900 dark:text-white">{{ __('dashboard.section_total_accounts_reach') }}</h2>

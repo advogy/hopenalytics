@@ -3,8 +3,10 @@
 @section('title', __('queue.title') . ' — ' . config('app.name'))
 
 @section('content')
+    <x-hub-header hub="monitoring" />
+
     <div class="mb-6">
-        <h1 class="mb-1 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{{ __('queue.title') }}</h1>
+        <h2 class="mb-1 text-xl font-bold tracking-tight text-slate-900 dark:text-white">{{ __('queue.title') }}</h2>
         <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('queue.subtitle') }}</p>
     </div>
 
@@ -127,10 +129,10 @@
          yank a form out from under an open confirm dialog) and are excluded for that reason
          (see their own comment). --}}
     <x-tab-bar>
-        <x-tab-button tab-key="tertunda">{{ __('queue.tab_pending') }}</x-tab-button>
-        <x-tab-button tab-key="aktif">{{ __('queue.tab_active') }}</x-tab-button>
-        <x-tab-button tab-key="selesai">{{ __('queue.tab_completed') }}</x-tab-button>
-        <x-tab-button tab-key="gagal">{{ __('queue.tab_failed') }}</x-tab-button>
+        <x-tab-button tab-key="tertunda" :note="__('tabs.queue_tertunda')">{{ __('queue.tab_pending') }}</x-tab-button>
+        <x-tab-button tab-key="aktif" :note="__('tabs.queue_aktif')">{{ __('queue.tab_active') }}</x-tab-button>
+        <x-tab-button tab-key="selesai" :note="__('tabs.queue_selesai')">{{ __('queue.tab_completed') }}</x-tab-button>
+        <x-tab-button tab-key="gagal" :note="__('tabs.queue_gagal')">{{ __('queue.tab_failed') }}</x-tab-button>
     </x-tab-bar>
 
     <div

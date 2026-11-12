@@ -23,7 +23,6 @@ return [
     'refresh_failed_with_error' => 'Failed to refresh :handle: :error',
     'refresh_single_success' => 'Account :handle was refreshed successfully.',
 
-
     'stat_churches' => 'Registered churches',
     'stat_institutions' => 'Registered institutions',
     'stat_people' => 'Registered personal accounts',
@@ -85,4 +84,12 @@ return [
     'owner_type_institusi' => 'Institution',
     'owner_type_personal' => 'Personal',
     'platform_reach' => 'Reach: :value of :total',
+    'growth_mode_label' => 'Growth basis',
+    'growth_mode_own' => 'Church',
+    'growth_mode_combined' => 'Combined',
+    'top_growth_combined_subtitle' => 'Growth of church accounts plus their members\' personal accounts, every account weighing the same.',
+    'bottom_growth_combined_subtitle' => 'Churches with the lowest combined (church + personal) growth this week.',
+    'growth_mode_personal' => 'Personal',
+    'top_growth_personal_subtitle' => 'People whose personal social accounts grew the most this week.',
+    'bottom_growth_personal_subtitle' => 'People whose personal social accounts grew the least this week.',
 ];

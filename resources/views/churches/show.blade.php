@@ -28,7 +28,7 @@
                  the underlying policy would allow it. The extra can:update check (on top of
                  the level/church_id match) is what excludes pimpinan_gereja specifically —
                  same "gereja" level, but read-only, so update() correctly fails for them. --}}
-            @if (auth()->user()->role?->level() === 'gereja' && auth()->user()->church_id === $church->id && auth()->user()->can('update', $church))
+            @if (auth()->user()->role?->level() === 'gereja' && in_array($church->id, auth()->user()->assignedChurchIds(), true) && auth()->user()->can('update', $church))
                 <a
                     href="{{ route('churches.socials.index', $church) }}"
                     class="inline-flex items-center gap-1.5 rounded-lg border border-black/10 bg-white px-4 py-2 text-sm font-medium shadow-sm transition hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:hover:bg-slate-700"
@@ -79,6 +79,8 @@
         :score-breakdown="$scoreBreakdown"
         :score-sample-count="$scoreSampleCount"
         :score-sample-sum="$scoreSampleSum"
+        :combined-growth="$combinedGrowth"
+        :combined-own-label="__('entity.combined_growth_own_church')"
         :anchored="true"
         :categories="$categoryLabels"
     />

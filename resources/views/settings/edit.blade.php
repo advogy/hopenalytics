@@ -11,12 +11,15 @@
     <p class="mb-6 text-sm text-slate-500 dark:text-slate-400">{{ __('settings.subtitle') }}</p>
 
     <x-tab-bar>
-        <x-tab-button tab-key="general">{{ __('settings.tab_general') }}</x-tab-button>
+        <x-tab-button tab-key="general" :note="__('tabs.settings_general')">{{ __('settings.tab_general') }}</x-tab-button>
         @can('manage-platform-visibility')
-            <x-tab-button tab-key="platform">{{ __('settings.tab_platform') }}</x-tab-button>
-            <x-tab-button tab-key="metric">{{ __('settings.tab_metric') }}</x-tab-button>
+            <x-tab-button tab-key="platform" :note="__('tabs.settings_platform')">{{ __('settings.tab_platform') }}</x-tab-button>
+            <x-tab-button tab-key="metric" :note="__('tabs.settings_metric')">{{ __('settings.tab_metric') }}</x-tab-button>
         @endcan
-        <x-tab-button tab-key="coordinator">{{ __('settings.tab_coordinator') }}</x-tab-button>
+        <x-tab-button tab-key="coordinator" :note="__('tabs.settings_coordinator')">{{ __('settings.tab_coordinator') }}</x-tab-button>
+        {{-- Brand and Hashtag are their own pages, grouped here (see App\Support\AdminHubs). --}}
+        <x-tab-link :href="route('admin.brands.index')">{{ __('brands.title') }}</x-tab-link>
+        <x-tab-link :href="route('admin.hashtags.index')">{{ __('nav.hashtags') }}</x-tab-link>
     </x-tab-bar>
 
     {{--

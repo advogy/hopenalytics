@@ -70,6 +70,7 @@
                         '*.platform-comparison',
                         '*.hashtag-comparison',
                     ),
+                    'goals' => request()->routeIs('goals.index', 'goals.members'),
                 ];
             @endphp
             <div class="mx-auto max-w-6xl px-4 sm:px-6">
@@ -94,6 +95,11 @@
                             @can('view-analytics')
                                 <a href="{{ route('churches.analytics') }}" @if ($navActive['analytics']) aria-current="page" @endif @class(['text-sm hover:text-blue-600 dark:hover:text-blue-400', 'font-medium text-blue-600 dark:text-blue-400' => $navActive['analytics'], 'text-slate-500 dark:text-slate-400' => ! $navActive['analytics']])>
                                     {{ __('nav.analytics') }}
+                                </a>
+                            @endcan
+                            @can('view-goals')
+                                <a href="{{ route('goals.index') }}" @if ($navActive['goals']) aria-current="page" @endif @class(['text-sm hover:text-blue-600 dark:hover:text-blue-400', 'font-medium text-blue-600 dark:text-blue-400' => $navActive['goals'], 'text-slate-500 dark:text-slate-400' => ! $navActive['goals']])>
+                                    {{ __('nav.goals') }}
                                 </a>
                             @endcan
                             <a href="{{ route('churches.presentation') }}" target="_blank" class="text-sm text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-blue-400">
@@ -133,140 +139,7 @@
                                             <p class="truncate text-sm font-semibold text-slate-900 dark:text-white">{{ auth()->user()->name }}</p>
                                             <p class="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">{{ auth()->user()->email }}</p>
                                         </div>
-                                        <a href="{{ route('profile.edit') }}" class="flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
-                                            <span class="flex items-center gap-2">
-                                                <x-icon name="user" class="h-4 w-4 shrink-0 text-slate-400" />
-                                                {{ __('nav.my_profile') }}
-                                            </span>
-                                            <x-role-badge :role="auth()->user()->role" />
-                                        </a>
-                                        @if (auth()->user()->church_id)
-                                            {{-- admin_gereja's only guaranteed path to their own church — Kelola
-                                                 Akun has no organization tab for gereja-level, and the map/growth
-                                                 widgets on the dashboard only surface it if it happens to have
-                                                 coordinates or growth data yet. --}}
-                                            <a href="{{ route('churches.show', auth()->user()->church) }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
-                                                <x-icon name="building-office" class="h-4 w-4 shrink-0 text-slate-400" />
-                                                {{ __('nav.my_church') }}
-                                            </a>
-                                        @endif
-                                        @if (auth()->user()->division && auth()->user()->can('update', auth()->user()->division))
-                                            {{-- Same gap as Gereja Saya, for admin_divisi: Kelola Akun hides
-                                                 the Divisi tab from admin_divisi themselves (each level skips
-                                                 editing its own entity's identity there), so this is their only
-                                                 path to their own Division's Kelola Akun. can:update (not just
-                                                 division_id being set) keeps this from dead-ending for
-                                                 pimpinan_divisi. --}}
-                                            <a href="{{ route('admin.divisions.socials.index', auth()->user()->division) }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
-                                                <x-icon name="building-office" class="h-4 w-4 shrink-0 text-slate-400" />
-                                                {{ __('nav.my_division') }}
-                                            </a>
-                                        @endif
-                                        @if (auth()->user()->union && auth()->user()->can('update', auth()->user()->union))
-                                            {{-- Same gap as Gereja Saya, for admin_uni: Kelola Akun hides
-                                                 the Uni tab from admin_uni themselves (each level skips editing
-                                                 its own entity's identity there), so this is their only path to
-                                                 their own Union's Kelola Akun. can:update (not just union_id
-                                                 being set) keeps this from dead-ending for pimpinan_uni. --}}
-                                            <a href="{{ route('admin.unions.socials.index', auth()->user()->union) }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
-                                                <x-icon name="building-office" class="h-4 w-4 shrink-0 text-slate-400" />
-                                                {{ __('nav.my_union') }}
-                                            </a>
-                                        @endif
-                                        @if (auth()->user()->conference && auth()->user()->can('update', auth()->user()->conference))
-                                            <a href="{{ route('admin.conferences.socials.index', auth()->user()->conference) }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
-                                                <x-icon name="building-office" class="h-4 w-4 shrink-0 text-slate-400" />
-                                                {{ __('nav.my_conference') }}
-                                            </a>
-                                        @endif
-                                        @if (auth()->user()->institution)
-                                            {{-- Same as Gereja Saya: goes to the read-only institutions.show page (not
-                                                 straight to Kelola Akun), presence-only gated since pimpinan_institusi
-                                                 should see it too — just read-only, same as churches.show. --}}
-                                            <a href="{{ route('institutions.show', auth()->user()->institution) }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
-                                                <x-icon name="building-office" class="h-4 w-4 shrink-0 text-slate-400" />
-                                                {{ __('nav.my_institution') }}
-                                            </a>
-                                        @endif
-
-                                        @canany(['manage-queue', 'manage-settings', 'manage-goals', 'delegate-users', 'browse-directory-analytics', 'manage-people', 'send-bulk-email', 'view-audit-log'])
-                                            <div class="my-1 border-t border-black/5 dark:border-white/5"></div>
-                                            @can('manage-queue')
-                                                <a href="{{ route('queue.index') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
-                                                    <x-icon name="queue-list" class="h-4 w-4 shrink-0 text-slate-400" />
-                                                    {{ __('nav.queue') }}
-                                                </a>
-                                            @endcan
-                                            @can('manage-goals')
-                                                <a href="{{ route('goals.edit') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
-                                                    <x-icon name="flag" class="h-4 w-4 shrink-0 text-slate-400" />
-                                                    {{ __('nav.manage_goals') }}
-                                                </a>
-                                            @endcan
-                                            @can('delegate-users')
-                                                <a href="{{ route('admin.users.index') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
-                                                    <x-icon name="users" class="h-4 w-4 shrink-0 text-slate-400" />
-                                                    {{ __('nav.manage_users') }}
-                                                </a>
-                                            @endcan
-                                            {{-- manage-people is the gate for the merged Kelola Akun page (Uni/Daerah/
-                                                 Gereja/Institusi/Personal tabs) — it's the broader of the two gates that
-                                                 used to guard this as two separate links (manage-hierarchy excludes
-                                                 gereja-level; manage-people doesn't), so gating the single merged link
-                                                 on it alone covers everyone who could reach either half before. --}}
-                                            @can('manage-people')
-                                                <a href="{{ route('admin.accounts.index') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
-                                                    <x-icon name="building-office" class="h-4 w-4 shrink-0 text-slate-400" />
-                                                    {{ __('nav.manage_accounts') }}
-                                                </a>
-                                            @endcan
-                                            @can('manage-hierarchy')
-                                                <a href="{{ route('admin.bulk-import.index') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
-                                                    <x-icon name="arrow-up-tray" class="h-4 w-4 shrink-0 text-slate-400" />
-                                                    {{ __('bulk_import.title') }}
-                                                </a>
-                                            @endcan
-                                            @can('send-bulk-email')
-                                                <a href="{{ route('admin.email-broadcasts.index') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
-                                                    <x-icon name="envelope" class="h-4 w-4 shrink-0 text-slate-400" />
-                                                    {{ __('email_broadcasts.nav_label') }}
-                                                </a>
-                                            @endcan
-                                            @can('view-audit-log')
-                                                <a href="{{ route('admin.audit-log.index') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
-                                                    <x-icon name="clock" class="h-4 w-4 shrink-0 text-slate-400" />
-                                                    {{ __('audit.title') }}
-                                                </a>
-                                            @endcan
-                                            @can('manage-settings')
-                                                <div class="my-1 border-t border-black/5 dark:border-white/5"></div>
-                                                <a href="{{ route('settings.edit') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
-                                                    <x-icon name="cog-6-tooth" class="h-4 w-4 shrink-0 text-slate-400" />
-                                                    {{ __('nav.settings') }}
-                                                </a>
-                                                <a href="{{ route('admin.brands.index') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
-                                                    <x-icon name="globe-alt" class="h-4 w-4 shrink-0 text-slate-400" />
-                                                    {{ __('brands.title') }}
-                                                </a>
-                                                <a href="{{ route('admin.hashtags.index') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
-                                                    <x-icon name="hashtag" class="h-4 w-4 shrink-0 text-slate-400" />
-                                                    {{ __('nav.hashtags') }}
-                                                </a>
-                                            @endcan
-                                        @endcanany
-
-                                        <div class="my-1 border-t border-black/5 dark:border-white/5"></div>
-                                        <a href="{{ route('about') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
-                                            <x-icon name="information-circle" class="h-4 w-4 shrink-0 text-slate-400" />
-                                            {{ __('nav.about') }}
-                                        </a>
-                                        <form method="POST" action="{{ route('logout') }}">
-                                            @csrf
-                                            <button type="submit" class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
-                                                <x-icon name="arrow-right-on-rectangle" class="h-4 w-4 shrink-0 text-slate-400" />
-                                                {{ __('nav.logout') }}
-                                            </button>
-                                        </form>
+                                        @include('partials.account-menu-items')
                                     </div>
                                 </div>
                             @else
@@ -312,6 +185,11 @@
                                 {{ __('nav.analytics') }}
                             </a>
                         @endcan
+                        @can('view-goals')
+                            <a href="{{ route('goals.index') }}" @if ($navActive['goals']) aria-current="page" @endif @class(['rounded-lg px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800', 'font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40' => $navActive['goals'], 'text-slate-600 dark:text-slate-300' => ! $navActive['goals']])>
+                                {{ __('nav.goals') }}
+                            </a>
+                        @endcan
                         <a href="{{ route('churches.presentation') }}" target="_blank" class="rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
                             {{ __('nav.presentation') }}
                         </a>
@@ -321,113 +199,7 @@
                                     <p class="truncate text-sm font-semibold text-slate-900 dark:text-white">{{ auth()->user()->name }}</p>
                                     <p class="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">{{ auth()->user()->email }}</p>
                                 </div>
-                                <a href="{{ route('profile.edit') }}" class="flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
-                                    <span class="flex items-center gap-2">
-                                        <x-icon name="user" class="h-4 w-4 shrink-0 text-slate-400" />
-                                        {{ __('nav.my_profile') }}
-                                    </span>
-                                    <x-role-badge :role="auth()->user()->role" />
-                                </a>
-                                @if (auth()->user()->church_id)
-                                    <a href="{{ route('churches.show', auth()->user()->church) }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
-                                        <x-icon name="building-office" class="h-4 w-4 shrink-0 text-slate-400" />
-                                        {{ __('nav.my_church') }}
-                                    </a>
-                                @endif
-                                @if (auth()->user()->division && auth()->user()->can('update', auth()->user()->division))
-                                    <a href="{{ route('admin.divisions.socials.index', auth()->user()->division) }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
-                                        <x-icon name="building-office" class="h-4 w-4 shrink-0 text-slate-400" />
-                                        {{ __('nav.my_division') }}
-                                    </a>
-                                @endif
-                                @if (auth()->user()->union && auth()->user()->can('update', auth()->user()->union))
-                                    <a href="{{ route('admin.unions.socials.index', auth()->user()->union) }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
-                                        <x-icon name="building-office" class="h-4 w-4 shrink-0 text-slate-400" />
-                                        {{ __('nav.my_union') }}
-                                    </a>
-                                @endif
-                                @if (auth()->user()->conference && auth()->user()->can('update', auth()->user()->conference))
-                                    <a href="{{ route('admin.conferences.socials.index', auth()->user()->conference) }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
-                                        <x-icon name="building-office" class="h-4 w-4 shrink-0 text-slate-400" />
-                                        {{ __('nav.my_conference') }}
-                                    </a>
-                                @endif
-                                @if (auth()->user()->institution)
-                                    <a href="{{ route('institutions.show', auth()->user()->institution) }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
-                                        <x-icon name="building-office" class="h-4 w-4 shrink-0 text-slate-400" />
-                                        {{ __('nav.my_institution') }}
-                                    </a>
-                                @endif
-
-                                @canany(['manage-queue', 'manage-settings', 'manage-goals', 'delegate-users', 'browse-directory-analytics', 'manage-people', 'send-bulk-email', 'view-audit-log'])
-                                    <div class="my-1 border-t border-black/5 dark:border-white/5"></div>
-                                    @can('manage-queue')
-                                        <a href="{{ route('queue.index') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
-                                            <x-icon name="queue-list" class="h-4 w-4 shrink-0 text-slate-400" />
-                                            {{ __('nav.queue') }}
-                                        </a>
-                                    @endcan
-                                    @can('manage-goals')
-                                        <a href="{{ route('goals.edit') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
-                                            <x-icon name="flag" class="h-4 w-4 shrink-0 text-slate-400" />
-                                            {{ __('nav.manage_goals') }}
-                                        </a>
-                                    @endcan
-                                    @can('delegate-users')
-                                        <a href="{{ route('admin.users.index') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
-                                            <x-icon name="users" class="h-4 w-4 shrink-0 text-slate-400" />
-                                            {{ __('nav.manage_users') }}
-                                        </a>
-                                    @endcan
-                                    @can('manage-people')
-                                        <a href="{{ route('admin.accounts.index') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
-                                            <x-icon name="building-office" class="h-4 w-4 shrink-0 text-slate-400" />
-                                            {{ __('nav.manage_accounts') }}
-                                        </a>
-                                    @endcan
-                                    @can('manage-hierarchy')
-                                        <a href="{{ route('admin.bulk-import.index') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
-                                            <x-icon name="arrow-up-tray" class="h-4 w-4 shrink-0 text-slate-400" />
-                                            {{ __('bulk_import.title') }}
-                                        </a>
-                                    @endcan
-                                    @can('send-bulk-email')
-                                        <a href="{{ route('admin.email-broadcasts.index') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
-                                            <x-icon name="envelope" class="h-4 w-4 shrink-0 text-slate-400" />
-                                            {{ __('email_broadcasts.nav_label') }}
-                                        </a>
-                                    @endcan
-                                    @can('view-audit-log')
-                                        <a href="{{ route('admin.audit-log.index') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
-                                            <x-icon name="clock" class="h-4 w-4 shrink-0 text-slate-400" />
-                                            {{ __('audit.title') }}
-                                        </a>
-                                    @endcan
-                                    @can('manage-settings')
-                                        <div class="my-1 border-t border-black/5 dark:border-white/5"></div>
-                                        <a href="{{ route('settings.edit') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
-                                            <x-icon name="cog-6-tooth" class="h-4 w-4 shrink-0 text-slate-400" />
-                                            {{ __('nav.settings') }}
-                                        </a>
-                                        <a href="{{ route('admin.brands.index') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
-                                            <x-icon name="globe-alt" class="h-4 w-4 shrink-0 text-slate-400" />
-                                            {{ __('brands.title') }}
-                                        </a>
-                                    @endcan
-                                @endcanany
-
-                                <div class="my-1 border-t border-black/5 dark:border-white/5"></div>
-                                <a href="{{ route('about') }}" class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
-                                    <x-icon name="information-circle" class="h-4 w-4 shrink-0 text-slate-400" />
-                                    {{ __('nav.about') }}
-                                </a>
-                                <form method="POST" action="{{ route('logout') }}">
-                                    @csrf
-                                    <button type="submit" class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
-                                        <x-icon name="arrow-right-on-rectangle" class="h-4 w-4 shrink-0 text-slate-400" />
-                                        {{ __('nav.logout') }}
-                                    </button>
-                                </form>
+                                @include('partials.account-menu-items')
                             </div>
                         @else
                             <a href="{{ route('login') }}" class="rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">

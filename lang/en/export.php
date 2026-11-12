@@ -52,4 +52,8 @@ return [
     'downloaded_footer' => 'Downloaded from Hopenalytics on :datetime WIB',
     'downloaded_footer_by' => ' by :name',
     'sheet_title' => 'Data',
+    'total_row_label_count' => 'Total (:count rows)',
+    'total_named_count' => ':name (:count rows)',
+    'change_row_label' => 'Change (:count snapshots)',
+    'pdf_too_large' => 'PDF is limited to :max rows. Download Excel or Word, or narrow the filters.',
 ];

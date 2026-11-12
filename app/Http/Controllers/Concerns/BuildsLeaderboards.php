@@ -98,7 +98,7 @@ trait BuildsLeaderboards
             // every Daerah-level admin, on both Analitik & Grafik and (once reused there too)
             // Kelola Pengguna's own "Belum Ada Admin" filter.
             $level === 'daerah' => $user->conference?->union_id,
-            $level === 'gereja' => $user->church?->conference?->union_id,
+            $level === 'gereja' => $user->church?->conference?->union_id, // main church: just the default filter
             default => null,
         };
         $ownConferenceId = match (true) {
@@ -359,12 +359,10 @@ trait BuildsLeaderboards
 
     /**
      * Which platforms each growth metric applies to — views only exist for YouTube,
-     * likes only for TikTok, reach applies everywhere. Posts now includes Facebook too, via
-     * recent_posts_count (see FacebookStatsFetcher) — a recent-~10-post sample rather than a
-     * lifetime total the way YouTube's videos_count/Instagram-TikTok's posts_count are, since
-     * Facebook exposes no lifetime post count via scraping; per the user's explicit call to
-     * fold it into this metric anyway rather than leave Facebook without a posts comparison at
-     * all. "semua" (every applicable platform combined) is always offered first.
+     * likes only for TikTok, reach applies everywhere. Posts includes Facebook through its
+     * posts_count, which only manual entries fill in (automatic fetches can't get a post total
+     * from Facebook — see metricDefinition()'s 'posts'). "semua" (every applicable platform
+     * combined) is always offered first.
      */
     protected function metricPlatforms(): array
     {
@@ -502,16 +500,20 @@ trait BuildsLeaderboards
         $assignedUnionCount = $isScopedNasional ? count($user->assignedUnionIds()) : 0;
         $divisionUnionCount = $isDivisi ? Union::where('is_active', true)->where('division_id', $user->division_id)->count() : 0;
 
-        // admin_gereja has no $user->conference of its own (only $user->church) — same
-        // conference_id derivation as analyticsChurchScope()'s gereja-level branch.
-        $conference = $user->conference ?? $user->church?->conference;
+        // admin_gereja has no $user->conference of its own — the Daerah of every church they
+        // manage instead (usually one; see User::assignedChurchIds()), same as
+        // analyticsChurchScope()'s gereja-level branch. Their target is the sum of those
+        // Daerah's shares.
+        $conferences = $user->conference
+            ? collect([$user->conference])
+            : Conference::query()->whereIn('id', $user->assignedChurchConferenceIds())->with('union')->get();
 
         $scopeLabel = match (true) {
             $isGlobal => __('goals.scope_global'),
             $isScopedNasional => __('goals.scope_nasional_scoped', ['names' => $user->assignedUnions()->pluck('name')->implode(', ') ?: '—']),
             $isDivisi => __('goals.scope_divisi', ['name' => $user->division?->name ?? '—']),
             $isUni => __('goals.scope_uni', ['name' => $user->union?->name ?? '—']),
-            default => __('goals.scope_daerah', ['name' => $conference?->name ?? '—']),
+            default => __('goals.scope_daerah', ['name' => $conferences->pluck('name')->implode(', ') ?: '—']),
         };
 
         // Personal and Organisasi (union/conference-owned) accounts count toward "current" too,
@@ -535,7 +537,7 @@ trait BuildsLeaderboards
             ->pluck('church_social_id')
             ->all();
 
-        return collect(Goal::METRICS)->map(function ($metric) use ($combinedSocials, $pastBaselineSocialIds, $isGlobal, $isScopedNasional, $isDivisi, $isUni, $unionCount, $assignedUnionCount, $divisionUnionCount, $conference, $scopeLabel) {
+        return collect(Goal::METRICS)->map(function ($metric) use ($combinedSocials, $pastBaselineSocialIds, $isGlobal, $isScopedNasional, $isDivisi, $isUni, $unionCount, $assignedUnionCount, $divisionUnionCount, $conferences, $scopeLabel) {
             $goal = Goal::forMetric($metric);
 
             $target = match (true) {
@@ -543,15 +545,18 @@ trait BuildsLeaderboards
                 $isScopedNasional => $unionCount > 0 ? (int) round($goal->target_value / $unionCount * $assignedUnionCount) : 0,
                 $isDivisi => $unionCount > 0 ? (int) round($goal->target_value / $unionCount * $divisionUnionCount) : 0,
                 $isUni => $unionCount > 0 ? (int) round($goal->target_value / $unionCount) : 0,
-                default => (function () use ($goal, $unionCount, $conference) {
+                default => (function () use ($goal, $unionCount, $conferences) {
                     if ($unionCount === 0) {
                         return 0;
                     }
 
                     $unionShare = $goal->target_value / $unionCount;
-                    $conferenceCount = $conference?->union?->conferences()->where('is_active', true)->count() ?? 0;
 
-                    return $conferenceCount > 0 ? (int) round($unionShare / $conferenceCount) : 0;
+                    return (int) round($conferences->sum(function ($conference) use ($unionShare) {
+                        $conferenceCount = $conference->union?->conferences()->where('is_active', true)->count() ?? 0;
+
+                        return $conferenceCount > 0 ? $unionShare / $conferenceCount : 0;
+                    }));
                 })(),
             };
 
@@ -631,7 +636,7 @@ trait BuildsLeaderboards
         }
 
         return match (true) {
-            $user->role->level() === 'gereja' => $query->where('conference_id', $user->church?->conference_id),
+            $user->role->level() === 'gereja' => $query->whereIn('conference_id', $user->assignedChurchConferenceIds()),
             default => $query->visibleTo($user),
         };
     }
@@ -658,7 +663,7 @@ trait BuildsLeaderboards
         }
 
         return match (true) {
-            $user->role->level() === 'gereja' => $query->where('conference_id', $user->church?->conference_id),
+            $user->role->level() === 'gereja' => $query->whereIn('conference_id', $user->assignedChurchConferenceIds()),
             default => $query->visibleTo($user),
         };
     }
@@ -689,15 +694,16 @@ trait BuildsLeaderboards
             return $query->visibleTo($user);
         }
 
-        $conferenceId = $user->church?->conference_id;
-        $unionId = $user->church?->conference?->union_id;
+        // Every church they manage (see User::assignedChurchIds()) — usually one Daerah.
+        $conferenceIds = $user->assignedChurchConferenceIds();
+        $unionIds = $user->assignedChurchUnionIds();
 
-        return $query->where(function ($q) use ($conferenceId, $unionId) {
+        return $query->where(function ($q) use ($conferenceIds, $unionIds) {
             $q->where(fn ($q2) => $q2->whereNull('union_id')->whereNull('conference_id')) // nasional
-                ->when($unionId, fn ($q2) => $q2->orWhere(
-                    fn ($q3) => $q3->where('union_id', $unionId)->whereNull('conference_id')
-                )) // this union's own
-                ->when($conferenceId, fn ($q2) => $q2->orWhere('conference_id', $conferenceId)); // this daerah's own
+                ->when($unionIds, fn ($q2) => $q2->orWhere(
+                    fn ($q3) => $q3->whereIn('union_id', $unionIds)->whereNull('conference_id')
+                )) // these unions' own
+                ->when($conferenceIds, fn ($q2) => $q2->orWhereIn('conference_id', $conferenceIds)); // these daerah's own
         });
     }
 
@@ -754,9 +760,9 @@ trait BuildsLeaderboards
                 ->orWhereHas('conference', fn ($q2) => $q2->where('union_id', $user->union_id)));
         }
 
-        $conferenceId = $user->role->level() === 'gereja' ? $user->church?->conference_id : $user->conference_id;
-
-        return $query->where('conference_id', $conferenceId);
+        return $user->role->level() === 'gereja'
+            ? $query->whereIn('conference_id', $user->assignedChurchConferenceIds())
+            : $query->where('conference_id', $user->conference_id);
     }
 
     /**
@@ -780,7 +786,7 @@ trait BuildsLeaderboards
             $user->role->hasGlobalAccess() || $user->role->level() === 'global' => $query,
             $user->role->level() === 'nasional' => $query->whereHas('unions', fn ($q) => $q->whereIn('id', $user->assignedUnionIds())),
             $user->role->level() === 'divisi' => $query->where('id', $user->division_id),
-            $user->role->level() === 'gereja' => $query->whereHas('unions', fn ($q) => $q->where('id', $user->church?->conference?->union_id)),
+            $user->role->level() === 'gereja' => $query->whereHas('unions', fn ($q) => $q->whereIn('id', $user->assignedChurchUnionIds())),
             default => $query->whereRaw('1 = 0'), // uni/daerah-level: Divisi is above their own level
         };
     }
@@ -810,7 +816,7 @@ trait BuildsLeaderboards
             $user->role->level() === 'nasional' => $query->whereIn('id', $user->assignedUnionIds()),
             $user->role->level() === 'divisi' => $query->where('division_id', $user->division_id),
             $user->role->level() === 'uni' => $query->where('id', $user->union_id),
-            $user->role->level() === 'gereja' => $query->where('id', $user->church?->conference?->union_id),
+            $user->role->level() === 'gereja' => $query->whereIn('id', $user->assignedChurchUnionIds()),
             default => $query->whereRaw('1 = 0'), // daerah-level: Union is above their own level
         };
     }
@@ -843,7 +849,7 @@ trait BuildsLeaderboards
             $user->role->level() === 'nasional' => $query->whereIn('union_id', $user->assignedUnionIds()),
             $user->role->level() === 'divisi' => $query->whereHas('union', fn ($q) => $q->where('division_id', $user->division_id)),
             $user->role->level() === 'uni' => $query->where('union_id', $user->union_id),
-            $user->role->level() === 'gereja' => $query->where('id', $user->church?->conference_id),
+            $user->role->level() === 'gereja' => $query->whereIn('id', $user->assignedChurchConferenceIds()),
             default => $query->where('id', $user->conference_id), // daerah-level
         };
     }
@@ -898,13 +904,14 @@ trait BuildsLeaderboards
                 $activeSocials->where('platform', SocialPlatform::TikTok),
                 fn () => 'likes_count',
             ],
+            // Facebook and Threads have no post total to scrape: their recent_posts_count is only
+            // how many posts the scraper sampled (at most 10), so it was never a post count —
+            // and manual entries typing the real total into it produced jumps like 10 -> 1,900.
+            // They use posts_count like the others, which only manual entries fill in for them;
+            // an automatic snapshot leaves it empty and simply isn't counted.
             'posts' => [
                 $activeSocials,
-                fn ($social) => match ($social->platform) {
-                    SocialPlatform::YouTube => 'videos_count',
-                    SocialPlatform::Facebook, SocialPlatform::Threads => 'recent_posts_count',
-                    default => 'posts_count',
-                },
+                fn ($social) => $social->platform === SocialPlatform::YouTube ? 'videos_count' : 'posts_count',
             ],
             // Recent-sample aggregates, same asymmetric platform coverage as 'views'/'likes'
             // above — each only applies where the underlying fetcher actually sums it (see
@@ -963,16 +970,145 @@ trait BuildsLeaderboards
             $statsBySocial = ChurchStat::query()
                 ->select(ChurchStat::summaryColumns())
                 ->joinSub($ranked, 'ranked', 'ranked.id', '=', 'church_stats.id')
-                ->where('ranked.stat_rank', '<=', 2)
+                ->where('ranked.stat_rank', '<=', self::GROWTH_PAIR_LOOKAHEAD)
                 ->orderBy('church_stats.church_social_id')
                 ->orderBy('ranked.stat_rank')
                 ->get()
                 ->groupBy('church_social_id');
 
             foreach ($chunk as $id) {
-                $this->latestTwoStatsCache[$id] = ($statsBySocial->get($id) ?? (new ChurchStat)->newCollection())->values();
+                // [latest, its weekly comparison] — or just [latest] when no snapshot sits in
+                // the comparison window, which every caller treats like "no growth yet".
+                $stats = ($statsBySocial->get($id) ?? (new ChurchStat)->newCollection())->values();
+                $pair = self::weeklyPairs($stats, 1)[0] ?? null;
+                $this->latestTwoStatsCache[$id] = $pair ? (new ChurchStat)->newCollection($pair) : $stats->take(1)->values();
             }
         }
+    }
+
+    /**
+     * The latest $count stat snapshots per account, newest first, keyed by account id — the
+     * input growthScoreHistory() needs. Same window-function batching as
+     * primeLatestTwoStats(), so scoring hundreds of accounts at once (a whole Uni or Divisi for
+     * the combined growth score) costs one query per thousand accounts instead of one each.
+     *
+     * @var array<int, array{0:int, 1:\Illuminate\Database\Eloquent\Collection}>
+     */
+    private array $recentStatsCache = [];
+
+    /** @var array<int, string>|null see growthScoreHistory() */
+    private ?array $growthMetricNames = null;
+
+    protected function recentStats(Collection $socials, int $count): Collection
+    {
+        $missingIds = $socials->pluck('id')->unique()
+            ->reject(fn ($id) => ($this->recentStatsCache[$id][0] ?? 0) >= $count)
+            ->values();
+
+        foreach ($missingIds->chunk(1000) as $chunk) {
+            $ranked = ChurchStat::query()
+                ->select('id')
+                ->selectRaw('ROW_NUMBER() OVER (PARTITION BY church_social_id ORDER BY recorded_at DESC, id DESC) as stat_rank')
+                ->whereIn('church_social_id', $chunk->all());
+
+            $statsBySocial = ChurchStat::query()
+                ->select(ChurchStat::summaryColumns())
+                ->joinSub($ranked, 'ranked', 'ranked.id', '=', 'church_stats.id')
+                ->where('ranked.stat_rank', '<=', $count)
+                ->orderBy('church_stats.church_social_id')
+                ->orderBy('ranked.stat_rank')
+                ->get()
+                ->groupBy('church_social_id');
+
+            foreach ($chunk as $id) {
+                $this->recentStatsCache[$id] = [$count, ($statsBySocial->get($id) ?? (new ChurchStat)->newCollection())->values()];
+            }
+        }
+
+        return $socials->mapWithKeys(fn ($social) => [$social->id => $this->recentStatsCache[$social->id][1]->take($count)->values()]);
+    }
+
+    /**
+     * Growth compares an account's latest snapshot with the one closest to a week earlier,
+     * 4 to 14 days back — not simply the previous snapshot, which can be a day or a month
+     * earlier (a manual entry next to an automatic fetch, a gap in fetching), per the user's
+     * explicit call after the growth-score audit. No snapshot in that window = no growth sample.
+     */
+    protected const GROWTH_PAIR_TARGET_DAYS = 7;
+
+    protected const GROWTH_PAIR_MIN_DAYS = 4;
+
+    protected const GROWTH_PAIR_MAX_DAYS = 14;
+
+    /** How many recent snapshots are loaded to find that comparison point. */
+    protected const GROWTH_PAIR_LOOKAHEAD = 8;
+
+    /**
+     * One account's growth on one metric is capped to ±100% so a single account (often one with
+     * a tiny starting number) can't outweigh every other account in an average.
+     */
+    protected const GROWTH_PERCENT_CAP = 100;
+
+    /**
+     * Walks newest-first snapshots back in weekly steps (see GROWTH_PAIR_*): each pair is a
+     * snapshot and its weekly comparison, and the next pair starts from that comparison.
+     *
+     * @return list<array{0: ChurchStat, 1: ChurchStat}> newest pair first
+     */
+    protected static function weeklyPairs(Collection $stats, int $max): array
+    {
+        $stats = $stats->values();
+        $pairs = [];
+        $i = 0;
+
+        while (count($pairs) < $max && $i < $stats->count() - 1) {
+            $current = $stats[$i];
+            $best = null;
+
+            for ($j = $i + 1; $j < $stats->count(); $j++) {
+                $gap = (int) round(abs($stats[$j]->recorded_at->diffInDays($current->recorded_at)));
+
+                if ($gap > self::GROWTH_PAIR_MAX_DAYS) {
+                    break;
+                }
+
+                if ($gap >= self::GROWTH_PAIR_MIN_DAYS
+                    && ($best === null || abs($gap - self::GROWTH_PAIR_TARGET_DAYS) < $best[1])) {
+                    $best = [$j, abs($gap - self::GROWTH_PAIR_TARGET_DAYS)];
+                }
+            }
+
+            if ($best === null) {
+                break;
+            }
+
+            $pairs[] = [$current, $stats[$best[0]]];
+            $i = $best[0];
+        }
+
+        return $pairs;
+    }
+
+    /**
+     * Percent change between two snapshot values, or null when it can't be measured: either
+     * value missing (a manual entry that left a field empty is not a drop to zero), or nothing
+     * to grow from. Capped at ±GROWTH_PERCENT_CAP.
+     */
+    protected static function growthPercent(int|float|null $previous, int|float|null $current): ?float
+    {
+        if ($previous === null || $current === null || $previous <= 0) {
+            return null;
+        }
+
+        $percent = ($current - $previous) / $previous * 100;
+
+        return round(max(-self::GROWTH_PERCENT_CAP, min(self::GROWTH_PERCENT_CAP, $percent)), 2);
+    }
+
+    /** Raw week-over-week difference, or null when either value is missing. */
+    protected static function growthDelta(int|float|null $previous, int|float|null $current): int|float|null
+    {
+        return $previous === null || $current === null ? null : $current - $previous;
     }
 
     protected function latestTwoStats(ChurchSocial $social): Collection
@@ -1001,10 +1137,16 @@ trait BuildsLeaderboards
                     return null;
                 }
 
+                $delta = self::growthDelta($stats[1]->{$field}, $stats[0]->{$field});
+
+                if ($delta === null) {
+                    return null;
+                }
+
                 return [
                     'social' => $social,
-                    'delta' => ($stats[0]->{$field} ?? 0) - ($stats[1]->{$field} ?? 0),
-                    'latest' => $stats[0]->{$field} ?? 0,
+                    'delta' => $delta,
+                    'latest' => $stats[0]->{$field},
                 ];
             })
             ->filter();
@@ -1045,8 +1187,10 @@ trait BuildsLeaderboards
                     $stats = $this->latestTwoStats($social);
                     $currentTotal += $stats->get(0)?->{$field} ?? 0;
 
-                    if ($stats->count() >= 2) {
-                        $deltaTotal += ($stats[0]->{$field} ?? 0) - ($stats[1]->{$field} ?? 0);
+                    $delta = $stats->count() >= 2 ? self::growthDelta($stats[1]->{$field}, $stats[0]->{$field}) : null;
+
+                    if ($delta !== null) {
+                        $deltaTotal += $delta;
                         $hasDelta = true;
                     }
                 }
@@ -1091,8 +1235,10 @@ trait BuildsLeaderboards
                     $stats = $this->latestTwoStats($social);
                     $currentTotal += $stats->get(0)?->{$field} ?? 0;
 
-                    if ($stats->count() >= 2) {
-                        $deltaTotal += ($stats[0]->{$field} ?? 0) - ($stats[1]->{$field} ?? 0);
+                    $delta = $stats->count() >= 2 ? self::growthDelta($stats[1]->{$field}, $stats[0]->{$field}) : null;
+
+                    if ($delta !== null) {
+                        $deltaTotal += $delta;
                         $hasDelta = true;
                     }
                 }
@@ -1138,8 +1284,10 @@ trait BuildsLeaderboards
                     $stats = $this->latestTwoStats($social);
                     $currentTotal += $stats->get(0)?->{$field} ?? 0;
 
-                    if ($stats->count() >= 2) {
-                        $deltaTotal += ($stats[0]->{$field} ?? 0) - ($stats[1]->{$field} ?? 0);
+                    $delta = $stats->count() >= 2 ? self::growthDelta($stats[1]->{$field}, $stats[0]->{$field}) : null;
+
+                    if ($delta !== null) {
+                        $deltaTotal += $delta;
                         $hasDelta = true;
                     }
                 }
@@ -1191,8 +1339,10 @@ trait BuildsLeaderboards
                     $stats = $this->latestTwoStats($social);
                     $currentTotal += $stats->get(0)?->{$field} ?? 0;
 
-                    if ($stats->count() >= 2) {
-                        $deltaTotal += ($stats[0]->{$field} ?? 0) - ($stats[1]->{$field} ?? 0);
+                    $delta = $stats->count() >= 2 ? self::growthDelta($stats[1]->{$field}, $stats[0]->{$field}) : null;
+
+                    if ($delta !== null) {
+                        $deltaTotal += $delta;
                         $hasDelta = true;
                     }
                 }
@@ -1327,15 +1477,14 @@ trait BuildsLeaderboards
                     continue;
                 }
 
-                $previous = $stats[1]->{$field} ?? 0;
-                $current = $stats[0]->{$field} ?? 0;
+                $percent = self::growthPercent($stats[1]->{$field}, $stats[0]->{$field});
 
-                if ($previous <= 0) {
+                if ($percent === null) {
                     continue;
                 }
 
                 $percentBySocial[$social->id]['church'] = $social->church;
-                $percentBySocial[$social->id]['metrics'][$metric] = round((($current - $previous) / $previous) * 100, 2);
+                $percentBySocial[$social->id]['metrics'][$metric] = $percent;
             }
         }
 
@@ -1393,14 +1542,13 @@ trait BuildsLeaderboards
                     continue;
                 }
 
-                $previous = $stats[1]->{$field} ?? 0;
-                $current = $stats[0]->{$field} ?? 0;
+                $percent = self::growthPercent($stats[1]->{$field}, $stats[0]->{$field});
 
-                if ($previous <= 0) {
+                if ($percent === null) {
                     continue;
                 }
 
-                $percentsByPlatform[$social->platform->value]['metrics'][$metric][] = round((($current - $previous) / $previous) * 100, 2);
+                $percentsByPlatform[$social->platform->value]['metrics'][$metric][] = $percent;
                 $percentsByPlatform[$social->platform->value]['accountIds'][$social->id] = true;
             }
         }
@@ -1450,15 +1598,14 @@ trait BuildsLeaderboards
                     continue;
                 }
 
-                $previous = $stats[1]->{$field} ?? 0;
-                $current = $stats[0]->{$field} ?? 0;
+                $percent = self::growthPercent($stats[1]->{$field}, $stats[0]->{$field});
 
-                if ($previous <= 0) {
+                if ($percent === null) {
                     continue;
                 }
 
                 $percentBySocial[$social->id]['person'] = $social->person;
-                $percentBySocial[$social->id]['metrics'][$metric] = round((($current - $previous) / $previous) * 100, 2);
+                $percentBySocial[$social->id]['metrics'][$metric] = $percent;
             }
         }
 
@@ -1515,15 +1662,14 @@ trait BuildsLeaderboards
                     continue;
                 }
 
-                $previous = $stats[1]->{$field} ?? 0;
-                $current = $stats[0]->{$field} ?? 0;
+                $percent = self::growthPercent($stats[1]->{$field}, $stats[0]->{$field});
 
-                if ($previous <= 0) {
+                if ($percent === null) {
                     continue;
                 }
 
                 $percentBySocial[$social->id]['institution'] = $social->institution;
-                $percentBySocial[$social->id]['metrics'][$metric] = round((($current - $previous) / $previous) * 100, 2);
+                $percentBySocial[$social->id]['metrics'][$metric] = $percent;
             }
         }
 
@@ -1583,10 +1729,9 @@ trait BuildsLeaderboards
                     continue;
                 }
 
-                $previous = $stats[1]->{$field} ?? 0;
-                $current = $stats[0]->{$field} ?? 0;
+                $percent = self::growthPercent($stats[1]->{$field}, $stats[0]->{$field});
 
-                if ($previous <= 0) {
+                if ($percent === null) {
                     continue;
                 }
 
@@ -1596,7 +1741,7 @@ trait BuildsLeaderboards
                     $social->union_id !== null => "union-{$social->union_id}",
                     default => "conference-{$social->conference_id}",
                 };
-                $percentBySocial[$social->id]['metrics'][$metric] = round((($current - $previous) / $previous) * 100, 2);
+                $percentBySocial[$social->id]['metrics'][$metric] = $percent;
             }
         }
 
@@ -1648,14 +1793,14 @@ trait BuildsLeaderboards
      * dependency on shared dates entirely, so the two are always consistent.
      *
      * @return array{history: array<int, float>, metrics: array<string, float|null>, breakdown: array, sampleCount: int, sampleSum: float}
-     *   'history' is the sparkline series (oldest first). 'metrics' is the same reach/views/
-     *   likes/posts breakdown growthScoreRows()' own 'metrics' key exposes, but for just this
-     *   entity's latest transition — same per-metric averaging, so the number shown here next
-     *   to "Skor Pertumbuhan Mingguan" always agrees with what the dashboard leaderboard shows
-     *   for this same entity. 'breakdown'/'sampleCount'/'sampleSum' are the underlying per-
-     *   account samples behind the latest transition — for the "how was this calculated"
-     *   drill-down (see components/growth-score-summary.blade.php's modal), not used by the
-     *   card itself.
+     *                                                                                                                                     'history' is the sparkline series (oldest first). 'metrics' is the same reach/views/
+     *                                                                                                                                     likes/posts breakdown growthScoreRows()' own 'metrics' key exposes, but for just this
+     *                                                                                                                                     entity's latest transition — same per-metric averaging, so the number shown here next
+     *                                                                                                                                     to "Skor Pertumbuhan Mingguan" always agrees with what the dashboard leaderboard shows
+     *                                                                                                                                     for this same entity. 'breakdown'/'sampleCount'/'sampleSum' are the underlying per-
+     *                                                                                                                                     account samples behind the latest transition — for the "how was this calculated"
+     *                                                                                                                                     drill-down (see components/growth-score-summary.blade.php's modal), not used by the
+     *                                                                                                                                     card itself.
      */
     protected function growthScoreHistory(Collection $socials, int $limit = 8): array
     {
@@ -1669,14 +1814,17 @@ trait BuildsLeaderboards
         // score below — per the user's explicit call: checking Comment/Share on there folds it
         // into the average the same way Reach/Views/Likes/Post already do, and unchecking any
         // of the six drops it out, score included (not just the display breakdown).
-        $metricNames = AppSetting::current()->enabledMetricValues();
+        // Read once per request: the combined growth score calls this for every region in a table.
+        $metricNames = $this->growthMetricNames ??= AppSetting::current()->enabledMetricValues();
         $platformLabels = ['youtube' => 'YouTube', 'instagram' => 'Instagram', 'tiktok' => 'TikTok', 'facebook' => 'Facebook', 'x' => 'X', 'threads' => 'Threads'];
 
-        $statsBySocial = $socials->mapWithKeys(fn ($social) => [
-            $social->id => $social->stats()->limit($limit + 1)->get(),
-        ]);
+        // Weekly pairs per account (see weeklyPairs()): step 0 is the same latest-vs-a-week-ago
+        // comparison growthScoreRows() ranks by; deeper steps feed the sparkline. Extra
+        // snapshots are loaded since not every snapshot ends up in a pair.
+        $pairsBySocial = $this->recentStats($socials, max(($limit + 1) * 2, self::GROWTH_PAIR_LOOKAHEAD))
+            ->map(fn ($stats) => self::weeklyPairs($stats, $limit));
 
-        $steps = min($statsBySocial->max(fn ($stats) => max($stats->count() - 1, 0)), $limit);
+        $steps = min($pairsBySocial->max(fn ($pairs) => count($pairs)) ?? 0, $limit);
 
         if ($steps < 1) {
             return $empty;
@@ -1695,25 +1843,24 @@ trait BuildsLeaderboards
                 [$applicableSocials, $fieldResolver] = $this->metricDefinition($metric, $socials);
 
                 foreach ($applicableSocials as $social) {
-                    $stats = $statsBySocial[$social->id];
+                    $pair = $pairsBySocial[$social->id][$step] ?? null;
 
-                    if ($stats->count() < $step + 2) {
+                    if ($pair === null) {
                         continue;
                     }
 
                     $field = $fieldResolver($social);
-                    $current = $stats[$step]->{$field} ?? 0;
-                    $previous = $stats[$step + 1]->{$field} ?? 0;
+                    $current = $pair[0]->{$field};
+                    $previous = $pair[1]->{$field};
 
-                    if ($previous <= 0) {
+                    // Rounded and capped the same way as growthScoreRows() (see
+                    // growthPercent()), and that value is what's summed/averaged from here on —
+                    // so the modal's displayed samples always add up to the displayed score.
+                    $pct = self::growthPercent($previous, $current);
+
+                    if ($pct === null) {
                         continue;
                     }
-
-                    // Rounded immediately (matching growthScoreRows()'s own per-sample
-                    // rounding) and that rounded value is what's summed/averaged from here on
-                    // — so the modal's displayed samples always sum to exactly the displayed
-                    // final score, with no "why doesn't the math add up" floating-point gap.
-                    $pct = round((($current - $previous) / $previous) * 100, 2);
                     $percentsByStepAndMetric[$step][$metric][] = $pct;
                     $percents[] = $pct;
 

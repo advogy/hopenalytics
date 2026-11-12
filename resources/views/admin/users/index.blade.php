@@ -19,7 +19,8 @@
             'divisi' => ['label' => $user->division?->name ?? '—', 'parent' => null],
             'uni' => $user->union ? ['label' => $user->union->name, 'parent' => $user->union->division?->name] : ['label' => '—', 'parent' => null],
             'daerah' => $user->conference ? ['label' => $user->conference->name, 'parent' => $user->conference->union->name] : ['label' => '—', 'parent' => null],
-            'gereja' => $user->church ? ['label' => $user->church->name, 'parent' => $user->church->conference?->name] : ['label' => '—', 'parent' => null],
+            // Main church first, then any extra ones they also manage (see User::additionalChurches()).
+            'gereja' => $user->church ? ['label' => collect([$user->church->name])->merge($user->additionalChurches->pluck('name'))->unique()->implode(', '), 'parent' => $user->church->conference?->name] : ['label' => '—', 'parent' => null],
             'institusi' => ['label' => $user->institution?->name ?? '—', 'parent' => null],
             default => ['label' => '—', 'parent' => null],
         };
@@ -44,9 +45,9 @@
     </div>
 
     <x-tab-bar>
-        <x-tab-button tab-key="all">{{ __('users.tab_all') }}</x-tab-button>
+        <x-tab-button tab-key="all" :note="__('tabs.users_all')">{{ __('users.tab_all') }}</x-tab-button>
         @if ($canReviewSuggestions)
-            <x-tab-button tab-key="saran">
+            <x-tab-button tab-key="saran" :note="__('tabs.users_saran')">
                 {{ __('admin_suggestions.tab_label') }}
                 @if ($pendingSuggestions->total() > 0)
                     <span class="ml-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-xs font-semibold text-amber-700 dark:bg-amber-950 dark:text-amber-400">
@@ -56,7 +57,7 @@
             </x-tab-button>
         @endif
         @php($noAdminTotal = $noAdminUnions->count() + $noAdminConferences->count() + $noAdminChurches->count() + $noAdminInstitutions->count())
-        <x-tab-button tab-key="belum-admin">
+        <x-tab-button tab-key="belum-admin" :note="__('tabs.users_belum-admin')">
             {{ __('users.tab_belum_admin') }}
             @if ($noAdminTotal > 0)
                 <span class="ml-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-xs font-semibold text-amber-700 dark:bg-amber-950 dark:text-amber-400">
@@ -64,9 +65,9 @@
                 </span>
             @endif
         </x-tab-button>
-        <x-tab-button tab-key="admin">{{ __('users.tab_admin') }}</x-tab-button>
+        <x-tab-button tab-key="admin" :note="__('tabs.users_admin')">{{ __('users.tab_admin') }}</x-tab-button>
         @if ($isSuperAdmin)
-            <x-tab-button tab-key="terhapus">{{ __('users.tab_terhapus') }}</x-tab-button>
+            <x-tab-button tab-key="terhapus" :note="__('tabs.users_terhapus')">{{ __('users.tab_terhapus') }}</x-tab-button>
         @endif
     </x-tab-bar>
 

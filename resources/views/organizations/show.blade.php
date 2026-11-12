@@ -53,6 +53,8 @@
         :score-breakdown="$scoreBreakdown"
         :score-sample-count="$scoreSampleCount"
         :score-sample-sum="$scoreSampleSum"
+        :combined-growth="$combinedGrowth"
+        :combined-own-label="__('entity.combined_growth_own_region')"
         :anchored="true"
     />
 @endsection

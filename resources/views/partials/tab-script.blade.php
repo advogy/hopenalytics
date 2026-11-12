@@ -15,13 +15,24 @@
         function activate(tab) {
             buttons.forEach(function (btn) {
                 var isActive = btn.dataset.tabButton === tab;
+                btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
                 btn.classList.toggle('border-blue-600', isActive);
                 btn.classList.toggle('text-blue-600', isActive);
                 btn.classList.toggle('border-transparent', !isActive);
                 btn.classList.toggle('text-slate-500', !isActive);
                 btn.classList.toggle('dark:text-slate-400', !isActive);
             });
-            panels.forEach(function (panel) {
+            // Each tab bar's note box shows the active tab's note (see components/tab-note).
+            document.querySelectorAll('[data-tab-group]').forEach(function (group) {
+                var box = group.querySelector('[data-tab-note-box]');
+                if (! box) return;
+                var active = group.querySelector('[data-tab-button="' + tab + '"]');
+                var note = active ? active.dataset.tabNote : '';
+                if (! active) return; // this bar doesn't hold the tab being switched to
+                box.querySelector('[data-tab-note-text]').textContent = note || '';
+                box.classList.toggle('hidden', ! note);
+            });
+                        panels.forEach(function (panel) {
                 panel.classList.toggle('hidden', panel.dataset.tabPanel !== tab);
             });
             hiddenFields.forEach(function (field) { field.value = tab; });

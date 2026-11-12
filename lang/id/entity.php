@@ -201,4 +201,10 @@ return [
     'profile_cancel_email_change' => 'Batalkan',
     'profile_own_socials_subtitle' => 'Akun media sosial pribadi Anda.',
     'verify_new_email_title' => 'Verifikasi Email Baru',
+    'combined_growth_title' => 'Pertumbuhan Gabungan',
+    'combined_growth_subtitle' => 'Akun organisasi ditambah akun personal jemaat di dalamnya. Setiap akun berbobot sama.',
+    'combined_growth_own' => 'Akun organisasi',
+    'combined_growth_own_church' => 'Akun gereja',
+    'combined_growth_own_region' => 'Akun wilayah & gereja',
+    'combined_growth_personal' => 'Akun personal jemaat',
 ];

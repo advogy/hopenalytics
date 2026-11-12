@@ -14,14 +14,16 @@
 @section('title', __('audit.title') . ' — ' . config('app.name'))
 
 @section('content')
+    <x-hub-header hub="monitoring" />
+
     <div class="mb-6">
-        <h1 class="mb-1 text-3xl font-bold tracking-tight text-slate-900 dark:text-white">{{ __('audit.title') }}</h1>
+        <h2 class="mb-1 text-xl font-bold tracking-tight text-slate-900 dark:text-white">{{ __('audit.title') }}</h2>
         <p class="text-sm text-slate-500 dark:text-slate-400">{{ __('audit.subtitle') }}</p>
     </div>
 
     <x-tab-bar>
-        <x-tab-button tab-key="aksi">{{ __('audit.tab_actions') }}</x-tab-button>
-        <x-tab-button tab-key="login">{{ __('audit.tab_login') }}</x-tab-button>
+        <x-tab-button tab-key="aksi" :note="__('tabs.audit_aksi')">{{ __('audit.tab_actions') }}</x-tab-button>
+        <x-tab-button tab-key="login" :note="__('tabs.audit_login')">{{ __('audit.tab_login') }}</x-tab-button>
     </x-tab-bar>
 
     <div data-tab-panel="aksi">

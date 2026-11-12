@@ -75,6 +75,28 @@ class User extends Authenticatable implements MustVerifyEmail
      * doc comment for why this is a set rather than a single union_id column like
      * uni/daerah/gereja/institusi levels use). Meaningless for every other role.
      */
+    /**
+     * Extra churches only mean something while the user is gereja-level with a main church —
+     * promoted elsewhere, revoked or released, they go. Bulk query-builder updates skip this
+     * hook and detach them themselves (see UserAssignmentController::releaseRegionBulk()).
+     */
+    protected static function booted(): void
+    {
+        static::saved(function (User $user) {
+            if (($user->wasChanged('role') || $user->wasChanged('church_id'))
+                && ($user->role?->level() !== 'gereja' || $user->church_id === null)) {
+                $user->additionalChurches()->detach();
+            }
+
+            if ($user->wasChanged('church_id') && $user->church_id !== null) {
+                // The new main church can't also be an extra one.
+                $user->additionalChurches()->detach($user->church_id);
+            }
+
+            $user->forgetAssignedChurches();
+        });
+    }
+
     public function assignedUnions(): BelongsToMany
     {
         return $this->belongsToMany(Union::class, 'admin_nasional_unions');
@@ -84,6 +106,55 @@ class User extends Authenticatable implements MustVerifyEmail
     public function assignedUnionIds(): array
     {
         return $this->assignedUnions()->pluck('unions.id')->all();
+    }
+
+    /**
+     * Churches an Admin/Pimpinan Gereja manages on top of their main one (church_id) — for
+     * someone serving at more than one church, per the user's explicit call. Meaningless for
+     * every other role. Use assignedChurchIds() for "every church they manage".
+     */
+    public function additionalChurches(): BelongsToMany
+    {
+        return $this->belongsToMany(Church::class, 'admin_gereja_churches')->withTimestamps();
+    }
+
+    /** @var array<int>|null see assignedChurchIds() */
+    private ?array $assignedChurchIdsCache = null;
+
+    /**
+     * Every church a gereja-level user manages: the main one first, then any extras. Empty for
+     * every other role. Cached on the instance; forgetAssignedChurches() after changing them.
+     *
+     * @return array<int>
+     */
+    public function assignedChurchIds(): array
+    {
+        if ($this->role?->level() !== 'gereja' || $this->church_id === null) {
+            return [];
+        }
+
+        return $this->assignedChurchIdsCache ??= collect([$this->church_id])
+            ->merge($this->additionalChurches()->pluck('churches.id'))
+            ->map(fn ($id) => (int) $id)->unique()->values()->all();
+    }
+
+    /** The Daerah of every church a gereja-level user manages. */
+    public function assignedChurchConferenceIds(): array
+    {
+        return Church::query()->whereIn('id', $this->assignedChurchIds())
+            ->pluck('conference_id')->filter()->map(fn ($id) => (int) $id)->unique()->values()->all();
+    }
+
+    /** The Uni of every church a gereja-level user manages. */
+    public function assignedChurchUnionIds(): array
+    {
+        return Conference::query()->whereIn('id', $this->assignedChurchConferenceIds())
+            ->pluck('union_id')->filter()->map(fn ($id) => (int) $id)->unique()->values()->all();
+    }
+
+    public function forgetAssignedChurches(): void
+    {
+        $this->assignedChurchIdsCache = null;
     }
 
     /**

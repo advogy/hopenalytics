@@ -32,6 +32,19 @@
                 @php
                     $hasScopedActiveRole = $user->role !== null && in_array($user->role->level(), ['divisi', 'uni', 'daerah', 'gereja', 'institusi'], true);
                 @endphp
+                @if ($hasScopedActiveRole && $user->role->level() === 'gereja' && $user->church_id)
+                    {{-- Gereja-level: which churches they manage — someone serving at more
+                         than one church can be given extra ones (see editChurches()). --}}
+                    <button
+                        type="button"
+                        data-entity-modal-trigger="{{ route('admin.users.churches.edit', ['target' => $user, 'tab' => $tab]) }}"
+                        title="{{ __('users.churches_title') }}"
+                        aria-label="{{ __('users.churches_title') }}"
+                        class="shrink-0 cursor-pointer text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400"
+                    >
+                        <x-icon name="building-office" class="h-5 w-5" />
+                    </button>
+                @endif
                 @if ($hasScopedActiveRole)
                     {{-- An active Admin/Pimpinan Divisi/Uni/Daerah/Gereja/Institusi — "Ganti
                          Wilayah" opens the modal form for swapping their region for a different

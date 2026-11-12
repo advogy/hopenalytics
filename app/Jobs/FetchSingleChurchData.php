@@ -21,6 +21,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\Middleware\SkipIfBatchCancelled;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 use Throwable;
@@ -45,7 +46,9 @@ class FetchSingleChurchData implements ShouldQueue
     // before moving on to the rest of the batch, rather than spending a 3rd attempt's worth of
     // this account's own delay budget on something that's very likely to fail the same way again.
     public int $tries = 2;
+
     public int $backoff = 10;
+
     public int $timeout = 90;
 
     public function __construct(
@@ -104,6 +107,7 @@ class FetchSingleChurchData implements ShouldQueue
             $hashtagCandidates = $hashtagCandidateExtractor->extract($this->churchSocial->platform, $data, (string) $this->churchSocial->handle);
             $youtubeUploadsPlaylistId = $data['raw_payload']['contentDetails']['relatedPlaylists']['uploads'] ?? null;
             unset($data['_recent_posts_raw']);
+            $data['latest_post_at'] = $this->latestPostDate($hashtagCandidates);
 
             ChurchStat::updateOrCreate(
                 [
@@ -225,5 +229,30 @@ class FetchSingleChurchData implements ShouldQueue
         }
 
         return $fetcher->fetch($this->churchSocial->profile_url);
+    }
+
+    /**
+     * The newest publish date in the fetch's sample of recent posts, or null when there's no
+     * sample or no readable date. Stored per snapshot so the "posted during the period"
+     * engagement measure also works on platforms with no post total (Facebook, Threads).
+     */
+    private function latestPostDate(array $candidates): ?Carbon
+    {
+        return collect($candidates)
+            ->map(function ($candidate) {
+                $value = $candidate['posted_at'] ?? null;
+
+                try {
+                    return match (true) {
+                        $value === null || $value === '' => null,
+                        is_numeric($value) => Carbon::createFromTimestamp((int) $value),
+                        default => Carbon::parse($value),
+                    };
+                } catch (Throwable) {
+                    return null;
+                }
+            })
+            ->filter(fn ($date) => $date !== null && $date->lte(now()->addDay()))
+            ->max();
     }
 }

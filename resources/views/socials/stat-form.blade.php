@@ -66,9 +66,10 @@
         @if ($isYoutube)
             <x-form-field name="views_count" :label="__('common.metric_views')" type="number" min="0" :value="old('views_count', $latest?->views_count)" />
             <x-form-field name="videos_count" :label="__('common.metric_videos')" type="number" min="0" :value="old('videos_count', $latest?->videos_count)" />
-        @elseif ($isFacebook || $isThreads)
-            <x-form-field name="recent_posts_count" :label="__('common.metric_posts_count')" type="number" min="0" :value="old('recent_posts_count', $latest?->recent_posts_count)" />
         @else
+            {{-- Facebook/Threads too: the page's total post count goes in posts_count, not the
+                 automatic fetch's recent_posts_count sample (see BuildsLeaderboards::
+                 metricDefinition()'s 'posts'). --}}
             <x-form-field name="posts_count" :label="__('common.metric_posts_count')" type="number" min="0" :value="old('posts_count', $latest?->posts_count)" />
         @endif
 
