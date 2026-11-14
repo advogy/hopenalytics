@@ -11,6 +11,12 @@ class ApifyClient
 {
     private readonly string $token;
 
+    /**
+     * Timeout for a run covering many accounts at once (see PrefetchSocialStats). Apify's
+     * run-sync endpoint waits at most 300 seconds; just under that leaves room for the response.
+     */
+    public const BATCH_TIMEOUT_SECONDS = 290;
+
     public function __construct(string $token = '')
     {
         $this->token = $token ?: (string) config('services.apify.token');

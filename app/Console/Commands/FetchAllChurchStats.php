@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Jobs\FetchSingleChurchData;
+use App\Jobs\PrefetchSocialStats;
 use App\Models\ChurchSocial;
 use Illuminate\Console\Command;
 
@@ -18,12 +19,20 @@ class FetchAllChurchStats extends Command
 
         $delaySeconds = 0;
 
-        ChurchSocial::query()
+        $accounts = ChurchSocial::query()
             ->where('is_active', true)
             ->where('is_auto_fetch', true)
             ->ownerActive()
             ->consentGranted()
-            ->readyToFetch()
+            ->readyToFetch();
+
+        // Group Apify runs first (see PrefetchSocialStats): dispatched ahead of the accounts' own
+        // jobs, which are staggered behind them, so most find their result ready.
+        foreach (PrefetchSocialStats::jobsFor((clone $accounts)->get(['id', 'platform'])) as $prefetch) {
+            dispatch($prefetch);
+        }
+
+        $accounts
             ->chunkById(50, function ($churchSocials) use (&$delaySeconds) {
                 foreach ($churchSocials as $churchSocial) {
                     FetchSingleChurchData::dispatch($churchSocial)

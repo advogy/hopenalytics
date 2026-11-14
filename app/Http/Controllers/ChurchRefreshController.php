@@ -3,11 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Jobs\FetchSingleChurchData;
+use App\Jobs\PrefetchSocialStats;
 use App\Models\ChurchSocial;
 use App\Models\Union;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Throwable;
@@ -32,8 +33,10 @@ class ChurchRefreshController extends Controller
             ->visibleTo($request->user())
             ->get();
 
+        // Group Apify runs first (see PrefetchSocialStats): queued ahead of the accounts' own
+        // jobs, so most accounts find their result ready instead of each starting a run.
         $delaySeconds = 0;
-        $jobs = [];
+        $jobs = PrefetchSocialStats::jobsFor($socials);
 
         foreach ($socials as $social) {
             $jobs[] = (new FetchSingleChurchData($social))->delay(now()->addSeconds($delaySeconds));
@@ -85,8 +88,10 @@ class ChurchRefreshController extends Controller
             return back()->with('error', __('queue.refresh_union_empty', ['union' => $union->name]));
         }
 
+        // Group Apify runs first (see PrefetchSocialStats): queued ahead of the accounts' own
+        // jobs, so most accounts find their result ready instead of each starting a run.
         $delaySeconds = 0;
-        $jobs = [];
+        $jobs = PrefetchSocialStats::jobsFor($socials);
 
         foreach ($socials as $social) {
             $jobs[] = (new FetchSingleChurchData($social))->delay(now()->addSeconds($delaySeconds));

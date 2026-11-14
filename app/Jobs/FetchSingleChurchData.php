@@ -22,6 +22,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\Middleware\SkipIfBatchCancelled;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 use Throwable;
@@ -89,12 +90,16 @@ class FetchSingleChurchData implements ShouldQueue
             return;
         }
 
+        // This account's result from a group Apify run, when PrefetchSocialStats already got it
+        // (one run for many accounts); null means fetch it here as before.
+        $prefetched = Cache::pull(PrefetchSocialStats::cacheKey($this->churchSocial->id));
+
         try {
             $data = match ($this->churchSocial->platform) {
                 SocialPlatform::YouTube => $this->fetchYouTube($youTubeStatsFetcher),
-                SocialPlatform::Instagram => $instagramStatsFetcher->fetch($this->churchSocial->handle),
-                SocialPlatform::TikTok => $tikTokStatsFetcher->fetch($this->churchSocial->handle),
-                SocialPlatform::Facebook => $this->fetchFacebook($facebookStatsFetcher),
+                SocialPlatform::Instagram => $instagramStatsFetcher->fetch($this->churchSocial->handle, $prefetched),
+                SocialPlatform::TikTok => $tikTokStatsFetcher->fetch($this->churchSocial->handle, $prefetched),
+                SocialPlatform::Facebook => $this->fetchFacebook($facebookStatsFetcher, $prefetched),
                 SocialPlatform::X => $xStatsFetcher->fetch($this->churchSocial->handle),
                 SocialPlatform::Threads => $threadsStatsFetcher->fetch($this->churchSocial->handle),
             };
@@ -222,13 +227,13 @@ class FetchSingleChurchData implements ShouldQueue
         throw new RuntimeException("Missing YouTube channel ID or handle for church_social #{$this->churchSocial->id}");
     }
 
-    private function fetchFacebook(FacebookStatsFetcher $fetcher): array
+    private function fetchFacebook(FacebookStatsFetcher $fetcher, ?array $prefetchedPage = null): array
     {
         if (! $this->churchSocial->profile_url) {
             throw new RuntimeException("Missing Facebook page URL for church_social #{$this->churchSocial->id}");
         }
 
-        return $fetcher->fetch($this->churchSocial->profile_url);
+        return $fetcher->fetch($this->churchSocial->profile_url, $prefetchedPage);
     }
 
     /**

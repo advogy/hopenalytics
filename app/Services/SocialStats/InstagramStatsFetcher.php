@@ -11,9 +11,28 @@ class InstagramStatsFetcher
         private readonly ApifyClient $apify,
     ) {}
 
-    public function fetch(string $username): array
+    /**
+     * Many profiles in one actor run (see PrefetchSocialStats), keyed by lowercase username —
+     * one Apify run for a whole group instead of one per account. Profiles missing from the
+     * result simply aren't in the array; their own fetch() then runs as before.
+     *
+     * @param  list<string>  $usernames
+     * @return array<string, array> raw profile items
+     */
+    public function fetchBatch(array $usernames): array
     {
-        $item = $this->apify->runActorSync(self::ACTOR_ID, [
+        $items = $this->apify->runActorSyncAll(self::ACTOR_ID, ['usernames' => array_values($usernames)], ApifyClient::BATCH_TIMEOUT_SECONDS);
+
+        return collect($items)
+            ->filter(fn ($item) => isset($item['username']) && isset($item['followersCount']))
+            ->keyBy(fn ($item) => strtolower(ltrim($item['username'], '@')))
+            ->all();
+    }
+
+    /** $prefetched: this profile's item from fetchBatch(), when the batch already got it. */
+    public function fetch(string $username, ?array $prefetched = null): array
+    {
+        $item = $prefetched ?? $this->apify->runActorSync(self::ACTOR_ID, [
             'usernames' => [$username],
         ]);
 

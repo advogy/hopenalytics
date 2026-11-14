@@ -16,9 +16,32 @@ class TikTokStatsFetcher
     // How many of the most recent videos to sample for plays/shares (not a lifetime total).
     private const RECENT_VIDEOS_SAMPLE = 10;
 
-    public function fetch(string $username): array
+    /**
+     * Many profiles in one actor run (see PrefetchSocialStats): each profile's videos, keyed by
+     * lowercase username. resultsPerPage is per profile, so each still gets its own sample.
+     *
+     * @param  list<string>  $usernames
+     * @return array<string, list<array>> video items per profile
+     */
+    public function fetchBatch(array $usernames): array
     {
         $items = $this->apify->runActorSyncAll(self::ACTOR_ID, [
+            'profiles' => array_values($usernames),
+            'profileScrapeSections' => ['videos'],
+            'resultsPerPage' => self::RECENT_VIDEOS_SAMPLE,
+        ], ApifyClient::BATCH_TIMEOUT_SECONDS);
+
+        return collect($items)
+            ->filter(fn ($item) => isset($item['authorMeta']['name']))
+            ->groupBy(fn ($item) => strtolower(ltrim($item['authorMeta']['name'], '@')))
+            ->map(fn ($group) => $group->values()->all())
+            ->all();
+    }
+
+    /** $prefetched: this profile's video items from fetchBatch(), when the batch already got them. */
+    public function fetch(string $username, ?array $prefetched = null): array
+    {
+        $items = $prefetched ?? $this->apify->runActorSyncAll(self::ACTOR_ID, [
             'profiles' => [$username],
             'profileScrapeSections' => ['videos'],
             'resultsPerPage' => self::RECENT_VIDEOS_SAMPLE,

@@ -23,11 +23,60 @@ class FacebookStatsFetcher
         private readonly ApifyClient $apify,
     ) {}
 
-    public function fetch(string $pageUrl): array
+    /**
+     * Many pages in one actor run (see PrefetchSocialStats), keyed by the page URL as passed in
+     * — one Apify run for a whole group instead of one per page. A page is matched back by its
+     * normalized URL (the result's facebookUrl/pageUrl, or its page name as the URL path);
+     * unmatched pages simply aren't in the array, and their own fetch() runs as before. Only
+     * the page itself: its recent posts are still fetched per page inside fetch().
+     *
+     * @param  list<string>  $pageUrls
+     * @return array<string, array> raw page items keyed by the original URL
+     */
+    public function fetchPagesBatch(array $pageUrls): array
+    {
+        $byKey = collect($pageUrls)->mapWithKeys(fn ($url) => [$this->matchKey($this->normalizeUrl($url)) => $url]);
+
+        $items = $this->apify->runActorSyncAll(self::ACTOR_ID, [
+            'startUrls' => $byKey->keys()->unique()->map(fn ($key, $i) => ['url' => $this->normalizeUrl($byKey[$key])])->values()->all(),
+        ], ApifyClient::BATCH_TIMEOUT_SECONDS);
+
+        $matched = [];
+
+        foreach ($items as $item) {
+            if (! isset($item['followers']) && ! isset($item['likes'])) {
+                continue;
+            }
+
+            foreach ([$item['facebookUrl'] ?? null, $item['pageUrl'] ?? null, isset($item['pageName']) ? 'https://www.facebook.com/'.$item['pageName'] : null] as $candidate) {
+                $key = $candidate ? $this->matchKey($candidate) : null;
+
+                if ($key && $byKey->has($key) && ! isset($matched[$byKey[$key]])) {
+                    $matched[$byKey[$key]] = $item;
+                    break;
+                }
+            }
+        }
+
+        return $matched;
+    }
+
+    /** facebook.com/Foo/, https://www.facebook.com/foo and m.facebook.com/foo all match. */
+    private function matchKey(string $url): string
+    {
+        $url = strtolower(trim($url));
+        $url = preg_replace('#^https?://#', '', $url) ?? $url;
+        $url = preg_replace('#^(www\.|m\.|web\.)#', '', $url) ?? $url;
+
+        return rtrim($url, '/');
+    }
+
+    /** $prefetchedPage: this page's item from fetchPagesBatch(), when the batch already got it. */
+    public function fetch(string $pageUrl, ?array $prefetchedPage = null): array
     {
         $pageUrl = $this->normalizeUrl($pageUrl);
 
-        $item = $this->apify->runActorSync(self::ACTOR_ID, [
+        $item = $prefetchedPage ?? $this->apify->runActorSync(self::ACTOR_ID, [
             'startUrls' => [['url' => $pageUrl]],
         ]);
 
