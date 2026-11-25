@@ -4,7 +4,7 @@
 // Each section: 'id' (anchor), 'title', optional 'paragraphs' and 'items' (HTML allowed);
 // ':app' and ':email' are filled in by the view.
 return [
-    'updated_on' => 'Last updated: 13 November 2026',
+    'updated_on' => 'Last updated: 25 November 2026',
 
     // --- Privacy Policy ---
     'privacy_title' => 'Privacy Policy',
@@ -19,7 +19,6 @@ return [
                 '<strong>Personal (individual) data:</strong> name, city, country, location coordinates (optional), and the Union, Conference and church chosen by the user or entered by an admin of their region.',
                 '<strong>Social media account data:</strong> platform, handle/username, profile URL, and the account\'s <strong>public statistics</strong>: followers/subscribers, views, likes, comments, shares, number of posts, plus a sample of recent posts (text, date and interaction counts) for hashtag matching. We never collect private messages, private content, or social media passwords.',
                 '<strong>Church membership data:</strong> the recorded number of members of each church as of a date, uploaded by Division admins and confirmed by Union admins. This is a <strong>count</strong>, not a list of names or members\' personal data.',
-                '<strong>Connected accounts:</strong> when the owner of a Facebook Page or Instagram Business/Creator account chooses to connect it (see section 3), we store that Page/account\'s ID and name and the access token Meta provides, encrypted.',
             ],
         ],
         [
@@ -31,18 +30,8 @@ return [
             ],
         ],
         [
-            'id' => 'akun-dihubungkan',
-            'title' => '3. Accounts Connected through Meta (Facebook/Instagram)',
-            'paragraphs' => [
-                'The owner or admin of a Facebook Page, or of an Instagram Business/Creator account linked to that Page, can <strong>connect</strong> it through Facebook login. Its statistics are then read directly from Meta\'s official Graph API instead of from public pages.',
-                'When connecting, you allow :app to: see the list of Pages you manage (<em>pages_show_list</em>), read the Page\'s follower count and post statistics (<em>pages_read_engagement</em>), and read the profile and statistics of the linked Instagram Business/Creator account (<em>instagram_basic</em>, <em>instagram_manage_insights</em>).',
-                'We <strong>only read</strong>. We don\'t post, don\'t change anything on your Page or account, don\'t read messages, and don\'t store your personal Facebook profile data. The access token is stored encrypted and used only to read the statistics of the account you chose.',
-                'You can disconnect at any time with the <strong>Disconnect</strong> button on the account\'s Edit page, or by removing :app under <em>Facebook → Settings → Business Integrations</em> (or <em>Apps and Websites</em>). When disconnected in :app, the token is deleted from our system right away.',
-            ],
-        ],
-        [
             'id' => 'penggunaan-data',
-            'title' => '4. How Data Is Used',
+            'title' => '3. How Data Is Used',
             'items' => [
                 'Showing growth charts, growth scores (including the combined growth of a church and its members\' personal accounts), rankings, and comparisons between accounts and regions.',
                 'Measuring member engagement: recorded membership, the target per period, and how many members are active (registered in the system, with a registered social account, or posting within the period).',
@@ -54,7 +43,7 @@ return [
         ],
         [
             'id' => 'akses-data',
-            'title' => '5. Who Can See Your Data',
+            'title' => '4. Who Can See Your Data',
             'paragraphs' => [
                 'Access is limited by role and region: a Church admin only sees the churches they manage and their Conference, Conference/Union/Division admins see the regions below them, and so on. Membership figures can only be uploaded by Division admins and confirmed by Union admins of that region.',
                 'The account directory and the summary pages of Analytics & Charts can be seen by other registered users of the system.',
@@ -62,10 +51,9 @@ return [
         ],
         [
             'id' => 'pihak-ketiga',
-            'title' => '6. Third Parties Involved',
+            'title' => '5. Third Parties Involved',
             'items' => [
-                '<strong>Apify</strong>: collects public data from Instagram, TikTok, Facebook, X and Threads for accounts that aren\'t connected.',
-                '<strong>Meta Platforms</strong> (Facebook Login and Graph API): sign-in and reading statistics for Facebook/Instagram accounts connected by their owners. Use of Facebook is also subject to Meta\'s privacy policy.',
+                '<strong>Apify</strong>: collects public data from Instagram, TikTok, Facebook, X and Threads. It only reads what anyone can see on the public page, without signing in to those accounts.',
                 '<strong>YouTube Data API v3</strong> (official, by Google): collects YouTube channel data.',
                 '<strong>OpenStreetMap Nominatim</strong>: turns city names into map coordinates.',
                 'Email service provider: sends verification codes (OTP) and notifications to your email.',
@@ -74,48 +62,46 @@ return [
         ],
         [
             'id' => 'penyimpanan',
-            'title' => '7. How Long Data Is Kept',
+            'title' => '6. How Long Data Is Kept',
             'items' => [
                 'Sign-in records are kept for <strong>6 months</strong>, then deleted automatically.',
                 'The admin audit log is kept for <strong>12 months</strong>, then deleted automatically.',
                 'Social media statistics and membership figures are kept for as long as the account or church is registered, since they make up the growth history charts.',
-                'A connected account\'s token is kept only while the connection is active, and deleted as soon as it is disconnected.',
                 'Your sign-in session (cookie) ends after a period of inactivity. We don\'t use advertising or third-party tracking cookies.',
             ],
         ],
         [
             'id' => 'hak-anda',
-            'title' => '8. Your Rights',
+            'title' => '7. Your Rights',
             'paragraphs' => [
                 'You may ask for a copy of your data, or for it to be corrected, updated or deleted. Most of it you can change yourself in My Profile; for the rest, contact the admin of your region or organisation, or use the contact at the bottom of this page.',
             ],
         ],
         [
             'id' => 'hapus-data',
-            'title' => '9. How to Delete Your Data',
+            'title' => '8. How to Delete Your Data',
             'paragraphs' => [
-                'To disconnect a connected Facebook/Instagram account: open the account\'s <strong>Edit</strong> page in :app and click <strong>Disconnect</strong>, or remove :app under <em>Facebook → Settings → Business Integrations</em>. The access token is deleted right away.',
                 'To stop your social media account being monitored: remove it in <strong>My Profile → Social Media</strong>. Its data is no longer collected.',
                 'To delete all your data, including your user account, Personal data and your social accounts\' statistics history: email :email with the subject <strong>"Delete Data"</strong> from your registered email address. We will verify the request, delete the data within <strong>30 days</strong> of receiving it, and confirm by email. Church membership figures are aggregate counts, not personal data, and stay with the organisation.',
             ],
         ],
         [
             'id' => 'luar-indonesia',
-            'title' => '10. Users outside Indonesia',
+            'title' => '9. Users outside Indonesia',
             'paragraphs' => [
                 ':app serves organisations outside Indonesia, especially in Southeast Asia. For users living in other countries, that country\'s data protection law (e.g. the GDPR in the European Union, the PDPA in Thailand/Malaysia/Singapore, or equivalent rules) may still apply to your data, alongside and without overriding this policy. We also follow Indonesia\'s Personal Data Protection Law (UU PDP).',
             ],
         ],
         [
             'id' => 'perubahan',
-            'title' => '11. Changes to This Policy',
+            'title' => '10. Changes to This Policy',
             'paragraphs' => [
                 'This policy may be updated as the application\'s features change. The date of the last update is always shown at the top of this page.',
             ],
         ],
         [
             'id' => 'kontak',
-            'title' => '12. Contact',
+            'title' => '11. Contact',
             'paragraphs' => [
                 'Questions or requests about data privacy can be sent to :email.',
             ],
@@ -152,17 +138,8 @@ return [
             ],
         ],
         [
-            'id' => 'menghubungkan-akun',
-            'title' => '4. Connecting Facebook/Instagram Accounts',
-            'items' => [
-                'You may only connect a Facebook Page or Instagram account that you lawfully manage, or that its owner has authorised you to manage.',
-                'By connecting, you allow :app to read that account\'s statistics as described in the Privacy Policy. You can withdraw this at any time.',
-                'Use of Facebook Login and data from Meta is also subject to Meta\'s Terms of Service and Platform Terms.',
-            ],
-        ],
-        [
             'id' => 'data-anggota',
-            'title' => '5. Membership Figures',
+            'title' => '4. Membership Figures',
             'items' => [
                 'Division admins are responsible for the accuracy of the membership figures they upload, and Union admins for the figures they confirm.',
                 'Upload files hold only the number of members per church. Don\'t upload names, contact details or other personal data of members.',
@@ -170,33 +147,33 @@ return [
         ],
         [
             'id' => 'pihak-ketiga',
-            'title' => '6. Data & Third Parties',
+            'title' => '5. Data & Third Parties',
             'paragraphs' => [
-                'Social media statistics come from data provided by the platforms concerned (Instagram, TikTok, Facebook, X, Threads, YouTube), either through third-party services or, for connected accounts, through official APIs (see the Privacy Policy). We are not responsible for the accuracy, availability, or policy changes of those platforms.',
+                'Social media statistics come from data provided by the platforms concerned (Instagram, TikTok, Facebook, X, Threads, YouTube), through third-party services (Apify) for public data, or YouTube\'s official API (see the Privacy Policy). We are not responsible for the accuracy, availability, or policy changes of those platforms.',
             ],
         ],
         [
             'id' => 'perubahan-layanan',
-            'title' => '7. Changes & Termination',
+            'title' => '6. Changes & Termination',
             'paragraphs' => [
                 'We may change, suspend or discontinue part or all of the service at any time, including stopping the monitoring of a given platform, with or without notice. User accounts that break these terms may be deactivated by an admin.',
             ],
         ],
         [
             'id' => 'batasan',
-            'title' => '8. Limitation of Liability',
+            'title' => '7. Limitation of Liability',
             'paragraphs' => [
                 'The service is provided "as is" without warranty of any kind. We are not liable for losses arising from inaccurate third-party data, service interruptions, or misuse of an account by unauthorised people due to the user\'s own failure to keep their credentials safe.',
             ],
         ],
         [
             'id' => 'hukum',
-            'title' => '9. Governing Law',
+            'title' => '8. Governing Law',
             'paragraphs' => ['These terms are governed by the laws of the Republic of Indonesia.'],
         ],
         [
             'id' => 'kontak',
-            'title' => '10. Contact',
+            'title' => '9. Contact',
             'paragraphs' => ['Questions about these terms can be sent to :email.'],
         ],
     ],
