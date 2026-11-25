@@ -17,13 +17,37 @@
         <x-stat-card href="{{ route('queue.index', ['tab' => 'gagal']) }}" icon="x-circle" :label="__('queue.stat_failed')" :value="$totalFailed" />
     </div>
 
+    {{-- Job Tertunda / Batch Aktif / Batch Selesai / Job Gagal as four tabs rather than
+         always-visible cards, per the user's explicit call (Tertunda first) — each panel's own
+         id (antrean-pending/batch-aktif/batch-selesai/job-gagal) is kept for the stat cards
+         above and for @can/@empty markup already keyed off them. Only Tertunda stays part of the
+         poll-and-swap auto-refresh below (see that script's own sectionIds) — it has no
+         interactive state to lose; Aktif/Selesai/Gagal all carry their own bulk-select
+         checkboxes now (a background swap would silently clear an in-progress selection, or
+         yank a form out from under an open confirm dialog) and are excluded for that reason
+         (see their own comment). Ambil Data per Uni sits at the top of the Tertunda tab, per the
+         user's explicit call: a second panel with the same data-tab-panel key. --}}
+    <x-tab-bar>
+        <x-tab-button tab-key="tertunda" :note="__('tabs.queue_tertunda')">{{ __('queue.tab_pending') }}</x-tab-button>
+        <x-tab-button tab-key="aktif" :note="__('tabs.queue_aktif')">{{ __('queue.tab_active') }}</x-tab-button>
+        <x-tab-button tab-key="selesai" :note="__('tabs.queue_selesai')">{{ __('queue.tab_completed') }}</x-tab-button>
+        <x-tab-button tab-key="gagal" :note="__('tabs.queue_gagal')">{{ __('queue.tab_failed') }}</x-tab-button>
+    </x-tab-bar>
+
     {{-- Per-Uni "Fetch Now" — a scoped alternative to the global refresh button (which can take a
          long time across every account nationwide), per the user's explicit call. Included in
          the same poll-and-swap cycle below (see $sectionIds) so the account count/last-fetched/
          running state all stay live without a dedicated JS progress widget — reusing
          data-disable-on-submit + the global confirm-dialog is enough, since a page reload every
          3s already picks up the new state once a batch finishes. --}}
-    <div id="fetch-per-uni" class="mb-8 scroll-mt-20 rounded-2xl border border-black/5 bg-white p-5 shadow-sm dark:border-white/5 dark:bg-slate-900">
+    <div
+        id="fetch-per-uni"
+        data-tab-panel="tertunda"
+        @class([
+            'mb-6', 'scroll-mt-20', 'rounded-2xl', 'border', 'border-black/5', 'bg-white', 'p-5', 'shadow-sm', 'dark:border-white/5', 'dark:bg-slate-900',
+            'hidden' => $activeTab !== 'tertunda',
+        ])
+    >
         <p class="mb-1 font-bold text-slate-900 dark:text-white">{{ __('queue.fetch_uni_title') }}</p>
         <p class="mb-4 text-sm text-slate-500 dark:text-slate-400">{{ __('queue.fetch_uni_subtitle') }}</p>
 
@@ -118,22 +142,6 @@
                 </table>
             </div>
     </div>
-
-    {{-- Job Tertunda / Batch Aktif / Batch Selesai / Job Gagal as four tabs rather than
-         always-visible cards, per the user's explicit call (Tertunda first) — each panel's own
-         id (antrean-pending/batch-aktif/batch-selesai/job-gagal) is kept for the stat cards
-         above and for @can/@empty markup already keyed off them. Only Tertunda stays part of the
-         poll-and-swap auto-refresh below (see that script's own sectionIds) — it has no
-         interactive state to lose; Aktif/Selesai/Gagal all carry their own bulk-select
-         checkboxes now (a background swap would silently clear an in-progress selection, or
-         yank a form out from under an open confirm dialog) and are excluded for that reason
-         (see their own comment). --}}
-    <x-tab-bar>
-        <x-tab-button tab-key="tertunda" :note="__('tabs.queue_tertunda')">{{ __('queue.tab_pending') }}</x-tab-button>
-        <x-tab-button tab-key="aktif" :note="__('tabs.queue_aktif')">{{ __('queue.tab_active') }}</x-tab-button>
-        <x-tab-button tab-key="selesai" :note="__('tabs.queue_selesai')">{{ __('queue.tab_completed') }}</x-tab-button>
-        <x-tab-button tab-key="gagal" :note="__('tabs.queue_gagal')">{{ __('queue.tab_failed') }}</x-tab-button>
-    </x-tab-bar>
 
     <div
         id="antrean-pending"

@@ -39,7 +39,7 @@ return [
     'profile_personal' => 'Data diri dan wilayah Anda: Uni, Daerah, dan gereja.',
     'profile_sosial' => 'Akun media sosial pribadi Anda yang dilacak.',
 
-    'queue_tertunda' => 'Job pengambilan data yang masih antre dan belum dijalankan.',
+    'queue_tertunda' => 'Ambil data per Uni, dan job pengambilan data yang masih antre dan belum dijalankan.',
     'queue_aktif' => 'Batch pengambilan data yang sedang berjalan.',
     'queue_selesai' => 'Batch pengambilan data yang sudah selesai.',
     'queue_gagal' => 'Job yang gagal; bisa dicoba ulang atau dihapus.',

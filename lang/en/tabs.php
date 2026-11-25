@@ -39,7 +39,7 @@ return [
     'profile_personal' => 'Your details and region: Union, Conference and church.',
     'profile_sosial' => 'Your personal social accounts that are tracked.',
 
-    'queue_tertunda' => 'Data fetch jobs still waiting in the queue.',
+    'queue_tertunda' => 'Fetch data per Union, and data fetch jobs still waiting in the queue.',
     'queue_aktif' => 'Data fetch batches that are running now.',
     'queue_selesai' => 'Data fetch batches that have finished.',
     'queue_gagal' => 'Jobs that failed; they can be retried or deleted.',
